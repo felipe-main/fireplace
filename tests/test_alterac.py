@@ -381,12 +381,12 @@ def test_wildpaw_gnoll_cost_reduced_by_offclass_count():
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     game.player1.discard_hand()
     gnoll = game.player1.give("AV_298")
-    assert gnoll.cost == 5  # base
+    base_cost = gnoll.cost  # 5 in 22.0, 6 after the 22.2 nerf — read from data
     # Add two off-class cards
     game.player1.give("CS2_029")  # Fireball — Mage
     game.player1.give("CS2_124")  # Wolfrider — Neutral, doesn't count
     game.player1.give("EX1_400")  # Whirlwind — Warrior
-    assert gnoll.cost == 5 - 2  # only the mage + warrior count
+    assert gnoll.cost == base_cost - 2  # only the mage + warrior count
 
 
 def test_snowfall_graveyard_doubles_deathrattles():

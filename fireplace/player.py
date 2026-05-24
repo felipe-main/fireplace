@@ -126,6 +126,7 @@ class Player(Entity, TargetableByAuras):
         self.next_hero_power_freezes_target = 0
         # One-shot Choose One discount + last-Choose-One tracking.
         self.next_choose_one_discount = 0
+        self.next_choose_one_combined = 0
         self.last_choose_one_parent_id = None
         self.last_choose_one_chosen_id = None
         # Per-school spell-cast history (SpellSchool → list of card-ids cast

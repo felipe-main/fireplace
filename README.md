@@ -10,7 +10,7 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 22.0.0.128654](https://hearthstone.wiki.gg/wiki/Patch_22.0.0.128654)
+Now updated to [Patch 22.2.0.131660](https://hearthstone.wiki.gg/wiki/Patch_22.2.0.131660)
 * **100%** Classic (245 of 245 cards)
 * **100%** Curse of Naxxramas (30 of 30 cards)
 * **100%** Goblins vs Gnomes (123 of 123 cards)
@@ -38,6 +38,7 @@ Now updated to [Patch 22.0.0.128654](https://hearthstone.wiki.gg/wiki/Patch_22.0
 * **100%** Forged in the Barrens (170 of 170 cards)
 * **100%** United in Stormwind (170 of 170 cards)
 * **100%** Fractured in Alterac Valley (135 of 135 cards)
+* **100%** Onyxia's Lair mini-set (35 of 35 cards)
 * **100%** Legacy (167 of 167 cards)
 * **100%** Core (235 of 235 cards)
 * **100%** Vanilla (383 of 383 cards)

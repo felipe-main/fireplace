@@ -381,7 +381,10 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         """
         Returns True if the card has active choices
         """
-        if self.controller.choose_both and self.has_choose_one:
+        if self.has_choose_one and (
+            self.controller.choose_both
+            or getattr(self.controller, "next_choose_one_combined", 0) > 0
+        ):
             return False
         return bool(self.choose_cards)
 
@@ -615,6 +618,14 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             )
             if self.controller.next_choose_one_discount > 0:
                 self.controller.next_choose_one_discount = 0
+        # Consume the one-shot "Choose One has both effects" buff (Raid
+        # Negotiator). This fires whether or not the player would have been
+        # required to choose — the combined flag overrode that.
+        if (
+            self.has_choose_one
+            and getattr(self.controller, "next_choose_one_combined", 0) > 0
+        ):
+            self.controller.next_choose_one_combined -= 1
         self.game.play_card(self, target, index, choose)
         return self
 

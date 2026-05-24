@@ -1,8 +1,8 @@
 # <img src="/logo.png" height="32" width="32"/> Fireplace
 [![](https://img.shields.io/badge/python-3.10+-blue.svg)](https://peps.python.org/pep-0619/)
-[![](https://img.shields.io/github/license/shinoi2/fireplace.svg)](https://github.com/shinoi2/fireplace/blob/master/LICENSE.md)
-[![](https://github.com/shinoi2/fireplace/actions/workflows/build.yml/badge.svg)](https://github.com/shinoi2/fireplace/actions/workflows/build.yml)
-[![codecov](https://codecov.io/github/shinoi2/fireplace/graph/badge.svg?token=FXDTJSKZL9)](https://codecov.io/github/shinoi2/fireplace)
+[![](https://img.shields.io/github/license/felipe-main/fireplace.svg)](https://github.com/felipe-main/fireplace/blob/master/LICENSE.md)
+[![](https://github.com/felipe-main/fireplace/actions/workflows/build.yml/badge.svg)](https://github.com/felipe-main/fireplace/actions/workflows/build.yml)
+[![codecov](https://codecov.io/github/felipe-main/fireplace/graph/badge.svg)](https://codecov.io/github/felipe-main/fireplace)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A Hearthstone simulator and implementation, written in Python.
@@ -10,7 +10,7 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 21.8.0.126451](https://hearthstone.wiki.gg/wiki/Patch_21.8.0.126451)
+Now updated to [Patch 22.0.0.128654](https://hearthstone.wiki.gg/wiki/Patch_22.0.0.128654)
 * **100%** Classic (245 of 245 cards)
 * **100%** Curse of Naxxramas (30 of 30 cards)
 * **100%** Goblins vs Gnomes (123 of 123 cards)
@@ -37,7 +37,7 @@ Now updated to [Patch 21.8.0.126451](https://hearthstone.wiki.gg/wiki/Patch_21.8
 * **100%** Madness at the Darkmoon Faire (170 of 170 cards)
 * **100%** Forged in the Barrens (170 of 170 cards)
 * **100%** United in Stormwind (170 of 170 cards)
-* **100%** Fractured in Alterac Valley (2 of 2 cards)
+* **100%** Fractured in Alterac Valley (135 of 135 cards)
 * **100%** Legacy (167 of 167 cards)
 * **100%** Core (235 of 235 cards)
 * **100%** Vanilla (383 of 383 cards)
@@ -56,7 +56,7 @@ Now updated to [Patch 21.8.0.126451](https://hearthstone.wiki.gg/wiki/Patch_21.8
 
 ## Documentation
 
-The [Fireplace Wiki](https://github.com/shinoi2/fireplace/wiki) is the best
+The [Fireplace Wiki](https://github.com/felipe-main/fireplace/wiki) is the best
 source of documentation, along with the actual code.
 
 

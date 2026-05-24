@@ -1829,7 +1829,11 @@ class Summon(TargetedAction):
             cards = [cards]
 
         for card in cards:
-            if not card.is_summonable():
+            # Defensive: Summon can only place summonable card types
+            # (Minion / Weapon / Hero / HeroPower). Random card pools
+            # occasionally hand back Enchantments which have no
+            # is_summonable; skip those instead of crashing.
+            if not hasattr(card, "is_summonable") or not card.is_summonable():
                 continue
             if card.controller != target:
                 card.controller = target

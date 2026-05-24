@@ -180,8 +180,11 @@ class DED_504:
 
     # [x]<b>Tradeable</b> Summon @ 1/1 |4(Imp, Imps). <i>(Upgrades by 2 when
     # <b>Traded</b>!)</i>
+    # "DED_504t" was the dedicated Imp token in earlier data builds; the
+    # current XML doesn't ship it as a separate id. Reuse GVG_045t (the
+    # standard 1/1 Imp Demon token).
     trade = AddProgress(SELF, SELF, 2)
-    play = Summon(CONTROLLER, "DED_504t") * (CURRENT_PROGRESS(SELF) + 1)
+    play = Summon(CONTROLLER, "GVG_045t") * (CURRENT_PROGRESS(SELF) + 1)
 
 
 ##

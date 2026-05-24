@@ -60,9 +60,21 @@ class AV_317:
 
     # <b>Discover</b> a friendly <b>Deathrattle</b> minion that died this
     # game. Give your minions its <b>Deathrattle</b>.
-    play = DISCOVER(
-        RandomCollectible(card_class=CardClass.WARLOCK, type=CardType.MINION)
-    ).then(CopyDeathrattleBuff(FRIENDLY_MINIONS, Discover.CARD))
+    # CopyDeathrattleBuff expects a string buff-id as its second arg, not a
+    # card reference — Discover.CARD as that arg crashes in get_target_args.
+    # Resolve the picked card and assign its deathrattle scripts directly.
+    def play(self):
+        candidates = [
+            m for m in list(self.controller.graveyard)
+            if m.type == CardType.MINION and m.has_deathrattle
+        ]
+        if not candidates:
+            return
+        pick = self.game.random.choice(candidates)
+        deathrattles = pick.deathrattles
+        for minion in list(self.controller.field):
+            for dr in deathrattles:
+                minion.additional_deathrattles.append(dr)
 
 
 class AV_277:

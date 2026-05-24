@@ -525,6 +525,22 @@ def test_brukan_casts_two_distinct_elements():
     assert effect_fired, "Bru'kan didn't apply any Element effects"
 
 
+def test_reflecto_engineer_swaps_hand_minion_stats():
+    """AV_256 Reflecto Engineer: swap atk/health of every minion in both hands."""
+    game = prepare_game()
+    while game.player1.max_mana < 3:
+        game.end_turn(); game.end_turn()
+    game.player1.discard_hand()
+    game.player2.discard_hand()
+    maly_p1 = game.player1.give("EX1_563")  # Malygos 4/12
+    maly_p2 = game.player2.give("EX1_563")
+    assert (maly_p1.atk, maly_p1.health) == (4, 12)
+    assert (maly_p2.atk, maly_p2.health) == (4, 12)
+    game.player1.give("AV_256").play()
+    assert (maly_p1.atk, maly_p1.health) == (12, 4)
+    assert (maly_p2.atk, maly_p2.health) == (12, 4)
+
+
 def test_vanndar_resolves_on_empty_deck():
     """AV_223 Vanndar resolves cleanly when the deck has no minions."""
     game = prepare_game()

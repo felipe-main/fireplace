@@ -171,7 +171,11 @@ class AV_256:
     """Reflecto Engineer"""
 
     # <b>Battlecry:</b> Swap the Attack and Health of all minions in both
-    # players' hands.
-    play = Buff(FRIENDLY_HAND + MINION, AttackHealthSwapBuff()), Buff(
-        ENEMY_HAND + MINION, AttackHealthSwapBuff()
+    # players' hands. AV_256e "Reflected" is Blizzard's real swap enchant.
+    play = (
+        Buff(FRIENDLY_HAND + MINION, "AV_256e"),
+        Buff(ENEMY_HAND + MINION, "AV_256e"),
     )
+
+
+AV_256e = AttackHealthSwapBuff()

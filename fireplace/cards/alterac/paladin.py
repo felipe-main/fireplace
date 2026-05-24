@@ -34,7 +34,10 @@ class AV_343:
 
 
 class AV_343e:
-    tags = {GameTag.COST: SET(0)}
+    # Drives the host card's cost to 0 (engine clamps to non-negative).
+    # SET(...) in tags doesn't work here — it gets stored verbatim as _cost
+    # and triggers an int+function add in Enchantment._getattr.
+    tags = {GameTag.COST: -100}
     events = OWN_TURN_END.on(Destroy(SELF))
 
 

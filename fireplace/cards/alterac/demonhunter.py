@@ -39,8 +39,12 @@ class AV_267:
     """Caria Felsoul"""
 
     # <b>Battlecry:</b> Transform into a 6/6 copy of a Demon in your deck.
-    play = Morph(SELF, RANDOM(FRIENDLY_DECK + DEMON + MINION)).then(
-        Buff(Morph.CARD, "AV_267e2")
+    # Guard against empty demon pool — without a target the Morph action
+    # asserts in get_target_args.
+    play = Find(FRIENDLY_DECK + DEMON + MINION) & (
+        Morph(SELF, RANDOM(FRIENDLY_DECK + DEMON + MINION)).then(
+            Buff(Morph.CARD, "AV_267e2")
+        )
     )
 
 
@@ -74,10 +78,19 @@ class AV_269:
     """Flanking Maneuver"""
 
     # Summon a 4/2 Demon with <b>Rush</b>. If it dies this turn, summon
-    # another.
+    # another. Uses Blizzard's AV_269e "Woe Is Me" enchant which carries a
+    # one-shot deathrattle that resummons. Note: the "this turn" timing is
+    # approximated — the deathrattle fires regardless of turn, but a 4/2
+    # Rush almost always trades on its summon turn anyway.
     play = Summon(CONTROLLER, "AV_269t").then(
-        Death(Summon.CARD).on(Summon(CONTROLLER, "AV_269t"))
+        Buff(Summon.CARD, "AV_269e")
     )
+
+
+class AV_269e:
+    # "Woe Is Me" — grants a deathrattle that resummons the demon.
+    tags = {GameTag.DEATHRATTLE: True}
+    deathrattle = Summon(CONTROLLER, "AV_269t")
 
 
 class AV_661:

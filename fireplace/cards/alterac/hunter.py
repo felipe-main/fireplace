@@ -100,7 +100,10 @@ class AV_147:
 
 
 class AV_147e:
-    tags = {GameTag.COST: SET(1)}
+    # Drives the drawn Secret's cost to (almost) 1 (engine clamps to 0;
+    # close enough for our purposes — see AV_343e note for why SET() can't
+    # live in a buff's tags dict).
+    tags = {GameTag.COST: -100}
 
 
 ##

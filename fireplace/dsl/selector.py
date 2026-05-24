@@ -627,6 +627,15 @@ BEAST = EnumSelector(Race.BEAST)
 DEMON = EnumSelector(Race.DEMON)
 DRAGON = EnumSelector(Race.DRAGON)
 MECH = EnumSelector(Race.MECHANICAL)
+
+# Spell schools — selectors that filter spells by their declared school.
+ARCANE_SPELL = EnumSelector(SpellSchool.ARCANE)
+FIRE_SPELL = EnumSelector(SpellSchool.FIRE)
+FROST_SPELL = EnumSelector(SpellSchool.FROST)
+NATURE_SPELL = EnumSelector(SpellSchool.NATURE)
+HOLY_SPELL = EnumSelector(SpellSchool.HOLY)
+SHADOW_SPELL = EnumSelector(SpellSchool.SHADOW)
+FEL_SPELL = EnumSelector(SpellSchool.FEL)
 MURLOC = EnumSelector(Race.MURLOC)
 PIRATE = EnumSelector(Race.PIRATE)
 TOTEM = EnumSelector(Race.TOTEM)
@@ -721,6 +730,18 @@ OTHER_CLASS_CHARACTER = FuncSelector(
 )
 
 NEUTRAL = AttrValue(GameTag.CLASS) == CardClass.NEUTRAL
+
+# "From another class" — cards whose primary class is neither the source's
+# controller's hero class nor Neutral. Used by cross-class Alterac cards.
+OTHER_CLASS = FuncSelector(
+    lambda entities, source: [
+        e for e in entities
+        if getattr(e, "card_class", CardClass.INVALID) not in (
+            CardClass.NEUTRAL,
+            getattr(source.controller.hero, "card_class", CardClass.INVALID),
+        )
+    ]
+)
 
 NUM_CARDS_PLAYED_THIS_TURN = Attr(CONTROLLER, GameTag.NUM_CARDS_PLAYED_THIS_TURN)
 CARDS_PLAYED_THIS_TURN = FuncSelector(

@@ -256,6 +256,7 @@ CARD_ATTRIBUTE_MAP = {
     GameTag.OUTCAST: "has_outcast",
     GameTag.OVERLOAD: "overload",
     GameTag.OVERKILL: "has_overkill",
+    GameTag.HONORABLE_KILL: "has_honorable_kill",
     GameTag.PARENT_CARD: "parent_card",
     GameTag.PLAYER_TAG_THRESHOLD_TAG_ID: "player_tag_threshold_tag_id",
     GameTag.PLAYER_TAG_THRESHOLD_VALUE: "player_tag_threshold_value",

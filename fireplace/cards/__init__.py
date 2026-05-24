@@ -1,6 +1,6 @@
-import os
 from importlib import import_module
 
+import hearthstone_data
 from hearthstone import cardxml
 from hearthstone.enums import CardSet, CardType, GameTag, Race, ZodiacYear
 
@@ -93,6 +93,7 @@ class CardDB(dict[str, cardxml.CardXML]):
             "secret_deathrattles",
             "magnetic",
             "overkill",
+            "honorable_kill",
             "spellburst",
             "frenzy",
             "trade",
@@ -199,8 +200,7 @@ class CardDB(dict[str, cardxml.CardXML]):
     def initialize(self, locale=default_language):
         log.info("Initializing card database")
         self.initialized = True
-        dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "CardDefs.xml")
+        filename = hearthstone_data.get_carddefs_path()
         db, _ = cardxml.load(path=filename, locale=locale)
         for id, card in sorted(db.items(), key=lambda item: item[1].dbf_id):
             self[id] = card

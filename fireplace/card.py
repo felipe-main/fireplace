@@ -52,6 +52,8 @@ def Card(id):
             subclass = SideQuest
         elif data.sigil:
             subclass = Sigil
+        elif data.tags.get(GameTag.OBJECTIVE):
+            subclass = Objective
 
     return subclass(data)
 
@@ -301,6 +303,7 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
     keep_buff = boolean_property("keep_buff")
     echo = boolean_property("echo")
     has_overkill = boolean_property("has_overkill")
+    has_honorable_kill = boolean_property("has_honorable_kill")
     has_discover = boolean_property("has_discover")
     libram = boolean_property("libram")
     corrupt = boolean_property("corrupt")
@@ -360,6 +363,12 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                 # evaluate() can return None if it's an Evaluator (Crush)
                 if r:
                     ret += r
+            # One-shot Choose-One discount (e.g. Pride Seeker).
+            if (
+                self.has_choose_one
+                and getattr(self.controller, "next_choose_one_discount", 0) > 0
+            ):
+                ret -= self.controller.next_choose_one_discount
         ret = self._getattr("cost", ret)
         return max(0, ret)
 
@@ -596,6 +605,16 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                 "%r does not require a target, ignoring target %r", self, target
             )
             target = None
+        # Track the most recent Choose-One spell + the picked sub-card,
+        # so cards like Pathmaker can recast the other choice. Also consume
+        # the one-shot Pride-Seeker-style cost discount.
+        if self.must_choose_one and choose:
+            self.controller.last_choose_one_parent_id = self.id
+            self.controller.last_choose_one_chosen_id = (
+                choose.id if hasattr(choose, "id") else str(choose)
+            )
+            if self.controller.next_choose_one_discount > 0:
+                self.controller.next_choose_one_discount = 0
         self.game.play_card(self, target, index, choose)
         return self
 
@@ -811,12 +830,13 @@ class LiveEntity(PlayableCard, Entity):
     atk = int_property("atk")
     cant_be_damaged = boolean_property("cant_be_damaged")
     heavily_armored = boolean_property("heavily_armored")
-    immune_while_attacking = slot_property("immune_while_attacking")
+    immune_while_attacking = boolean_property("immune_while_attacking")
     incoming_damage_adjustment = int_property("incoming_damage_adjustment")
     incoming_damage_multiplier = int_property("incoming_damage_multiplier")
     incoming_damage_multiplier_from_spell = int_property(
         "incoming_damage_multiplier_from_spell"
     )
+    incoming_damage_divider = int_property("incoming_damage_divider")
     max_health = int_property("max_health")
     poisonous = boolean_property("poisonous")
 
@@ -1118,6 +1138,20 @@ class Hero(Character):
             return self.controller.weapon.has_overkill or ret
         return ret
 
+    @property
+    def has_honorable_kill(self):
+        ret = super().has_honorable_kill
+        if self.controller.weapon and not self.controller.weapon.exhausted:
+            return self.controller.weapon.has_honorable_kill or ret
+        return ret
+
+    @property
+    def incoming_damage_divider(self):
+        ret = super().incoming_damage_divider
+        if self.controller.weapon:
+            return max(ret, self.controller.weapon.incoming_damage_divider)
+        return ret
+
     def _getattr(self, attr, i):
         ret = super()._getattr(attr, i)
         if attr == "atk":
@@ -1172,6 +1206,7 @@ class Minion(Character):
     spellpower_physical = int_property("spellpower_physical")
     has_magnetic = boolean_property("has_magnetic")
     mark_of_evil = boolean_property("mark_of_evil")
+    buffs_doubled = boolean_property("buffs_doubled")
 
     silenceable_attributes = (
         "always_wins_brawls",
@@ -1211,6 +1246,7 @@ class Minion(Character):
         self.reborn = False
         self.has_spellburst = False
         self.has_frenzy = False
+        self.honorably_killed = False
         super().__init__(data)
 
     def dump(self):
@@ -1526,6 +1562,33 @@ class Sigil(Spell):
         super()._set_zone(value)
 
 
+class Objective(Spell):
+    spelltype = enums.SpellType.OBJECTIVE
+
+    def __init__(self, data):
+        super().__init__(data)
+        self.turns_remaining = getattr(data.scripts, "lasts_for", 3)
+        # Built-in countdown: at end of each owner turn, decrement
+        # turns_remaining; destroy when it reaches zero.
+        from .events import OWN_TURN_END, SELF
+
+        self._events.append(OWN_TURN_END.on(actions.TickObjective(SELF)))
+
+    def dump_hidden(self):
+        if self.zone == Zone.SECRET:
+            return self.dump()
+        return super().dump_hidden()
+
+    def _set_zone(self, value):
+        if value == Zone.PLAY:
+            value = Zone.SECRET
+        if self.zone == Zone.SECRET:
+            self.controller.secrets.remove(self)
+        if value == Zone.SECRET:
+            self.controller.secrets.append(self)
+        super()._set_zone(value)
+
+
 class Enchantment(BaseCard):
     atk = int_property("atk")
     cost = int_property("cost")
@@ -1613,10 +1676,19 @@ class Enchantment(BaseCard):
 
 class Weapon(rules.WeaponRules, LiveEntity):
     health_attribute = "durability"
+    doesnt_lose_durability = boolean_property("doesnt_lose_durability")
 
     def __init__(self, *args):
         super().__init__(*args)
         self.damage = 0
+
+    @property
+    def base_events(self):
+        # Suppress the standard post-attack durability hit when the weapon
+        # is flagged as non-degrading (e.g. The Immovable Object).
+        if self.doesnt_lose_durability:
+            return []
+        return rules.WeaponRules.base_events
 
     def dump(self):
         data = super().dump()

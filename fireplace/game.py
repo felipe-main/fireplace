@@ -425,6 +425,8 @@ class BaseGame(Entity):
         player.elemental_played_last_turn = player.elemental_played_this_turn
         player.elemental_played_this_turn = 0
         player.hero_health_changed_this_turn = 0
+        # Reset accumulated opponent-turn-damage counter at start of own turn.
+        player.damage_taken_on_opponents_turn = 0
 
         for entity in self.live_entities:
             if entity.type != CardType.PLAYER:

@@ -290,6 +290,8 @@ class Attack(GameAction):
         defender.defending = False
         if source == attacker:
             attacker.num_attacks += 1
+        if attacker.type == CardType.HERO:
+            attacker.controller.num_hero_attacks_this_game += 1
 
 
 class BeginTurn(GameAction):
@@ -567,6 +569,12 @@ class Play(GameAction):
                 player.elemental_played_this_turn += 1
         elif card.type == CardType.SPELL:
             player.spells_played_this_game += 1
+            # Per-school history (NONE bucket excluded — not a real school).
+            school = card.spell_school
+            if school and int(school) != 0:
+                player.spells_cast_by_school.setdefault(int(school), []).append(
+                    card.id
+                )
             for entity in player.field[:]:
                 if entity.has_spellburst:
                     source.game.queue_actions(card, [Spellburst(entity, card)])
@@ -583,7 +591,11 @@ class Activate(GameAction):
 
     def do(self, source, heropower, target, choose):
         player = heropower.controller
-        player.pay_cost(heropower, heropower.cost)
+        cost = heropower.cost
+        if player.next_hero_power_costs_zero > 0:
+            cost = 0
+            player.next_hero_power_costs_zero -= 1
+        player.pay_cost(heropower, cost)
         source.game.manager.game_action(self, source, heropower, target, choose)
         self.broadcast(source, EventListener.ON, heropower, target, choose)
 
@@ -591,6 +603,12 @@ class Activate(GameAction):
         source.game.action_start(BlockType.PLAY, heropower, 0, target)
         source.game.queue_actions(source, [PlayHeroPower(card, target)])
         source.game.action_end(BlockType.PLAY, heropower)
+
+        # One-shot freeze-the-target modifier (e.g. Amplified Snowflurry).
+        if player.next_hero_power_freezes_target > 0:
+            if target is not None and hasattr(target, "frozen"):
+                target.frozen = True
+            player.next_hero_power_freezes_target -= 1
 
         for entity in player.live_entities:
             if not entity.ignore_scripts:
@@ -724,6 +742,13 @@ class Buff(TargetedAction):
                 v = v.evaluate(source)
             setattr(buff, k, v)
         buff.source = source
+        # Buff amplification — Saidan the Scarlet doubles positive stat buffs
+        # landing on it.
+        if getattr(target, "buffs_doubled", False):
+            for attr in ("atk", "max_health", "health"):
+                current = getattr(buff, attr, None)
+                if isinstance(current, int) and current > 0:
+                    setattr(buff, attr, current * 2)
         buff.apply(target)
         source.game.manager.targeted_action(self, source, target, buff)
         self.broadcast(source, EventListener.AFTER, target, buff)
@@ -918,6 +943,11 @@ class Predamage(TargetedAction):
             amount <<= target.incoming_damage_multiplier_from_spell
         if target.heavily_armored:
             amount = min(amount, 1)
+        divider = target.incoming_damage_divider
+        if divider > 1:
+            # Ceiling division — matches "half damage, rounded up" semantics
+            # used by The Immovable Object.
+            amount = -(-amount // divider)
         target.predamage = amount
         if amount:
             self.broadcast(source, EventListener.ON, target, amount)
@@ -1030,12 +1060,28 @@ class Damage(TargetedAction):
                     actions = source.get_actions("overkill")
                 if actions:
                     source.game.trigger(source, actions, event_args=None)
+            if (
+                source.type in (CardType.MINION, CardType.HERO, CardType.SPELL)
+                and getattr(source, "has_honorable_kill", False)
+                and source.controller.current_player
+                and target.type == CardType.MINION
+                and target.health == 0
+            ):
+                # Mark the victim so its own deathrattle can branch on
+                # whether the kill was honorable (e.g. Korrak the Bloodrager).
+                target.honorably_killed = True
+                source.game.queue_actions(
+                    source, [HonorableKill(source, target)]
+                )
             if target.type == CardType.MINION:
                 if target.has_frenzy:
                     source.game.queue_actions(source, [Frenzy(target, amount)])
             target.damaged_this_turn += amount
             if target.type == CardType.HERO:
                 target.controller.hero_health_changed_this_turn += 1
+                if not target.controller.current_player:
+                    # Damage dealt to the hero while it's the opponent's turn.
+                    target.controller.damage_taken_on_opponents_turn += amount
             if source.type == CardType.HERO_POWER:
                 source.controller.hero_power_damage_this_game += amount
             self.broadcast(source, EventListener.AFTER, target, amount, source)
@@ -1399,6 +1445,8 @@ class GainArmor(TargetedAction):
 
     def do(self, source, target, amount):
         target.armor += amount
+        if amount > 0 and hasattr(target, "controller"):
+            target.controller.armor_gained_this_game += amount
         source.game.manager.targeted_action(self, source, target, amount)
         self.broadcast(source, EventListener.ON, target, amount)
 
@@ -2492,6 +2540,72 @@ class Frenzy(TargetedAction):
         source.game.queue_actions(target, actions, event_args=[target, amount])
         target.has_frenzy = False
         source.game.manager.targeted_action(self, source, target)
+
+
+class HonorableKill(TargetedAction):
+    """
+    Honorable Kill — fires when an attacker's combat damage exactly destroys
+    its target. Scripts reference the killed minion via HonorableKill.TARGET.
+    """
+
+    TARGET = CardArg()
+    VICTIM = CardArg()
+
+    def get_actions(self, target, victim):
+        scripts = target.data.scripts
+        if target.type == CardType.HERO:
+            scripts = target.controller.weapon.data.scripts
+        actions = getattr(scripts, "honorable_kill")
+        if callable(actions):
+            actions = actions(target, victim)
+        return actions
+
+    def do(self, source, target, victim):
+        actions = self.get_actions(target, victim)
+        if not actions:
+            return
+        source.game.queue_actions(target, actions, event_args=[target, victim])
+        source.game.manager.targeted_action(self, source, target, victim)
+
+
+class IncreaseAttr(TargetedAction):
+    """
+    Increase a named instance attribute on the target by `amount`. Used for
+    ad-hoc Player counters (next-hero-power flags, Choose-One discounts,
+    etc.) where defining a dedicated action class is overkill.
+
+    The attribute name is passed verbatim as a string and NOT routed through
+    the card-id resolver, so we override get_target_args.
+    """
+
+    TARGET = ActionArg()
+    ATTR = ActionArg()
+    AMOUNT = IntArg()
+
+    def get_target_args(self, source, target):
+        # Skip _eval_card for the ATTR string; keep IntArg eval for AMOUNT.
+        attr = self._args[1]
+        amount = _eval_card(source, self._args[2])
+        if isinstance(amount, list):
+            amount = amount[0] if amount else 0
+        return [attr, amount]
+
+    def do(self, source, target, attr, amount):
+        setattr(target, attr, getattr(target, attr, 0) + amount)
+
+
+class TickObjective(TargetedAction):
+    """
+    Decrement an Objective spell's remaining-turns counter; destroy it when
+    the counter reaches zero. Fires at the end of the controller's turn.
+    """
+
+    TARGET = CardArg()
+
+    def do(self, source, target):
+        target.turns_remaining -= 1
+        if target.turns_remaining <= 0:
+            source.game.queue_actions(source, [Destroy(target)])
 
 
 class Trade(GameAction):

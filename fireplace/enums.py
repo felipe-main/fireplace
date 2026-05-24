@@ -33,6 +33,7 @@ class SpellType(IntEnum):
     QUEST = 2
     SIDEQUEST = 3
     SIGIL = 4
+    OBJECTIVE = 5
 
 
 class PlayReq(IntEnum):

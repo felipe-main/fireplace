@@ -117,6 +117,20 @@ class Player(Entity, TargetableByAuras):
         self.cthun = None
         self.invoke_counter = 0
         self.spells_played_this_game = 0
+        # Per-game / per-turn counters introduced for Alterac Valley cards.
+        self.num_hero_attacks_this_game = 0
+        self.armor_gained_this_game = 0
+        self.damage_taken_on_opponents_turn = 0
+        # One-shot Hero Power modifiers — consumed on next HP use.
+        self.next_hero_power_costs_zero = 0
+        self.next_hero_power_freezes_target = 0
+        # One-shot Choose One discount + last-Choose-One tracking.
+        self.next_choose_one_discount = 0
+        self.last_choose_one_parent_id = None
+        self.last_choose_one_chosen_id = None
+        # Per-school spell-cast history (SpellSchool → list of card-ids cast
+        # this game). Populated by the CastSpell action.
+        self.spells_cast_by_school = {}
 
     def dump(self):
         data = super().dump()

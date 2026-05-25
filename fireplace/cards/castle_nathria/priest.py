@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -49,7 +51,7 @@ class REV_249:
     play = Hit(TARGET, ATK(TARGET))
 
 
-class REV_252:
+class REV_252(InfuseCardtextMixin):
     """Clean the Scene"""
 
     # Destroy all minions with 3 or less Attack. (Infused: 6 or less.)

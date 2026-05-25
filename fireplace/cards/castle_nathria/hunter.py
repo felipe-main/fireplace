@@ -1,11 +1,13 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
 
 
-class REV_350:
+class REV_350(InfuseCardtextMixin):
     """Frenzied Fangs"""
 
     # Summon two 2/1 Bats. (Infused: Give them +1/+2.)
@@ -59,7 +61,7 @@ class REV_369:
 # Minions
 
 
-class REV_352:
+class REV_352(InfuseCardtextMixin):
     """Stonebound Gargon"""
 
     # Rush. (Infused: Also damages the minions next to whomever this

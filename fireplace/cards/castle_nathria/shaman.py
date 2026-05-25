@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -17,7 +19,7 @@ class REV_517:
     play = Summon(CONTROLLER, Copy(TARGET)) * 3
 
 
-class REV_920:
+class REV_920(InfuseCardtextMixin):
     """Convincing Disguise"""
 
     # Transform a friendly minion into one that costs (2) more.
@@ -107,7 +109,7 @@ class REV_925:
     pass
 
 
-class REV_935:
+class REV_935(InfuseCardtextMixin):
     """Party Favor Totem"""
 
     # At the end of your turn, summon a random basic Totem. (Infused:

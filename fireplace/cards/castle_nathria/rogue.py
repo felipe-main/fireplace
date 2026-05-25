@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -45,7 +47,7 @@ class REV_828t:
     """Kidnapper's Sack"""
 
 
-class REV_938:
+class REV_938(InfuseCardtextMixin):
     """Door of Shadows"""
 
     # Draw a spell. (Infused: Add a temporary copy of it to your hand.)

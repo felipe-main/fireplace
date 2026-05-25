@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -92,7 +94,7 @@ class REV_955e:
     )
 
 
-class REV_958:
+class REV_958(InfuseCardtextMixin):
     """Buffet Biggun"""
 
     # Battlecry: Summon two Silver Hand Recruits. (Infused: Give them

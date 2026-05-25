@@ -191,8 +191,21 @@ def weighted_card_choice(source, weights: List[int], card_sets: List[str], count
 
     # for each card
     for i in range(count):
+        if totalweight <= 0:
+            break  # all pools drained or zero-weighted
         # choose a set according to weighting
         chosen_set = bisect(cum_weights, source.game.random.random() * totalweight)
+        # bisect_right can return len(cum_weights) when r*totalweight
+        # equals the last cumulative weight (rare with cumulative-pop
+        # adjustments where cum_weights[-1] drifts below totalweight);
+        # also skip past any consecutive empty pools the bisect may
+        # have landed on.
+        while chosen_set < len(card_sets) and not card_sets[chosen_set]:
+            chosen_set += 1
+        if chosen_set >= len(card_sets):
+            # No non-empty pool left; bail out cleanly instead of
+            # crashing with `randint(0, -1)`.
+            break
 
         # choose a random card from that set
         chosen_card_index = source.game.random.randint(

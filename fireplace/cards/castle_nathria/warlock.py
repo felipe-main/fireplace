@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -59,7 +61,7 @@ class REV_242:
     update = Refresh(SELF, {GameTag.ATK: Count(FRIENDLY_MINIONS + IMP)})
 
 
-class REV_244:
+class REV_244(InfuseCardtextMixin):
     """Mischievous Imp"""
 
     # Battlecry: Summon a copy of this. (Infused: Summon two instead.)
@@ -125,7 +127,7 @@ class REV_374e:
     tags = {GameTag.COST: -3}
 
 
-class REV_835:
+class REV_835(InfuseCardtextMixin):
     """Imp King Rafaam"""
 
     # Battlecry: Resurrect four friendly Imps. (Infused: Give your Imps

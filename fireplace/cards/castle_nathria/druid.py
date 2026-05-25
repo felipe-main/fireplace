@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -54,7 +56,7 @@ class REV_313e:
     events = OWN_TURN_END.on(Destroy(SELF))
 
 
-class REV_336:
+class REV_336(InfuseCardtextMixin):
     """Plot of Sin"""
 
     # Summon two 2/2 Treants. (Infused: two 5/5 Ancients instead.)

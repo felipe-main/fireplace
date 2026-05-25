@@ -363,6 +363,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # Sinfueled Golem ("gain stats equal to the Attack of the minions
         # that Infused this").
         self.infused_by_atk_total = 0
+        # Castle Nathria — Steamcleaner: True for cards that were placed
+        # in the deck at game start (set in prepare_for_game). False for
+        # every card created later via player.card() (Discover, Buff,
+        # token summons, etc.). Steamcleaner destroys only False ones.
+        self._from_starting_deck = False
         super().__init__(data)
 
     @property

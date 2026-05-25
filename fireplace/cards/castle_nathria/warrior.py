@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -51,20 +53,39 @@ class REV_337e:
     events = OWN_TURN_END.on(Destroy(SELF))
 
 
+class _ConquerorsBannerReveal(TargetedAction):
+    """Reveal the top card of each player's deck three times; if the
+    friendly card's cost is strictly greater than the opponent's,
+    draw it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        opp = target.opponent
+        for _ in range(3):
+            if not target.deck or not opp.deck:
+                continue
+            friendly_top = target.deck[-1]
+            enemy_top = opp.deck[-1]
+            if friendly_top.cost > enemy_top.cost:
+                source.game.cheat_action(
+                    source, [ForceDraw(friendly_top)]
+                )
+
+
 class REV_931:
     """Conqueror's Banner"""
 
     # Reveal a card from each player's deck, three times. Draw any of
-    # yours that cost more. Approximation: draw a single card from your
-    # deck (no compare).
-    play = ForceDraw(FRIENDLY_DECK) * 3
+    # yours that cost more.
+    play = _ConquerorsBannerReveal(CONTROLLER)
 
 
 ##
 # Weapons
 
 
-class REV_933:
+class REV_933(InfuseCardtextMixin):
     """Imbued Axe"""
 
     # After your hero attacks, give your damaged minions +1/+1.

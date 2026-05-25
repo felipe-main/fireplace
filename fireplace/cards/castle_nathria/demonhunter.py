@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin, RelicCardtextMixin
+
 
 ##
 # Spells
@@ -57,7 +59,7 @@ class _RelicOfDimensionsDraw(TargetedAction):
             source.game.cheat_action(source, [Buff(card, "REV_508e")])
 
 
-class REV_508:
+class REV_508(RelicCardtextMixin):
     """Relic of Dimensions"""
 
     # Draw two cards and reduce their Cost by (2 + Relic counter). The
@@ -83,7 +85,7 @@ class REV_508e:
         self.cost = -n
 
 
-class REV_834:
+class REV_834(RelicCardtextMixin):
     """Relic of Extinction"""
 
     # Deal (2 + Relic counter) damage to a random enemy minion, twice.
@@ -93,7 +95,7 @@ class REV_834:
     ) * 2
 
 
-class REV_943:
+class REV_943(RelicCardtextMixin):
     """Relic of Phantasms"""
 
     # Summon two (2 + counter)/(2 + counter) Spirits. Counter is read
@@ -167,7 +169,7 @@ class _XymoxCastRandomRelic(TargetedAction):
         source.game.cheat_action(target, [CastSpell(cid)])
 
 
-class REV_937:
+class REV_937(InfuseCardtextMixin):
     """Artificer Xy'mox"""
 
     # Battlecry: Discover and cast a Relic. Approximated as casting a

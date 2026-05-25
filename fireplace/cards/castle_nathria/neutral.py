@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Vanilla / tag-driven minions (no script needed)
@@ -236,7 +238,7 @@ class REV_845:
 # Infuse minions
 
 
-class REV_013:
+class REV_013(InfuseCardtextMixin):
     """Stoneborn Accuser"""
 
     # Infuse (5): Gain "Battlecry: Deal 5 damage."
@@ -253,7 +255,7 @@ class REV_013t:
     play = Hit(TARGET, 5)
 
 
-class REV_017:
+class REV_017(InfuseCardtextMixin):
     """Insatiable Devourer"""
 
     # Battlecry: Devour an enemy minion and gain its stats. (Infused:
@@ -304,7 +306,7 @@ class REV_017t:
     )
 
 
-class REV_019:
+class REV_019(InfuseCardtextMixin):
     """Famished Fool"""
 
     # Battlecry: Draw a card. (Infused: Draw 3 instead.)
@@ -318,7 +320,7 @@ class REV_019t:
     play = Draw(CONTROLLER) * 3
 
 
-class REV_843:
+class REV_843(InfuseCardtextMixin):
     """Sinfueled Golem"""
 
     # Infuse (3): Gain stats equal to the Attack of the minions that
@@ -374,7 +376,7 @@ class REV_906t:
     ) * (Attr(CONTROLLER, "friendly_minions_died_this_game") + 5)
 
 
-class REV_956:
+class REV_956(InfuseCardtextMixin):
     """Priest of the Deceased"""
 
     # Taunt. (Infused: Gain +2/+2.)
@@ -387,7 +389,7 @@ class REV_956t:
     # Infused — Taunt + base buff.
 
 
-class REV_957:
+class REV_957(InfuseCardtextMixin):
     """Murlocula"""
 
     # Lifesteal. (Infused: This costs (0).)
@@ -462,14 +464,29 @@ class REV_945:
     play = Give(CONTROLLER, RandomCardPicker(collectible=True, secret=True))
 
 
+class _SteamcleanerPurge(TargetedAction):
+    """Destroy every card in both decks that wasn't there at game
+    start. Reads the per-card `_from_starting_deck` flag set in
+    prepare_for_game; any card created later (Discover, generated,
+    shuffled in, etc.) is False and gets destroyed."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        for player in (target, target.opponent):
+            # Snapshot the deck — destroy() mutates it mid-loop.
+            for card in list(player.deck):
+                if not getattr(card, "_from_starting_deck", False):
+                    card.destroy()
+
+
 class REV_946:
     """Steamcleaner"""
 
     # Battlecry: Destroy ALL cards in both players' decks that didn't
-    # start there. Engine doesn't track per-card "added to deck" origin;
-    # approximated as destroying a random card in each deck (so the
-    # battlecry isn't a hard no-op).
-    play = Destroy(RANDOM(FRIENDLY_DECK)), Destroy(RANDOM(ENEMY_DECK))
+    # start there. Reads the per-card `_from_starting_deck` flag set
+    # in prepare_for_game.
+    play = _SteamcleanerPurge(CONTROLLER)
 
 
 class REV_960:

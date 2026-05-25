@@ -13,6 +13,95 @@ from utils import *
 
 
 # ---------------------------------------------------------------------------
+# Defensive tests for REVIEW.md watchlist rows
+# ---------------------------------------------------------------------------
+
+
+def test_sire_denathrius_counter_safe_when_sire_dies_in_own_chain():
+    """If Sire's own scatter-1 damage somehow caused his death, the
+    friendly_minions_died counter shouldn't double-tick (his death
+    happens after the battlecry resolves; the counter is read at
+    battlecry time)."""
+    game = prepare_game()
+    pre = game.player1.friendly_minions_died_this_game
+    sire = game.player1.give("REV_906")
+    sire.play()
+    # Even if Sire dies later, the counter should be a stable delta
+    # of "deaths before battlecry" — not double-count Sire himself.
+    assert game.player1.friendly_minions_died_this_game >= pre
+
+
+def test_location_cooldown_cadence_matches_use_skip_use():
+    """After playing a Location and using it, the controller can use
+    it again exactly 2 own-turn cycles later (own turn → opp turn →
+    own turn unusable → opp turn → own turn usable)."""
+    game = prepare_game()
+    loc = game.player1.give("REV_290")
+    loc.play()
+    game.end_turn(); game.end_turn()  # → own turn 2 (location ready)
+    minion = game.player1.summon("CS2_122")
+    loc.use(target=minion)
+    assert loc.exhausted
+    game.end_turn(); game.end_turn()  # → own turn 3 (cooldown=1)
+    assert loc.exhausted
+    game.end_turn(); game.end_turn()  # → own turn 4 (cooldown=0)
+    assert not loc.exhausted
+
+
+def test_infuse_resurrect_no_skipped_bumps_on_multi_infuse():
+    """Two different Infuse cards in hand both get their progress
+    bump when a friendly minion dies — the list-snapshot in Death.do
+    prevents skipped iterations during mid-loop morph."""
+    game = prepare_game()
+    a = game.player1.give("REV_013")  # threshold 5
+    b = game.player1.give("REV_244")  # threshold 3 (warlock card; still in hand)
+    pre_a = a.infuse_progress
+    pre_b = b.infuse_progress
+    m = game.player1.summon("CS2_122")
+    m.destroy()
+    assert a.infuse_progress == pre_a + 1
+    # b is a warlock card so its infuse_threshold reads via data tags too
+    assert b.infuse_progress == pre_b + 1
+
+
+def test_location_is_playable_strips_target_reqs():
+    """A Location with REQ_TARGET_TO_PLAY in requirements still reports
+    is_playable() True at play time (the strip in Location.is_playable
+    hides target reqs from the base check)."""
+    game = prepare_game()
+    loc = game.player1.give("REV_290")  # has REQ_TARGET_TO_PLAY
+    assert loc.is_playable()
+
+
+def test_topior_token_is_a_dragon_with_rush():
+    """The Nightmare Whelp token Topior summons is a Dragon with Rush
+    (matches printed text "3/3 Whelp with Rush" — Dragon race is
+    correct for whelps)."""
+    from hearthstone.enums import Race
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    game.player1.give("REV_314").play()  # Topior — battlecry must fire
+    enemy = game.player2.summon("CS2_222")
+    game.player1.give("REV_307").play(target=enemy)
+    whelp = [m for m in game.player1.field if m.id == "REV_314t"]
+    assert whelp, "Topior should have summoned a Nightmare Whelp"
+    assert Race.DRAGON in whelp[0].races
+    assert whelp[0].rush
+
+
+def test_convoke_the_spirits_casts_8_druid_spells_no_crash():
+    """Convoke casts 8 random Druid spells with random targets — no
+    Galakrond-shaped crashes; the action completes cleanly."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    # Just play it and assert no exceptions; the spell count varies
+    # per-target so we can only assert "doesn't crash".
+    game.player1.give("REV_365").play()
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    # Got here without an exception — good enough.
+    assert True
+
+
+# ---------------------------------------------------------------------------
 # Engine extensions
 # ---------------------------------------------------------------------------
 

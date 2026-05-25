@@ -448,6 +448,10 @@ class Player(Entity, TargetableByAuras):
             self.hero.damage = 0
         for id in self.starting_deck:
             card = self.card(id, zone=Zone.DECK)
+            # Castle Nathria — Steamcleaner reads this flag to destroy
+            # only deck cards that were added after game start (i.e.
+            # those whose _from_starting_deck is False).
+            card._from_starting_deck = True
             if self.is_standard and not card.is_standard:
                 self.is_standard = False
         self.starting_deck = CardList(self.deck[:])

@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import InfuseCardtextMixin
+
 
 ##
 # Spells
@@ -39,7 +41,7 @@ class REV_516:
     )
 
 
-class REV_601:
+class REV_601(InfuseCardtextMixin):
     """Frozen Touch"""
 
     # Deal 3 damage. (Infused: Add a Frozen Touch to your hand.)

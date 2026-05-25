@@ -38,31 +38,83 @@ class REV_507e:
     tags = {GameTag.ATK: 3, enums.TEMPORARY: 1}
 
 
+class _RelicOfDimensionsDraw(TargetedAction):
+    """Draw 2 cards and buff each one with REV_508e (a -N cost
+    snapshot). Custom action because the `Draw().then(Buff()) * 2`
+    DSL pattern shares Draw.CARD state across iterations and both
+    Buffs end up on the same (most recently drawn) card. Snapshots
+    the hand-before-set, draws twice, then buffs every card that
+    landed in hand."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        before = set(id(c) for c in target.hand)
+        target.draw()
+        target.draw()
+        added = [c for c in target.hand if id(c) not in before]
+        for card in added:
+            source.game.cheat_action(source, [Buff(card, "REV_508e")])
+
+
 class REV_508:
     """Relic of Dimensions"""
 
-    # Draw two cards and reduce their Cost by the Relic counter. We don't
-    # track the cumulative Relic counter; approximate by reducing the cost
-    # of two drawn cards by 2.
-    play = Draw(CONTROLLER).then(Buff(Draw.CARD, "REV_508e")) * 2
+    # Draw two cards and reduce their Cost by (2 + Relic counter). The
+    # counter (relics_played_this_game) bumps AFTER the effect runs in
+    # Play.do, so the 1st Relic reads 0, the 2nd reads 1, etc. —
+    # exactly the printed "Improve your future Relics" semantics.
+    play = _RelicOfDimensionsDraw(CONTROLLER)
 
 
+@custom_card
 class REV_508e:
-    tags = {GameTag.COST: -2}
+    # Snapshot (2 + relics_played) at apply-time and stash it on the
+    # buff's `cost` tag so the engine's standard cost aggregation
+    # applies it once (lambda-based cost re-fires every cost read,
+    # which compounded into 0-cost on multi-buff cards).
+    tags = {
+        GameTag.CARDNAME: "Relic of Dimensions Discount",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+
+    def apply(self, target):
+        n = 2 + getattr(self.source.controller, "relics_played_this_game", 0)
+        self.cost = -n
 
 
 class REV_834:
     """Relic of Extinction"""
 
-    # Deal X damage to a random enemy minion, twice. Approximate with X=2.
-    play = Hit(RANDOM_ENEMY_MINION, 2) * 2
+    # Deal (2 + Relic counter) damage to a random enemy minion, twice.
+    play = Hit(
+        RANDOM_ENEMY_MINION,
+        Attr(CONTROLLER, "relics_played_this_game") + 2,
+    ) * 2
 
 
 class REV_943:
     """Relic of Phantasms"""
 
-    # Summon two N/N Spirits. Approximate with N=2 via the dedicated token.
-    play = Summon(CONTROLLER, "REV_943t") * 2
+    # Summon two (2 + counter)/(2 + counter) Spirits. Counter is read
+    # at apply-time via the enchantment so each Spirit snapshots the
+    # value when summoned (independent of later Relic casts).
+    play = Summon(CONTROLLER, "REV_943t").then(
+        Buff(Summon.CARD, "REV_943e")
+    ) * 2
+
+
+@custom_card
+class REV_943e:
+    tags = {
+        GameTag.CARDNAME: "Phantasm Stats",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    atk = lambda self, i: i + self._n
+    max_health = lambda self, i: i + self._n
+
+    def apply(self, target):
+        self._n = 2 + getattr(self.source.controller, "relics_played_this_game", 0)
 
 
 class REV_943t:
@@ -100,20 +152,35 @@ class REV_511:
     play = Shuffle(CONTROLLER, RANDOM(FRIENDLY_HAND))
 
 
+class _XymoxCastRandomRelic(TargetedAction):
+    """Pick one of the 3 Relic spells at random and cast it on the
+    controller's side. CastSpell bypasses Play.do, which is where the
+    Relic counter normally bumps, so we bump it manually here so the
+    cast Relic reads the right counter value (1 for the first cast)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        relic_ids = ["REV_508", "REV_834", "REV_943"]
+        cid = source.game.random.choice(relic_ids)
+        target.relics_played_this_game += 1
+        source.game.cheat_action(target, [CastSpell(cid)])
+
+
 class REV_937:
     """Artificer Xy'mox"""
 
-    # Battlecry: Discover and cast a Relic. Infuse (5): Cast all three
-    # instead. No Relic pool exists in MaCN base set beyond the three
-    # demon-hunter Relic spells (REV_508/834/943); cast one of them at
-    # random as an approximation.
-    play = CastSpell(RandomSpell(card_class=CardClass.DEMONHUNTER))
+    # Battlecry: Discover and cast a Relic. Approximated as casting a
+    # random Relic (engine GenericChoice doesn't cleanly chain a
+    # "re-cast the chosen card" callback).
+    play = _XymoxCastRandomRelic(CONTROLLER)
 
 
 class REV_937t:
     """Artificer Xy'mox"""
 
-    # Infused: cast all three Relics. Approximation.
+    # Infused: cast all three Relics in declared order so the counter
+    # bumps between them ("Improve your future Relics").
     play = (
         CastSpell("REV_508"),
         CastSpell("REV_834"),
@@ -125,14 +192,40 @@ class REV_937t:
 # Locations
 
 
+class _RelicVaultArm(TargetedAction):
+    """Stamp the controller with one Relic-recast charge; consumed in
+    Play.do when the next Relic spell resolves. Charge expires at the
+    end of the controller's turn."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target.next_relic_casts_twice = 1
+
+
+class _RelicVaultClearCharge(TargetedAction):
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target.next_relic_casts_twice = 0
+
+
 class REV_942:
     """Relic Vault"""
 
-    # The next Relic you play this turn casts twice. Approximated as a
-    # spells-cast-twice marker for the rest of the turn.
-    activate = Buff(CONTROLLER, "REV_942e")
+    # The next Relic you play this turn casts twice. The arm-and-fire
+    # mechanism is in actions.py: this just sets the controller's
+    # Relic-recast charge. An ephemeral REV_942e enchantment ticks
+    # OWN_TURN_END to clear any unspent charge.
+    activate = _RelicVaultArm(CONTROLLER), Buff(CONTROLLER, "REV_942e")
 
 
+@custom_card
 class REV_942e:
-    tags = {GameTag.SPELLS_CAST_TWICE: True}
-    events = OWN_TURN_END.on(Destroy(SELF))
+    # Per-turn expiry of the next_relic_casts_twice charge. Lives just
+    # long enough to fire its OWN_TURN_END trigger; safe to re-apply.
+    tags = {
+        GameTag.CARDNAME: "Relic Vault Charge",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    events = OWN_TURN_END.on(_RelicVaultClearCharge(CONTROLLER), Destroy(SELF))

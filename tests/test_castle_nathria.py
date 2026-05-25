@@ -123,6 +123,100 @@ def test_sinful_brand_punishes_damage_to_branded_minion():
     assert game.player2.hero.health == pre_hp - 2
 
 
+def test_relic_counter_bumps_on_each_relic_cast():
+    """Player.relics_played_this_game bumps once per Relic spell."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    assert game.player1.relics_played_this_game == 0
+    game.player1.give("REV_508").play()
+    assert game.player1.relics_played_this_game == 1
+    game.player1.give("REV_834").play()
+    assert game.player1.relics_played_this_game == 2
+    game.player1.give("REV_943").play()
+    assert game.player1.relics_played_this_game == 3
+
+
+def test_relic_of_extinction_damage_scales_with_counter():
+    """First Extinction deals 2; second deals 3; third deals 4."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    # Plant a sturdy enemy minion so we can read accumulated damage.
+    target = game.player2.summon("CS2_222")  # Stormwind Champion 6/6
+    target.max_health = 80
+    target.damage = 0
+    # First Extinction: 2 dmg × 2 hits = 4 damage to the only enemy minion.
+    game.player1.give("REV_834").play()
+    pre = target.damage
+    # Second Extinction: 3 dmg × 2 hits = 6 more damage.
+    game.player1.give("REV_834").play()
+    delta = target.damage - pre
+    assert delta == 6
+
+
+def test_relic_of_dimensions_discount_snapshots_at_apply_time():
+    """The drawn card's discount equals 2 + relics_played AT THE TIME
+    of draw, and does NOT grow if more Relics are cast after."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    # Empty the deck so we can plant exactly two known cards.
+    game.player1.deck.clear()
+    # Stack the deck: top is Fireball (drawn first), then a Wisp
+    # (drawn second).
+    wisp = game.player1.card(WISP)
+    fb = game.player1.card(FIREBALL)
+    game.player1.deck.append(wisp)
+    game.player1.deck.append(fb)
+    game.player1.give("REV_508").play()  # first Relic: discount = 2
+    drawn = [c for c in game.player1.hand if c.id == FIREBALL][-1]
+    base = drawn.data.cost
+    assert len(drawn.buffs) == 1  # exactly one Dimensions buff applied
+    assert drawn.cost == base - 2
+    # Cast another Relic — drawn card should NOT grow stronger.
+    game.player1.give("REV_834").play()
+    assert drawn.cost == base - 2
+
+
+def test_relic_vault_recasts_next_relic_once():
+    """Activating Relic Vault doubles only the NEXT Relic cast that
+    turn — not every spell, not subsequent Relics."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    vault = game.player1.give("REV_942")
+    vault.play()
+    game.end_turn(); game.end_turn()
+    assert game.player1.next_relic_casts_twice == 0
+    vault.use()
+    assert game.player1.next_relic_casts_twice == 1
+    # Casting a Relic should fire it twice → relics_played jumps by 2.
+    pre = game.player1.relics_played_this_game
+    game.player1.give("REV_508").play()
+    assert game.player1.relics_played_this_game == pre + 2
+    assert game.player1.next_relic_casts_twice == 0
+    # Second Relic this turn should NOT be doubled.
+    game.player1.give("REV_834").play()
+    assert game.player1.relics_played_this_game == pre + 3
+
+
+def test_relic_vault_charge_clears_at_end_of_turn():
+    """If you don't spend the Vault charge before turn end, it expires."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    vault = game.player1.give("REV_942"); vault.play()
+    game.end_turn(); game.end_turn()
+    vault.use()
+    assert game.player1.next_relic_casts_twice == 1
+    game.end_turn()  # opponent
+    game.end_turn()  # own end ticks the aura
+    assert game.player1.next_relic_casts_twice == 0
+
+
+def test_artificer_xymox_casts_a_relic_on_battlecry():
+    """Battlecry casts one of the 3 Relics at random — Relic counter
+    bumps by exactly 1."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    pre = game.player1.relics_played_this_game
+    game.player1.give("REV_937").play()
+    # Auto-resolve any Discover/Choice the Relic itself opened.
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    assert game.player1.relics_played_this_game == pre + 1
+
+
 def test_magnifying_glaive_draws_until_three():
     """After hero attacks, draw until the controller has 3 cards."""
     game = prepare_game()

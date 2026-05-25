@@ -159,6 +159,14 @@ class Player(Entity, TargetableByAuras):
         # died. Powers Sire Denathrius (every death adds +1 to the
         # battlecry damage). Bumped in Death.do; never reset.
         self.friendly_minions_died_this_game = 0
+        # Castle Nathria — per-game count of Relic spells (DH) cast.
+        # Each Relic reads it to scale its bonus ("Improve your future
+        # Relics"). Bumped in Play.do when card.id is a known Relic.
+        self.relics_played_this_game = 0
+        # Castle Nathria — Relic Vault: charges that re-cast the next
+        # Relic you play. Consumed one-per-Relic in Play.do; reset
+        # OWN_TURN_END via Relic Vault's enchantment.
+        self.next_relic_casts_twice = 0
 
     def dump(self):
         data = super().dump()

@@ -24,6 +24,13 @@ from .logging import log
 from .utils import random_class
 
 
+# Castle Nathria — the three Demon Hunter "Relic" spells. Each cast
+# bumps Player.relics_played_this_game; each Relic's effect reads that
+# counter to scale ("Improve your future Relics"). Lives here because
+# Play.do has to read it inline; not yet a GameTag.
+RELIC_IDS = frozenset({"REV_508", "REV_834", "REV_943"})
+
+
 def _summon_colossal_limbs(source, target, parent):
     """Summon the appendage tokens for a Colossal minion.
 
@@ -693,6 +700,21 @@ class Play(GameAction):
                 player.spells_cast_by_school.setdefault(int(school), []).append(
                     card.id
                 )
+            # Castle Nathria — Relic counter. Hardcoded id list since
+            # the data has no GameTag.RELIC; bump on each Relic cast so
+            # "Improve your future Relics" scales subsequent casts.
+            if card.id in RELIC_IDS:
+                player.relics_played_this_game += 1
+                # Relic Vault: re-cast this Relic once if a charge is
+                # waiting. Bump the counter again for the re-cast (it
+                # bypasses Play.do via CastSpell so the normal bump
+                # wouldn't fire), and decrement the Vault charge BEFORE
+                # the re-cast so the second cast can't recursively
+                # double-fire.
+                if player.next_relic_casts_twice > 0:
+                    player.next_relic_casts_twice -= 1
+                    player.relics_played_this_game += 1
+                    source.game.queue_actions(player, [CastSpell(card.id)])
             for entity in player.field[:]:
                 if entity.has_spellburst:
                     source.game.queue_actions(card, [Spellburst(entity, card)])

@@ -336,52 +336,42 @@ the test file. Bump README patch line. Push to `felipe-main/master`.
 
 ### Step 11 — Audit pass
 
-Write a self-audit listing every card whose implementation has known gaps,
-and append it to `REVIEW.md` at the repo root (one `## <Expansion>` section
-per set, with a sub-table per bucket). Group into:
+Write a self-audit listing every card whose implementation has known gaps
+and append the rows to `review.csv` at the repo root. One row per gap.
+CSV (not markdown) because wide `Fix` columns wrap awkwardly in markdown
+tables, and CSV is filterable in Excel/Sheets/`csvkit`.
+
+`review.csv` columns (header in the first row, set on creation):
+
+| Column | Values |
+|---|---|
+| `Expansion` | e.g. `Murder at Castle Nathria` |
+| `Section` | `Real bugs` / `Significant approximations` / `Cosmetic` / `Once-overs` |
+| `Card` | Card name (or comma-separated list for an umbrella row) |
+| `Issue` | What we do today (or the placeholder issue / edge case to watch) |
+| `Real behaviour` | What the printed card actually does (blank for cosmetic/once-over) |
+| `Status` | `open` / `fixed` / `watch` |
+| `Fix` | Empty until closed; then `<short-sha> — <one-line how>` |
+
+Section buckets:
 
 - **Real bugs** — needs a fix
 - **Significant approximations** — works, doesn't match the printed card
 - **Cosmetic** — text rendering only
 - **Once-overs** — probably correct, watch for edge cases
 
-`Status` and `Fix` are separate columns. `Status` is `open` / `fixed` /
-`watch`; `Fix` is empty until a tier-N pass closes the row, then it holds
-`<short-sha> — <one-line how>`. Rows are never deleted — `REVIEW.md` is
-also the history of what was changed and why.
+Rows are never deleted — `review.csv` is also the history of what was
+changed and why. Always write with UTF-8 (em-dashes break under Windows
+default cp1252).
 
-Template:
-
-```markdown
-## <Expansion>
-
-### Real bugs
-| Card | Approximation | Real behaviour | Status | Fix |
-|---|---|---|---|---|
-| <Name> | <what we do today> | <what the printed card does> | open | |
-
-### Significant approximations
-| Card | Approximation | Real behaviour | Status | Fix |
-|---|---|---|---|---|
-| <Name> | <what we do today> | <what the printed card does> | open | |
-
-### Cosmetic
-| Card | Issue | Status | Fix |
-|---|---|---|---|
-| <Name> | <e.g. text shows "@" placeholder> | open | |
-
-### Once-overs
-| Card | Watch for | Status | Fix |
-|---|---|---|---|
-| <Name> | <edge case to revisit> | watch | |
-```
-
-Present the new section to the user and let them pick what to invest in.
+If `review.csv` doesn't exist yet, create it with the header row before
+appending. Present the new rows to the user (filter to `Status=open`)
+and let them pick what to invest in.
 
 ### Step 12 — Tier-N fix passes
 
 Take the highest-impact subset (5-7 cards). Fix each with a new test that
-targets the exact bug. When a row is fixed, update its `REVIEW.md` entry
+targets the exact bug. When a row is fixed, update its `review.csv` row
 in place: flip `Status` to `fixed` and fill `Fix` with the short SHA and
 a one-line description of the actual change (e.g.
 `a1b2c3d — moved _devoured to player attr so reshuffle preserves it`).

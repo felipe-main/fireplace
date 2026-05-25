@@ -101,9 +101,9 @@ class REV_921ee:
 class REV_925:
     """Baroness Vashj"""
 
-    # If this would transform into a minion, summon that minion instead.
-    # Engine doesn't support transform-redirect; left as a vanilla 4/3/6
-    # Naga. Watch in soak.
+    # If this would transform into a minion, summon that minion
+    # instead. Handled in Morph.do via direct id check (no script
+    # attribute needed — the engine hook recognizes REV_925).
     pass
 
 

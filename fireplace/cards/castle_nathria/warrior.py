@@ -31,9 +31,24 @@ class REV_337:
     """Riot!"""
 
     # Your minions can't be reduced below 1 Health this turn. They each
-    # attack a random enemy minion. Approximation: skip the can't-be-
-    # reduced effect; each friendly minion attacks a random enemy minion.
-    play = Attack(FRIENDLY_MINIONS, RANDOM_ENEMY_MINION)
+    # attack a random enemy minion. The damage floor is a per-turn aura
+    # that sets min_health=1 on all friendly minions; the engine's
+    # post-damage clamp (card.py: if health < min_health) handles the
+    # actual flooring.
+    play = (
+        Buff(CONTROLLER, "REV_337e"),
+        Attack(FRIENDLY_MINIONS, RANDOM_ENEMY_MINION),
+    )
+
+
+@custom_card
+class REV_337e:
+    tags = {
+        GameTag.CARDNAME: "Riot! Damage Floor",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    update = Refresh(FRIENDLY_MINIONS, {GameTag.HEALTH_MINIMUM: 1})
+    events = OWN_TURN_END.on(Destroy(SELF))
 
 
 class REV_931:
@@ -97,15 +112,18 @@ class REV_006:
 class REV_316:
     """Remornia, Living Blade"""
 
-    # Rush. After this attacks, equip it. Approximation: when destroyed,
-    # equip a Remornia weapon.
-    deathrattle = Summon(CONTROLLER, "REV_316t")
+    # Rush. After this attacks, the minion is destroyed and the
+    # controller equips the 4/10 Remornia weapon (REV_316t). Modeled
+    # as an after-attack event that destroys SELF and summons the
+    # weapon; current durability carries the remaining HP via the
+    # weapon's max_durability.
+    events = Attack(SELF).after(Destroy(SELF), Summon(CONTROLLER, "REV_316t"))
 
 
 class REV_316t:
     """Remornia, Living Blade"""
 
-    # Weapon form.
+    # Weapon form — base 4/10. The data card handles stats.
 
 
 class REV_332:

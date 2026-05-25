@@ -436,6 +436,24 @@ def test_sticky_situation_summons_spider_on_opponent_spell():
 # ---------------------------------------------------------------------------
 
 
+def test_baroness_vashj_survives_a_transform_and_summons_the_target_instead():
+    """Casting Hex on Vashj should NOT replace her; instead a Frog
+    should appear on the board and Vashj stays."""
+    from fireplace.actions import Morph
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    vashj = game.player1.summon("REV_925")
+    assert vashj.zone == Zone.PLAY
+    pre_field = len(game.player1.field)
+    # Cheat a Hex-like morph: turn Vashj into a Frog (EX1_tk11).
+    game.cheat_action(vashj, [Morph(vashj, "EX1_tk11")])
+    # Vashj stays; a Frog is summoned alongside.
+    assert vashj.zone == Zone.PLAY
+    assert vashj.id == "REV_925"
+    frogs = [m for m in game.player1.field if m.id == "EX1_tk11"]
+    assert len(frogs) == 1
+    assert len(game.player1.field) == pre_field + 1
+
+
 def test_crud_caretaker_summons_3_5_taunt_elemental():
     """Battlecry: Summon a 3/5 Elemental with Taunt."""
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
@@ -567,6 +585,56 @@ def test_anima_extractor_buffs_random_hand_minion_on_friendly_damage():
     assert held.max_health == pre_health + 1
 
 
+def test_riot_floors_friendly_minion_damage_at_1_hp():
+    """Riot! sets min_health=1 on friendly minions for the rest of the
+    turn. A 2/1 friendly hit by 5 damage drops to 1 HP, not 0."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    # Plant a 2/1 enemy minion (Magma Rager 5/1 in field for the
+    # forced-attack target) and a 3/2 friendly that would normally die
+    # to the trade. The friendly should survive at 1 HP.
+    # Setup: friendly Bloodfen Raptor 3/2 → swings into a 5/1 enemy.
+    # Normally friendly takes 5 dmg and dies; with Riot! floor it stays
+    # at 1 HP.
+    friendly = game.player1.summon("CS2_172")  # Bloodfen Raptor 3/2
+    game.player2.summon("CS2_118")  # Magma Rager 5/1 — only enemy minion
+    riot = game.player1.give("REV_337")
+    riot.play()
+    # After Riot!, the friendly attacked the enemy minion and took 5
+    # damage. With the floor it should still be alive at 1 HP.
+    assert friendly.zone == Zone.PLAY
+    assert friendly.health == 1
+
+
+def test_riot_floor_clears_at_end_of_turn():
+    """The min_health=1 aura should drop off at OWN_TURN_END."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    friendly = game.player1.summon("CS2_172")  # 3/2
+    game.player1.give("REV_337").play()
+    # End the turn: aura should destroy itself; min_health resets.
+    game.end_turn()
+    # Manually overkill the friendly minion via cheat damage.
+    from fireplace.actions import Hit
+    game.cheat_action(game.player2.hero, [Hit(friendly, 5)])
+    assert friendly.zone == Zone.GRAVEYARD
+
+
+def test_remornia_transforms_into_weapon_after_attacking():
+    """Remornia is a Rush minion that becomes a 4/10 weapon on its
+    first attack."""
+    from fireplace.actions import Attack
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    rem = game.player1.summon("REV_316")
+    assert rem.zone == Zone.PLAY
+    assert game.player1.weapon is None
+    # Force attack into enemy hero so the after-attack hook fires.
+    game.cheat_action(rem, [Attack(rem, game.player2.hero)])
+    assert rem.zone == Zone.GRAVEYARD
+    assert game.player1.weapon is not None
+    assert game.player1.weapon.id == "REV_316t"
+    assert game.player1.weapon.atk == 4
+    assert game.player1.weapon.durability == 10
+
+
 def test_sanguine_depths_deals_1_and_buffs_attack():
     """Deal 1 to a minion + give it +1 Attack."""
     game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
@@ -660,6 +728,30 @@ def test_identity_theft_opens_discover_over_opponent_hand():
     game.player1.give("REV_253").play()
     assert game.player1.choice is not None
     assert len(game.player1.choice.cards) == 3
+
+
+def test_kaelthas_sinstrider_drops_every_third_minion_to_zero_cost():
+    """1st and 2nd minions cost normally; the 3rd is free. The cycle
+    repeats every three plays."""
+    game = prepare_game()
+    game.player1.summon("REV_021")  # Kael'thas in play
+    cards = [game.player1.give("CS2_122") for _ in range(6)]
+    costs = []
+    for c in cards:
+        # Free up mana and a board slot before each play so neither cap
+        # interferes with the cost-check assertion.
+        game.player1.used_mana = 0
+        if len(game.player1.field) >= 6:
+            game.player1.field[-1].destroy()
+        costs.append(c.cost)
+        c.play()
+    # Indices 2 and 5 (the 3rd and 6th plays) are free; others stay at 3.
+    assert costs[0] == 3
+    assert costs[1] == 3
+    assert costs[2] == 0
+    assert costs[3] == 3
+    assert costs[4] == 3
+    assert costs[5] == 0
 
 
 def test_bog_beast_summons_muckmare_on_death():

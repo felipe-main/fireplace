@@ -1898,6 +1898,22 @@ class Morph(TargetedAction):
 
     def do(self, source, target, card):
         log.info("Morphing %r into %r", target, card)
+        # Castle Nathria — Baroness Vashj: "If this would transform
+        # into a minion, summon that minion instead." Vashj stays; the
+        # would-be morph target is summoned to the board. No
+        # general-purpose aura yet (CardManager.update drops
+        # non-GameTag keys), so we id-check directly — same pattern as
+        # Halkias's soul-in-secret marker.
+        if (
+            getattr(target, "id", None) == "REV_925"
+            and card.type == CardType.MINION
+            and target.zone == Zone.PLAY
+        ):
+            log.info("%r redirects transform — summoning %r instead", target, card)
+            source.game.queue_actions(
+                target.controller, [Summon(target.controller, card)]
+            )
+            return card
         target_zone = target.zone
         if card.zone != target_zone:
             # Transfer the zone position

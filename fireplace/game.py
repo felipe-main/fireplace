@@ -12,6 +12,7 @@ from .actions import (
     BeginTurn,
     Death,
     Destroy,
+    Draw,
     EndTurn,
     EventListener,
     GameStart,
@@ -442,6 +443,10 @@ class BaseGame(Entity):
         # Castle Nathria — tick the Location's cooldown down each turn.
         if player.location and player.location.cooldown > 0:
             player.location.cooldown -= 1
+        # Maw and Disorder — Dew Process: while active on either player,
+        # draw one extra card at the start of each turn (rest of game).
+        if getattr(player, "dew_process_active", False):
+            self.queue_actions(player.hero, [Draw(player)])
         # Throne of the Tides per-card windows on the player's hand cards:
         # Coilfang's unplayable-next-turn marker and Immolate's burn timer.
         for hand_card in list(player.hand):

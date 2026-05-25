@@ -441,8 +441,14 @@ class Death(GameAction):
             # friendly-minion-deaths counter (Sire Denathrius reads it).
             if card.type == CardType.MINION and card.controller:
                 card.controller.friendly_minions_died_this_game += 1
-                # snapshot the hand — morph() mutates it mid-loop
-                for hand_card in list(card.controller.hand):
+                # Maw and Disorder — Afterlife Attendant (MAW_031): while
+                # any friendly Afterlife Attendant is on the board, the
+                # controller's deck cards also infuse alongside the hand.
+                infuse_zones = list(card.controller.hand)
+                if any(m.id == "MAW_031" for m in card.controller.field):
+                    infuse_zones += list(card.controller.deck)
+                # snapshot the iter — morph() mutates the hand mid-loop
+                for hand_card in infuse_zones:
                     threshold = hand_card.infuse_threshold
                     if threshold <= 0:
                         continue

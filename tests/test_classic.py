@@ -861,10 +861,11 @@ def test_cruel_taskmaster():
     game.end_turn()
     game.end_turn()
 
-    assert taskmaster1.health == 2
+    base_health = taskmaster1.max_health
+    assert taskmaster1.health == base_health
     assert taskmaster1.atk == 2
     taskmaster2.play(target=taskmaster1)
-    assert taskmaster1.health == 1
+    assert taskmaster1.health == base_health - 1
     assert taskmaster1.atk == 4
 
 

@@ -372,9 +372,22 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
 
     @property
     def infuse_threshold(self) -> int:
-        if not self.data.tags.get(GameTag.INFUSE, 0):
+        if self.data.tags.get(GameTag.INFUSE, 0):
+            return self.data.tags.get(GameTag.TAG_SCRIPT_DATA_NUM_1, 0)
+        # MaCN data quirk: MAW_012 (All Fel Breaks Loose) ships without the
+        # legacy INFUSE tag but does have TAG_SCRIPT_DATA_NUM_1 +
+        # COLLECTION_RELATED_CARD_DATABASE_ID pointing at an INFUSED twin.
+        # Recognize Infuse by that signature so the printed text resolves.
+        num1 = self.data.tags.get(GameTag.TAG_SCRIPT_DATA_NUM_1, 0)
+        if not num1:
             return 0
-        return self.data.tags.get(GameTag.TAG_SCRIPT_DATA_NUM_1, 0)
+        twin = self.infused_card_id
+        if not twin:
+            return 0
+        twin_data = cards.db.get(twin)
+        if twin_data and twin_data.tags.get(GameTag.INFUSED, 0):
+            return num1
+        return 0
 
     @property
     def infused_card_id(self):

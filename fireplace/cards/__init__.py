@@ -33,19 +33,28 @@ def get_script_definition(id, card=None):
     if not card:
         card = db[id]
 
+    # Lookup keys to try: the id itself, plus the CORE-stripped version
+    # (CORE_CS3_012 → CS3_012, etc.). Some printable cards are exposed in
+    # the data under the CORE_ namespace while their scripts live under
+    # the bare id in the cards/core/ package.
+    lookup_ids = [id]
+    if id.startswith("CORE_"):
+        lookup_ids.append(id[len("CORE_"):])
+
     for cardset in CARD_SETS:
         if cardset not in modules:
             modules[cardset] = import_module("fireplace.cards.%s" % (cardset))
         module = modules[cardset]
-        if hasattr(module, id):
-            cls = getattr(module, id)
-            methods = [
-                attr
-                for attr in dir(cls)
-                if not (attr.startswith("__") or attr.endswith("__"))
-            ]
-            if len(methods) > 0:
-                return cls
+        for lookup_id in lookup_ids:
+            if hasattr(module, lookup_id):
+                cls = getattr(module, lookup_id)
+                methods = [
+                    attr
+                    for attr in dir(cls)
+                    if not (attr.startswith("__") or attr.endswith("__"))
+                ]
+                if len(methods) > 0:
+                    return cls
 
     if GameTag.DECK_RULE_COUNT_AS_COPY_OF_CARD_ID in card.tags:
         dbf_id = card.tags[GameTag.DECK_RULE_COUNT_AS_COPY_OF_CARD_ID]

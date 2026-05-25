@@ -330,6 +330,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         self.play_right_most = False
         self.custom_card = False
         self.temporary = False
+        # Sunken City "while holding this" trackers — bumped by the engine
+        # whenever the controller plays a Naga or casts a spell while this
+        # card is in hand. Reset when the card leaves hand.
+        self.spells_cast_while_holding = 0
+        self.nagas_played_while_holding = 0
         super().__init__(data)
 
     def dump(self):

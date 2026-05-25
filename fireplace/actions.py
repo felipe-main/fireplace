@@ -23,6 +23,48 @@ from .logging import log
 from .utils import random_class
 
 
+def _summon_colossal_limbs(source, target, parent):
+    """Summon the appendage tokens for a Colossal minion.
+
+    Limbs are tokens whose id is ``{parent.id}t`` / ``t2`` / … and that
+    carry the COLOSSAL_LIMB game tag. Some sets also flag specific limbs
+    with COLOSSAL_LIMB_ON_LEFT to position them to the left of the parent
+    rather than the default right side. Limbs are summoned in the same
+    order they appear in the data; on-left limbs are inserted to the left
+    of the parent, on-right limbs to the right.
+    """
+    from .cards import db
+
+    parent_index = (
+        parent.controller.field.index(parent) if parent in parent.controller.field else None
+    )
+    if parent_index is None:
+        return
+
+    # Collect limb ids by scanning the DB for tokens prefixed with the
+    # parent's id + "t". Ordered numerically.
+    limb_ids = sorted(
+        cid
+        for cid in db
+        if cid.startswith(parent.id + "t")
+        and db[cid].tags.get(GameTag.COLOSSAL_LIMB, 0)
+    )
+
+    right_offset = 1
+    left_offset = 0
+    for limb_id in limb_ids:
+        limb_card = parent.controller.card(limb_id, source)
+        limb_card.controller = parent.controller
+        if db[limb_id].tags.get(GameTag.COLOSSAL_LIMB_ON_LEFT, 0):
+            limb_card._summon_index = parent.controller.field.index(parent) - left_offset
+            left_offset += 1
+        else:
+            limb_card._summon_index = parent.controller.field.index(parent) + right_offset
+            right_offset += 1
+        limb_card.zone = Zone.PLAY
+        source.game.manager.targeted_action(Summon, source, parent.controller, limb_card)
+
+
 def _eval_card(source, card):
     """
     Return a Card instance from \a card
@@ -561,6 +603,16 @@ class Play(GameAction):
 
         player.combo = True
         player.last_card_played = card
+        # Sunken City "while holding this" trackers — bump every hand card's
+        # counter when a spell or Naga is played by its owner. Done BEFORE
+        # any per-type bookkeeping so the trigger fires on the actual play.
+        for hand_card in player.hand:
+            if hand_card is card:
+                continue
+            if card.type == CardType.SPELL:
+                hand_card.spells_cast_while_holding += 1
+            if card.type == CardType.MINION and Race.NAGA in card.races:
+                hand_card.nagas_played_while_holding += 1
         if card.type == CardType.MINION:
             player.minions_played_this_turn += 1
             if Race.TOTEM in card.races:
@@ -1269,6 +1321,60 @@ class Discard(TargetedAction):
             source.game.cheat_action(target, actions)
 
 
+class Dredge(TargetedAction):
+    """
+    Look at the bottom 3 cards of your deck; choose one to put on top.
+    Exposes Dredge.CARD so follow-up effects can predicate on the choice.
+    """
+
+    TARGET = ActionArg()
+    CARDS = ActionArg()
+    CARD = CardArg()
+
+    def get_target_args(self, source, target):
+        # Bottom 3 — deck[-1] is the top (next draw), deck[0] is the bottom.
+        cards = list(target.deck[:3])
+        return [cards]
+
+    def do(self, source, target, cards):
+        log.info("%r dredges %r for %s", source, cards, target)
+        if not cards:
+            # Empty deck — no choice to offer. Subsequent .then() clauses
+            # will see Dredge.CARD = None.
+            self.cards = []
+            return
+        player = source.controller
+        player.choice = self
+        self._callback = self.callback
+        self.callback = []
+        self.player = player
+        self.source = source
+        self.target = target
+        self.cards = cards
+        self.min_count = 1
+        self.max_count = 1
+        source.game.manager.targeted_action(self, source, target, cards)
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise InvalidAction(
+                "%r is not a valid Dredge choice (one of %r)" % (card, self.cards)
+            )
+        self.player.choice = None
+        # Move the chosen card to the TOP of the deck (deck[-1]). Keep the
+        # other dredged cards in their original positions at the bottom.
+        deck = self.target.deck
+        if card in deck:
+            deck.remove(card)
+            deck.append(card)
+        for action in self._callback:
+            self.source.game.trigger(
+                self.source, [action], [self.target, self.cards, card]
+            )
+        self.callback = self._callback
+        self.trigger_choice_callback()
+
+
 class Discover(TargetedAction):
     """
     Opens a generic choice for three random cards matching a filter.
@@ -1861,6 +1967,17 @@ class Summon(TargetedAction):
             self.queue_broadcast(self, (source, EventListener.ON, target, card))
             self.broadcast(source, EventListener.AFTER, target, card)
 
+            # Colossal: when a parent Colossal minion is summoned, also
+            # summon its appendages alongside it. Limbs are tokens named
+            # {parent_id}t, t2, … with COLOSSAL_LIMB=1. Limbs do NOT
+            # themselves re-trigger this hook (they don't have COLOSSAL).
+            if (
+                card.type == CardType.MINION
+                and card.data.tags.get(GameTag.COLOSSAL, 0)
+                and not card.data.tags.get(GameTag.COLOSSAL_LIMB, 0)
+            ):
+                _summon_colossal_limbs(source, target, card)
+
         return cards
 
 
@@ -1925,6 +2042,38 @@ class Shuffle(TargetedAction):
                 continue
             card.zone = Zone.DECK
             target.shuffle_deck()
+            source.game.manager.targeted_action(self, source, target, card)
+            self.broadcast(source, EventListener.AFTER, target, card)
+
+
+class PutOnBottom(TargetedAction):
+    """
+    Put card targets on the BOTTOM of the player target's deck — used by
+    the Sunken City "Azsharan" cards which seed a 'Sunken' counterpart at
+    the bottom of the deck. Bottom = deck[0] (deck[-1] is the next draw).
+    """
+
+    TARGET = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, cards):
+        log.info("%r placed on the bottom of %s's deck", cards, target)
+        if not isinstance(cards, list):
+            cards = [cards]
+        for card in cards:
+            if card.controller != target:
+                card.zone = Zone.SETASIDE
+                card.controller = target
+            if len(target.deck) >= target.max_deck_size:
+                log.info(
+                    "PutOnBottom(%r) fails because %r's deck is full", card, target
+                )
+                continue
+            # Set zone to DECK then move to the bottom (index 0).
+            card.zone = Zone.DECK
+            if card in target.deck:
+                target.deck.remove(card)
+                target.deck.insert(0, card)
             source.game.manager.targeted_action(self, source, target, card)
             self.broadcast(source, EventListener.AFTER, target, card)
 

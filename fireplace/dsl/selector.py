@@ -640,6 +640,7 @@ MURLOC = EnumSelector(Race.MURLOC)
 PIRATE = EnumSelector(Race.PIRATE)
 TOTEM = EnumSelector(Race.TOTEM)
 ELEMENTAL = EnumSelector(Race.ELEMENTAL)
+NAGA = EnumSelector(Race.NAGA)
 TREANT = FuncSelector(
     lambda entities, src: [
         e for e in entities if getattr(e, "name_enUS", "").endswith("Treant")

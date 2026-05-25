@@ -11,14 +11,18 @@ class MAW_012(InfuseCardtextMixin):
     """All Fel Breaks Loose"""
 
     # Summon a friendly Demon that died this game. (Infused: 3 instead.)
-    play = Summon(CONTROLLER, RANDOM(FRIENDLY + KILLED + MINION + DEMON))
+    # Copy() wraps the random pick so the resurrected minion keeps its
+    # printed/base stats (the standard resurrect idiom).
+    play = Summon(CONTROLLER, Copy(RANDOM(FRIENDLY + KILLED + MINION + DEMON)))
 
 
 class MAW_012t:
     """All Fel Breaks Loose"""
 
     # Infused — summon three friendly Demons that died this game.
-    play = Summon(CONTROLLER, RANDOM(FRIENDLY + KILLED + MINION + DEMON)) * 3
+    play = Summon(
+        CONTROLLER, Copy(RANDOM(FRIENDLY + KILLED + MINION + DEMON))
+    ) * 3
 
 
 ##

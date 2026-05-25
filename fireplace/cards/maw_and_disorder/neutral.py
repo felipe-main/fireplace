@@ -8,22 +8,30 @@ from ..castle_nathria.utils import InfuseCardtextMixin
 
 
 class _SoulSeekerSwap(TargetedAction):
-    """Soul Seeker: morph this minion into a copy of a random minion in
-    the opponent's deck; shuffle a fresh Soul Seeker into the
-    opponent's deck. Approximation of the printed swap (closest net
-    board state we can produce without a true cross-zone swap)."""
+    """Soul Seeker: true cross-zone swap.  Pick a random minion from
+    the opponent's deck, remove it from the deck, summon it on the
+    caster's side, then shuffle Soul Seeker (this entity) into the
+    opponent's deck."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        from hearthstone.enums import CardType
+        from hearthstone.enums import CardType, Zone
         opp = target.controller.opponent
         pool = [c for c in opp.deck if c.type == CardType.MINION]
         if not pool:
             return
         pick = source.game.random.choice(pool)
-        source.game.cheat_action(source, [Morph(target, pick.id)])
-        source.game.cheat_action(source, [Shuffle(opp, "MAW_004")])
+        # Pull the picked card out of opponent's deck and onto our side.
+        # Summon by id mirrors a true resurrect — original card object
+        # still in opp's deck is removed by hand.
+        opp.deck.remove(pick)
+        pick._zone = Zone.SETASIDE
+        source.game.cheat_action(source, [Summon(target.controller, pick.id)])
+        # Soul Seeker leaves the board and joins opp's deck.
+        target.zone = Zone.SETASIDE
+        target.controller = opp
+        target.zone = Zone.DECK
 
 
 class MAW_004:

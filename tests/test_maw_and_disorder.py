@@ -247,13 +247,30 @@ def test_order_in_the_court_sorts_deck_and_draws():
 def test_class_action_lawyer_only_fires_if_no_neutrals():
     game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
     target = game.player2.summon("CS2_182")  # Chillwind Yeti 4/5
-    # Force player1's starting deck to be all-class (no neutrals).
+    # Force player1's *current* deck to be all-class (no neutrals).
     from hearthstone.enums import CardClass as CC
-    game.player1.starting_deck = [c for c in game.player1.starting_deck
-                                  if c.card_class != CC.NEUTRAL]
+    game.player1.deck = [c for c in game.player1.deck
+                         if c.card_class != CC.NEUTRAL]
     game.player1.give("MAW_017").play(target=target)
     assert target.atk == 1
     assert target.max_health == 1
+
+
+def test_class_action_lawyer_no_op_if_deck_has_neutrals():
+    """Tier-1 fix: the check is on the CURRENT deck, not starting."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    target = game.player2.summon("CS2_182")  # 4/5
+    pre_atk, pre_hp = target.atk, target.max_health
+    # Ensure current deck has at least one neutral.
+    from hearthstone.enums import CardClass as CC
+    has_neutral = any(c.card_class == CC.NEUTRAL for c in game.player1.deck)
+    if not has_neutral:
+        n = game.player1.give(WISP)  # Wisp is neutral
+        n.shuffle_into_deck()
+    game.player1.give("MAW_017").play(target=target)
+    # Battlecry condition fails; target stats unchanged.
+    assert target.atk == pre_atk
+    assert target.max_health == pre_hp
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +325,22 @@ def test_murder_accusation_destroys_after_enemy_minion_dies():
     # Kill an unrelated enemy minion; the accused should die.
     bystander.destroy()
     assert target.zone == Zone.GRAVEYARD
+
+
+def test_murder_accusation_self_exclusion_no_re_fire():
+    """Tier-1 fix verification: the accused minion's own death should
+    not re-trigger Murder Accusation (the printed text says ""another
+    enemy minion dies"").  Verified by checking that on direct-damage
+    kill of the accused, no extra Destroy is queued (other enemy
+    minions survive)."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    target = game.player2.summon("CS2_182")
+    other = game.player2.summon(WISP)
+    game.player1.give("MAW_019").play(target=target)
+    # Direct-kill the accused; the other enemy minion must survive
+    # because the accused's own death is excluded from "another minion".
+    target.destroy()
+    assert other.zone == Zone.PLAY
 
 
 def test_scribbling_stenographer_cost_drops_per_card_played():
@@ -480,20 +513,25 @@ def test_weapons_expert_draws_weapon_when_no_weapon_equipped():
 # ---------------------------------------------------------------------------
 
 
-def test_soul_seeker_morphs_into_opponent_deck_minion():
+def test_soul_seeker_swaps_with_opponent_deck_minion():
+    """Tier-1 fix: true cross-zone swap.  After Soul Seeker plays, the
+    picked opp-deck minion is on the caster's side, Soul Seeker is in
+    the opp's deck, and the picked card is NO LONGER in opp's deck."""
     game = prepare_game()
     target_id = "CS2_182"  # Chillwind Yeti
     m = game.player2.give(target_id)
-    m.zone = Zone.DECK
+    m.shuffle_into_deck()
     game.player2.deck = [m]
     pre_field_ids = [x.id for x in game.player1.field]
     game.player1.give("MAW_004").play()
-    # Morph spawns a Yeti copy in Soul Seeker's slot.
     field_ids = [x.id for x in game.player1.field]
+    # Yeti now on caster's side.
     assert field_ids.count(target_id) == pre_field_ids.count(target_id) + 1
     assert "MAW_004" not in field_ids
-    # And a fresh Soul Seeker was shuffled into the opponent's deck.
+    # Soul Seeker now in opp's deck (the original entity).
     assert any(c.id == "MAW_004" for c in game.player2.deck)
+    # The picked card object is no longer in opp's deck.
+    assert m not in game.player2.deck
 
 
 def test_sylvanas_the_accused_destroys_enemy():

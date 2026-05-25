@@ -1,6 +1,5 @@
 from ..utils import *
 
-from .priest import _AccusationFireMurder
 
 
 ##
@@ -40,34 +39,30 @@ class MAW_018:
     secret = OWN_TURN_BEGIN.on(_PerjuryFire(CONTROLLER))
 
 
-class _MurderAccuse(TargetedAction):
-    """Stamp the chosen enemy minion onto controller._murder_accused;
-    arm the controller via Buff(MAW_019e). The arm listens for any
-    enemy-minion death (the printed condition is 'after another enemy
-    minion dies' — i.e., excluding the accused itself; we approximate
-    by checking the dying minion is not the accused)."""
+class _ApplyMurderTrial(TargetedAction):
+    """Apply MAW_019e to the accused and re-parent the enchantment to
+    the accused's controller so the FRIENDLY filter in the listener
+    matches the enemy-side minions (the printed semantics)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ctrl = source.controller
-        ctrl._murder_accused = list(getattr(ctrl, "_murder_accused", [])) + [target]
-        if not getattr(ctrl, "_murder_armed", False):
-            ctrl._murder_armed = True
-            # Direct .buff() bypasses the selector eval path; cheat_action
-            # context doesn't resolve a hero entity passed in literally.
-            source.buff(ctrl.hero, "MAW_019e")
+        enchant = source.buff(target, "MAW_019e")
+        enchant.controller = target.controller
 
 
 class MAW_019:
     """Murder Accusation"""
 
     # Choose a minion. Destroy it after another enemy minion dies.
+    # The buff lives on the accused; re-parented to the accused's
+    # controller so FRIENDLY in the listener filter matches the
+    # accused-side minions (i.e. enemy minions from caster's POV).
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
-    play = _MurderAccuse(TARGET)
+    play = _ApplyMurderTrial(TARGET)
 
 
 @custom_card
@@ -76,12 +71,12 @@ class MAW_019e:
         GameTag.CARDNAME: "Murder Trial",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
-    # Death(MINION + ENEMY) — note: the engine sets card.zone = GRAVEYARD
-    # BEFORE broadcasting the Death event, so ENEMY_MINIONS (which has
-    # an IN_PLAY constraint) never matches.  Use MINION + ENEMY (no
-    # zone gate).  Per-friendly-controller filter happens via the
-    # ENEMY selector (controller == opponent of source).
-    events = Death(MINION + ENEMY).after(_AccusationFireMurder(CONTROLLER))
+    # `Death(FRIENDLY_MINIONS - SELF)`: from the enchantment's
+    # perspective, FRIENDLY = same controller as accused = the enemy
+    # player.  Self-exclusion via `- SELF` ensures the accused's own
+    # death doesn't retrigger.  Use MINION + FRIENDLY (no zone gate)
+    # because Death fires after zone moves to GRAVEYARD.
+    events = Death(MINION + FRIENDLY - SELF).after(Destroy(OWNER))
 
 
 ##

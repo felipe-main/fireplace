@@ -53,7 +53,9 @@ class _ClassActionSetStats(TargetedAction):
 
     def do(self, source, target):
         from hearthstone.enums import CardClass
-        deck = source.controller.starting_deck or source.controller.deck
+        # Check the CURRENT deck, not the starting deck — printed text
+        # is evaluated at battlecry time.  Skip if any neutral remains.
+        deck = source.controller.deck
         if any(getattr(c, "card_class", None) == CardClass.NEUTRAL for c in deck):
             return
         source.game.cheat_action(source, [Buff(target, "MAW_017e")])

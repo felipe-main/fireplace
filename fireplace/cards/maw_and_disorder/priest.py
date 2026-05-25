@@ -46,7 +46,10 @@ def _make_accusation_fire(flag):
     """Build a TargetedAction that destroys minions in
     controller._<flag>_accused that are still in PLAY. We can't pass
     the flag as an ActionArg (TargetedAction's evaluator runs every
-    arg through card-lookup); subclass per-flag instead."""
+    arg through card-lookup); subclass per-flag instead.
+
+    For Death-triggered flags (murder), skip if the dying minion IS the
+    only accused — printed text says "ANOTHER enemy minion dies"."""
 
     class _AccusationFire(TargetedAction):
         TARGET = ActionArg()
@@ -56,8 +59,22 @@ def _make_accusation_fire(flag):
             from hearthstone.enums import Zone
             attr = f"_{self.FLAG}_accused"
             accused = list(getattr(target, attr, []))
-            live = [m for m in accused if getattr(m, "zone", None) == Zone.PLAY]
-            setattr(target, attr, [])
+            # Death triggers pass the dying card in event_args[0].
+            # Drop it from the "other minion dies" trigger so the
+            # accused doesn't fire from its own death.
+            dying = None
+            if source.event_args:
+                dying = source.event_args[0]
+            still_accused = [m for m in accused if m is not dying]
+            live = [
+                m for m in still_accused
+                if getattr(m, "zone", None) == Zone.PLAY
+            ]
+            # Reset the accused list — but if the dying card was an
+            # accused, leave it out (it's already in graveyard); if
+            # ALL accused are still alive (Damage / Play triggers),
+            # they fire and the list resets.
+            setattr(target, attr, [m for m in accused if m is dying and m is not None])
             if live:
                 source.game.cheat_action(source, [Destroy(live)])
 

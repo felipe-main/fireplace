@@ -10,7 +10,7 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 23.4.0.139963](https://hearthstone.wiki.gg/wiki/Patch_23.4.0.139963)
+Now updated to [Patch 24.0.0.145077](https://hearthstone.wiki.gg/wiki/Patch_24.0.0.145077)
 * **100%** Classic (245 of 245 cards)
 * **100%** Curse of Naxxramas (30 of 30 cards)
 * **100%** Goblins vs Gnomes (123 of 123 cards)
@@ -41,6 +41,7 @@ Now updated to [Patch 23.4.0.139963](https://hearthstone.wiki.gg/wiki/Patch_23.4
 * **100%** Onyxia's Lair mini-set (35 of 35 cards)
 * **100%** Voyage to the Sunken City (135 of 135 cards)
 * **100%** Throne of the Tides mini-set (34 of 34 cards)
+* **100%** Murder at Castle Nathria (135 of 135 cards)
 * **100%** Legacy (167 of 167 cards)
 * **100%** Core (235 of 235 cards)
 * **100%** Vanilla (383 of 383 cards)

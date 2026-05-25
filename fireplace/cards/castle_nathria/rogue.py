@@ -99,8 +99,27 @@ class REV_940:
     """Necrolord Draka"""
 
     # Battlecry: Equip an X/3 Dagger, where X = 1 + the number of other
-    # cards played this turn. Approximate: equip a 3/3 Dagger.
-    play = Summon(CONTROLLER, "REV_940t")
+    # cards played this turn. Draka's own play bumps the counter AFTER
+    # the battlecry resolves, so cards_played_this_turn at battlecry
+    # time equals "others played this turn" — buff the dagger by that.
+    play = Summon(CONTROLLER, "REV_940t").then(
+        Buff(Summon.CARD, "REV_940e")
+    )
+
+
+@custom_card
+class REV_940e:
+    # +N Atk where N = cards played this turn at apply-time. Snapshot
+    # here (not read live) so future plays don't keep growing the
+    # dagger.
+    tags = {
+        GameTag.CARDNAME: "Maldraxxus Dagger Atk",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    atk = lambda self, i: i + self._n
+
+    def apply(self, target):
+        self._n = target.controller.cards_played_this_turn
 
 
 class REV_940t:
@@ -126,6 +145,23 @@ class REV_750:
     """Sinstone Graveyard"""
 
     # Summon a 1/1 Stealthed Ghost. Has +1/+1 for each other card you
-    # played this turn. Approximation: just summon a 1/1 stealthed Ghost
-    # token.
-    activate = Summon(CONTROLLER, "REV_750t2")
+    # played this turn. Using a Location doesn't bump
+    # cards_played_this_turn, so the counter at activate-time is exactly
+    # the number of other cards played — snapshot it on the ghost via
+    # an apply-time enchantment.
+    activate = Summon(CONTROLLER, "REV_750t2").then(
+        Buff(Summon.CARD, "REV_750e")
+    )
+
+
+@custom_card
+class REV_750e:
+    tags = {
+        GameTag.CARDNAME: "Haunted Conscience Stats",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    atk = lambda self, i: i + self._n
+    max_health = lambda self, i: i + self._n
+
+    def apply(self, target):
+        self._n = target.controller.cards_played_this_turn

@@ -73,25 +73,52 @@ class REV_244t:
     play = Summon(CONTROLLER, Copy(SELF)) * 2
 
 
+class _CastLastShadowSpell(TargetedAction):
+    """Lady Darkvein's Shades: at deathrattle time, look up the most
+    recent Shadow spell the controller cast this game and cast a copy
+    of it. Reads source.controller directly because the CONTROLLER
+    selector swaps during the Death pipeline."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        controller = source.controller
+        history = controller.spells_cast_by_school.get(
+            int(SpellSchool.SHADOW), []
+        )
+        if not history:
+            return
+        last_id = history[-1]
+        # Use the controller (a Player, never "dead") as the source so
+        # CastSpell's early-out (source.dead → return) doesn't fire on
+        # the corpse of the dying Shade.
+        source.game.cheat_action(controller, [CastSpell(last_id)])
+
+
 class REV_373:
     """Lady Darkvein"""
 
     # Battlecry: Summon two 2/1 Shades. Each gains a Deathrattle to cast
-    # your last Shadow spell. Approximation: just summon the two Shades.
+    # your last Shadow spell.
     play = Summon(CONTROLLER, "REV_373t") * 2
 
 
 class REV_373t:
     """Shadow Manifestation"""
 
+    # The data card lacks the DEATHRATTLE tag (it's an engine-internal
+    # token); set it explicitly so has_deathrattle is True and the
+    # Death pipeline fires our script.
+    tags = {GameTag.DEATHRATTLE: True}
+    deathrattle = _CastLastShadowSpell(CONTROLLER)
+
 
 class REV_374:
     """Shadowborn"""
 
     # Deathrattle: Reduce the Cost of the highest Cost Shadow spell in
-    # your hand by (3). Approximation: -3 cost on a random Shadow spell
-    # in hand.
-    deathrattle = Buff(RANDOM(FRIENDLY_HAND + SHADOW_SPELL), "REV_374e")
+    # your hand by (3).
+    deathrattle = Buff(HIGHEST_COST(FRIENDLY_HAND + SHADOW_SPELL), "REV_374e")
 
 
 class REV_374e:

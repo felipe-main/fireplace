@@ -323,6 +323,52 @@ def test_cathedral_of_atonement_buffs_and_draws():
 # ---------------------------------------------------------------------------
 
 
+def test_necrolord_draka_dagger_scales_with_cards_played():
+    """The dagger's Attack = 1 + cards played this turn before Draka."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    # Play 3 cheap cards before Draka.
+    for _ in range(3):
+        game.player1.give(MOONFIRE).play(target=game.player2.hero)
+    assert game.player1.cards_played_this_turn == 3
+    game.player1.give("REV_940").play()
+    dagger = game.player1.weapon
+    assert dagger.id == "REV_940t"
+    assert dagger.atk == 1 + 3  # base 1 + 3 cards played before Draka
+
+
+def test_necrolord_draka_dagger_does_not_grow_after_equip():
+    """Snapshot at equip-time — playing more cards later doesn't bump
+    the dagger's atk."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    game.player1.give(MOONFIRE).play(target=game.player2.hero)
+    game.player1.give("REV_940").play()
+    dagger = game.player1.weapon
+    pre = dagger.atk
+    # Play another card; the dagger should NOT bump.
+    game.player1.give(MOONFIRE).play(target=game.player2.hero)
+    assert dagger.atk == pre
+
+
+def test_sinstone_graveyard_ghost_scales_with_cards_played():
+    """Ghost token gains +1/+1 per other card played this turn."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    loc = game.player1.give("REV_750")
+    loc.play()  # cards_played counts this play
+    game.end_turn(); game.end_turn()
+    # Play 2 cards before using the location.
+    game.player1.give(MOONFIRE).play(target=game.player2.hero)
+    game.player1.give(MOONFIRE).play(target=game.player2.hero)
+    assert game.player1.cards_played_this_turn == 2
+    pre = len(game.player1.field)
+    loc.use()
+    assert len(game.player1.field) == pre + 1
+    ghost = game.player1.field[-1]
+    assert ghost.id == "REV_750t2"
+    # Base 1/1 + 2 cards played this turn = 3/3.
+    assert ghost.atk == 1 + 2
+    assert ghost.max_health == 1 + 2
+
+
 def test_sticky_situation_summons_spider_on_opponent_spell():
     """Secret fires when the opponent casts a spell."""
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
@@ -394,6 +440,49 @@ def test_suffocating_shadows_destroys_random_enemy_minion_on_play():
     pre = len(game.player2.field)
     game.player1.give("REV_239").play()
     assert len(game.player2.field) == pre - 1
+
+
+def test_lady_darkvein_shade_recasts_last_shadow_spell_on_death():
+    """A Shade's deathrattle casts the controller's most recent Shadow
+    spell. Cast a Shadow spell first, then summon Lady Darkvein,
+    destroy a Shade, and verify the spell fires again."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    # Cast Mind Blast (5 damage to enemy hero, Shadow school).
+    pre_hp = game.player2.hero.health
+    mb = game.player1.give("DS1_233")  # Mind Blast — Shadow, 5 dmg to hero
+    mb.play()
+    assert game.player2.hero.health == pre_hp - 5
+    # Lady Darkvein summons two Shades.
+    game.player1.give("REV_373").play()
+    shades = [m for m in game.player1.field if m.id == "REV_373t"]
+    assert len(shades) == 2
+    # Kill one — deathrattle should re-cast Mind Blast (5 more damage).
+    mid_hp = game.player2.hero.health
+    shades[0].destroy()
+    assert game.player2.hero.health == mid_hp - 5
+
+
+def test_shadowborn_discounts_the_highest_cost_shadow_spell_in_hand():
+    """Deathrattle should pick the highest-cost Shadow spell, not a
+    random one."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    # Clear hand so only our planted spells are present.
+    while game.player1.hand:
+        game.player1.hand[0].discard()
+    cheap = game.player1.give("DS1_233")  # Mind Blast, cost 2, Shadow
+    mid = game.player1.give("EX1_345")    # Shadowform — not Shadow school; pick something Shadow
+    # Use real shadow spells of differing cost: Mind Blast (2), Shadow Word: Pain (2)
+    # Need clear cost differential — use Mind Blast (2) and Mind Control (10).
+    while game.player1.hand:
+        game.player1.hand[0].discard()
+    cheap = game.player1.give("DS1_233")    # Mind Blast — 2 cost Shadow
+    expensive = game.player1.give("CS1_113")  # Mind Control — 10 cost Shadow
+    base_cheap, base_exp = cheap.cost, expensive.cost
+    born = game.player1.summon("REV_374")
+    born.destroy()
+    # Higher-cost spell got -3; cheaper one untouched.
+    assert expensive.cost == base_exp - 3
+    assert cheap.cost == base_cheap
 
 
 def test_mischievous_imp_summons_a_copy_on_battlecry():

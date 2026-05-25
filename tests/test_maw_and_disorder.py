@@ -428,6 +428,22 @@ def test_arson_accusation_destroys_after_hero_takes_damage():
     assert target.zone == Zone.GRAVEYARD
 
 
+def test_arson_accusation_silenced_accused_breaks_deathlink():
+    """Tier-2 fix: silencing the accused should remove the kill-link.
+    The trial puts a paired enchantment on the accused; silence wipes
+    the enchantment and the hero-side trigger then skips that accused."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    target = game.player2.summon("CS2_182")
+    game.player1.give("MAW_001").play(target=target)
+    # Silence the accused — should remove the MAW_001e2 mark.
+    from fireplace.actions import Silence
+    game.queue_actions(target, [Silence(target)])
+    # Now damage friendly hero; accused should survive.
+    from fireplace.actions import Hit
+    game.queue_actions(game.player1.hero, [Hit(game.player1.hero, 1)])
+    assert target.zone == Zone.PLAY
+
+
 def test_habeas_corpses_resurrects_friendly_minion():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     m = game.player1.summon(WISP)

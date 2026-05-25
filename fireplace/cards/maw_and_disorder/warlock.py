@@ -5,29 +5,53 @@ from ..utils import *
 # Spells
 
 
-from .priest import _AccusationFireArson
-
-
 class _ArsonAccuse(TargetedAction):
-    """Stamp the chosen minion onto controller._arson_accused and arm
-    the per-controller hero-damage trigger via Buff(MAW_001e)."""
+    """Stamp the chosen minion both with an accused-side marker
+    (MAW_001e2, silenceable) and arm the hero-side trigger (MAW_001e).
+    The hero-side trigger scans for live MAW_001e2 marks at fire time
+    — silencing the accused removes the mark and breaks the deathlink."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        ctrl._arson_accused = list(getattr(ctrl, "_arson_accused", [])) + [target]
+        # Accused-side mark.  Silence wipes the enchantment, breaking
+        # the chain — the hero-side scan finds no marks for this
+        # accused and the destroy skips it.
+        source.buff(target, "MAW_001e2")
         if not getattr(ctrl, "_arson_armed", False):
             ctrl._arson_armed = True
             source.buff(ctrl.hero, "MAW_001e")
 
 
+class _ArsonFire(TargetedAction):
+    """Fire on the friendly hero taking damage: destroy every enemy
+    minion still carrying the MAW_001e2 mark (= still under accusation).
+    Silenced accused minions lost the mark and survive."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        from hearthstone.enums import Zone
+        live = []
+        for player in source.game.players:
+            for m in player.field:
+                if m.controller is ctrl:
+                    continue  # printed text targets enemy minions only
+                if any(b.id == "MAW_001e2" for b in m.buffs):
+                    live.append(m)
+        if live:
+            source.game.cheat_action(source, [Destroy(live)])
+
+
 class MAW_001:
     """Arson Accusation"""
 
-    # Choose a minion. Destroy it after your hero takes damage.
-    # Approximation: silence on the accused does not break the deathlink
-    # (the link lives on the caster's hero, not on the accused).
+    # Choose a minion. Destroy it after your hero takes damage.  Pair
+    # of enchantments: MAW_001e2 on the accused (silence-removable);
+    # MAW_001e on the caster's hero (one per controller).  At fire
+    # time the hero-side enchantment scans for live MAW_001e2 marks.
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
@@ -41,7 +65,13 @@ class MAW_001e:
         GameTag.CARDNAME: "Arson Trial",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
-    events = Damage(OWNER).on(_AccusationFireArson(CONTROLLER))
+    events = Damage(OWNER).on(_ArsonFire(CONTROLLER))
+
+
+class MAW_001e2:
+    # Accused-side marker.  Empty body — silence wipes it via standard
+    # enchantment removal.  The hero-side _ArsonFire scans for this id.
+    tags = {GameTag.CARDNAME: "Accused of Arson"}
 
 
 class _HabeasResurrect(TargetedAction):

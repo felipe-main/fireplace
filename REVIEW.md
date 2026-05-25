@@ -19,12 +19,12 @@ gameplay or future soaks lands here first.)
 ### Significant approximations
 | Card | Approximation | Real behaviour | Status | Fix |
 |---|---|---|---|---|
-| Prince Renathal | Plays as a vanilla 3/3/4; start-of-game deck-size/HP swap is unimplemented | "Start of Game: Your deck size and starting Health are 40." Doubles deck size and grants +10 starting HP. | open | |
+| Prince Renathal | Plays as a vanilla 3/3/4; start-of-game deck-size/HP swap is unimplemented | "Start of Game: Your deck size and starting Health are 40." Doubles deck size and grants +10 starting HP. | fixed | 801398ba — detect "REV_018" in starting_deck during prepare_for_game; bump hero.max_health and player.max_deck_size to 40 |
 | Sire Denathrius | Deals 1 damage to random enemies for `friendly_minions_died_this_game + 5` ticks; randomly distributed | "Battlecry: Deal 5 damage amongst enemies. Endlessly Infuse (1): Deal 1 more." Damage is split smartly across enemies; Endlessly Infuse means each friendly death adds +1 to the final battlecry damage rather than to a hand counter. | open | |
 | Murloc Holmes | Copies 3 random cards from opponent's hand | "Solve 3 Clues about your opponent's cards to get copies of them." Clues are interactive Discover-style guess prompts. | open | |
 | Artificer Xy'mox | Casts a single random DH spell (or, infused, casts the 3 Relic spells statically) | "Discover and cast a Relic." Relic pool isn't engine-aware; we don't track per-game Relic progression either. | open | |
 | Relic of Dimensions / Extinction / Phantasms | Use fixed numbers (cost-by-2, 2 damage, 2/2 spirits) | The three Relic spells each grow stronger each time a Relic is cast that game. Counter isn't tracked. | open | |
-| Imp King Rafaam (and all Imp synergies) | Treats "Imp" as any Demon (no IMP race in engine selectors) | Imp is a true sub-race; flagged minions like Mischievous Imp are imps but Voidwalker etc. are NOT imps. | open | |
+| Imp King Rafaam (and all Imp synergies) | Treats "Imp" as any Demon (no IMP race in engine selectors) | Imp is a true sub-race; flagged minions like Mischievous Imp are imps but Voidwalker etc. are NOT imps. | fixed | 801398ba — IMP FuncSelector matches Demons whose name contains the whole word "Imp" (so Imprisoned * / Impcaster / Impulsive * are excluded); removed warlock.py IMP=DEMON alias |
 | Sinstone Graveyard | Summons a vanilla 1/1 Stealthed token | "Has +1/+1 for each other card you played this turn." | open | |
 | Necrolord Draka | Equips a vanilla 3/3 dagger | "Equip an X/3 Dagger; +1 Attack for each other card you played this turn." | open | |
 | Halkias | Resurrects itself immediately if a Secret is controlled | Should "store its soul inside the secret" and resurrect when the secret triggers (sequencing approximated as immediate). | open | |
@@ -32,7 +32,7 @@ gameplay or future soaks lands here first.)
 | Stonebound Gargon (infused) | Hit-based cleave on attack via REV_352t | Real card applies cleave during attack resolution; ours approximates with an after-attack Hit. | watch | |
 | Insatiable Devourer | Devours target + (infused) its neighbors; consumed stats are buffed onto self via a single empty enchantment | Real card devours and *replaces* its own stats; ours stacks via Buff which interacts oddly with later buffs/silences. | open | |
 | Sinfueled Golem (infused) | Static +6/+6 buff on the infused twin | Should gain stats equal to the sum of Attacks of the minions that infused it. We don't remember which minions infused. | open | |
-| Pelagos | Buffs target +1/+1 per cast on it | Should set target's Attack and Health to the higher of the two; we don't have MAX() over two LazyNums. | open | |
+| Pelagos | Buffs target +1/+1 per cast on it | Should set target's Attack and Health to the higher of the two; we don't have MAX() over two LazyNums. | fixed | 801398ba — REV_250e snapshots max(atk, max_health) in apply() and uses Inner-Fire-style override lambdas; clears damage when health is being raised |
 | Kael'thas Sinstrider | Aura that drops minion costs to 0 when `minions_played_this_turn % 3 == 2` | Real card makes every 3rd minion this turn cost (0); ours triggers correctly but only for the *next* minion in hand. | open | |
 | Convoke the Spirits | Casts 8 random Druid spells regardless of cost or playability | Real cast picks from castable spells; ours can cast Galakrond-type cards that don't make sense for our deck. | watch | |
 | Lady Darkvein | Summons two 2/1 Shades without the cast-last-Shadow-spell deathrattle | Each Shade has "Deathrattle: cast your last Shadow spell." We don't track last-Shadow-spell. | open | |

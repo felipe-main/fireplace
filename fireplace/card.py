@@ -359,6 +359,10 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # morphs into its infused twin (resolved from the data tag
         # COLLECTION_RELATED_CARD_DATABASE_ID via cards.db.dbf).
         self.infuse_progress = 0
+        # Sum of dying-minion atk across the infusing deaths. Used by
+        # Sinfueled Golem ("gain stats equal to the Attack of the minions
+        # that Infused this").
+        self.infused_by_atk_total = 0
         super().__init__(data)
 
     @property

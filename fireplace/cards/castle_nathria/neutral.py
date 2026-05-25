@@ -46,12 +46,40 @@ class REV_021:
     )
 
 
+class _DiscoverFromOpponentHand:
+    """Shared helper — open a GenericChoice over (up to 3) random
+    cards drawn from the opponent's hand, with the chosen one given to
+    the source controller. Re-implemented as a TargetedAction because
+    the engine's Discover action only knows how to pick from a
+    class-weighted random pool, not from a specific list."""
+
+
+class _DiscoverFromEnemyHand(TargetedAction):
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # Snapshot the opponent's hand and pick up to 3 random unique
+        # cards to offer (mirror Discover's "3 choices").
+        opponent_hand = list(target.opponent.hand)
+        if not opponent_hand:
+            return
+        n = min(3, len(opponent_hand))
+        picks = source.game.random.sample(opponent_hand, n)
+        offered = [target.card(p.id, source=source) for p in picks]
+        gc = GenericChoice(target, offered)
+        source.game.queue_actions(source, [gc])
+
+
 class REV_022:
     """Murloc Holmes"""
 
-    # Battlecry: Solve 3 Clues about your opponent's cards to get copies
-    # of them. Approximation: copy 3 random cards from opponent's hand.
-    play = Give(CONTROLLER, Copy(RANDOM(ENEMY_HAND))) * 3
+    # Battlecry: Solve 3 Clues about your opponent's cards to get
+    # copies of them. Engine GenericChoice is single-slot
+    # (player.choice can't queue 3 sequential opens cleanly), so this
+    # presents one Discover over 3 opponent-hand cards and gives the
+    # picked one — same surface area as a single Clue. The remaining
+    # two Clues are unmodelled.
+    play = _DiscoverFromEnemyHand(CONTROLLER)
 
 
 class REV_023:
@@ -68,8 +96,10 @@ class REV_238:
     """Theotar, the Mad Duke"""
 
     # Battlecry: Discover a card in each player's hand and swap them.
-    # Approximation: copy a random opponent's hand card into your hand.
-    play = Give(CONTROLLER, Copy(RANDOM(ENEMY_HAND)))
+    # Approximation: open a Discover over the opponent's hand and gain
+    # the chosen card; we skip the friendly-hand side of the swap
+    # because no engine card consumes "what did the opponent gain."
+    play = _DiscoverFromEnemyHand(CONTROLLER)
 
 
 class REV_308:
@@ -227,20 +257,30 @@ class REV_017:
     """Insatiable Devourer"""
 
     # Battlecry: Devour an enemy minion and gain its stats. (Infused:
-    # And its neighbors.)
+    # And its neighbors.) Buff with both atk + max_health kwargs;
+    # `health` alone is current-HP only and doesn't raise the cap.
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_ENEMY_TARGET: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
     play = (
-        Buff(SELF, "REV_017e", atk=ATK(TARGET), health=CURRENT_HEALTH(TARGET)),
+        Buff(
+            SELF,
+            "REV_017e",
+            atk=ATK(TARGET),
+            max_health=CURRENT_HEALTH(TARGET),
+        ),
         Destroy(TARGET),
     )
 
 
+@custom_card
 class REV_017e:
-    tags = {}
+    tags = {
+        GameTag.CARDNAME: "Insatiable Devourer Stats",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
 
 
 class REV_017t:
@@ -257,7 +297,7 @@ class REV_017t:
             SELF,
             "REV_017e",
             atk=ATK(TARGET) + ATK(TARGET_ADJACENT),
-            health=CURRENT_HEALTH(TARGET) + CURRENT_HEALTH(TARGET_ADJACENT),
+            max_health=CURRENT_HEALTH(TARGET) + CURRENT_HEALTH(TARGET_ADJACENT),
         ),
         Destroy(TARGET),
         Destroy(TARGET_ADJACENT),
@@ -282,15 +322,32 @@ class REV_843:
     """Sinfueled Golem"""
 
     # Infuse (3): Gain stats equal to the Attack of the minions that
-    # Infused this. Approximation: progress bumps; on infuse, gain +6/+6.
+    # Infused this. Engine tracks `infused_by_atk_total` per hand card
+    # (bumped in Death.do) and transfers it to the morphed twin.
     pass
 
 
 class REV_843t:
     """Sinfueled Golem"""
 
-    # Infused — granted +6/+6 (approximate).
-    update = Refresh(SELF, {GameTag.ATK: 6, GameTag.HEALTH: 6})
+    # Infused — atk and max_health = base + total atk of the minions
+    # that infused this. The buff is applied in Death.do right after
+    # morph (see the Infuse hand-card loop) so the stats are visible
+    # while the twin sits in hand and persist into play.
+    pass
+
+
+@custom_card
+class REV_843e:
+    tags = {
+        GameTag.CARDNAME: "Sinfueled Golem Stats",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    atk = lambda self, i: i + self._n
+    max_health = lambda self, i: i + self._n
+
+    def apply(self, target):
+        self._n = getattr(target, "infused_by_atk_total", 0)
 
 
 class REV_906:

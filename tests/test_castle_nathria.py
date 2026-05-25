@@ -216,6 +216,25 @@ def test_frozen_touch_deals_three():
 # ---------------------------------------------------------------------------
 
 
+def test_vengeful_visage_summons_attacker_copy_and_swings_back():
+    """When opponent's minion attacks your hero, the secret summons a
+    copy of the attacker AND immediately attacks the enemy hero with
+    that copy."""
+    from fireplace.actions import Attack
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    vv = game.player1.give("REV_516"); vv.play()
+    assert any(s.id == "REV_516" for s in game.player1.secrets)
+    game.end_turn()
+    atk = game.player2.summon("CS2_122")  # 2/2
+    pre_p2_hp = game.player2.hero.health
+    game.cheat_action(atk, [Attack(atk, game.player1.hero)])
+    # Secret revealed.
+    assert not any(s.id == "REV_516" for s in game.player1.secrets)
+    # A copy of CS2_122 was summoned to Player1 and attacked enemy hero.
+    assert any(m.id == "CS2_122" for m in game.player1.field)
+    assert game.player2.hero.health == pre_p2_hp - 2
+
+
 def test_promotion_buffs_silver_hand_recruit():
     """Give a Silver Hand Recruit +3/+3."""
     game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
@@ -367,6 +386,37 @@ def test_sinstone_graveyard_ghost_scales_with_cards_played():
     # Base 1/1 + 2 cards played this turn = 3/3.
     assert ghost.atk == 1 + 2
     assert ghost.max_health == 1 + 2
+
+
+def test_halkias_resummons_when_marked_secret_triggers():
+    """If Halkias dies while you control a Secret, the next time that
+    Secret triggers, Halkias is resummoned."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    # Plant a Rogue secret (Sticky Situation: triggers on opponent spell).
+    sec = game.player1.give("REV_827")
+    sec.play()
+    assert any(s.id == "REV_827" for s in game.player1.secrets)
+    # Summon Halkias and destroy it — deathrattle marks the secret.
+    halkias = game.player1.summon("REV_829")
+    halkias.destroy()
+    secret = game.player1.secrets[0]
+    assert getattr(secret, "_resummons_halkias", False) is True
+    # Hand turn over and have opponent cast a spell — Sticky Situation
+    # reveals (summoning its Spider) AND resummons Halkias.
+    game.end_turn()
+    pre_field_p1 = len(game.player1.field)
+    game.player2.give(MOONFIRE).play(target=game.player1.hero)
+    # Halkias should be back on Player1's board.
+    assert any(m.id == "REV_829" for m in game.player1.field)
+
+
+def test_halkias_no_op_without_secret():
+    """No secret → no marking, no resummon."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    halkias = game.player1.summon("REV_829")
+    halkias.destroy()
+    # No crash, no resummon (secrets list empty).
+    assert not any(m.id == "REV_829" for m in game.player1.field)
 
 
 def test_sticky_situation_summons_spider_on_opponent_spell():
@@ -534,6 +584,82 @@ def test_sanguine_depths_deals_1_and_buffs_attack():
 # ---------------------------------------------------------------------------
 # Neutrals
 # ---------------------------------------------------------------------------
+
+
+def test_insatiable_devourer_gains_target_stats():
+    """Devour an enemy minion: gain its atk AND max_health."""
+    game = prepare_game()
+    victim = game.player2.summon("CS2_179")  # Sen'jin 3/5
+    dev = game.player1.give("REV_017")  # base 4/4
+    assert dev.atk == 4 and dev.max_health == 4
+    dev.play(target=victim)
+    assert dev.atk == 4 + 3
+    assert dev.max_health == 4 + 5
+    assert victim.zone == Zone.GRAVEYARD
+
+
+def test_sinfueled_golem_gains_total_attack_of_infusers():
+    """Infused twin should gain stats equal to the sum of Attacks of
+    the dying minions that triggered the infuse."""
+    game = prepare_game()
+    sg = game.player1.give("REV_843")  # Infuse (3), base 7/2/2
+    threshold = sg.infuse_threshold
+    assert threshold == 3
+    # Kill three friendly minions of known atk: 2, 3, 4.
+    summons = [
+        game.player1.summon("CS2_172"),  # Bloodfen Raptor 3/2 — but
+        # we want known atk; just kill three minions with summed atk we can read.
+    ]
+    # Simpler: summon three Boulderfist Ogres (6/7) — 18 atk total.
+    summons = [game.player1.summon("CS2_200") for _ in range(3)]
+    total_atk = sum(m.atk for m in summons)
+    for m in summons:
+        m.destroy()
+    # The hand card got morphed at the 3rd death; find the twin.
+    twin = game.player1.hand[-1]
+    assert twin.id == "REV_843t"
+    assert twin.infused_by_atk_total == total_atk
+    # Summon the twin so the on-summon buff applies.
+    twin.play()
+    # Base 2/2 + total_atk on both stats.
+    assert twin.atk == 2 + total_atk
+    assert twin.max_health == 2 + total_atk
+
+
+def test_murloc_holmes_opens_a_clue_discover_over_opponent_hand():
+    """Battlecry opens one Discover presenting 3 opponent-hand cards;
+    picking one gives the chooser a copy. (Engine GenericChoice is
+    single-slot, so the printed "3 Clues" is approximated to one.)"""
+    game = prepare_game()
+    # Plant a known opponent hand so the pick pool is deterministic.
+    while game.player2.hand:
+        game.player2.hand[0].discard()
+    p2_cards = ["CS2_122", "CS2_222", "CS2_181"]
+    for cid in p2_cards:
+        game.player2.give(cid)
+    pre_hand = len(game.player1.hand)
+    game.player1.give("REV_022").play()
+    assert game.player1.choice is not None
+    assert len(game.player1.choice.cards) == 3
+    chosen_id = game.player1.choice.cards[0].id
+    assert chosen_id in p2_cards
+    game.player1.choice.choose(game.player1.choice.cards[0])
+    # +1 for Murloc Holmes itself going to PLAY (not hand) + 1 picked
+    # copy = +1 net hand.
+    assert len(game.player1.hand) == pre_hand + 1
+    assert game.player1.hand[-1].id == chosen_id
+
+
+def test_identity_theft_opens_discover_over_opponent_hand():
+    """Replaces the blind random-copy with a proper 3-pick Discover."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    while game.player2.hand:
+        game.player2.hand[0].discard()
+    for cid in ["CS2_122", "CS2_222", "CS2_181"]:
+        game.player2.give(cid)
+    game.player1.give("REV_253").play()
+    assert game.player1.choice is not None
+    assert len(game.player1.choice.cards) == 3
 
 
 def test_bog_beast_summons_muckmare_on_death():

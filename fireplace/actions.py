@@ -440,11 +440,30 @@ class Death(GameAction):
                     if threshold <= 0:
                         continue
                     hand_card.infuse_progress += 1
+                    # Castle Nathria — Sinfueled Golem reads this to gain
+                    # stats equal to the sum of Attacks of the minions
+                    # that Infused it. Bump in the same pass.
+                    hand_card.infused_by_atk_total += getattr(card, "atk", 0)
                     if (
                         hand_card.infuse_progress >= threshold
                         and hand_card.infused_card_id
                     ):
-                        hand_card.morph(hand_card.infused_card_id)
+                        # Stash the atk-total before morph; the new
+                        # card needs to read it (Sinfueled Golem).
+                        atk_total = hand_card.infused_by_atk_total
+                        infused_id = hand_card.infused_card_id
+                        hand_card.morph(infused_id)
+                        new_card = hand_card.morphed
+                        if new_card is not None:
+                            new_card.infused_by_atk_total = atk_total
+                            # Sinfueled Golem twin — apply the stats
+                            # buff so the gained atk/health are
+                            # visible while sitting in hand.
+                            if infused_id == "REV_843t":
+                                source.game.cheat_action(
+                                    new_card.controller,
+                                    [Buff(new_card, "REV_843e")],
+                                )
             self._trigger = False
             source.game.manager.game_action(self, source, card)
             self.broadcast(source, EventListener.ON, card)
@@ -1940,6 +1959,13 @@ class Reveal(TargetedAction):
             self.broadcast(source, EventListener.ON, target)
             target.triggered_secret = True
             target.zone = Zone.GRAVEYARD
+            # Castle Nathria — Halkias's soul: if this secret was
+            # marked, resummon Halkias when it triggers.
+            if getattr(target, "_resummons_halkias", False):
+                target._resummons_halkias = False
+                source.game.queue_actions(
+                    target.controller, [Summon(target.controller, "REV_829")]
+                )
         source.game.manager.targeted_action(self, source, target)
 
 

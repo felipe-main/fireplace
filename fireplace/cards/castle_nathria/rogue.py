@@ -86,13 +86,26 @@ class REV_826:
     combo = CastSpell(RANDOM(FRIENDLY_DECK + SECRET)) * 2
 
 
+class _HalkiasMarkSecret(TargetedAction):
+    """Mark a random friendly secret so it resummons Halkias when
+    triggered (handled in Reveal.do)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        secrets = list(target.secrets) if hasattr(target, "secrets") else []
+        if not secrets:
+            return
+        secret = source.game.random.choice(secrets)
+        secret._resummons_halkias = True
+
+
 class REV_829:
     """Halkias"""
 
     # Deathrattle: If you control a Secret, store Halkias' soul inside
-    # of it. It resummons Halkias when triggered. Approximation: if a
-    # secret is controlled, just resurrect Halkias immediately.
-    deathrattle = (Count(FRIENDLY + SECRET) >= 1) & Summon(CONTROLLER, "REV_829")
+    # of it. It resummons Halkias when triggered.
+    deathrattle = _HalkiasMarkSecret(CONTROLLER)
 
 
 class REV_940:

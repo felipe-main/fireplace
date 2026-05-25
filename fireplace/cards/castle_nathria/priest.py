@@ -67,8 +67,12 @@ class REV_253:
     """Identity Theft"""
 
     # Discover a copy of a card from your opponent's hand and deck.
-    # Approximation: copy a random card from opponent's hand.
-    play = Give(CONTROLLER, Copy(RANDOM(ENEMY_HAND)))
+    # Approximation: Discover over the opponent's hand only (3 random
+    # picks via the shared _DiscoverFromEnemyHand action defined in
+    # neutral.py).
+    from .neutral import _DiscoverFromEnemyHand as _DEH
+
+    play = _DEH(CONTROLLER)
 
 
 ##

@@ -230,12 +230,15 @@ def test_great_hall_sets_minion_to_3_3():
     game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
     loc = game.player1.give("REV_983")
     loc.play()
-    big = game.player1.summon("CS2_106")  # 5/2 Acidic Swamp Ooze... no, weapon
-    big = game.player1.summon("EX1_046")  # Dark Iron Dwarf 4/4
+    # Dark Iron Dwarf is 4/4 — both stats differ from 3 so the SET
+    # enchantment is visible on both axes.
+    big = game.player1.summon("EX1_046")
+    assert big.atk == 4 and big.max_health == 4
     game.end_turn(); game.end_turn()
     loc.use(target=big)
-    # Atk gets reset to 3 via SET enchantment.
     assert big.atk == 3
+    assert big.max_health == 3
+    assert big.health == 3
 
 
 # ---------------------------------------------------------------------------
@@ -246,10 +249,15 @@ def test_great_hall_sets_minion_to_3_3():
 def test_the_light_it_burns_deals_attack_damage_to_minion():
     """Deal damage to a minion equal to its Attack."""
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
-    target = game.player2.summon("CS2_122")  # Raid Leader 2/2
-    pre_atk = target.atk
+    # Sen'jin Shieldmasta — 3/5 — so the minion takes its 3 atk in
+    # damage but still has 2 HP left, letting us assert exact damage
+    # and that the minion is still in play (no death side-effects mask
+    # the assertion).
+    target = game.player2.summon("CS2_179")  # Sen'jin Shieldmasta 3/5
+    assert target.atk == 3 and target.max_health == 5
     game.player1.give("REV_249").play(target=target)
-    assert target.damage >= pre_atk or target.zone == Zone.GRAVEYARD
+    assert target.damage == 3
+    assert target.zone == Zone.PLAY
 
 
 def test_cathedral_of_atonement_buffs_and_draws():
@@ -337,16 +345,20 @@ def test_mischievous_imp_summons_a_copy_on_battlecry():
 
 def test_anima_extractor_buffs_random_hand_minion_on_friendly_damage():
     """When a friendly minion takes damage, give a random minion in hand
-    +1/+1."""
+    +1/+1. With only one minion in the controller's hand, RANDOM picks
+    it deterministically — assert the buff landed there."""
     game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
-    game.player1.summon("REV_332")  # Anima Extractor
-    held = game.player1.give("CS2_122")  # 2/2 Kobold Geomancer? actually Razorfen
-    pre_atk = held.atk
-    fr = game.player1.summon("CS2_122")
+    # Clear hand so `held` is the only minion in hand; only then does
+    # RANDOM(FRIENDLY_HAND + MINION) have a single candidate.
+    while game.player1.hand:
+        game.player1.hand[0].discard()
+    game.player1.summon("REV_332")  # Anima Extractor (source, in play)
+    held = game.player1.give("CS2_122")  # the only minion in hand
+    pre_atk, pre_health = held.atk, held.max_health
+    fr = game.player1.summon("CS2_122")  # friendly minion that takes damage
     game.player1.give(MOONFIRE).play(target=fr)
-    # Some friendly minion got +1/+1; the most likely is the one in hand.
-    # If the Anima Extractor itself absorbed the buff it's still a pass.
-    assert held.atk >= pre_atk or any(m.atk > 2 for m in game.player1.field)
+    assert held.atk == pre_atk + 1
+    assert held.max_health == pre_health + 1
 
 
 def test_sanguine_depths_deals_1_and_buffs_attack():
@@ -386,27 +398,27 @@ def test_maze_guide_summons_random_2_cost_minion():
 
 
 def test_sire_denathrius_scales_with_friendly_deaths():
-    """Sire Denathrius deals 5 + friendly_minions_died_this_game damage
-    split across enemies."""
+    """Sire Denathrius deals (5 + friendly_minions_died_this_game)
+    damage spread across enemy characters. The script fires N
+    Hit(RANDOM_ENEMY_CHARACTER, 1) actions, so the total damage
+    dealt must equal exactly that count."""
     game = prepare_game()
     for _ in range(4):
         m = game.player1.summon("CS2_122")
         m.destroy()
     assert game.player1.friendly_minions_died_this_game == 4
-    enemy = game.player2.hero
-    pre = enemy.health
-    enemy.max_health = 50
-    enemy.damage = 0
-    game.player2.summon("CS2_122")
-    sire = game.player1.summon("REV_906")
-    # Battlecry has already fired via summon — wait no, summon bypasses
-    # battlecry. Use give().play() so battlecry runs.
-    sire2 = game.player1.give("REV_906")
-    sire2.play()
-    # 5 base + 4 deaths = 9 damage spread across enemies.
-    # Hard to assert exactly; assert at least 5 damage hit somewhere.
-    total_damage = sum(c.damage for c in [game.player2.hero] + list(game.player2.field))
-    assert total_damage >= 5
+    # Bulk up the enemy hero so no ticks are absorbed by an early death.
+    enemy_hero = game.player2.hero
+    enemy_hero.max_health = 80
+    enemy_hero.damage = 0
+    # Sturdy enemy minion so it can't die mid-roll either.
+    enemy_minion = game.player2.summon("CS2_222")  # Stormwind Champion 6/6
+    enemy_minion.max_health = 80
+    enemy_minion.damage = 0
+    sire = game.player1.give("REV_906")
+    sire.play()
+    total_damage = enemy_hero.damage + sum(c.damage for c in game.player2.field)
+    assert total_damage == 5 + 4  # 5 base + 4 friendly deaths so far
 
 
 def test_prince_renathal_is_a_3_3_4_vanilla_minion():

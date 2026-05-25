@@ -65,9 +65,15 @@ class TSC_079:
 class TSC_952:
     """Holy Maki Roll"""
 
-    # Restore #2 Health. Repeatable this turn.
+    # Restore #2 Health. Repeatable this turn. Implemented Echo-style:
+    # after each cast, a fresh copy of the Roll lands in hand buffed
+    # with GIL_000 (Echo's "expires at end of turn" enchant), so the
+    # repeated copies disappear when the turn ends.
     requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
-    play = Heal(TARGET, 2), Give(CONTROLLER, "TSC_952")
+    play = (
+        Heal(TARGET, 2),
+        Give(CONTROLLER, Buff(Copy(SELF), "GIL_000")),
+    )
 
 
 ##
@@ -112,11 +118,13 @@ class TSC_074:
     """Kotori Lightblade"""
 
     # After you cast a Holy spell on this, cast it again on another
-    # friendly minion. Approximation: when any Holy spell targets SELF,
-    # re-cast it on a random other friendly minion (no targeting UI).
+    # friendly minion. The "another friendly" is player-chosen via a
+    # ChoiceTarget UI (auto-resolved by the test harness).
     events = Play(CONTROLLER, SPELL + HOLY_SPELL, SELF).after(
         Find(FRIENDLY_MINIONS - SELF)
-        & CastSpell(Play.CARD, RANDOM(FRIENDLY_MINIONS - SELF))
+        & ChoiceTarget(CONTROLLER, FRIENDLY_MINIONS - SELF).then(
+            CastSpell(Play.CARD, ChoiceTarget.CARD)
+        )
     )
 
 

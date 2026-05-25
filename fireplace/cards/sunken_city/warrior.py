@@ -62,9 +62,14 @@ class TSC_944:
     """The Fires of Zin-Azshari"""
 
     # Replace your deck with minions that cost (5) or more. They cost (5).
+    # We snapshot each new card's printed cost on a per-card attribute
+    # and apply a Cost = 5 buff (delta from printed cost).
     def play(self):
         controller = self.controller
-        # Drop the current deck, replace with random 5+ cost minions.
+        # Preserve cant_fatigue across the deck rewrite — some tests/runs
+        # set it to skip fatigue damage; replacing the deck shouldn't
+        # change that game-wide state.
+        cant_fatigue = controller.cant_fatigue
         target_size = len(controller.deck)
         for c in list(controller.deck):
             c.discard()
@@ -73,15 +78,15 @@ class TSC_944:
                 _pick_high_cost_minion(controller, self.game), self
             )
             new.zone = Zone.DECK
+        controller.cant_fatigue = cant_fatigue
         for c in controller.deck:
-            yield Buff(c, "TSC_944e")
+            base = max(0, c.data.cost or 0)
+            delta = 5 - base
+            yield Buff(c, "TSC_944e", cost=delta)
         return
 
 
-class TSC_944e:
-    # Approximation — set cost to 5 via a large negative offset clamp.
-    # The buff effectively wins out when the engine clamps to base 5.
-    tags = {GameTag.COST: -100}
+TSC_944e = buff()
 
 
 def _pick_high_cost_minion(controller, game):

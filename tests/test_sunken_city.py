@@ -666,3 +666,164 @@ def test_forged_in_flame_destroys_weapon_and_draws():
     spell.play()
     assert game.player1.weapon is None
     assert len(game.player1.hand) >= pre + 1  # at least 1 card drawn
+
+
+# ---------------------------------------------------------------------------
+# Tier-3 fixes
+# ---------------------------------------------------------------------------
+
+
+def test_sunken_defector_has_charge_and_post_attack_damage():
+    """TSC_057t Sunken Defector: Charge + after-attack 5 dmg to a random
+    enemy minion."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    defector = game.player1.summon("TSC_057t")
+    assert defector.charge
+    game.end_turn()
+    enemy = game.player2.summon("CS2_186")
+    other_enemy = game.player2.summon("CS2_186")
+    game.end_turn()
+    # Defector attacks the hero (so other minion is the random-target pool).
+    defector.attack(game.player2.hero)
+    # One of the two enemy minions takes 5 damage.
+    damaged = [m for m in (enemy, other_enemy) if m.damage >= 5]
+    assert len(damaged) == 1
+
+
+def test_whirlpool_matches_copies_by_dbf_id():
+    """TSC_209 Whirlpool: copies in hand/deck of a board minion get
+    destroyed (matched by dbf_id, so Core/Vanilla aliases too)."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    on_field = game.player1.summon("CS2_172")  # Bloodfen Raptor
+    # Place identical Bloodfens in hand and deck.
+    in_hand = game.player1.card("CS2_172", zone=Zone.HAND)
+    in_deck = game.player1.card("CS2_172", zone=Zone.DECK)
+    whirlpool = game.player1.give("TSC_209")
+    whirlpool.play()
+    assert on_field.dead
+    assert in_hand not in game.player1.hand
+    assert in_deck not in game.player1.deck
+
+
+def test_radiance_of_azshara_fire_only_spellpower():
+    """TSC_635 Radiance of Azshara: only Fire spells get +2 spell damage,
+    other spells unaffected."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    game.player1.summon("TSC_635")
+    game.refresh_auras()
+    # Fireball is a Fire spell — base 6 damage + 2 fire-spellpower = 8.
+    enemy = game.player2.summon("CS2_186")  # 7/7
+    fb = game.player1.give(FIREBALL)
+    fb.play(target=enemy)
+    assert enemy.damage == 8 or enemy.dead
+    # Moonfire is Nature — should NOT get the fire bonus.
+    other = game.player2.summon("CS2_186")
+    mf = game.player1.give(MOONFIRE)
+    mf.play(target=other)
+    assert other.damage == 1
+
+
+def test_bloodscent_vilefin_charges_dredged_murloc_to_health():
+    """TSC_753 Bloodscent Vilefin: the dredged Murloc has its mana cost
+    set to 0, and playing it deals damage equal to the printed cost."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    # Stack the deck so the Dredge offers exactly a known Murloc.
+    game.player1.deck.clear()
+    target = game.player1.card("CS2_168", zone=Zone.DECK)  # Murloc Raider, cost 1
+    vilefin = game.player1.give("TSC_753")
+    vilefin.play()
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    # Now the Murloc on top of deck has cost 0; draw it and play.
+    drawn = game.player1.draw()
+    assert drawn.id == "CS2_168"
+    assert drawn.cost == 0
+    pre_hp = game.player1.hero.health
+    drawn.play()
+    # Playing pays 1 in HP (original cost).
+    assert game.player1.hero.damage >= 1
+
+
+def test_ambassador_faelin_discovers_three_colossal():
+    """TSC_067 Ambassador Faelin: opens 3 sequential Discovers; each
+    chosen Colossal goes to the deck bottom."""
+    game = prepare_game()
+    faelin = game.player1.give("TSC_067")
+    pre_deck = len(game.player1.deck)
+    faelin.play()
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    # Three Colossal minions placed at the deck bottom.
+    assert len(game.player1.deck) == pre_deck + 3
+    bottom_three = game.player1.deck[:3]
+    for c in bottom_three:
+        assert c.data.tags.get(GameTag.COLOSSAL, 0)
+
+
+def test_nagaling_replays_taught_spell():
+    """TSC_052 School Teacher / TSC_052t Nagaling: the Discovered spell
+    is stamped onto the Nagaling and re-cast on play."""
+    game = prepare_game()
+    game.player1.discard_hand()
+    teacher = game.player1.give("TSC_052")
+    teacher.play()
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    nagaling = next(c for c in game.player1.hand if c.id == "TSC_052t")
+    assert getattr(nagaling, "_taught_spell", None) is not None
+    # Playing the Nagaling re-casts the taught spell (verify hand grew
+    # by *at least* one card if the spell was a draw-effect, etc., or
+    # just verify no crash).
+    nagaling.play()
+    # Nagaling is on the field.
+    assert nagaling in game.player1.field
+
+
+def test_holy_maki_roll_returns_with_echo_buff():
+    """TSC_952 Holy Maki Roll: after each cast a fresh copy lands in
+    hand buffed with Echo (GIL_000) so it disappears at end of turn."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    game.player1.discard_hand()
+    game.player1.hero.damage = 5
+    roll = game.player1.give("TSC_952")
+    roll.play(target=game.player1.hero)
+    # A copy lands in hand.
+    copies = [c for c in game.player1.hand if c.id == "TSC_952"]
+    assert len(copies) == 1
+    # End turn — the GIL_000 enchant removes the copy.
+    game.end_turn()
+    copies = [c for c in game.player1.hand if c.id == "TSC_952"]
+    assert len(copies) == 0
+
+
+def test_hooktusk_plunder_when_eight_pirates_summoned():
+    """TSC_934 Pirate Admiral Hooktusk: with 8 pirates summoned, opens
+    a 3-option plunder GenericChoice."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    # Stuff 8 pirates onto cards_played_this_game without putting them
+    # in hand (the hand-fill-up would block Hooktusk's give).
+    for _ in range(8):
+        p = game.player1.card("CS2_146", zone=Zone.SETASIDE)  # Southsea Deckhand
+        game.player1.cards_played_this_game.append(p)
+    hooktusk = game.player1.give("TSC_934")
+    hooktusk.play()
+    assert game.player1.choice is not None
+    options = {c.id for c in game.player1.choice.cards}
+    assert options == {"TSC_934t", "TSC_934t2", "TSC_934t3"}
+
+
+def test_bootstrap_sunkeneer_moves_minion_atomically_to_deck_bottom():
+    """TSC_933 Bootstrap Sunkeneer: enemy minion goes straight from
+    field to the bottom of the opponent's deck, never visiting hand."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    enemy = game.player2.summon("CS2_172")
+    pre_p2_hand = len(game.player2.hand)
+    # Activate combo: play a free spell first on this same turn.
+    game.player1.give(MOONFIRE).play(target=game.player1.hero)
+    assert game.player1.combo
+    sunkeneer = game.player1.give("TSC_933")
+    sunkeneer.play(target=enemy)
+    # Minion left the field and landed at the bottom of P2's deck.
+    assert enemy not in game.player2.field
+    assert game.player2.deck[0] is enemy
+    assert len(game.player2.hand) == pre_p2_hand

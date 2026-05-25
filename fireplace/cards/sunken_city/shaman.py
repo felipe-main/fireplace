@@ -90,12 +90,12 @@ class TSC_635:
     """Radiance of Azshara"""
 
     # Fire Spell Damage +2. Your Nature spells cost (1) less. After you
-    # cast a Frost spell, gain 3 Armor. Spell-school-specific spellpower
-    # isn't in the engine; we approximate by giving the hero generic
-    # Spellpower +2 (slight over-buff for non-fire spells) and a -1 buff
-    # on Nature spells in hand.
+    # cast a Frost spell, gain 3 Armor. The engine already aggregates
+    # per-school spellpower (player.get_spell_damage), so we set
+    # SPELLPOWER_FIRE on the friendly hero — no over-buff on other
+    # schools.
     update = (
-        Refresh(FRIENDLY_HERO, {GameTag.SPELLPOWER: 2}),
+        Refresh(FRIENDLY_HERO, {GameTag.SPELLPOWER_FIRE: 2}),
         Refresh(FRIENDLY_HAND + SPELL + NATURE_SPELL, buff="TSC_635e"),
     )
     events = Play(CONTROLLER, SPELL + FROST_SPELL).after(GainArmor(FRIENDLY_HERO, 3))

@@ -9,7 +9,8 @@ class TSC_023:
     """Barbed Nets"""
 
     # Deal $2 damage to an enemy. If you played a Naga while holding this,
-    # choose a second target.
+    # choose a second target via a proper ChoiceTarget UI (auto-resolved
+    # by the test harness; equivalent to a player pick in real play).
     requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0, PlayReq.REQ_ENEMY_TARGET: 0}
 
     def play(self):
@@ -18,18 +19,9 @@ class TSC_023:
             return
         yield Hit(target, 2)
         if getattr(self, "nagas_played_while_holding", 0) > 0:
-            # Auto-pick a second random enemy target as approximation of
-            # the "choose a second target" UI.
-            enemies = [
-                e
-                for e in self.controller.opponent.field + [self.controller.opponent.hero]
-                if e is not target and not e.dead
-            ]
-            if enemies:
-                import random as _random
-
-                second = _random.choice(enemies)
-                yield Hit(second, 2)
+            yield Find(ENEMY_CHARACTERS - target) & ChoiceTarget(
+                CONTROLLER, ENEMY_CHARACTERS - target
+            ).then(Hit(ChoiceTarget.CARD, 2))
 
 
 class TSC_072:

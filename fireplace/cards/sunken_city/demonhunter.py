@@ -53,6 +53,12 @@ class TSC_057:
 class TSC_057t:
     """Sunken Defector"""
 
+    # Charge + after this attacks, deal 5 damage to a random enemy minion.
+    tags = {GameTag.CHARGE: True}
+    events = Attack(SELF).after(
+        Find(ENEMY_MINIONS) & Hit(RANDOM(ENEMY_MINIONS), 5)
+    )
+
 
 class TSC_217:
     """Wayward Sage"""

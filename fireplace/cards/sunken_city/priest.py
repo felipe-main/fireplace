@@ -9,17 +9,18 @@ class TSC_209:
     """Whirlpool"""
 
     # Destroy all minions and all copies of them (wherever they are).
-    # Approximation: destroy all minions on the field, and also discard
-    # any copies in hands/decks (silenced + destroyed).
+    # Match copies by both card id and dbf_id so that Core/Vanilla
+    # aliases of the same minion (which share dbf_id) also get hit.
     def play(self):
         all_field = list(self.game.player1.field) + list(self.game.player2.field)
         ids = {m.id for m in all_field}
+        dbf_ids = {m.data.dbf_id for m in all_field}
         for m in all_field:
             yield Destroy(m)
         for player in (self.game.player1, self.game.player2):
             for zone_list in (player.hand, player.deck):
                 for c in list(zone_list):
-                    if c.id in ids:
+                    if c.id in ids or c.data.dbf_id in dbf_ids:
                         c.discard()
 
 

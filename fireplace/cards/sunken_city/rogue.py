@@ -68,26 +68,48 @@ class TSC_085:
     )
 
 
+class _BootstrapToBottom(TargetedAction):
+    """Atomic field → bottom-of-deck move. Bounce-then-PutOnBottom would
+    visit Zone.HAND in the middle; this skips straight to the deck."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        owner = target.controller
+        if len(owner.deck) >= owner.max_deck_size:
+            source.game.queue_actions(source, [Destroy(target)])
+            return
+        # Let the zone setter handle the field → deck plumbing. The
+        # setter appends to deck; we then pin to position 0.
+        target.zone = Zone.DECK
+        if target in owner.deck:
+            owner.deck.remove(target)
+        owner.deck.insert(0, target)
+
+
 class TSC_933:
     """Bootstrap Sunkeneer"""
 
     # Combo: Put an enemy minion on the bottom of your opponent's deck.
+    # Atomic move (field → deck-bottom), bypassing the hand zone that a
+    # Bounce-then-PutOnBottom would visit.
     requirements = {
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_TARGET_FOR_COMBO: 0,
         PlayReq.REQ_ENEMY_TARGET: 0,
     }
-    combo = Bounce(TARGET).then(PutOnBottom(OPPONENT, TARGET))
+    combo = _BootstrapToBottom(TARGET)
 
 
 class TSC_934:
     """Pirate Admiral Hooktusk"""
 
     # Battlecry: If you've summoned 8 other Pirates this game, plunder
-    # the enemy! "Plunder" = randomly trigger from a pool. Approximation:
-    # summon a 5/5 Pirate and steal an enemy minion as proxy effects.
+    # the enemy! The three plunder options are real tokens in data:
+    # TSC_934t (Take their Supplies — 5 cards from deck), TSC_934t2
+    # (Take their Gold — 2 from hand), TSC_934t3 (Take their Ship —
+    # steal highest-attack minion). We Discover one of the three.
     def play(self):
-        # Best-effort gate via cards played this game containing pirates.
         controller = self.controller
         pirate_count = sum(
             1
@@ -96,11 +118,54 @@ class TSC_934:
         )
         if pirate_count < 8:
             return
-        # "Plunder": destroy random enemy minion + draw 2 + 5 dmg to hero.
-        if controller.opponent.field:
-            yield Destroy(RANDOM(ENEMY_MINIONS))
-        yield Draw(CONTROLLER) * 2
-        yield Hit(ENEMY_HERO, 5)
+        yield GenericChoice(
+            controller, ["TSC_934t", "TSC_934t2", "TSC_934t3"]
+        )
+
+
+class TSC_934t:
+    """Take their Supplies!"""
+
+    # Take 5 cards from your opponent's deck.
+    def play(self):
+        opponent = self.controller.opponent
+        for _ in range(5):
+            if not opponent.deck:
+                break
+            card = opponent.deck[-1]
+            yield Give(CONTROLLER, card.id)
+            card.discard()
+
+
+class TSC_934t2:
+    """Take their Gold!"""
+
+    # Take 2 cards from your opponent's hand.
+    def play(self):
+        opponent = self.controller.opponent
+        import random as _random
+
+        candidates = [c for c in opponent.hand]
+        for _ in range(2):
+            if not candidates:
+                break
+            picked = _random.choice(candidates)
+            candidates.remove(picked)
+            yield Give(CONTROLLER, picked.id)
+            picked.discard()
+
+
+class TSC_934t3:
+    """Take their Ship!"""
+
+    # Take control of your opponent's highest-Attack minion.
+    def play(self):
+        opponent = self.controller.opponent
+        if not opponent.field:
+            return
+        # Pick the highest-attack enemy minion.
+        highest = max(opponent.field, key=lambda m: m.atk)
+        yield Steal(highest)
 
 
 class TSC_936:

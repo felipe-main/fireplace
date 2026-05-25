@@ -94,15 +94,55 @@ class TSC_614:
 TSC_614e = buff(atk=1, health=1)
 
 
+class _BloodscentMark(TargetedAction):
+    """Snapshot the target's printed cost onto a per-card attribute and
+    buff its cost to 0. When the card is played, the controller pays
+    the snapshot HP instead of mana — handled by a Play hook on the
+    Bloodscent Vilefin card class via the engine's own_card_play
+    listener (registered on the *controller* so it survives the card
+    leaving hand)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target._bloodscent_hp_cost = max(0, target.cost)
+        target._bloodscent_marked = True
+        source.game.queue_actions(source, [Buff(target, "TSC_753e")])
+
+
+class _BloodscentPayHP(TargetedAction):
+    """Damage hook fired when any minion is played: if the played card
+    was previously marked by a Bloodscent Vilefin Dredge, pay its
+    snapshot HP cost to the controller's hero."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if not getattr(target, "_bloodscent_marked", False):
+            return
+        cost = getattr(target, "_bloodscent_hp_cost", 0)
+        if cost <= 0:
+            return
+        # Clear the mark so the hit doesn't repeat (e.g. on resummon).
+        target._bloodscent_marked = False
+        source.game.queue_actions(
+            source, [Hit(target.controller.hero, cost)]
+        )
+
+
 class TSC_753:
     """Bloodscent Vilefin"""
 
     # Battlecry: Dredge. If it's a Murloc, change its Cost to Health
-    # instead of Mana. Approximation: set its cost to 0.
+    # instead of Mana.
     play = Dredge(CONTROLLER).then(
         (Attr(Dredge.CARD, GameTag.CARDRACE) == int(Race.MURLOC))
-        & Buff(Dredge.CARD, "TSC_753e")
+        & _BloodscentMark(Dredge.CARD)
     )
+
+    # Whenever any minion is played by the controller, the HP-cost hook
+    # checks if it was a Bloodscent-marked Murloc and pays the HP.
+    events = Play(CONTROLLER, MINION).after(_BloodscentPayHP(Play.CARD))
 
 
 class TSC_753e:
@@ -165,31 +205,50 @@ class TSC_962:
     """Gigafin"""
 
     # Colossal +1. Battlecry: Devour all enemy minions. Deathrattle: Spit
-    # them back out. Implemented as: BC bounces enemy minions to a shadow
-    # zone (we use Destroy + remember on a parent attribute), DR resummons
-    # them on the opponent's side.
+    # them back out. We move the devoured minions to SETASIDE (preserving
+    # their full state — buffs, deathrattles, current health, summon
+    # order) and resummon those exact entities on death, so they come
+    # back with everything intact.
     def play(self):
-        target = self.controller.opponent.field[:]
-        self._devoured_ids = [m.id for m in target]
-        for m in target:
-            yield Destroy(m)
+        targets = self.controller.opponent.field[:]
+        self._devoured = targets
+        for m in targets:
+            m.zone = Zone.SETASIDE
 
     def deathrattle(self):
-        for cid in getattr(self, "_devoured_ids", []):
-            yield Summon(OPPONENT, cid)
+        devoured = getattr(self, "_devoured", None) or []
+        for m in devoured:
+            if m.zone == Zone.SETASIDE:
+                yield Summon(OPPONENT, m)
+        self._devoured = []
 
 
 class TSC_962t:
     """Gigafin's Maw"""
 
     # Taunt. Deathrattle: Permanently destroy all minions inside Gigafin.
-    # Approximation: clear the parent's devoured list (so they don't come
-    # back when the parent dies).
+    # When the Maw dies first, the devoured minions are sent to the
+    # graveyard rather than being returned by the parent's deathrattle.
     def deathrattle(self):
+        # The Maw belongs to Gigafin's owner; find the parent on the
+        # same side of the field (it may already be in graveyard, in
+        # which case the devoured set will still be cleared correctly).
         parent = next(
-            (m for m in self.controller.field if m.id == "TSC_962"),
+            (
+                m
+                for m in self.controller.field
+                + list(self.controller.graveyard)
+                if m.id == "TSC_962"
+            ),
             None,
         )
-        if parent is not None:
-            parent._devoured_ids = []
-        return ()
+        if parent is None:
+            return ()
+        devoured = getattr(parent, "_devoured", None) or []
+        actions = []
+        for m in devoured:
+            if m.zone == Zone.SETASIDE:
+                # Send to graveyard directly so they never resurrect.
+                m.zone = Zone.GRAVEYARD
+        parent._devoured = []
+        return actions

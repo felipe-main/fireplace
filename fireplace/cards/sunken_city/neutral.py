@@ -360,26 +360,47 @@ TSC_928e = buff(atk=1, health=1)
 # Discover / Scaffold
 
 
+class _SchoolTeacherTeachNagaling(TargetedAction):
+    """After School Teacher's Discover, stamp the chosen spell's id onto
+    the Nagaling that's now in hand (added by the prior Give) so the
+    Nagaling can re-cast that spell as its battlecry."""
+
+    TARGET = ActionArg()  # the chosen spell card
+
+    def do(self, source, target):
+        # Find the most recent Nagaling in the controller's hand without
+        # a `_taught_spell` yet — that's the one we just added.
+        owner = source.controller
+        for c in reversed(owner.hand):
+            if c.id == "TSC_052t" and not getattr(c, "_taught_spell", None):
+                c._taught_spell = target.id
+                break
+
+
 class TSC_052:
     """School Teacher"""
 
     # Battlecry: Add a 1/1 Nagaling to your hand. Discover a spell that
-    # costs (3) or less to teach it.
+    # costs (3) or less to teach it. The discovered spell-id is stamped
+    # onto the Nagaling so its own battlecry can cast that spell.
     play = (
         Give(CONTROLLER, "TSC_052t"),
-        DISCOVER(
-            RandomSpell(
-                custom_filter=lambda c: c.cost is not None and c.cost <= 3
-            )
-        ),
+        Discover(
+            CONTROLLER,
+            RandomSpell(custom_filter=lambda c: c.cost is not None and c.cost <= 3),
+        ).then(_SchoolTeacherTeachNagaling(Discover.CARD)),
     )
 
 
 class TSC_052t:
     """Nagaling"""
 
-    # Battlecry: Cast {0}. Approximation: vanilla 1/1 with no battlecry.
-    pass
+    # Battlecry: Cast the spell that taught me. Stored on the instance
+    # as `_taught_spell` (set by School Teacher's discover).
+    def play(self):
+        taught = getattr(self, "_taught_spell", None)
+        if taught:
+            yield CastSpell(taught)
 
 
 class TSC_069:
@@ -415,43 +436,125 @@ class TSC_069:
         )
 
 
+def _all_colossal_ids():
+    from ..utils import db
+
+    return [
+        cid
+        for cid, c in db.items()
+        if c.collectible and c.tags.get(GameTag.COLOSSAL, 0)
+    ]
+
+
+class _FaelinChoice(GenericChoice):
+    """GenericChoice variant that routes the chosen card straight to
+    the BOTTOM of the controller's deck (and discards the others) rather
+    than placing it in hand."""
+
+    def choose(self, card):
+        # Parent Choice.choose fires `.then()` callbacks; do that first.
+        super(GenericChoice, self).choose(card)
+        controller = self.player
+        for _card in self.cards:
+            if _card is card:
+                if len(controller.deck) >= controller.max_deck_size:
+                    _card.discard()
+                    continue
+                _card.zone = Zone.DECK
+                if _card in controller.deck:
+                    controller.deck.remove(_card)
+                controller.deck.insert(0, _card)
+            else:
+                _card.discard()
+
+
+class _FaelinOpenNextChoice(TargetedAction):
+    """After one Faelin _FaelinChoice resolves, open the next one.
+    Three choices in total; the counter lives on the source Faelin card."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        controller = source.controller
+        count = getattr(source, "_faelin_choices_left", 3) - 1
+        source._faelin_choices_left = count
+        if count <= 0:
+            return
+        import random as _random
+
+        colossal_pool = _all_colossal_ids()
+        if len(colossal_pool) < 3:
+            return
+        picks = _random.sample(colossal_pool, k=3)
+        source.game.queue_actions(
+            source,
+            [
+                _FaelinChoice(controller, picks).then(
+                    _FaelinOpenNextChoice(SELF)
+                )
+            ],
+        )
+
+
 class TSC_067:
     """Ambassador Faelin"""
 
     # Battlecry: Put 3 Colossal minions on the bottom of your deck.
+    # Custom _FaelinChoice sends the picked card to the deck bottom
+    # (instead of GenericChoice's default move-to-hand). Each pick
+    # chains the next one via _FaelinOpenNextChoice so the three
+    # choices fire sequentially.
     def play(self):
-        from ..utils import db
-
-        colossal_ids = [
-            cid
-            for cid, c in db.items()
-            if c.collectible and c.tags.get(GameTag.COLOSSAL, 0)
-        ]
         import random as _random
 
-        for cid in _random.sample(colossal_ids, k=min(3, len(colossal_ids))):
-            yield PutOnBottom(CONTROLLER, cid)
+        controller = self.controller
+        colossal_pool = _all_colossal_ids()
+        if len(colossal_pool) < 3:
+            return
+        self._faelin_choices_left = 3
+        picks = _random.sample(colossal_pool, k=3)
+        yield _FaelinChoice(controller, picks).then(
+            _FaelinOpenNextChoice(SELF)
+        )
 
 
 class TSC_908:
     """Sir Finley, Sea Guide"""
 
-    # Battlecry: Swap your hand with the bottom of your deck.
+    # Battlecry: Swap your hand with the bottom of your deck. Real HS
+    # swaps the entire hand with the equivalent-sized chunk at the deck's
+    # bottom. Edge cases:
+    #   - Hand smaller than deck: take only `len(hand)` from bottom.
+    #   - Hand larger than deck: extra hand cards stay in hand (HS
+    #     overflow rule). We instead bottom them since our PutOnBottom
+    #     respects deck max.
+    #   - Hand full (max size): all swaps still happen — Finley is the
+    #     one card that just left hand, so there's at least one slot.
     def play(self):
         controller = self.controller
+        # Snapshot hand cards (excluding Finley, who has already left it).
         hand_cards = [c for c in controller.hand if c is not self]
-        # Number to swap from the bottom is min(len(hand), len(deck)).
-        n = min(len(hand_cards), len(controller.deck))
-        if n == 0:
+        deck_size = len(controller.deck)
+        if not hand_cards or deck_size == 0:
             return
-        bottom = list(controller.deck[:n])
-        # Move bottom n to hand, and hand cards to bottom of deck.
-        for c in bottom:
-            c.zone = Zone.HAND
-        for c in hand_cards[:n]:
+        n = min(len(hand_cards), deck_size)
+        bottom_n = list(controller.deck[:n])
+        hand_n = hand_cards[:n]
+        # First, lift bottom-of-deck into a side stash so the indices
+        # don't collide while we mutate the deck.
+        for c in bottom_n:
+            c.zone = Zone.SETASIDE
+        for c in hand_n:
+            c.zone = Zone.SETASIDE
+        # Place hand cards at the bottom of the deck.
+        for c in hand_n:
             c.zone = Zone.DECK
-            controller.deck.remove(c)
+            if c in controller.deck:
+                controller.deck.remove(c)
             controller.deck.insert(0, c)
+        # And the lifted deck-bottom cards into hand.
+        for c in bottom_n:
+            c.zone = Zone.HAND
 
 
 ##

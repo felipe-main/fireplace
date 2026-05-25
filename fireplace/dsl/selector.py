@@ -647,6 +647,19 @@ TREANT = FuncSelector(
         e for e in entities if getattr(e, "name_enUS", "").endswith("Treant")
     ]
 )  # Race.`TREANT` is not defined yet.
+# Imp is a Demon sub-type without its own GameTag.Race value. Match by
+# name containing the whole word "Imp" — excludes "Imprisoned" etc.
+import re as _re
+
+_IMP_RE = _re.compile(r"\bImp\b")
+IMP = FuncSelector(
+    lambda entities, src: [
+        e
+        for e in entities
+        if Race.DEMON in getattr(e, "races", [])
+        and _IMP_RE.search(getattr(e, "name_enUS", ""))
+    ]
+)
 
 ARCANE = EnumSelector(SpellSchool.ARCANE)
 FIRE = EnumSelector(SpellSchool.FIRE)

@@ -430,6 +430,14 @@ class Player(Entity, TargetableByAuras):
         else:
             self.summon(self.starting_hero)
         # self.game.trigger(self, [Summon(self, self.starting_hero)], event_args=None)
+        # Castle Nathria — Prince Renathal: "Start of Game: Your deck size
+        # and starting Health are 40." The deck-size cap is a deckbuilding
+        # constraint we can't retro-apply, but the +10 starting HP and the
+        # max_deck_size bump are observable in-game.
+        if "REV_018" in self.starting_deck:
+            self.max_deck_size = 40
+            self.hero.max_health = 40
+            self.hero.damage = 0
         for id in self.starting_deck:
             card = self.card(id, zone=Zone.DECK)
             if self.is_standard and not card.is_standard:

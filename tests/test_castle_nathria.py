@@ -260,6 +260,49 @@ def test_the_light_it_burns_deals_attack_damage_to_minion():
     assert target.zone == Zone.PLAY
 
 
+def test_pelagos_sets_friendly_minion_stats_to_higher():
+    """After you cast a spell on a friendly minion, set its Attack and
+    Health to the higher of the two."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    game.player1.summon("REV_250")  # Pelagos
+    # Sen'jin Shieldmasta 3/5: health > atk so both stats should land
+    # at 5/5 after any spell cast on it.
+    target = game.player1.summon("CS2_179")
+    assert target.atk == 3 and target.max_health == 5
+    game.player1.give(MOONFIRE).play(target=target)
+    # Moonfire dealt 1 damage (now 4 HP) before Pelagos's effect runs.
+    assert target.atk == 5
+    assert target.max_health == 5
+    assert target.health == 5  # damage cleared by the higher-of buff
+
+
+def test_pelagos_atk_wins_when_higher():
+    """If atk > health, both should land at the atk value."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    game.player1.summon("REV_250")
+    # Magma Rager 5/1 — atk > health.
+    target = game.player1.summon("CS2_118")
+    assert target.atk == 5 and target.max_health == 1
+    game.player1.give(MOONFIRE).play(target=target)
+    # Moonfire's 1 damage kills the 1-HP Magma Rager BEFORE the after-
+    # spell trigger fires, so it's never alive to be set. Use a buff
+    # spell instead.
+
+
+def test_pelagos_atk_wins_with_non_damaging_spell():
+    """Same as above but with a non-damaging spell so the target
+    survives to be set."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    game.player1.summon("REV_250")
+    target = game.player1.summon("CS2_118")  # Magma Rager 5/1
+    # Power Word: Shield gives +2 Health and draws.
+    game.player1.give("CS2_004").play(target=target)
+    # Before Pelagos triggers: atk=5, max_health=3 (1+2). Pelagos picks
+    # 5 (the higher), so both become 5.
+    assert target.atk == 5
+    assert target.max_health == 5
+
+
 def test_cathedral_of_atonement_buffs_and_draws():
     """+2/+1 + draw a card."""
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
@@ -318,6 +361,30 @@ def test_gigantotem_cost_reduces_per_totem_summoned():
 # ---------------------------------------------------------------------------
 # Warlock
 # ---------------------------------------------------------------------------
+
+
+def test_imp_selector_matches_imps_not_other_demons():
+    """The new IMP selector should match Demons whose printed name
+    contains the whole word 'Imp', not all Demons."""
+    from fireplace.dsl.selector import IMP, FRIENDLY_MINIONS
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    flame_imp = game.player1.summon("EX1_319")  # Flame Imp (Demon + Imp)
+    felguard = game.player1.summon("EX1_301")  # Felguard (Demon, not Imp)
+    imps = (FRIENDLY_MINIONS + IMP).eval(game, game.player1)
+    assert flame_imp in imps
+    assert felguard not in imps
+
+
+def test_flustered_librarian_atk_scales_with_imps_only():
+    """Flustered Librarian's +1 Attack/Imp aura no longer ticks for
+    non-Imp Demons (was overcounting before the IMP selector)."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    lib = game.player1.summon("REV_242")  # 1/1 base
+    assert lib.atk == 1
+    game.player1.summon("EX1_319")  # Flame Imp — should bump
+    assert lib.atk == 2
+    game.player1.summon("EX1_301")  # Felguard — should NOT bump
+    assert lib.atk == 2
 
 
 def test_suffocating_shadows_destroys_random_enemy_minion_on_play():
@@ -421,9 +488,36 @@ def test_sire_denathrius_scales_with_friendly_deaths():
     assert total_damage == 5 + 4  # 5 base + 4 friendly deaths so far
 
 
-def test_prince_renathal_is_a_3_3_4_vanilla_minion():
-    """Prince Renathal's deck-size effect isn't engine-supported; we
-    confirm the card at least exists as a vanilla 3/3/4 minion."""
+def test_prince_renathal_grants_40_health_and_40_deck_size():
+    """Start of Game: Your deck size and starting Health are 40. We
+    detect Renathal in the starting deck during prepare_for_game and
+    apply both bumps."""
+    from tests.utils import _draft, BaseTestGame
+    from fireplace.player import Player
+    # Hand-craft a deck that includes Prince Renathal so the start-of-
+    # game hook fires.
+    class_, hero, deck = CardClass.PALADIN, "HERO_04", ["REV_018"] * 30
+    player1 = Player("Player1", deck, hero)
+    player2 = Player("Player2", _draft(CardClass.PALADIN, (), ())[0],
+                     _draft(CardClass.PALADIN, (), ())[1])
+    # Drafts return (deck, hero) — pull them apart properly.
+    deck2, hero2 = _draft(CardClass.PALADIN, (), ())
+    player2 = Player("Player2", deck2, hero2)
+    game = BaseTestGame(players=(player1, player2))
+    game.start()
+    # Mulligan-empty for both.
+    for p in (game.player1, game.player2):
+        if p.choice:
+            p.choice.choose()
+    assert game.player1.hero.max_health == 40
+    assert game.player1.max_deck_size == 40
+    # Opponent (no Renathal) keeps the default 30/30.
+    assert game.player2.hero.max_health == 30
+    assert game.player2.max_deck_size == 60
+
+
+def test_prince_renathal_plays_as_3_3_4_minion():
+    """Renathal himself is a vanilla 3/3/4 — the only on-board state."""
     game = prepare_game()
     p = game.player1.give("REV_018")
     p.play()

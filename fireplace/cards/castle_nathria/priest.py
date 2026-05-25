@@ -127,9 +127,7 @@ class REV_250:
     """Pelagos"""
 
     # After you cast a spell on a friendly minion, set its Attack and
-    # Health to the higher of the two. Engine doesn't have a max() of
-    # two LazyNums; approximation: copy ATK→max_health when target has
-    # ATK > HEALTH, otherwise buff ATK by health-atk so it matches.
+    # Health to the higher of the two.
     events = OWN_SPELL_PLAY.after(
         (Find(Play.TARGET + MINION + FRIENDLY))
         & Buff(Play.TARGET, "REV_250e")
@@ -138,13 +136,22 @@ class REV_250:
 
 @custom_card
 class REV_250e:
-    # Approximation buff — adds +1/+1 each spell instead of equalizing.
+    # Sets atk and max_health to the higher of the target's two stats
+    # at apply-time. Mirrors CS1_129e Inner Fire's apply-and-stash —
+    # the lambdas override (not add) the underlying stat.
     tags = {
         GameTag.CARDNAME: "Pelagos Spell Buff",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
-        GameTag.ATK: 1,
-        GameTag.HEALTH: 1,
     }
+    atk = lambda self, i: self._higher
+    max_health = lambda self, i: self._higher
+
+    def apply(self, target):
+        self._higher = max(target.atk, target.max_health)
+        # If health is being raised, clear damage so the new max_health
+        # equals the new current health.
+        if self._higher > target.max_health:
+            target.damage = 0
 
 
 ##

@@ -1,11 +1,6 @@
 from ..utils import *
 
 
-# Castle Nathria — "Imp" is a Demon subtype; we approximate "Imp" with
-# any Demon since the engine has no IMP race selector.
-IMP = DEMON
-
-
 ##
 # Spells
 

@@ -84,13 +84,11 @@ class TSC_658:
     """Hedra the Heretic"""
 
     # Battlecry: For each spell you've cast while holding this, summon a
-    # minion of that spell's Cost. We track the count; the exact spell
-    # costs aren't kept, so we substitute random minions at the average
-    # cost. Approximation noted.
+    # minion of that spell's Cost.
     def play(self):
-        n = getattr(self, "spells_cast_while_holding", 0)
-        for _ in range(n):
-            yield Summon(CONTROLLER, RandomMinion(cost=3))
+        history = getattr(self, "spells_history_while_holding", [])
+        for _card_id, cost in history:
+            yield Summon(CONTROLLER, RandomMinion(cost=cost))
 
 
 ##

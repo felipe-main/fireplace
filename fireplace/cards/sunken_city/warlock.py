@@ -116,30 +116,48 @@ class TSC_955:
     play = Shuffle(OPPONENT, "TSC_955t")
 
 
-class TSC_955t:
-    """Abyssal Curse"""
+class _AbyssalCurseTick(TargetedAction):
+    """A single Abyssal Curse tick: bumps the controller's curse counter,
+    deals damage equal to the new total, heals an opposing Za'qul for
+    the same amount, then destroys SELF. Implemented as a custom action
+    so the side-effects on the controller happen exactly once per fire —
+    the engine's trigger_event calls callable lambdas twice (the body
+    runs once, then runs again to gather iterable actions), so a plain
+    Python helper would over-count."""
 
-    # Casts When Drawn: At the start of your turn, take @ damage. Each
-    # Curse is worse than the last. Simplified: deal scaling damage based
-    # on number of Curses drawn this game.
-    def play(self):
-        # Count past curses to scale damage. Use the controller's draw count
-        # heuristic of "abyssal_curses_drawn".
-        controller = self.controller
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        controller = target.controller
         controller.abyssal_curses_drawn = (
             getattr(controller, "abyssal_curses_drawn", 0) + 1
         )
-        yield Hit(FRIENDLY_HERO, controller.abyssal_curses_drawn)
+        amount = controller.abyssal_curses_drawn
+        source.game.queue_actions(target, [Hit(controller.hero, amount)])
+        caster = controller.opponent
+        if any(m.id == "TSC_959" for m in caster.field):
+            source.game.queue_actions(target, [Heal(caster.hero, amount)])
+        source.game.queue_actions(target, [Destroy(target)])
+
+
+class TSC_955t:
+    """Abyssal Curse"""
+
+    # At the start of your turn, take @ damage. Each Curse is worse than
+    # the last. The card sits in deck/hand and ticks once per own turn.
+    class Hand:
+        events = OWN_TURN_BEGIN.on(_AbyssalCurseTick(SELF))
+
+    class Deck:
+        events = OWN_TURN_BEGIN.on(_AbyssalCurseTick(SELF))
 
 
 class TSC_959:
     """Za'qul"""
 
     # Your Abyssal Curses heal you for the damage they deal. Battlecry:
-    # Give your opponent an Abyssal Curse. Heal-side approximated by a
-    # generic heal-on-curse-fire hook (would require Za'qul tracking).
-    # We just do the Battlecry portion correctly; the healing side is a
-    # near-no-op until further engine work.
+    # Give your opponent an Abyssal Curse. (The healing side lives on
+    # the Curse itself — see TSC_955t's play action above.)
     play = Shuffle(OPPONENT, "TSC_955t")
 
 

@@ -87,7 +87,11 @@ class TSC_702:
         before = len(controller.hand)
         yield Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION))
         yield Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION))
-        drawn = [c for c in controller.hand[before:]]
+        drawn = [
+            c
+            for c in controller.hand[before:]
+            if c.type == CardType.MINION
+        ]
         if len(drawn) == 2:
             a, b = drawn
             a_atk, a_hp = a.atk, a.max_health

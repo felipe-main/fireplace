@@ -63,13 +63,31 @@ class TSC_054:
 class TSC_087:
     """Commander Sivara"""
 
-    # Battlecry: If you've cast three spells while holding this, add those
-    # spells back to your hand. We approximate by adding random spells
-    # from class — the exact list-of-spells tracking would require deeper
-    # per-card history (out of scope for this pass).
-    play = (Attr(SELF, "spells_cast_while_holding") >= 3) & (
-        Give(CONTROLLER, RandomSpell(card_class=CardClass.MAGE)) * 3
-    )
+    # Battlecry: If you've cast three spells while holding this, add
+    # those spells back to your hand.
+    def play(self):
+        history = getattr(self, "spells_history_while_holding", [])
+        if len(history) < 3:
+            return
+        for card_id, _cost in history[:3]:
+            yield Give(CONTROLLER, card_id)
+
+
+def _siren_naga_fires(entities, source):
+    """Naga-mode listener gate: fires when the Siren's current mode is
+    'naga'. Also flips the mode to 'spell' for the next trigger."""
+    if getattr(source, "siren_mode", "naga") != "naga":
+        return []
+    source.siren_mode = "spell"
+    return [source]
+
+
+def _siren_spell_fires(entities, source):
+    """Spell-mode listener gate: mirror of _siren_naga_fires."""
+    if getattr(source, "siren_mode", "naga") != "spell":
+        return []
+    source.siren_mode = "naga"
+    return [source]
 
 
 class TSC_620:
@@ -77,12 +95,18 @@ class TSC_620:
 
     # After you play a Naga, refresh two Mana Crystals. (Then switch to spell!)
     # After you cast a spell, refresh two Mana Crystals. (Then switch to Naga!)
-    # The card flips between two modes; we approximate by always refreshing
-    # 2 mana on either trigger.
-    events = (
-        Play(CONTROLLER, MINION + NAGA).after(ManaThisTurn(CONTROLLER, 2)),
-        OWN_SPELL_PLAY.after(ManaThisTurn(CONTROLLER, 2)),
-    )
+    # The Siren starts in "naga" mode — the first Naga play triggers, then
+    # the mode flips to "spell"; the first spell after that triggers, etc.
+    events = [
+        Play(CONTROLLER, MINION + NAGA).after(
+            Find(FuncSelector(_siren_naga_fires))
+            & ManaThisTurn(CONTROLLER, 2)
+        ),
+        OWN_SPELL_PLAY.after(
+            Find(FuncSelector(_siren_spell_fires))
+            & ManaThisTurn(CONTROLLER, 2)
+        ),
+    ]
 
 
 class TSC_642:

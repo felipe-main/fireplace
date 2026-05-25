@@ -364,6 +364,113 @@ def test_dragged_below_curses_opponent():
     assert post_deck == pre_deck + 1
 
 
+def test_sivara_replays_exact_three_spells():
+    """TSC_087 Commander Sivara: adds the exact 3 spells cast while
+    holding back to hand."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.player1.discard_hand()
+    sivara = game.player1.give("TSC_087")
+    # Stuff 3 distinct spells into hand and cast each on the hero.
+    spells_to_cast = [MOONFIRE, MOONFIRE, FIREBALL]
+    for cid in spells_to_cast:
+        game.player1.give(cid).play(target=game.player1.hero)
+    assert sivara.spells_cast_while_holding == 3
+    sivara.play()
+    # Hand now contains exactly the three spell ids that were cast.
+    hand_ids = sorted(c.id for c in game.player1.hand)
+    assert hand_ids == sorted(spells_to_cast)
+
+
+def test_hedra_summons_per_spell_cost():
+    """TSC_658 Hedra the Heretic: summons one minion per spell cast,
+    matching each spell's actual cost."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    game.player1.discard_hand()
+    hedra = game.player1.give("TSC_658")
+    # Cast two known-cost spells: Moonfire (0) and another Moonfire (0).
+    game.player1.give(MOONFIRE).play(target=game.player1.hero)
+    game.player1.give(MOONFIRE).play(target=game.player1.hero)
+    assert hedra.spells_history_while_holding == [
+        (MOONFIRE, 0),
+        (MOONFIRE, 0),
+    ]
+    pre_field = len(game.player1.field)
+    hedra.play()
+    # Two minions summoned, both cost 0.
+    new_minions = [m for m in game.player1.field if m.id != "TSC_658"]
+    new_minions = [m for m in new_minions if m not in game.player1.field[:pre_field]]
+    # The minions are random — we can't predict exact ids, but the data
+    # cost should match the spell's cost.
+    costs = sorted(m.data.cost for m in new_minions)
+    assert costs == [0, 0]
+
+
+def test_spitelash_siren_alternates_modes():
+    """TSC_620 Spitelash Siren: alternates between naga-trigger and
+    spell-trigger modes."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    siren = game.player1.summon("TSC_620")
+    naga = game.player1.give("TSC_941t")  # 2/3 Naga, costs 2
+    spell1 = game.player1.give(MOONFIRE)  # costs 0
+    spell2 = game.player1.give(MOONFIRE)
+    # Spend some mana so we can detect the refresh.
+    game.player1.used_mana = 5
+    pre_mana = game.player1.mana
+    naga_cost = naga.cost
+    naga.play()
+    # Naga mode fired: paid `naga_cost` then refreshed +2 → net +2-naga_cost.
+    assert game.player1.mana == pre_mana - naga_cost + 2
+    # A spell next: spell mode should fire (refresh another 2 mana).
+    pre_mana = game.player1.mana
+    spell1.play(target=game.player1.hero)
+    assert game.player1.mana == pre_mana + 2  # Moonfire is 0-cost
+    # Another spell in a row — mode is now naga, so spell trigger should
+    # NOT fire.
+    pre_mana = game.player1.mana
+    spell2.play(target=game.player1.hero)
+    assert game.player1.mana == pre_mana
+
+
+def test_zaqul_heals_when_curses_deal_damage():
+    """TSC_959 Za'qul: Abyssal Curses heal Za'qul's controller for the
+    damage they deal. The Curse ticks at the start of the cursed
+    player's turn."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    game.player1.summon("TSC_959")
+    # Put a Curse in player2's hand so the next turn-begin fires it.
+    game.player2.abyssal_curses_drawn = 0
+    game.player2.card("TSC_955t", zone=Zone.HAND)
+    # Damage Za'qul's hero so the heal has somewhere to go.
+    game.player1.hero.damage = 5
+    pre_p1_hp = game.player1.hero.health
+    pre_p2_hp = game.player2.hero.health
+    # End P1's turn, then it's P2's turn-begin → curse fires.
+    game.end_turn()
+    # Curse hits player2 for 1, and Za'qul heals player1 for 1.
+    assert game.player2.hero.health == pre_p2_hp - 1
+    assert game.player1.hero.health == pre_p1_hp + 1
+
+
+def test_nellies_pirate_ship_returns_crew_on_death():
+    """TSC_660 Nellie + TSC_660t Pirate Ship: the discovered 3 pirates
+    are returned to hand when the Ship dies."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    nellie = game.player1.give("TSC_660")
+    nellie.play()
+    # Auto-pick the first option in each Discover.
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    ship = next(m for m in game.player1.field if m.id == "TSC_660t")
+    assert hasattr(ship, "_nellie_crew")
+    assert len(ship._nellie_crew) == 3
+    crew_ids = list(ship._nellie_crew)
+    # Empty hand before destroying the ship to make the count easy.
+    game.player1.discard_hand()
+    ship.destroy()
+    hand_ids = sorted(c.id for c in game.player1.hand)
+    assert hand_ids == sorted(crew_ids)
+
+
 def test_blademaster_okani_counters_opponent_minion():
     """TSC_032 Blademaster Okani: opponent minion play is countered."""
     game = prepare_game()

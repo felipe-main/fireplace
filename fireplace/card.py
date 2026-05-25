@@ -335,6 +335,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # card is in hand. Reset when the card leaves hand.
         self.spells_cast_while_holding = 0
         self.nagas_played_while_holding = 0
+        # Ordered list of (card_id, cost_paid) tuples for every spell the
+        # controller has cast while this card was in hand. Powers Sivara
+        # (replay the exact 3 spells) and Hedra (summon a minion at each
+        # spell's cost).
+        self.spells_history_while_holding = []
         super().__init__(data)
 
     def dump(self):

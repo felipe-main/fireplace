@@ -596,6 +596,9 @@ class Play(GameAction):
                 continue
             if card.type == CardType.SPELL:
                 hand_card.spells_cast_while_holding += 1
+                hand_card.spells_history_while_holding.append(
+                    (card.id, max(0, card.cost))
+                )
             if card.type == CardType.MINION and Race.NAGA in card.races:
                 hand_card.nagas_played_while_holding += 1
 
@@ -605,6 +608,17 @@ class Play(GameAction):
             )
         self.broadcast(player, EventListener.ON, player, card, target)
         self.resolve_broadcasts()
+
+        # Colossal: when a Colossal minion is *played* (rather than summoned
+        # via a Summon action), the Summon.do hook never fires — Play moves
+        # the card straight into PLAY. We mirror the hook here so the limb
+        # tokens get summoned alongside the parent.
+        if (
+            card.type == CardType.MINION
+            and card.data.tags.get(GameTag.COLOSSAL, 0)
+            and not card.data.tags.get(GameTag.COLOSSAL_LIMB, 0)
+        ):
+            _summon_colossal_limbs(card, player, card)
 
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:

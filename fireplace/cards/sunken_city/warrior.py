@@ -120,19 +120,57 @@ class TSC_659:
             yield Attack(SELF, victim)
 
 
+class _NellieRememberCrew(TargetedAction):
+    """Side-effect action used by Nellie's Discover .then() chain to
+    append each chosen Pirate to the Ship's crew list. The Ship token
+    holds the list on `_nellie_crew`; the Ship's deathrattle then gives
+    the same set back to Nellie's hand."""
+
+    TARGET = ActionArg()  # the discovered Pirate card
+
+    def do(self, source, target):
+        ship = next(
+            (m for m in source.controller.field if m.id == "TSC_660t"),
+            None,
+        )
+        if ship is None:
+            return
+        if not hasattr(ship, "_nellie_crew"):
+            ship._nellie_crew = []
+        if target is not None and hasattr(target, "id"):
+            ship._nellie_crew.append(target.id)
+
+
 class TSC_660:
     """Nellie, the Great Thresher"""
 
     # Colossal +1. Battlecry: Discover 3 Pirates to crew Nellie's Ship.
-    # Approximation: discover one Pirate.
-    play = DISCOVER(RandomMinion(race=Race.PIRATE))
+    # The three Discovers are nested inside each other's .then() callbacks
+    # so each choice is resolved before the next one is offered — a flat
+    # tuple of Discovers would all set `player.choice` at once and only
+    # the last would survive.
+    play = Discover(CONTROLLER, RandomMinion(race=Race.PIRATE)).then(
+        Give(CONTROLLER, Discover.CARD),
+        _NellieRememberCrew(Discover.CARD),
+        Discover(CONTROLLER, RandomMinion(race=Race.PIRATE)).then(
+            Give(CONTROLLER, Discover.CARD),
+            _NellieRememberCrew(Discover.CARD),
+            Discover(CONTROLLER, RandomMinion(race=Race.PIRATE)).then(
+                Give(CONTROLLER, Discover.CARD),
+                _NellieRememberCrew(Discover.CARD),
+            ),
+        ),
+    )
 
 
 class TSC_660t:
     """Nellie's Pirate Ship"""
 
     # Taunt. Deathrattle: Add Nellie's Pirate crew to your hand.
-    pass
+    def deathrattle(self):
+        crew = getattr(self, "_nellie_crew", None) or []
+        for card_id in crew:
+            yield Give(CONTROLLER, card_id)
 
 
 class TSC_917:

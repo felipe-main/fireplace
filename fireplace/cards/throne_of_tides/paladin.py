@@ -6,29 +6,35 @@ from ..utils import *
 
 
 class _FrontLinesSummon(TargetedAction):
-    """Summon a minion from each player's deck. Repeat until one side of
-    the battlefield is full."""
+    """Summon a minion from each player's deck — caster first, then the
+    opponent — and repeat. Stops as soon as either side of the battlefield
+    is full or either deck has no minions left to summon.
+    """
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         game = source.game
-        # `target` is the casting controller.
-        loops = 0
-        while loops < 14:
-            loops += 1
-            full1 = len(game.player1.field) >= game.MAX_MINIONS_ON_FIELD
-            full2 = len(game.player2.field) >= game.MAX_MINIONS_ON_FIELD
-            if full1 or full2:
-                break
-            for player in (game.player1, game.player2):
-                if len(player.field) >= game.MAX_MINIONS_ON_FIELD:
-                    continue
-                # Pick a random minion from deck.
+        caster = target
+        order = (caster, caster.opponent)
+        max_field = game.MAX_MINIONS_ON_FIELD
+        # Safety bound: at most 7 rounds because either side fills up by then.
+        for _ in range(max_field + 1):
+            if any(len(p.field) >= max_field for p in order):
+                return
+            # Each round, both players summon (caster first). If either
+            # side can't summon (empty deck of minions), bail — the loop
+            # stops repeating because the printed rule requires "a minion
+            # from EACH player's deck".
+            picks = []
+            for player in order:
                 candidates = [c for c in player.deck if c.type == CardType.MINION]
                 if not candidates:
-                    continue
-                pick = game.random.choice(candidates)
+                    return
+                picks.append((player, game.random.choice(candidates)))
+            for player, pick in picks:
+                if len(player.field) >= max_field:
+                    return
                 game.queue_actions(source, [Summon(player, pick)])
 
 

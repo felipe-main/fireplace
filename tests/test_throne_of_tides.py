@@ -265,6 +265,40 @@ def test_front_lines_summons_until_a_side_is_full():
     )
 
 
+def test_front_lines_stops_when_one_deck_runs_out_of_minions():
+    """If either player's deck has no minions, the loop stops — the
+    printed rule requires a minion FROM EACH side per round."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    # Empty both decks then seed only player1 with minions; player2 has none.
+    game.player1.deck.clear()
+    game.player2.deck.clear()
+    for _ in range(7):
+        game.player1.card("CS2_182", zone=Zone.DECK)
+    pre1 = len(game.player1.field)
+    pre2 = len(game.player2.field)
+    game.player1.give("TID_949").play()
+    # Neither side gets minions because player2 has no minions to draw.
+    assert len(game.player1.field) == pre1
+    assert len(game.player2.field) == pre2
+
+
+def test_front_lines_summons_alternating_caster_first():
+    """Caster summons first each round, then opponent."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    game.player1.deck.clear()
+    game.player2.deck.clear()
+    # Seed exactly 2 minions each so we see 2 rounds.
+    for _ in range(2):
+        game.player1.card("CS2_182", zone=Zone.DECK)
+        game.player2.card("CS2_182", zone=Zone.DECK)
+    pre1 = len(game.player1.field)
+    pre2 = len(game.player2.field)
+    game.player1.give("TID_949").play()
+    # 2 minions each summoned (loop stops when decks empty).
+    assert len(game.player1.field) == pre1 + 2
+    assert len(game.player2.field) == pre2 + 2
+
+
 # ---------------------------------------------------------------------------
 # Priest
 # ---------------------------------------------------------------------------

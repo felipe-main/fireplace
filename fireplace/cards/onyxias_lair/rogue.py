@@ -33,11 +33,12 @@ class ONY_031:
             # If a card was actually drawn, the last hand entry is it.
             if len(controller.hand) > before:
                 drawn.append(controller.hand[-1])
-        # Trigger deathrattles on every drawn card that has one.
+        # Trigger the proper Deathrattle action on each drawn card so SELF
+        # and other lazy refs inside the DR resolve against the drawn card,
+        # not the Smokescreen spell.
         for card in drawn:
-            if getattr(card, "has_deathrattle", False) and card.data.scripts.deathrattle:
-                for dr_action in card.data.scripts.deathrattle:
-                    yield dr_action
+            if getattr(card, "has_deathrattle", False):
+                yield Deathrattle(card)
 
 
 class ONY_032:
@@ -48,18 +49,26 @@ class ONY_032:
     requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
     play = Hit(TARGET, 3)
 
-    def honorable_kill(self):
-        # Pick a random class that isn't ours, then discover a spell from it.
-        import random as _random
+    def honorable_kill(self, victim):
+        # Discover a spell from another class — pick from the full pool of
+        # off-class spells, not from one randomly-picked class.
+        from ..utils import db
 
         own_class = self.controller.hero.card_class
-        other_classes = [
-            cc
-            for cc in CardClass
-            if cc not in (CardClass.INVALID, CardClass.NEUTRAL, own_class)
-            and cc.value <= 14  # exclude non-playable enums
+        candidates = [
+            cid
+            for cid, card in db.items()
+            if card.collectible
+            and card.type == CardType.SPELL
+            and own_class not in card.classes
+            and CardClass.NEUTRAL not in card.classes
+            and CardClass.INVALID not in card.classes
         ]
-        if not other_classes:
+        if len(candidates) < 3:
             return
-        picked = _random.choice(other_classes)
-        yield DISCOVER(RandomSpell(card_class=picked))
+        import random as _random
+
+        choices = _random.sample(candidates, k=3)
+        # GenericChoice already moves the chosen card into the player's
+        # hand (and discards the others), so no follow-up Give is needed.
+        yield GenericChoice(self.controller, choices)

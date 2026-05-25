@@ -618,15 +618,17 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             )
             if self.controller.next_choose_one_discount > 0:
                 self.controller.next_choose_one_discount = 0
-        # Consume the one-shot "Choose One has both effects" buff (Raid
-        # Negotiator). This fires whether or not the player would have been
-        # required to choose — the combined flag overrode that.
-        if (
+        # Snapshot the one-shot "Choose One has both effects" flag (Raid
+        # Negotiator's Decisive) so we know to consume it after the play
+        # resolves. The flag must remain > 0 *during* play_card so that the
+        # ChooseBoth evaluator inside the card's play action sees it.
+        consume_combined = (
             self.has_choose_one
             and getattr(self.controller, "next_choose_one_combined", 0) > 0
-        ):
-            self.controller.next_choose_one_combined -= 1
+        )
         self.game.play_card(self, target, index, choose)
+        if consume_combined and self.controller.next_choose_one_combined > 0:
+            self.controller.next_choose_one_combined -= 1
         return self
 
     def is_tradeable(self):

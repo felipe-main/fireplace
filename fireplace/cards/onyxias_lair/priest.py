@@ -42,4 +42,9 @@ class ONY_028:
 class ONY_028t:
     """Fragment of Mi'da"""
 
-    play = Summon(CONTROLLER, "ONY_028")
+    # Casts When Drawn: summon Mi'da. If the board is full the summon
+    # silently no-ops and the Fragment is still consumed — matches the
+    # engine's normal summon-from-deck behaviour.
+    def play(self):
+        if len(self.controller.field) < 7:
+            yield Summon(CONTROLLER, "ONY_028")

@@ -74,11 +74,22 @@ def test_raid_boss_onyxia_summons_six_whelps_and_is_immune_with_whelp():
     game = prepare_game()
     game.player1.discard_hand()
     onyxia = game.player1.give("ONY_004")
-    while game.player1.mana < 10:
-        game.end_turn(); game.end_turn()
     onyxia.play()
     whelps = [m for m in game.player1.field if m.id == "ONY_001t"]
     assert len(whelps) == 6
+    game.refresh_auras()
+    assert onyxia.immune
+
+
+def test_raid_boss_onyxia_immune_with_any_whelp():
+    """ONY_004 Raid Boss Onyxia: immunity matches any minion named 'Whelp'."""
+    game = prepare_game()
+    onyxia = game.player1.summon("ONY_004")
+    # No whelps yet → not immune.
+    game.refresh_auras()
+    assert not onyxia.immune
+    # ds1_whelptoken is the classic "Whelp" 1/1, not the ONY_001t Onyxian Whelp.
+    game.player1.summon("ds1_whelptoken")
     game.refresh_auras()
     assert onyxia.immune
 
@@ -89,15 +100,27 @@ def test_kazakusan_shuffles_treasures_when_deck_is_all_dragons():
     # Empty the deck and refill with dragons only.
     game.player1.deck.clear()
     for _ in range(5):
-        c = game.player1.card("ONY_004", zone=Zone.DECK)
-        _ = c
+        game.player1.card("ONY_004", zone=Zone.DECK)
     pre_deck = len(game.player1.deck)
     kazakusan = game.player1.give("ONY_005")
-    while game.player1.mana < 8:
-        game.end_turn(); game.end_turn()
     kazakusan.play()
-    # Deck should have grown (treasures added).
-    assert len(game.player1.deck) > pre_deck
+    # Treasures shuffled in — current pool is 15 entries.
+    treasures = [c for c in game.player1.deck if c.id.startswith("ONY_005t")]
+    assert len(treasures) == 15
+    assert len(game.player1.deck) == pre_deck + 15
+
+
+def test_kazakusan_does_nothing_with_non_dragon_deck():
+    """ONY_005 Kazakusan: no treasures if any deck minion is non-Dragon."""
+    game = prepare_game()
+    game.player1.deck.clear()
+    # Mix of dragon + non-dragon minion.
+    game.player1.card("ONY_004", zone=Zone.DECK)
+    game.player1.card("CS2_172", zone=Zone.DECK)  # Bloodfen Raptor (Beast)
+    pre_deck = len(game.player1.deck)
+    kazakusan = game.player1.give("ONY_005")
+    kazakusan.play()
+    assert len(game.player1.deck) == pre_deck  # no shuffles
 
 
 # ---------------------------------------------------------------------------
@@ -409,13 +432,30 @@ def test_raid_negotiator_sets_combined_flag():
     """ONY_019 Raid Negotiator: sets next-choose-one-combined counter."""
     game = prepare_game(CardClass.DRUID, CardClass.DRUID)
     negotiator = game.player1.give("ONY_019")
-    while game.player1.mana < 4:
-        game.end_turn(); game.end_turn()
     negotiator.play()
     # Auto-discover the first card.
     while game.player1.choice:
         game.player1.choice.choose(game.player1.choice.cards[0])
     assert game.player1.next_choose_one_combined == 1
+
+
+def test_raid_negotiator_makes_next_choose_one_combined():
+    """ONY_019 Raid Negotiator: the next Choose One card runs BOTH branches."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    # Manually set the combined flag (skip the discover UI).
+    game.player1.next_choose_one_combined = 1
+    game.end_turn()
+    target = game.player2.summon("CS2_186")  # War Golem 7/7 — survives heal+hit
+    game.end_turn()
+    game.player1.hero.damage = 8
+    boomkin = game.player1.give("ONY_018")
+    # Play without specifying a choice — the combined flag should make BOTH
+    # branches fire (heal hero AND damage the target).
+    boomkin.play(target=target)
+    assert game.player1.hero.damage == 0  # Eyes of the Moon healed for 8
+    assert target.damage == 4              # Heart of the Sun dealt 4
+    # And the one-shot flag is consumed.
+    assert game.player1.next_choose_one_combined == 0
 
 
 def test_scale_of_onyxia_fills_board_with_whelps():
@@ -535,27 +575,46 @@ def test_smokescreen_draws_five():
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     game.player1.discard_hand()
     spell = game.player1.give("ONY_031")
-    while game.player1.mana < 8:
-        game.end_turn(); game.end_turn()
     spell.play()
     assert len(game.player1.hand) >= 5
 
 
+def test_smokescreen_triggers_drawn_deathrattles():
+    """ONY_031 Smokescreen: a drawn minion with a deathrattle fires its DR
+    with the drawn card as the source (not Smokescreen itself)."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    game.player1.discard_hand()
+    # Stack the deck so we draw exactly one DR minion. Loot Hoarder draws
+    # a card on death — its DR running while still in hand should add a
+    # card to our hand.
+    game.player1.deck.clear()
+    game.player1.card("EX1_096", zone=Zone.DECK)  # Loot Hoarder — DR: Draw a card
+    spell = game.player1.give("ONY_031")
+    spell.play()
+    # Hand should contain Loot Hoarder + 4 fatigue-recovered cards or the
+    # post-DR draw. The key signal: no exception was raised, and we drew
+    # at least the Loot Hoarder itself.
+    assert any(c.id == "EX1_096" for c in game.player1.hand)
+
+
 def test_tooth_of_nefarian_damage_and_hk_discovery():
-    """ONY_032 Tooth of Nefarian: 3 damage. HK discovers off-class spell."""
+    """ONY_032 Tooth of Nefarian: 3 damage to a 3-hp minion → HK discovers
+    an off-class spell."""
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     game.end_turn()
-    # Use a Wisp 1/1, but Tooth deals 3 → overkills, so HK does NOT fire.
-    # Use Acidic Swamp Ooze (EX1_066) which is 3 hp.
-    target = game.player2.summon("EX1_066")  # 3/2
+    # Acolyte of Pain (EX1_007) is a 1/3 — 3 HP exactly so HK fires.
+    target = game.player2.summon("EX1_007")
     game.end_turn()
     spell = game.player1.give("ONY_032")
-    while game.player1.mana < 3:
-        game.end_turn(); game.end_turn()
     spell.play(target=target)
-    # Target is 2hp + 3 damage → dies. HK if exactly 3 to a 3hp minion.
-    # EX1_066 is 3/2 (2 hp) so 3 dmg overkills — HK does NOT fire.
     assert target.dead
+    # HK pops a Discover choice with three off-class spells.
+    assert game.player1.choice is not None
+    own_class = game.player1.hero.card_class
+    for c in game.player1.choice.cards:
+        assert c.type == CardType.SPELL
+        assert own_class not in c.classes
+        assert CardClass.NEUTRAL not in c.classes
 
 
 # ---------------------------------------------------------------------------

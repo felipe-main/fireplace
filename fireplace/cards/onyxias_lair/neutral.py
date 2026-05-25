@@ -41,13 +41,36 @@ class ONY_003:
     honorable_kill = Draw(CONTROLLER)
 
 
+def _is_whelp(entity, source):
+    """A Whelp is any minion whose printed name contains 'Whelp'. This
+    matches Hearthstone's canonical interpretation for Raid Boss Onyxia's
+    immunity check."""
+    data = getattr(entity, "data", None)
+    if data is None:
+        return False
+    name = getattr(data, "name", "") or ""
+    return "Whelp" in name
+
+
+_FRIENDLY_WHELPS = FuncSelector(
+    lambda entities, source: [
+        e
+        for e in entities
+        if getattr(e, "controller", None) is source.controller
+        and getattr(e, "zone", None) == Zone.PLAY
+        and getattr(e, "type", None) == CardType.MINION
+        and _is_whelp(e, source)
+    ]
+)
+
+
 class ONY_004:
     """Raid Boss Onyxia"""
 
     # <b>Rush</b>. <b>Immune</b> while you control a Whelp. <b>Battlecry:</b>
     # Summon six 2/1 Whelps with <b>Rush</b>.
     play = Summon(CONTROLLER, "ONY_001t") * 6
-    update = Find(FRIENDLY_MINIONS + ID("ONY_001t")) & Refresh(
+    update = Find(_FRIENDLY_WHELPS) & Refresh(
         SELF,
         {
             GameTag.CANT_BE_DAMAGED: True,
@@ -57,19 +80,25 @@ class ONY_004:
 
 
 # Kazakusan — best-effort approximation. The real card replaces your deck
-# with a hand-picked set of 30 Treasures via UI. We shuffle a fixed sample
-# of treasures into the deck when the gating condition (all deck minions are
-# Dragons) is met.
+# with a hand-picked set of 30 Treasures chosen through a UI; we shuffle a
+# fixed sample of fully-scripted treasures into the deck when the gating
+# condition (all deck minions are Dragons) is met.
 KAZAKUSAN_TREASURES = (
     "ONY_005ta1",   # Necrotic Poison
     "ONY_005ta2",   # Mutating Injection
     "ONY_005ta4",   # Pure Cold
+    "ONY_005ta6",   # Holy Book
+    "ONY_005ta7",   # Crusty the Crustacean
     "ONY_005ta8",   # Looming Presence
     "ONY_005ta10",  # Spyglass
+    "ONY_005ta11",  # Clockwork Assistant
     "ONY_005tb2",   # Gnomish Army Knife
     "ONY_005tb4",   # Wand of Disintegration
+    "ONY_005tb5",   # Staff of Scales
     "ONY_005tb9",   # Banana Split
+    "ONY_005tb14",  # Vampiric Fangs
     "ONY_005tc1",   # Embers of Ragnaros
+    "ONY_005tc6",   # Hilt of Quel'Delar
 )
 
 
@@ -173,3 +202,100 @@ class ONY_005tc1:
     """Embers of Ragnaros"""
 
     play = Hit(RANDOM_ENEMY_CHARACTER, 8) * 3
+
+
+class ONY_005ta6:
+    """Holy Book"""
+
+    # Silence and destroy a minion. Summon a 10/10 copy of it.
+    requirements = {PlayReq.REQ_MINION_TARGET: 0, PlayReq.REQ_TARGET_TO_PLAY: 0}
+
+    def play(self):
+        target = self.target
+        if target is None:
+            return
+        target_id = target.id
+        yield Silence(target)
+        yield Destroy(target)
+        yield Summon(CONTROLLER, target_id).then(Buff(Summon.CARD, "ONY_005ta6e"))
+
+
+ONY_005ta6e = buff(atk=10, health=10)
+
+
+class ONY_005ta7:
+    """Crusty the Crustacean"""
+
+    # Battlecry: Destroy a minion. Gain its Attack and Health.
+    requirements = {
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
+    }
+
+    def play(self):
+        target = self.target
+        if target is None:
+            return
+        atk = target.atk
+        hp = target.health
+        yield Destroy(target)
+        yield Buff(SELF, "ONY_005ta7e", atk=atk, max_health=hp)
+
+
+ONY_005ta7e = buff()
+
+
+class ONY_005ta11:
+    """Clockwork Assistant"""
+
+    # Has +1/+1 for each spell you've cast this game.
+    # On play: apply the back-buff for every spell already cast.
+    # While on board: stack +1/+1 per future spell cast.
+    play = Buff(
+        SELF,
+        "ONY_005ta11e",
+        atk=Count(CARDS_PLAYED_THIS_GAME + SPELL),
+        max_health=Count(CARDS_PLAYED_THIS_GAME + SPELL),
+    )
+    events = OWN_SPELL_PLAY.after(Buff(SELF, "ONY_005ta11e2"))
+
+
+ONY_005ta11e = buff()
+ONY_005ta11e2 = buff(atk=1, health=1)
+
+
+class ONY_005tb5:
+    """Staff of Scales"""
+
+    # Summon three 1/1 Snakes with Rush, Poisonous and Reborn.
+    play = Summon(CONTROLLER, "ONY_005tb5t") * 3
+
+
+class ONY_005tb5t:
+    """Ancient Snake"""
+
+
+class ONY_005tb14:
+    """Vampiric Fangs"""
+
+    # Destroy a minion. Restore its Health to your hero.
+    requirements = {PlayReq.REQ_MINION_TARGET: 0, PlayReq.REQ_TARGET_TO_PLAY: 0}
+
+    def play(self):
+        target = self.target
+        if target is None:
+            return
+        heal_amount = target.max_health
+        yield Destroy(target)
+        yield Heal(FRIENDLY_HERO, heal_amount)
+
+
+class ONY_005tc6:
+    """Hilt of Quel'Delar"""
+
+    # Give a minion +3/+3.
+    requirements = {PlayReq.REQ_MINION_TARGET: 0, PlayReq.REQ_TARGET_TO_PLAY: 0}
+    play = Buff(TARGET, "ONY_005tc6e")
+
+
+ONY_005tc6e = buff(atk=3, health=3)

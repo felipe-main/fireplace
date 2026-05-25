@@ -86,7 +86,8 @@ class Attacking(Evaluator):
 
 class ChooseBoth(Evaluator):
     """
-    Evaluates to True if the selector `choose_both` is true
+    Evaluates to True if the selector `choose_both` is true OR a one-shot
+    "combined Choose One" buff (e.g. Raid Negotiator's Decisive) is active.
     Selector must evaluate to only one player.
     """
 
@@ -97,6 +98,8 @@ class ChooseBoth(Evaluator):
     def check(self, source):
         player = self.selector.eval(source.game, source)[0]
         if player.choose_both:
+            return True
+        if getattr(player, "next_choose_one_combined", 0) > 0:
             return True
         return False
 

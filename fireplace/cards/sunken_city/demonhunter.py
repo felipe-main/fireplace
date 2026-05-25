@@ -132,7 +132,7 @@ class TSC_219te:
     }
 
 
-class TSC_609:
+class TSC_609(ThreeSpellsProgressUtils):
     """Coilskar Commander"""
 
     # Taunt. Battlecry: If you've cast three spells while holding this,

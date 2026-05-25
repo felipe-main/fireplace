@@ -93,7 +93,7 @@ class TSC_017:
     play = (Attr(SELF, "spells_cast_while_holding") > 0) & Hit(TARGET, 3)
 
 
-class TSC_064:
+class TSC_064(ThreeSpellsProgressUtils):
     """Slithering Deathscale"""
 
     # Battlecry: If you've cast three spells while holding this, deal 3
@@ -109,7 +109,7 @@ _ANCIENT_RELICS = (
 )
 
 
-class TSC_641:
+class TSC_641(ThreeSpellsProgressUtils):
     """Queen Azshara"""
 
     # Battlecry: If you've cast three spells while holding this, choose

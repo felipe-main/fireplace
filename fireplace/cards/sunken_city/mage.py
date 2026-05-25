@@ -60,7 +60,7 @@ class TSC_054:
     events = Summon(CONTROLLER, MECH).after(Hit(RANDOM_ENEMY_CHARACTER, 1) * 3)
 
 
-class TSC_087:
+class TSC_087(ThreeSpellsProgressUtils):
     """Commander Sivara"""
 
     # Battlecry: If you've cast three spells while holding this, add

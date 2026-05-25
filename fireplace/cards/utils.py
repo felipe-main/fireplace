@@ -281,6 +281,37 @@ def decode_deckstring(deckstring: str):
     return hero_id, cards
 
 
+class ThreeSpellsProgressUtils:
+    """Mixin for Sunken City cards whose printed text is "Battlecry: If
+    you've cast three spells while holding this, …" with two trailing
+    `@`-delimited template segments — one rendered while still counting
+    down, one rendered when ready. Sub-cards override `progress_target`
+    only if they need a different threshold (defaults to 3).
+    """
+
+    progress_target = 3
+
+    def custom_cardtext(self):
+        segments = self.data.description.split("@")
+        # Cards have 3 segments: base text, " ({0} left!)" template,
+        # " (Ready!)" template. Pick the right tail.
+        count = getattr(self, "spells_cast_while_holding", 0)
+        if len(segments) < 3:
+            return self.data.description
+        if count >= self.progress_target:
+            return segments[0] + segments[2]
+        return segments[0] + segments[1]
+
+    def cardtext_entity_0(self):
+        count = getattr(self, "spells_cast_while_holding", 0)
+        return max(0, self.progress_target - count)
+
+    tags = {
+        enums.CUSTOM_CARDTEXT: custom_cardtext,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
+
+
 class JadeGolemUtils:
     def custom_cardtext(self):
         return self.data.description.split("@")[0]

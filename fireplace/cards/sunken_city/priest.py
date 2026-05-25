@@ -132,7 +132,7 @@ class TSC_775t:
 # Minions
 
 
-class TSC_212:
+class TSC_212(ThreeSpellsProgressUtils):
     """Handmaiden"""
 
     # Battlecry: If you've cast three spells while holding this, draw 3 cards.

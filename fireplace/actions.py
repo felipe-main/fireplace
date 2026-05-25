@@ -674,13 +674,18 @@ class Play(GameAction):
                 player.next_deathrattle_dies_on_play -= 1
                 if card.zone == Zone.PLAY:
                     source.game.queue_actions(card, [Destroy(card), Deaths()])
-        # Clownfish: consume one Murloc discount charge per Murloc played.
+        # Clownfish: consume one Murloc discount charge per Murloc that
+        # actually received the discount (flagged in card.cost). Skipping
+        # this for Clownfish itself, whose battlecry sets the counter
+        # *after* its own cost is paid.
         if (
             card.type == CardType.MINION
             and Race.MURLOC in card.races
             and player.next_n_murlocs_discount > 0
+            and getattr(card, "received_murloc_discount", False)
         ):
             player.next_n_murlocs_discount -= 1
+            card.received_murloc_discount = False
 
 
 class Activate(GameAction):

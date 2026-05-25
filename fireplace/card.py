@@ -400,12 +400,17 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= 1
             # Throne of the Tides — Clownfish: next two Murlocs cost (2) less.
+            # Stamps `received_murloc_discount` so the Play.do consume hook
+            # only fires for Murlocs that actually took the discount (not
+            # for Clownfish itself, which sets the counter on battlecry
+            # AFTER its own cost was paid).
             if (
                 self.type == CardType.MINION
                 and Race.MURLOC in getattr(self, "races", [])
                 and getattr(self.controller, "next_n_murlocs_discount", 0) > 0
             ):
                 ret -= 2
+                self.received_murloc_discount = True
         ret = self._getattr("cost", ret)
         return max(0, ret)
 

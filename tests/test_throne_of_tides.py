@@ -550,3 +550,105 @@ def test_coilfang_marks_opponent_card_unplayable_next_turn():
         game.player1.choice.choose(game.player1.choice.cards[0])
     marked = [c for c in game.player2.hand if c.unplayable_next_turn > 0]
     assert len(marked) == 1
+
+
+# ---------------------------------------------------------------------------
+# Tier-1 audit edge cases (re-verification of approximations)
+# ---------------------------------------------------------------------------
+
+
+def test_lady_nazjar_transforms_on_frost_to_t3():
+    """Frost spell triggers the third Naz'jar variant (8 Armor).
+
+    Ice Lance (CS2_031) is 1-mana Frost, requires a target.
+    """
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.player1.give("TID_709")
+    game.player1.give("CS2_031").play(target=game.player2.hero)
+    transformed = next((c for c in game.player1.hand if c.id.startswith("TID_709t")), None)
+    assert transformed is not None
+    assert transformed.id == "TID_709t3"
+
+
+def test_lady_nazjar_transforms_on_arcane_to_t():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.player1.give("TID_709")
+    # Arcane spell — Arcane Intellect (CS2_023) is 3-cost arcane, no target.
+    game.player1.give("CS2_023").play()
+    transformed = next((c for c in game.player1.hand if c.id.startswith("TID_709t")), None)
+    assert transformed is not None
+    assert transformed.id == "TID_709t"
+
+
+def test_lady_nazjar_t_reduces_hand_spell_costs_by_2():
+    """The Arcane variant of Lady Naz'jar reduces spell costs by 2."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    naz = game.player1.give("TID_709t")
+    other_spell = game.player1.give(FIREBALL)
+    base = other_spell.data.cost
+    naz.play()
+    assert other_spell.cost == max(0, base - 2)
+
+
+def test_ancient_krakenbane_progress_tally_tracks_spells():
+    """The Krakenbane mixin counts down via spells_cast_while_holding."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    k = game.player1.give("TID_074")
+    assert k.spells_cast_while_holding == 0
+    for _ in range(3):
+        game.player1.give(MOONFIRE).play(target=game.player1.hero)
+    assert k.spells_cast_while_holding == 3
+
+
+def test_coilfang_handles_empty_opponent_hand():
+    """Coilfang no-ops when opponent has no hand cards."""
+    game = prepare_game()
+    while game.player2.hand:
+        game.player2.hand[0].discard()
+    game.player1.give("TID_744").play()
+    assert game.player1.choice is None
+
+
+def test_ozumat_with_fewer_than_six_tentacles_only_destroys_matching():
+    """Deathrattle scales with remaining tentacles (if some have died)."""
+    game = prepare_game()
+    oz = game.player1.summon("TID_711")
+    # Kill 3 of the 6 tentacles via destroy() (which preserves deathrattles).
+    tentacles = [
+        m for m in game.player1.field if m.id.startswith("TID_711t")
+    ][:3]
+    for t in tentacles:
+        t.destroy()
+    # Summon 6 yetis on opponent.
+    for _ in range(6):
+        game.player2.summon("CS2_182")
+    oz.destroy()
+    # Should destroy 3 yetis (one per surviving tentacle).
+    yetis = [m for m in game.player2.field if m.id == "CS2_182"]
+    assert len(yetis) == 3
+
+
+def test_command_of_neptulon_with_full_overload_carry():
+    """Overload (1) is carried by data and applied automatically."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    game.player1.give("TID_005").play()
+    assert game.player1.overloaded == 1
+
+
+def test_clownfish_charges_consume_on_play_not_just_in_hand():
+    """The discount counter decrements per Murloc played."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    game.player1.give("TID_004").play()
+    assert game.player1.next_n_murlocs_discount == 2
+    bg = game.player1.give("EX1_508")  # Bluegill Warrior, 2-cost Murloc
+    bg.play()
+    assert game.player1.next_n_murlocs_discount == 1
+
+
+def test_clownfish_charges_unaffected_by_non_murloc_play():
+    """Playing non-Murloc minions doesn't drain the Clownfish counter."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    game.player1.give("TID_004").play()
+    yeti = game.player1.give("CS2_182")
+    yeti.play()
+    assert game.player1.next_n_murlocs_discount == 2

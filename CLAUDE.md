@@ -301,21 +301,57 @@ the test file. Bump README patch line. Push to `felipe-main/master`.
 
 ### Step 11 — Audit pass
 
-Write a self-audit listing every card whose implementation has known gaps.
-Group into:
+Write a self-audit listing every card whose implementation has known gaps,
+and append it to `REVIEW.md` at the repo root (one `## <Expansion>` section
+per set, with a sub-table per bucket). Group into:
 
 - **Real bugs** — needs a fix
 - **Significant approximations** — works, doesn't match the printed card
 - **Cosmetic** — text rendering only
 - **Once-overs** — probably correct, watch for edge cases
 
-Present as a table; let the user pick what to invest in.
+`Status` and `Fix` are separate columns. `Status` is `open` / `fixed` /
+`watch`; `Fix` is empty until a tier-N pass closes the row, then it holds
+`<short-sha> — <one-line how>`. Rows are never deleted — `REVIEW.md` is
+also the history of what was changed and why.
+
+Template:
+
+```markdown
+## <Expansion>
+
+### Real bugs
+| Card | Approximation | Real behaviour | Status | Fix |
+|---|---|---|---|---|
+| <Name> | <what we do today> | <what the printed card does> | open | |
+
+### Significant approximations
+| Card | Approximation | Real behaviour | Status | Fix |
+|---|---|---|---|---|
+| <Name> | <what we do today> | <what the printed card does> | open | |
+
+### Cosmetic
+| Card | Issue | Status | Fix |
+|---|---|---|---|
+| <Name> | <e.g. text shows "@" placeholder> | open | |
+
+### Once-overs
+| Card | Watch for | Status | Fix |
+|---|---|---|---|
+| <Name> | <edge case to revisit> | watch | |
+```
+
+Present the new section to the user and let them pick what to invest in.
 
 ### Step 12 — Tier-N fix passes
 
 Take the highest-impact subset (5-7 cards). Fix each with a new test that
-targets the exact bug. Each tier ends with: full suite green + 1000-game
-soak. Commit `[bugfix] Tier-N <Expansion> approximations`.
+targets the exact bug. When a row is fixed, update its `REVIEW.md` entry
+in place: flip `Status` to `fixed` and fill `Fix` with the short SHA and
+a one-line description of the actual change (e.g.
+`a1b2c3d — moved _devoured to player attr so reshuffle preserves it`).
+Each tier ends with: full suite green + 1000-game soak. Commit
+`[bugfix] Tier-N <Expansion> approximations`.
 
 Repeat until the user calls it.
 

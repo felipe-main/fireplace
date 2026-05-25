@@ -123,9 +123,12 @@ def test_objective_destroyed_after_three_owner_turns():
 def test_herald_of_lokholar_draws_spell():
     """AV_101 Herald of Lokholar: Battlecry draws a spell."""
     game = prepare_game()
-    # Pad the deck with a known spell.
     game.player1.discard_hand()
-    game.player1.deck.append(game.player1.card("CS2_029"))  # Fireball
+    # player.card() defaults zone=SETASIDE; FRIENDLY_DECK matches only Zone.DECK
+    # so the appended spell must be placed in the deck zone for the battlecry's
+    # RANDOM(FRIENDLY_DECK + SPELL) selector to see it. Without this, the test
+    # silently depends on the random draft happening to contain other spells.
+    game.player1.deck.append(game.player1.card("CS2_029", zone=Zone.DECK))
     starting_hand = len(game.player1.hand)
     game.player1.give("AV_101").play()
     assert len(game.player1.hand) > starting_hand

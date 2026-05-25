@@ -142,6 +142,15 @@ class Player(Entity, TargetableByAuras):
         # Sunken City: Dozing Kelpkeeper awakens after this much spell
         # mana has been spent while it's dormant on the board.
         self.spell_mana_spent_this_turn = 0
+        # Throne of the Tides per-player one-shot / windowed effects.
+        # Shattershambler: one-shot deathrattle discount + insta-die marker.
+        self.next_deathrattle_discount = 0
+        self.next_deathrattle_dies_on_play = 0
+        # Clownfish: next N Murloc plays cost (2) less.
+        self.next_n_murlocs_discount = 0
+        # Commander Ulthok: opponent's cards cost Health instead of Mana for
+        # this many of THEIR turns (decremented at their begin_turn).
+        self.pays_health_for_cards_turns_left = 0
 
     def dump(self):
         data = super().dump()
@@ -474,6 +483,10 @@ class Player(Entity, TargetableByAuras):
             return self.hero.health > card.cost
         if card.card_costs_health:
             return self.hero.health > card.cost
+        # Throne of the Tides — Commander Ulthok: while this flag is up the
+        # player pays Health for every card instead of Mana.
+        if getattr(self, "pays_health_for_cards_turns_left", 0) > 0:
+            return self.hero.health > card.cost
         return self.mana >= card.cost
 
     def pay_cost(self, source: Entity, amount: int) -> int:
@@ -487,6 +500,10 @@ class Player(Entity, TargetableByAuras):
             return amount
         if getattr(source, "card_costs_health", False):
             self.log("%s cards cost %i health", source, amount)
+            self.game.queue_actions(self, [Hit(self.hero, amount)])
+            return amount
+        if getattr(self, "pays_health_for_cards_turns_left", 0) > 0:
+            self.log("%s cards cost %i health (Ulthok)", source, amount)
             self.game.queue_actions(self, [Hit(self.hero, amount)])
             return amount
         if source.type == CardType.SPELL:

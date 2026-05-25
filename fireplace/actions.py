@@ -599,6 +599,9 @@ class Play(GameAction):
                 hand_card.spells_history_while_holding.append(
                     (card.id, max(0, card.cost))
                 )
+                school = getattr(card, "spell_school", None)
+                if school and int(school) != int(SpellSchool.NONE):
+                    hand_card.spell_schools_cast_while_holding.add(int(school))
             if card.type == CardType.MINION and Race.NAGA in card.races:
                 hand_card.nagas_played_while_holding += 1
 
@@ -660,6 +663,24 @@ class Play(GameAction):
         player.cards_played_this_game.append(card)
         card.turn_played = source.game.turn
         card.choose = None
+
+        # Throne of the Tides post-play one-shots.
+        # Shattershambler: next deathrattle minion costs (1) less and
+        # immediately dies when played.
+        if card.type == CardType.MINION and card.has_deathrattle:
+            if player.next_deathrattle_discount > 0:
+                player.next_deathrattle_discount -= 1
+            if player.next_deathrattle_dies_on_play > 0:
+                player.next_deathrattle_dies_on_play -= 1
+                if card.zone == Zone.PLAY:
+                    source.game.queue_actions(card, [Destroy(card), Deaths()])
+        # Clownfish: consume one Murloc discount charge per Murloc played.
+        if (
+            card.type == CardType.MINION
+            and Race.MURLOC in card.races
+            and player.next_n_murlocs_discount > 0
+        ):
+            player.next_n_murlocs_discount -= 1
 
 
 class Activate(GameAction):

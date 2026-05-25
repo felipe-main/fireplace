@@ -11,6 +11,7 @@ from .actions import (
     Awaken,
     BeginTurn,
     Death,
+    Destroy,
     EndTurn,
     EventListener,
     GameStart,
@@ -374,6 +375,11 @@ class BaseGame(Entity):
 
     def end_turn_cleanup(self):
         self.manager.step(self.next_step, Step.MAIN_NEXT)
+        # Throne of the Tides — Submerged Spacerock: cards added with the
+        # discards-at-end-of-owner-turn marker are discarded now.
+        for hand_card in list(self.current_player.hand):
+            if getattr(hand_card, "discards_at_end_of_owner_turn", False):
+                hand_card.discard()
         for character in self.current_player.characters.filter(frozen=True):
             if not character.num_attacks and not character.exhausted:
                 self.log("Freeze fades from %r", character)
@@ -430,6 +436,18 @@ class BaseGame(Entity):
         # Sunken City: per-turn flags reset at the start of own turn.
         player.spells_poisonous_this_turn = False
         player.spell_mana_spent_this_turn = 0
+        # Throne of the Tides: tick down per-player turn windows.
+        if player.pays_health_for_cards_turns_left > 0:
+            player.pays_health_for_cards_turns_left -= 1
+        # Throne of the Tides per-card windows on the player's hand cards:
+        # Coilfang's unplayable-next-turn marker and Immolate's burn timer.
+        for hand_card in list(player.hand):
+            if getattr(hand_card, "unplayable_next_turn", 0) > 0:
+                hand_card.unplayable_next_turn -= 1
+            if getattr(hand_card, "burn_turns_left", 0) > 0:
+                hand_card.burn_turns_left -= 1
+                if hand_card.burn_turns_left == 0:
+                    self.queue_actions(hand_card, [Destroy(hand_card)])
 
         for entity in self.live_entities:
             if entity.type != CardType.PLAYER:

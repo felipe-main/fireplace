@@ -340,6 +340,18 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # (replay the exact 3 spells) and Hedra (summon a minion at each
         # spell's cost).
         self.spells_history_while_holding = []
+        # Throne of the Tides: set of SpellSchool enum values cast while this
+        # card was held. Powers the four Heralds (Chaos/Nature/Light/Shadow).
+        self.spell_schools_cast_while_holding = set()
+        # Coilfang Constrictor: marker that prevents play for one full opponent
+        # turn cycle. Decremented at controller's begin_turn.
+        self.unplayable_next_turn = 0
+        # Immolate: burn-down timer. Decremented at owner's begin_turn; at 0
+        # the card is destroyed in hand.
+        self.burn_turns_left = 0
+        # Submerged Spacerock: marker that discards this card at end of its
+        # owner's turn.
+        self.discards_at_end_of_owner_turn = False
         super().__init__(data)
 
     def dump(self):
@@ -379,6 +391,21 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                 and getattr(self.controller, "next_choose_one_discount", 0) > 0
             ):
                 ret -= self.controller.next_choose_one_discount
+            # Throne of the Tides — Shattershambler: next deathrattle minion
+            # in hand costs (1) less.
+            if (
+                self.type == CardType.MINION
+                and getattr(self, "has_deathrattle", False)
+                and getattr(self.controller, "next_deathrattle_discount", 0) > 0
+            ):
+                ret -= 1
+            # Throne of the Tides — Clownfish: next two Murlocs cost (2) less.
+            if (
+                self.type == CardType.MINION
+                and Race.MURLOC in getattr(self, "races", [])
+                and getattr(self.controller, "next_n_murlocs_discount", 0) > 0
+            ):
+                ret -= 2
         ret = self._getattr("cost", ret)
         return max(0, ret)
 
@@ -470,6 +497,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             return False
 
         if not self.controller.current_player:
+            return False
+
+        # Coilfang Constrictor — opponent marked this card as unplayable for
+        # one full turn cycle.
+        if getattr(self, "unplayable_next_turn", 0) > 0:
             return False
 
         if self.parent_card:

@@ -260,8 +260,28 @@ class ONY_005ta11:
     events = OWN_SPELL_PLAY.after(Buff(SELF, "ONY_005ta11e2"))
 
 
-ONY_005ta11e = buff()
-ONY_005ta11e2 = buff(atk=1, health=1)
+# Patch 23.4 removed both `ONY_005ta11e` and `ONY_005ta11e2` from
+# hearthstone_data, but Clockwork Assistant still references them at runtime
+# (Buff(SELF, "ONY_005ta11e", ...) + the on-spell-cast +1/+1). Register
+# both as custom cards so the lookup succeeds.
+
+
+@custom_card
+class ONY_005ta11e:
+    tags = {
+        GameTag.CARDNAME: "Clockwork Assistant Tally",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+
+
+@custom_card
+class ONY_005ta11e2:
+    tags = {
+        GameTag.CARDNAME: "Clockwork Assistant Boost",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 1,
+        GameTag.HEALTH: 1,
+    }
 
 
 class ONY_005tb5:

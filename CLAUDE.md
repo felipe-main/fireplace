@@ -283,16 +283,51 @@ def test_<card_name>():
     assert <expected_state>
 ```
 
+**Assertions must be tight.** When a test fails, the default move is to
+diagnose the card script, not weaken the assertion. The soak does not
+catch logic bugs — it only catches engine *crashes* — so unit tests are
+the only place wrong-but-non-crashing card scripts get caught. A test
+that asserts almost nothing (`>=`, `or zone == GRAVEYARD`, `or any(...)`)
+masks the bug until a human plays the card.
+
+Specific anti-patterns to avoid:
+
+- **`>=` where `==` would do.** If a card deals 3 damage and the target
+  has 5 health, the post-state is exactly `damage == 3`. Don't write
+  `damage >= 3` — pick a target whose stats let you assert exactly.
+- **OR escape hatches.** `assert held.atk > pre_atk or any(m.atk > 2 ...)`
+  passes when the buff missed entirely. Constrain the setup (clear
+  hand, pick a unique target, control RNG seed) so the assertion has
+  exactly one valid outcome.
+- **"At least one of these" survivability checks.** If a card targets
+  randomly and a target might die mid-effect, beef up the target's HP
+  (`target.max_health = 80; target.damage = 0`) so it can absorb every
+  tick. Then assert exact total damage.
+- **Asserting nothing.** If the assertion would pass for code that does
+  literally nothing (e.g. `assert len(hand) >= pre_hand`), the test is
+  decoration. Either find a real invariant or delete the test.
+
+If you weaken an assertion as a quick fix, leave a `# TODO` calling it
+out — but ideally don't ship the weakening at all. Loose tests rot
+into false confidence.
+
 ### Step 9 — Phase 1: green the suite, run the soak
 
 ```sh
 python -m pytest tests/ -q --tb=line   # twice in a row to confirm stability
-python tests/soak.py 1000 > /tmp/soak.log 2>&1 && grep SUMMARY /tmp/soak.log
+python tests/soak.py 1000 --workers 12 > /tmp/soak.log 2>&1 && grep SUMMARY /tmp/soak.log
 ```
+
+`--workers` parallelizes across processes — default is serial, pass
+`--workers <N>` (typically `os.cpu_count() - 2` to leave headroom) to
+cut a 1000-game run from ~4 min to ~30s. Each game is independent so
+the speedup is near-linear.
 
 Until SUMMARY says `1000/1000 succeeded, 0 failed`, **don't ship**.
 Each soak failure is a real bug from random card-pool interactions —
-fix it, re-run.
+fix it, re-run. Soak only catches engine crashes (`Exception` /
+`GameOver`), never assertion failures — so a green soak does NOT
+substitute for a tight unit-test suite.
 
 ### Step 10 — Phase 1: ship
 

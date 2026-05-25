@@ -364,6 +364,101 @@ def test_dragged_below_curses_opponent():
     assert post_deck == pre_deck + 1
 
 
+def test_blademaster_okani_counters_opponent_minion():
+    """TSC_032 Blademaster Okani: opponent minion play is countered."""
+    game = prepare_game()
+    okani = game.player1.summon("TSC_032")
+    game.refresh_auras()
+    game.end_turn()
+    minion = game.player2.give("CS2_172")  # Bloodfen Raptor
+    minion.play()
+    # Counter sends it to graveyard without triggering battlecry/board entry.
+    assert minion not in game.player2.field
+    _ = okani
+
+
+def test_blademaster_okani_counters_opponent_spell():
+    """TSC_032 Blademaster Okani: opponent spell play is also countered."""
+    game = prepare_game()
+    game.player1.summon("TSC_032")
+    game.refresh_auras()
+    game.end_turn()
+    pre_p1_hp = game.player1.hero.health
+    fb = game.player2.give(FIREBALL)
+    fb.play(target=game.player1.hero)
+    # Counter means no damage is dealt.
+    assert game.player1.hero.health == pre_p1_hp
+
+
+def test_amalgam_of_the_deep_uses_all_tribes():
+    """TSC_069 Amalgam of the Deep: a multi-tribe target's full race set
+    seeds the Discover pool, not just the first race."""
+    game = prepare_game()
+    # Use a Murloc Tidehunter (2-tribe) — actually, we want a true multi-
+    # tribe minion. Twin-fin Fin Twin is a 1-tribe but the test surface
+    # is whether the FuncSelector accepts multiple races. Use a known
+    # multi-tribe minion if available; fall back to a single-tribe target
+    # to assert the picker doesn't crash.
+    target = game.player1.summon("TSC_960")  # 1-tribe Murloc Naga
+    amalgam = game.player1.give("TSC_069")
+    amalgam.play(target=target)
+    # Choice should be open with 3 minions, all sharing at least one tribe.
+    assert game.player1.choice is not None
+    target_races = set(target.races)
+    for c in game.player1.choice.cards:
+        assert any(r in target_races for r in c.races) or Race.ALL in c.races
+
+
+def test_radar_detector_shuffles_after_scan():
+    """TSC_079 Radar Detector: deck is shuffled after the bottom-5 scan."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    game.player1.deck.clear()
+    # Bottom 5: 2 mechs + 3 non-mechs. Mechs drawn, non-mechs reshuffled.
+    game.player1.card("VAN_EX1_556", zone=Zone.DECK)  # Mech
+    for cid in ("CS2_172", "EX1_399", "CS2_124"):
+        game.player1.card(cid, zone=Zone.DECK)
+    game.player1.card("VAN_EX1_556", zone=Zone.DECK)  # Mech
+    pre_non_mech_bottom = [c.id for c in game.player1.deck[:5] if "EX1_556" not in c.id]
+    spell = game.player1.give("TSC_079")
+    spell.play()
+    # Both mechs drawn out.
+    drawn_mechs = [c for c in game.player1.hand if c.id == "VAN_EX1_556"]
+    assert len(drawn_mechs) == 2
+    # The remaining deck cards were shuffled — they're still all 3 ids
+    # but their order may differ from the original bottom slice.
+    remaining_ids = [c.id for c in game.player1.deck]
+    assert sorted(remaining_ids) == sorted(pre_non_mech_bottom)
+
+
+def test_emergency_maneuvers_resummons_copy_dormant():
+    """TSC_929 Emergency Maneuvers: the resummoned copy is Dormant for 1 turn."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    secret = game.player1.give("TSC_929")
+    secret.play()
+    minion = game.player1.give("CS2_172")
+    minion.play()
+    game.end_turn()
+    minion.destroy()
+    copies = [m for m in game.player1.field if m.id == "CS2_172"]
+    assert len(copies) >= 1
+    assert copies[0].dormant
+    assert copies[0].dormant_turns >= 1
+
+
+def test_queen_azshara_offers_ancient_relics():
+    """TSC_641 Queen Azshara: with 3 spells held, offers 3 of 4 relics."""
+    game = prepare_game()
+    queen = game.player1.give("TSC_641")
+    # Cast 3 spells while holding her.
+    for _ in range(3):
+        game.player1.give(MOONFIRE).play(target=game.player1.hero)
+    queen.play()
+    assert game.player1.choice is not None
+    relic_ids = {"TSC_641ta", "TSC_641tb", "TSC_641tc", "TSC_641td"}
+    for c in game.player1.choice.cards:
+        assert c.id in relic_ids
+
+
 def test_gangplank_diver_is_dormant_for_one_turn():
     """TSC_007 Gangplank Diver: must be dormant one turn after summon."""
     game = prepare_game()

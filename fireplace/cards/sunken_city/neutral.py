@@ -101,14 +101,104 @@ class TSC_064:
     play = (Attr(SELF, "spells_cast_while_holding") >= 3) & Hit(ENEMY_CHARACTERS, 3)
 
 
+_ANCIENT_RELICS = (
+    "TSC_641ta",  # Ring of Tides
+    "TSC_641tb",  # Horn of Ancients
+    "TSC_641tc",  # Xal'atath
+    "TSC_641td",  # Tidestone of Golganneth
+)
+
+
 class TSC_641:
     """Queen Azshara"""
 
-    # Battlecry: If you've cast three spells while holding this, choose an
-    # Ancient Relic. Approximation: gain a generic discover of any spell.
-    play = (Attr(SELF, "spells_cast_while_holding") >= 3) & DISCOVER(
-        RandomSpell()
+    # Battlecry: If you've cast three spells while holding this, choose
+    # an Ancient Relic. The four relics are real tokens in data; we open
+    # a 3-of-4 GenericChoice over them.
+    def play(self):
+        if getattr(self, "spells_cast_while_holding", 0) < 3:
+            return
+        import random as _random
+
+        choices = _random.sample(_ANCIENT_RELICS, k=3)
+        yield GenericChoice(self.controller, choices)
+
+
+class TSC_641ta:
+    """Ring of Tides"""
+
+    # After you cast a spell, this becomes a copy of it that costs (1).
+    # While in hand, listen for own spell casts and Morph into the spell.
+    class Hand:
+        events = OWN_SPELL_PLAY.after(
+            Morph(SELF, Play.CARD).then(Buff(SELF, "TSC_641tae"))
+        )
+
+
+class TSC_641tae:
+    tags = {GameTag.COST: -100}  # clamped to base; with Set to 1 via data
+
+
+class TSC_641tb:
+    """Horn of Ancients"""
+
+    # Add a random Colossal minion to your hand. It costs (1).
+    def play(self):
+        from ..utils import db
+        import random as _random
+
+        colossal_ids = [
+            cid
+            for cid, c in db.items()
+            if c.collectible and c.tags.get(GameTag.COLOSSAL, 0)
+        ]
+        if not colossal_ids:
+            return
+        pick = _random.choice(colossal_ids)
+        yield Give(CONTROLLER, pick).then(Buff(Give.CARD, "TSC_641tbe"))
+
+
+@custom_card
+class TSC_641tbe:
+    tags = {
+        GameTag.CARDNAME: "Cheap Colossal",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -100,
+    }
+
+
+class TSC_641tc:
+    """Xal'atath"""
+
+    # Weapon. After you cast a spell, deal 2 damage to the enemy hero
+    # and lose 1 Durability.
+    events = OWN_SPELL_PLAY.after(
+        Hit(ENEMY_HERO, 2),
+        Hit(SELF, 1),
     )
+
+
+class TSC_641td:
+    """Tidestone of Golganneth"""
+
+    # Shuffle 5 random spells into your deck. Set their Cost to (1). Draw two cards.
+    def play(self):
+        controller = self.controller
+        for _ in range(5):
+            # RandomSpell picks a fresh spell each call.
+            yield Shuffle(CONTROLLER, RandomSpell(card_class=controller.hero.card_class)).then(
+                Buff(Shuffle.CARD, "TSC_641tde")
+            )
+        yield Draw(CONTROLLER) * 2
+
+
+@custom_card
+class TSC_641tde:
+    tags = {
+        GameTag.CARDNAME: "Reduced",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -100,
+    }
 
 
 class TSC_826:
@@ -296,7 +386,9 @@ class TSC_069:
     """Amalgam of the Deep"""
 
     # Battlecry: Choose a friendly minion. Discover a minion of the same
-    # minion type.
+    # minion type. For multi-tribe targets (Amalgams), the Discover pool
+    # contains any minion that shares at least one of the target's
+    # tribes — matching Hearthstone's canonical interpretation.
     requirements = {
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_FRIENDLY_TARGET: 0,
@@ -305,13 +397,22 @@ class TSC_069:
 
     def play(self):
         target = self.target
-        if target is None or target.races is None:
+        if target is None or not target.races:
             return
-        for race in target.races:
-            if race == Race.INVALID:
-                continue
-            yield DISCOVER(RandomMinion(race=race))
+        valid_races = {
+            race for race in target.races if race != Race.INVALID
+        }
+        if not valid_races:
             return
+        # ALL counts as a wildcard — match any tribe.
+        if Race.ALL in valid_races:
+            yield DISCOVER(RandomMinion())
+            return
+        yield DISCOVER(
+            RandomMinion(
+                custom_filter=lambda c: any(r in valid_races for r in c.races)
+            )
+        )
 
 
 class TSC_067:
@@ -406,13 +507,24 @@ class TSC_032:
     """Blademaster Okani"""
 
     # Battlecry: Secretly choose to Counter the next minion or spell your
-    # opponent plays while this is alive. Approximation: a self-buff
-    # marks the battlecry as fired (so the test_battlecry_scripts check
-    # is satisfied), and the events= entry arms the actual Counter.
+    # opponent plays while this is alive. The card's secret-choice UI is
+    # collapsed here: we Counter the next opponent minion *or* spell
+    # while Okani lives. Two parallel event listeners cover both card
+    # types; a self-buff satisfies the engine's "has play action" check.
     play = Buff(SELF, "TSC_032e")
-    events = Play(OPPONENT, MINION).on(
-        Find(FRIENDLY_MINIONS + ID("TSC_032")) & Counter(Play.CARD)
-    )
+    # On the opponent's next minion play: counter the battlecry AND bounce
+    # the minion back to their hand so the field is exactly as if the
+    # play never happened. On the next spell: a plain Counter suffices
+    # (the spell will drop into the graveyard without resolving).
+    events = [
+        Play(OPPONENT, MINION).on(
+            Find(FRIENDLY_MINIONS + ID("TSC_032"))
+            & (Counter(Play.CARD), Bounce(Play.CARD))
+        ),
+        Play(OPPONENT, SPELL).on(
+            Find(FRIENDLY_MINIONS + ID("TSC_032")) & Counter(Play.CARD)
+        ),
+    ]
 
 
 @custom_card

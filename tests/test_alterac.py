@@ -504,14 +504,18 @@ def test_brukan_casts_two_distinct_elements():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
     while game.player1.max_mana < 8:
         game.end_turn(); game.end_turn()
-    pre_p1_health = game.player1.hero.health
-    pre_p2_health = game.player2.hero.health
-    pre_p2_minions = len(game.player2.field)
-    # Put a minion on each side to potentially absorb water heal / lightning dmg
+    # Set up minions to absorb effects
     game.player1.summon("CS2_125")
     game.end_turn()
     game.player2.summon("CS2_231")  # 1/1, dies to Lightning
     game.end_turn()
+    # Bru'kan inherits the friendly hero's damage on swap; pre-damage so Water's
+    # heal of FRIENDLY_CHARACTERS produces a detectable health bump.
+    game.player1.hero.set_current_health(25)
+    # Capture baselines after all setup, immediately before playing Bru'kan.
+    pre_p1_health = game.player1.hero.health
+    pre_p2_health = game.player2.hero.health
+    pre_p2_minions = len(game.player2.field)
     game.player1.give("AV_258").play()
     # Verify *something* changed — at least one of the 4 effects must have fired
     # twice (any of: enemy hero -6 from Fire, enemy minion died to Lightning,

@@ -117,9 +117,15 @@ class TSC_929:
     """Emergency Maneuvers"""
 
     # Secret: When a friendly minion dies, summon a copy of it. It's
-    # Dormant for 1 turn. Implemented without dormant — close enough.
+    # Dormant for 1 turn.
     secret = Death(FRIENDLY + MINION).after(
-        FULL_BOARD | (Reveal(SELF), Summon(CONTROLLER, Copy(Death.ENTITY)))
+        FULL_BOARD
+        | (
+            Reveal(SELF),
+            Summon(CONTROLLER, Copy(Death.ENTITY)).then(
+                Dormant(Summon.CARD, 1)
+            ),
+        )
     )
 
 

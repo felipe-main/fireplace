@@ -50,10 +50,16 @@ class TSC_079:
     def play(self):
         controller = self.controller
         bottom_five = list(controller.deck[:5])
-        mechs = [c for c in bottom_five if c.type == CardType.MINION and Race.MECHANICAL in c.races]
+        mechs = [
+            c
+            for c in bottom_five
+            if c.type == CardType.MINION and Race.MECHANICAL in c.races
+        ]
         for m in mechs:
             yield ForceDraw(m)
-        # No explicit Shuffle action needed; the engine handles deck order.
+        # Shuffle the remaining deck so the scanned cards don't keep
+        # their original positions.
+        controller.shuffle_deck()
 
 
 class TSC_952:

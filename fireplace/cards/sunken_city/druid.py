@@ -66,15 +66,18 @@ class TSC_653e:
 class TSC_657:
     """Dozing Kelpkeeper"""
 
-    # Rush. Starts Dormant. After you've cast 5 Mana worth of spells, awaken.
-    # Implemented as a Hand-side counter? Actually starts dormant in play.
-    # We approximate: dormant_turns set in data; awaken triggered after
-    # enough spell mana spent (tracked via Hand events).
-    class Hand:
-        events = []
-
-    # Simplest approximation: not implemented faithfully — leave dormant
-    # 1 turn (engine default for the Diver style) and resume.
+    # Rush. Starts Dormant. After you've cast 5 Mana worth of spells
+    # (since this card was summoned), awaken. The engine tracks
+    # `spell_mana_spent_in_play` per-minion, reset to 0 on summon and
+    # bumped in Play.do for every spell cast by the controller.
+    # Dormant minions only fire `dormant_events`, not `events`, so the
+    # awaken trigger lives there.
+    tags = {GameTag.DORMANT: True}
+    dormant_turns = 99  # huge cap; awakening happens via the event below.
+    dormant_events = OWN_SPELL_PLAY.after(
+        (Attr(SELF, "spell_mana_spent_in_play") >= 5)
+        & Awaken(SELF)
+    )
 
 
 class TSC_658:

@@ -8,6 +8,7 @@ from hearthstone.enums import (
     Mulligan,
     PlayState,
     Race,
+    SpellSchool,
     Step,
     Zone,
 )
@@ -577,6 +578,27 @@ class Play(GameAction):
             if hand.corrupt and hand.cost < card.cost:
                 source.game.queue_actions(player, [Corrupt(hand)])
 
+        # Sunken City: bump spell/Naga "while holding" trackers and the
+        # per-minion spell-mana counter BEFORE event broadcasts so that
+        # OWN_SPELL_PLAY listeners (Dozing Kelpkeeper, etc.) read the
+        # post-cast values.
+        if card.type == CardType.SPELL:
+            paid_cost = max(0, card.cost)
+            player.mana_spent_on_spells_this_game += paid_cost
+            player.spell_mana_spent_this_turn += paid_cost
+            school = card.spell_school
+            if school and int(school) == int(SpellSchool.HOLY):
+                player.mana_spent_on_holy_spells_this_game += paid_cost
+            for minion in player.field:
+                minion.spell_mana_spent_in_play += paid_cost
+        for hand_card in player.hand:
+            if hand_card is card:
+                continue
+            if card.type == CardType.SPELL:
+                hand_card.spells_cast_while_holding += 1
+            if card.type == CardType.MINION and Race.NAGA in card.races:
+                hand_card.nagas_played_while_holding += 1
+
         if card.type in (CardType.MINION, CardType.WEAPON):
             self.queue_broadcast(
                 summon_action, (player, EventListener.ON, player, card)
@@ -603,16 +625,6 @@ class Play(GameAction):
 
         player.combo = True
         player.last_card_played = card
-        # Sunken City "while holding this" trackers — bump every hand card's
-        # counter when a spell or Naga is played by its owner. Done BEFORE
-        # any per-type bookkeeping so the trigger fires on the actual play.
-        for hand_card in player.hand:
-            if hand_card is card:
-                continue
-            if card.type == CardType.SPELL:
-                hand_card.spells_cast_while_holding += 1
-            if card.type == CardType.MINION and Race.NAGA in card.races:
-                hand_card.nagas_played_while_holding += 1
         if card.type == CardType.MINION:
             player.minions_played_this_turn += 1
             if Race.TOTEM in card.races:
@@ -1097,6 +1109,14 @@ class Damage(TargetedAction):
                 hasattr(source, "poisonous")
                 and source.poisonous
                 and (target.type != CardType.HERO and source.type != CardType.WEAPON)
+            ):
+                target.destroy()
+            # Sunken City: Urchin Spines — your spells are Poisonous this
+            # turn. Spell damage on a minion destroys it.
+            if (
+                source.type == CardType.SPELL
+                and target.type != CardType.HERO
+                and getattr(source.controller, "spells_poisonous_this_turn", False)
             ):
                 target.destroy()
             if (

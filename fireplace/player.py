@@ -132,6 +132,16 @@ class Player(Entity, TargetableByAuras):
         # Per-school spell-cast history (SpellSchool → list of card-ids cast
         # this game). Populated by the CastSpell action.
         self.spells_cast_by_school = {}
+        # Sunken City: actual mana spent on spells this game (Naga Giant,
+        # Garden's Grace). Bumped from Play.do using the spell's paid cost.
+        self.mana_spent_on_spells_this_game = 0
+        self.mana_spent_on_holy_spells_this_game = 0
+        # Sunken City: while True, the next damage dealt by your spells
+        # also poisons the damaged minion (Urchin Spines, this-turn flag).
+        self.spells_poisonous_this_turn = False
+        # Sunken City: Dozing Kelpkeeper awakens after this much spell
+        # mana has been spent while it's dormant on the board.
+        self.spell_mana_spent_this_turn = 0
 
     def dump(self):
         data = super().dump()

@@ -427,6 +427,9 @@ class BaseGame(Entity):
         player.hero_health_changed_this_turn = 0
         # Reset accumulated opponent-turn-damage counter at start of own turn.
         player.damage_taken_on_opponents_turn = 0
+        # Sunken City: per-turn flags reset at the start of own turn.
+        player.spells_poisonous_this_turn = False
+        player.spell_mana_spent_this_turn = 0
 
         for entity in self.live_entities:
             if entity.type != CardType.PLAYER:

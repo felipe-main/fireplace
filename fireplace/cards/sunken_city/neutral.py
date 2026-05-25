@@ -22,22 +22,28 @@ class TSC_002:
 class TSC_007:
     """Gangplank Diver"""
 
-    # Dormant for 1 turn. Rush. Immune while attacking.
-    pass
+    # Dormant for 1 turn. Rush. Immune while attacking. The Sunken City
+    # data encodes dormancy via a new tag (1652) rather than the legacy
+    # GameTag.DORMANT — we surface DORMANT so the existing engine handler
+    # picks it up.
+    tags = {GameTag.DORMANT: True}
+    dormant_turns = 1
 
 
 class TSC_013:
     """Slimescale Diver"""
 
     # Dormant for 1 turn. Rush, Poisonous.
-    pass
+    tags = {GameTag.DORMANT: True}
+    dormant_turns = 1
 
 
 class TSC_647:
     """Pelican Diver"""
 
     # Dormant for 1 turn. Rush.
-    pass
+    tags = {GameTag.DORMANT: True}
+    dormant_turns = 1
 
 
 class TSC_065:
@@ -144,8 +150,7 @@ class TSC_829:
     """Naga Giant"""
 
     # Costs (1) less for each Mana you've spent on spells this game.
-    # We approximate via spell count * 2 (avg cost).
-    cost_mod = -Count(CARDS_PLAYED_THIS_GAME + SPELL) * 2
+    cost_mod = -Attr(CONTROLLER, "mana_spent_on_spells_this_game")
 
 
 class TSC_020:

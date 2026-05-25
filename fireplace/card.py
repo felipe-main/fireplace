@@ -965,6 +965,11 @@ class Character(LiveEntity):
         self.attack_target = None
         self.num_attacks = 0
         self.race = Race.INVALID
+        # Sunken City: per-minion running tally of spell mana the
+        # controller has spent while this minion was on the board. Set
+        # to 0 when the minion enters PLAY (see _set_zone) and bumped in
+        # Play.do for spells. Powers Dozing Kelpkeeper's awaken rule.
+        self.spell_mana_spent_in_play = 0
         super().__init__(data)
 
     def dump(self):
@@ -1359,6 +1364,9 @@ class Minion(Character):
                 self.controller.field.insert(self._summon_index, self)
             else:
                 self.controller.field.append(self)
+            # Reset the per-minion spell-mana counter on summon so cards
+            # like Dozing Kelpkeeper start counting from 0.
+            self.spell_mana_spent_in_play = 0
         elif value == Zone.GRAVEYARD and self.zone == Zone.PLAY:
             self.controller.minions_killed_this_turn += 1
 

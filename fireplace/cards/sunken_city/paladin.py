@@ -9,11 +9,10 @@ class TSC_061:
     """The Garden's Grace"""
 
     # Give a minion +5/+5 and Divine Shield. Costs (1) less for each Mana
-    # you've spent on Holy spells this game. We approximate "mana spent on
-    # Holy spells" via count of Holy spells cast (each costs ~3 on avg).
+    # you've spent on Holy spells this game.
     requirements = {PlayReq.REQ_MINION_TARGET: 0, PlayReq.REQ_TARGET_TO_PLAY: 0}
     play = Buff(TARGET, "TSC_061e"), GiveDivineShield(TARGET)
-    cost_mod = -Count(CARDS_PLAYED_THIS_GAME + SPELL + HOLY_SPELL) * 2
+    cost_mod = -Attr(CONTROLLER, "mana_spent_on_holy_spells_this_game")
 
 
 class TSC_061e:

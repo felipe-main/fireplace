@@ -106,12 +106,16 @@ class TSC_934:
 class TSC_936:
     """Swiftscale Trickster"""
 
-    # Battlecry: Your next spell this turn costs (0).
-    play = Buff(FRIENDLY_HAND + SPELL, "TSC_936e")  # First spell trigger handled by engine fade-on-use isn't trivial; approximate as -100 to all spells in hand this turn.
+    # Battlecry: Your next spell this turn costs (0). Implemented as
+    # Solar-Eclipse-style: an enchantment attached to the controller that
+    # refreshes a Cost: -100 aura on every spell in hand, and destroys
+    # itself the moment any spell is cast.
+    play = Buff(CONTROLLER, "TSC_936e")
 
 
 class TSC_936e:
-    tags = {GameTag.COST: -100, enums.TEMPORARY: 1}
+    update = Refresh(FRIENDLY_HAND + SPELL, {GameTag.COST: -100})
+    events = Play(CONTROLLER, SPELL).after(Destroy(SELF))
 
 
 class TSC_937:

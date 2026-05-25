@@ -45,16 +45,13 @@ class TSC_072:
 class TSC_946:
     """Urchin Spines"""
 
-    # Your spells this turn are Poisonous. Approximate via a transient
-    # buff that applies POISONOUS to spell-cast damage: we apply
-    # Poisonous to every minion damaged by a spell this turn via a hook.
-    # Simpler approximation: silently no-op — most of the value lies in
-    # combo with strong spells; tagging the hero suffices in tests.
-    play = Buff(FRIENDLY_HERO, "TSC_946e")
-
-
-class TSC_946e:
-    tags = {enums.TEMPORARY: 1}
+    # Your spells this turn are Poisonous. Sets a per-turn flag on the
+    # controller that the Damage action checks: spell-source damage to a
+    # minion destroys it (hero unaffected). Reset at the start of own turn.
+    def play(self):
+        self.controller.spells_poisonous_this_turn = True
+        return
+        yield  # makes this a generator with no yielded actions
 
 
 class TSC_947:

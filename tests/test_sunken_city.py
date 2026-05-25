@@ -364,6 +364,97 @@ def test_dragged_below_curses_opponent():
     assert post_deck == pre_deck + 1
 
 
+def test_gangplank_diver_is_dormant_for_one_turn():
+    """TSC_007 Gangplank Diver: must be dormant one turn after summon."""
+    game = prepare_game()
+    diver = game.player1.summon("TSC_007")
+    game.refresh_auras()
+    assert diver.dormant_turns > 0
+    assert diver.dormant
+
+
+def test_swiftscale_trickster_makes_only_next_spell_free():
+    """TSC_936 Swiftscale Trickster: the first spell cast after play is free;
+    subsequent ones revert to normal cost."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    game.player1.discard_hand()
+    fb1 = game.player1.give(FIREBALL)
+    fb2 = game.player1.give(FIREBALL)
+    base_cost = fb1.cost
+    trickster = game.player1.give("TSC_936")
+    trickster.play()
+    game.refresh_auras()
+    # Both spells in hand briefly show 0 cost under the aura.
+    assert fb1.cost == 0
+    # Cast the first one — the enchant destroys itself.
+    fb1.play(target=game.player2.hero)
+    game.refresh_auras()
+    # The second spell goes back to its normal cost.
+    assert fb2.cost == base_cost
+
+
+def test_naga_giant_cost_drops_by_mana_spent_on_spells():
+    """TSC_829 Naga Giant: cost reduction == mana paid on spells this game."""
+    game = prepare_game()
+    giant = game.player1.give("TSC_829")
+    base = giant.cost
+    # Cast a 4-mana Fireball.
+    game.player1.give(FIREBALL).play(target=game.player2.hero)
+    game.refresh_auras()
+    assert giant.cost == base - 4
+
+
+def test_gardens_grace_cost_drops_by_holy_mana_spent():
+    """TSC_061 Garden's Grace: -1 per Mana spent on Holy spells this game."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    grace = game.player1.give("TSC_061")
+    base = grace.cost
+    # Holy Light is 2 mana Holy spell.
+    game.player1.give(HOLY_LIGHT).play(target=game.player1.hero)
+    game.refresh_auras()
+    assert grace.cost == base - 2
+
+
+def test_urchin_spines_makes_spells_poisonous_this_turn():
+    """TSC_946 Urchin Spines: any spell damage to a minion destroys it."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    enemy = game.player2.summon("CS2_186")  # 7/7 War Golem
+    game.player1.give("TSC_946").play()
+    # Now Moonfire (1 damage) should destroy the 7-health War Golem.
+    game.player1.give(MOONFIRE).play(target=enemy)
+    assert enemy.dead
+
+
+def test_urchin_spines_resets_at_turn_end():
+    """TSC_946 Urchin Spines effect doesn't carry past the turn."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    game.player1.give("TSC_946").play()
+    game.end_turn(); game.end_turn()  # P2 then back to P1
+    assert not game.player1.spells_poisonous_this_turn
+    enemy = game.player2.summon("CS2_186")
+    game.player1.give(MOONFIRE).play(target=enemy)
+    # Without Urchin Spines, Moonfire is just 1 damage — Golem survives.
+    assert not enemy.dead
+    assert enemy.damage == 1
+
+
+def test_dozing_kelpkeeper_awakens_after_five_spell_mana():
+    """TSC_657 Dozing Kelpkeeper: dormant until ≥5 mana of spells cast since
+    summon, then awakens."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    keeper = game.player1.summon("TSC_657")
+    game.refresh_auras()
+    assert keeper.dormant
+    # Cast 3 mana of spells (Fireball is 3) — not enough.
+    game.player1.give(FIREBALL).play(target=game.player2.hero)
+    game.refresh_auras()
+    assert keeper.dormant
+    # Cast another Fireball → 6 mana total. Awakens.
+    game.player1.give(FIREBALL).play(target=game.player2.hero)
+    game.refresh_auras()
+    assert not keeper.dormant
+
+
 def test_forged_in_flame_destroys_weapon_and_draws():
     game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
     axe = game.player1.give("CS2_106")  # Fiery War Axe 3/2

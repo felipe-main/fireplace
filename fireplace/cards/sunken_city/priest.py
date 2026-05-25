@@ -161,14 +161,7 @@ class TSC_216t:
 
     # At the end of your turn, force a random enemy minion to attack
     # the Blackwater Behemoth. Approximation: at end of turn, queue an
-    # attack from random enemy minion against the parent if alive.
-    def events(self):
-        return ()  # see class-level below
-
-
-class TSC_216t:  # noqa: F811
-    """Behemoth's Lure"""
-
+    # attack from a random enemy minion against the parent if alive.
     events = OWN_TURN_END.on(
         Find(FRIENDLY_MINIONS + ID("TSC_216"))
         & Find(ENEMY_MINIONS)

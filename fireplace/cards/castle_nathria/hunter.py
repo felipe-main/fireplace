@@ -72,8 +72,11 @@ class REV_352(InfuseCardtextMixin):
 class REV_352t:
     """Stonebound Gargon"""
 
-    # Infused — Rush + cleave on its attack.
-    events = Attack(SELF).on(Hit(TARGET_ADJACENT, ATK(SELF)))
+    # Infused — Rush + cleave on its attack. Uses the canonical CLEAVE
+    # alias (= Hit(TARGET_ADJACENT, ATK(SELF))) wired into the Attack
+    # event's ON listener so the splash damage resolves during the
+    # attack, matching every other cleave card in the engine.
+    events = Attack(SELF).on(CLEAVE)
 
 
 class REV_353:

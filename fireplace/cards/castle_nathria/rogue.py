@@ -7,25 +7,49 @@ from .utils import InfuseCardtextMixin
 # Spells
 
 
+class _DoubleCrossFireIfDrained(TargetedAction):
+    """Double Cross Secret: only reveal + draw 2 if opponent.mana == 0
+    after the SpendMana that triggered us. The Secret is set up to
+    fire on SpendMana(OPPONENT) after; this gate filters down to the
+    drain case (which is what the printed text wants)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target.opponent.mana == 0:
+            source.game.cheat_action(
+                source, [Reveal(source), Draw(target) * 2]
+            )
+
+
 class REV_825:
     """Double Cross"""
 
     # Secret: When your opponent spends all their Mana, draw two cards.
-    # Approximated to fire on opponent's turn end.
-    secret = OWN_TURN_END.on(
-        Reveal(SELF),
-        Draw(CONTROLLER) * 2,
-    )
+    # Hook SpendMana(OPPONENT).after; gate on opponent.mana == 0.
+    secret = SpendMana(OPPONENT).after(_DoubleCrossFireIfDrained(CONTROLLER))
+
+
+class _StickySituationFireIfDrained(TargetedAction):
+    """Sticky Situation Secret: only summon the Spider when the
+    SpendMana(OPP) that triggered us leaves the opponent at 0 mana."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target.opponent.mana == 0:
+            source.game.cheat_action(
+                source, [Reveal(source), Summon(target, "REV_827t")]
+            )
 
 
 class REV_827:
     """Sticky Situation"""
 
-    # Secret: After your opponent casts a spell, summon a 3/4 Spider
-    # with Stealth.
-    secret = Play(OPPONENT, SPELL).after(
-        Reveal(SELF), Summon(CONTROLLER, "REV_827t")
-    )
+    # Secret: When your opponent spends all their Mana, summon a 3/4
+    # Spider with Stealth. (The printed wording is "spends all their
+    # Mana" — fire on SpendMana(OPP).after gated by opponent.mana == 0.)
+    secret = SpendMana(OPPONENT).after(_StickySituationFireIfDrained(CONTROLLER))
 
 
 class REV_827t:

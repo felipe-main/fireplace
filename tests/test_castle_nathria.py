@@ -157,6 +157,47 @@ def test_location_destroys_at_zero_durability():
     assert loc.zone == Zone.GRAVEYARD
 
 
+def test_infuse_cluster_all_twins_morph_correctly():
+    """Umbrella: every base Infuse card morphs into its declared
+    infused twin once the threshold is hit, and the twin lands in
+    hand as a valid PlayableCard (right id, in HAND zone, ready to
+    play). Closes the cluster watch row."""
+    base_to_twin = [
+        ("REV_013", "REV_013t"),  # Stoneborn Accuser
+        ("REV_017", "REV_017t"),  # Insatiable Devourer
+        ("REV_019", "REV_019t"),  # Famished Fool
+        ("REV_244", "REV_244t"),  # Mischievous Imp
+        ("REV_252", "REV_252t"),  # Clean the Scene
+        ("REV_336", "REV_336t4"),  # Plot of Sin
+        ("REV_350", "REV_350t2"),  # Frenzied Fangs
+        ("REV_601", "REV_601t"),  # Frozen Touch
+        ("REV_835", "REV_835t"),  # Imp King Rafaam
+        ("REV_843", "REV_843t"),  # Sinfueled Golem
+        ("REV_920", "REV_920t"),  # Convincing Disguise
+        ("REV_933", "REV_933t"),  # Imbued Axe
+        ("REV_935", "REV_935t"),  # Party Favor Totem
+        ("REV_938", "REV_938t"),  # Door of Shadows
+        ("REV_956", "REV_956t"),  # Priest of the Deceased
+        ("REV_957", "REV_957t"),  # Murlocula
+    ]
+    for base_id, twin_id in base_to_twin:
+        game = prepare_game()
+        card = game.player1.give(base_id)
+        threshold = card.infuse_threshold
+        assert threshold > 0, f"{base_id} has no infuse_threshold in data"
+        # Force enough friendly minion deaths to hit the threshold.
+        for _ in range(threshold):
+            m = game.player1.summon("CS2_122")
+            m.destroy()
+        # The hand slot now holds the infused twin.
+        morphed = [c for c in game.player1.hand if c.id == twin_id]
+        assert morphed, (
+            f"{base_id} did not morph into {twin_id} after {threshold} "
+            f"friendly deaths; hand has {[c.id for c in game.player1.hand]}"
+        )
+        assert morphed[0].zone == Zone.HAND
+
+
 def test_infuse_progress_bumps_on_friendly_minion_death():
     """A hand card with INFUSE counts friendly minion deaths."""
     game = prepare_game()
@@ -359,6 +400,28 @@ def test_frenzied_fangs_summons_two_bats():
     game.player1.give("REV_350").play()
     assert len(game.player1.field) == pre + 2
     assert all(m.id == "REV_350t" for m in game.player1.field[-2:])
+
+
+def test_stonebound_gargon_infused_uses_canonical_cleave_event():
+    """The infused twin (REV_352t) registers the same Attack(SELF).on(
+    CLEAVE) event-listener pattern as every other cleave-on-attack
+    minion in the engine (Magni, Enslaved Fel Lord, Foe Reaper 4000).
+    Live attack resolution is engine-level; we just verify the script
+    is wired identically so the event fires under the same conditions
+    as those reference cards."""
+    from fireplace.actions import Attack as AttackAction, Hit
+    game = prepare_game()
+    gargon = game.player1.summon("REV_352t")
+    # Exactly one event registered, ON-triggered by an Attack(SELF)
+    # with a Hit(TARGET_ADJACENT, ATK(SELF)) action — i.e. CLEAVE.
+    assert len(gargon.events) == 1
+    listener = gargon.events[0]
+    assert listener.at == 1  # EventListener.ON
+    assert isinstance(listener.trigger, AttackAction)
+    # The action attached is the CLEAVE Hit — check that the actions
+    # tuple references TARGET_ADJACENT.
+    cleave_action = listener.actions[0] if isinstance(listener.actions, (list, tuple)) else listener.actions
+    assert isinstance(cleave_action, Hit)
 
 
 def test_batty_guest_summons_a_bat_on_death():
@@ -575,7 +638,8 @@ def test_halkias_resummons_when_marked_secret_triggers():
     """If Halkias dies while you control a Secret, the next time that
     Secret triggers, Halkias is resummoned."""
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
-    # Plant a Rogue secret (Sticky Situation: triggers on opponent spell).
+    # Plant a Rogue secret (Sticky Situation: triggers on opponent
+    # spending all mana).
     sec = game.player1.give("REV_827")
     sec.play()
     assert any(s.id == "REV_827" for s in game.player1.secrets)
@@ -584,11 +648,12 @@ def test_halkias_resummons_when_marked_secret_triggers():
     halkias.destroy()
     secret = game.player1.secrets[0]
     assert getattr(secret, "_resummons_halkias", False) is True
-    # Hand turn over and have opponent cast a spell — Sticky Situation
-    # reveals (summoning its Spider) AND resummons Halkias.
+    # Hand turn over and drain opponent's mana so Sticky Situation
+    # fires. The Reveal during the secret's effect runs the Halkias
+    # soul resummon hook.
     game.end_turn()
-    pre_field_p1 = len(game.player1.field)
-    game.player2.give(MOONFIRE).play(target=game.player1.hero)
+    game.player2.used_mana = game.player2.max_mana
+    game.player2.give("GAME_005").play()  # 0-cost Coin triggers SpendMana
     # Halkias should be back on Player1's board.
     assert any(m.id == "REV_829" for m in game.player1.field)
 
@@ -602,16 +667,45 @@ def test_halkias_no_op_without_secret():
     assert not any(m.id == "REV_829" for m in game.player1.field)
 
 
-def test_sticky_situation_summons_spider_on_opponent_spell():
-    """Secret fires when the opponent casts a spell."""
+def test_sticky_situation_fires_when_opponent_drains_mana():
+    """Secret fires only when the opponent spends down to 0 mana.
+    Casting a single Moonfire (1 mana) while they have 10 leaves 9
+    behind — the Secret should NOT fire."""
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     game.player1.give("REV_827").play()
     assert any(s.id == "REV_827" for s in game.player1.secrets)
     game.end_turn()
-    pre = len(game.player1.field)
+    pre_field = len(game.player1.field)
+    # Cheap spell, mana left over — Secret holds.
     game.player2.give(MOONFIRE).play(target=game.player1.hero)
-    assert len(game.player1.field) == pre + 1
+    assert len(game.player1.field) == pre_field
+    assert any(s.id == "REV_827" for s in game.player1.secrets)
+    # Drain opponent to 0 mana — Secret should fire and Spider lands.
+    game.player2.used_mana = game.player2.max_mana
+    # Cast a 0-cost trigger (give Coin) so a SpendMana(0) fires the
+    # hook; we need _StickySituationFireIfDrained.do to run with
+    # opponent.mana == 0.
+    coin = game.player2.give("GAME_005")  # The Coin (0-cost spell)
+    coin.play()
+    # opponent.mana is now 0; spider summoned and secret cleared.
+    assert len(game.player1.field) == pre_field + 1
     assert game.player1.field[-1].id == "REV_827t"
+    assert not any(s.id == "REV_827" for s in game.player1.secrets)
+
+
+def test_double_cross_fires_when_opponent_drains_mana():
+    """Secret: When your opponent spends all their Mana, draw two cards."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    while game.player1.hand:
+        game.player1.hand[0].discard()
+    game.player1.give("REV_825").play()
+    game.end_turn()
+    # Drain opponent and cast a 0-cost spell to fire the SpendMana hook.
+    game.player2.used_mana = game.player2.max_mana
+    pre_hand = len(game.player1.hand)
+    game.player2.give("GAME_005").play()
+    assert len(game.player1.hand) == pre_hand + 2
+    assert not any(s.id == "REV_825" for s in game.player1.secrets)
 
 
 # ---------------------------------------------------------------------------

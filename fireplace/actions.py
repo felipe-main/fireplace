@@ -427,6 +427,24 @@ class Death(GameAction):
             source.game.check_for_end_game()
             source.game.refresh_auras()
             log.info("Processing Deathrattle for %r", card)
+            # Castle Nathria — Infuse: every friendly minion death bumps
+            # `infuse_progress` on Infuse cards in the dying minion's
+            # controller's hand. When the threshold is reached, the card
+            # morphs into its infused twin. Also bump the per-game
+            # friendly-minion-deaths counter (Sire Denathrius reads it).
+            if card.type == CardType.MINION and card.controller:
+                card.controller.friendly_minions_died_this_game += 1
+                # snapshot the hand — morph() mutates it mid-loop
+                for hand_card in list(card.controller.hand):
+                    threshold = hand_card.infuse_threshold
+                    if threshold <= 0:
+                        continue
+                    hand_card.infuse_progress += 1
+                    if (
+                        hand_card.infuse_progress >= threshold
+                        and hand_card.infused_card_id
+                    ):
+                        hand_card.morph(hand_card.infused_card_id)
             self._trigger = False
             source.game.manager.game_action(self, source, card)
             self.broadcast(source, EventListener.ON, card)
@@ -723,6 +741,40 @@ class Activate(GameAction):
         self.broadcast(source, EventListener.AFTER, heropower, target, choose)
         heropower.activations_this_turn += 1
         heropower.activations_this_game += 1
+
+
+class UseLocation(GameAction):
+    """
+    Murder at Castle Nathria — fire a Location's activate script, then
+    decrement its durability, set a 2-turn cooldown, and destroy it if
+    it ran out of charges.
+    """
+
+    LOCATION = CardArg()
+    TARGET = CardArg()
+
+    def do(self, source, location, target):
+        player = location.controller
+        source.game.manager.game_action(self, source, location, target)
+        self.broadcast(source, EventListener.ON, location, target)
+
+        source.game.action_start(BlockType.PLAY, location, 0, target)
+        actions_to_run = location.get_actions("activate") or location.get_actions(
+            "play"
+        )
+        if actions_to_run:
+            source.game.main_power(location, actions_to_run, target)
+        source.game.action_end(BlockType.PLAY, location)
+
+        # Consume one durability and lock for two turns.
+        location.damage += 1
+        location.cooldown = 2
+
+        self.broadcast(source, EventListener.AFTER, location, target)
+
+        if location.durability <= 0:
+            source.game.queue_actions(location, [Destroy(location)])
+            source.game.process_deaths()
 
 
 class Overload(GameAction):

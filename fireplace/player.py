@@ -98,6 +98,10 @@ class Player(Entity, TargetableByAuras):
         self.minions_killed_this_turn = 0
         self.minions_played_this_turn = 0
         self.weapon = None
+        # Murder at Castle Nathria — sixth board slot for a Location card.
+        # Holds at most one location at a time; playing a new one destroys
+        # the previous occupant (see Location._set_zone).
+        self.location = None
         self.zone = Zone.INVALID
         self.turn = None
         self.last_turn = None
@@ -151,6 +155,10 @@ class Player(Entity, TargetableByAuras):
         # Commander Ulthok: opponent's cards cost Health instead of Mana for
         # this many of THEIR turns (decremented at their begin_turn).
         self.pays_health_for_cards_turns_left = 0
+        # Castle Nathria — per-game count of friendly minions that have
+        # died. Powers Sire Denathrius (every death adds +1 to the
+        # battlecry damage). Bumped in Death.do; never reset.
+        self.friendly_minions_died_this_game = 0
 
     def dump(self):
         data = super().dump()
@@ -161,6 +169,8 @@ class Player(Entity, TargetableByAuras):
                 data["heropower"] = self.hero.power.dump()
         if self.weapon:
             data["weapon"] = self.weapon.dump()
+        if self.location:
+            data["location"] = self.location.dump()
         data["deck"] = len(self.deck)
         data["fatigue_counter"] = self.fatigue_counter
         data["hand"] = [card.dump() for card in self.hand]
@@ -186,6 +196,8 @@ class Player(Entity, TargetableByAuras):
                 data["heropower"] = self.hero.power.dump()
         if self.weapon:
             data["weapon"] = self.weapon.dump()
+        if self.location:
+            data["location"] = self.location.dump()
         data["deck"] = len(self.deck)
         data["fatigue_counter"] = self.fatigue_counter
         data["hand"] = [card.dump_hidden() for card in self.hand]
@@ -341,6 +353,8 @@ class Player(Entity, TargetableByAuras):
             yield self.hero
         if self.weapon:
             yield self.weapon
+        if self.location:
+            yield self.location
 
     @property
     def actionable_entities(self):

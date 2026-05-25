@@ -41,6 +41,7 @@ def Card(id):
         CardType.SPELL: Spell,
         CardType.ENCHANTMENT: Enchantment,
         CardType.WEAPON: Weapon,
+        CardType.LOCATION: Location,
         CardType.HERO_POWER: HeroPower,
     }[data.type]
     if subclass is Spell:
@@ -352,7 +353,26 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # Submerged Spacerock: marker that discards this card at end of its
         # owner's turn.
         self.discards_at_end_of_owner_turn = False
+        # Castle Nathria — Infuse keyword. Counts friendly minion deaths
+        # while this card sits in the controller's hand. When it reaches
+        # the threshold (TAG_SCRIPT_DATA_NUM_1 on the data), the card
+        # morphs into its infused twin (resolved from the data tag
+        # COLLECTION_RELATED_CARD_DATABASE_ID via cards.db.dbf).
+        self.infuse_progress = 0
         super().__init__(data)
+
+    @property
+    def infuse_threshold(self) -> int:
+        if not self.data.tags.get(GameTag.INFUSE, 0):
+            return 0
+        return self.data.tags.get(GameTag.TAG_SCRIPT_DATA_NUM_1, 0)
+
+    @property
+    def infused_card_id(self):
+        dbf = self.data.tags.get(GameTag.COLLECTION_RELATED_CARD_DATABASE_ID, 0)
+        if not dbf:
+            return None
+        return cards.db.dbf.get(dbf)
 
     def dump(self):
         data = super().dump()
@@ -1790,6 +1810,124 @@ class Weapon(rules.WeaponRules, LiveEntity):
         elif self.zone == Zone.PLAY:
             self.controller.weapon = None
         super()._set_zone(zone)
+
+
+class Location(rules.LocationRules, LiveEntity):
+    # Murder at Castle Nathria — Locations sit in a 6th board slot. Playing
+    # one pays its mana cost; "using" it (via .use()) runs the activate
+    # script, consumes 1 durability, and sets a 2-turn cooldown. Reaching
+    # 0 durability destroys the location.
+    health_attribute = "durability"
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.damage = 0
+        self.cooldown = 0
+        # Locations carry HEALTH tag (not DURABILITY); _max_durability is
+        # not populated by the CardManager. Default to 0 so max_durability
+        # reads purely from max_health.
+        self._max_durability = 0
+
+    @property
+    def base_events(self):
+        return rules.LocationRules.base_events
+
+    def dump(self):
+        data = super().dump()
+        data["max_durability"] = self.max_durability
+        data["cooldown"] = self.cooldown
+        return data
+
+    @property
+    def durability(self):
+        return self.max_durability - self.damage
+
+    @property
+    def max_durability(self):
+        ret = self._max_durability
+        ret += self._getattr("max_health", 0)
+        return max(0, ret)
+
+    @max_durability.setter
+    def max_durability(self, value):
+        self._max_durability = value
+
+    @property
+    def exhausted(self):
+        # Can't use the turn it was played, and can't use during cooldown.
+        if self.zone != Zone.PLAY:
+            return True
+        if self.cooldown > 0:
+            return True
+        if self.turn_played == self.game.turn:
+            return True
+        return False
+
+    def _set_zone(self, zone):
+        if zone == Zone.PLAY:
+            if self.controller.location:
+                self.log("Destroying old location %r", self.controller.location)
+                self.controller.location.destroy()
+            self.controller.location = self
+        elif self.zone == Zone.PLAY:
+            self.controller.location = None
+        super()._set_zone(zone)
+
+    def battlecry_requires_target(self):
+        # Locations target only on `use()`, never at play time.
+        return False
+
+    def requires_target(self):
+        # Same — no play-time target requirement.
+        return False
+
+    def is_playable(self):
+        # Hide the use-time target requirements from the base
+        # is_playable check, then restore them so `use()` can still
+        # consult them.
+        saved = self.requirements
+        self.requirements = {
+            k: v
+            for k, v in saved.items()
+            if k
+            not in (
+                PlayReq.REQ_TARGET_TO_PLAY,
+                PlayReq.REQ_MINION_TARGET,
+                PlayReq.REQ_FRIENDLY_TARGET,
+                PlayReq.REQ_ENEMY_TARGET,
+                PlayReq.REQ_TARGET_IF_AVAILABLE,
+            )
+        }
+        try:
+            return super().is_playable()
+        finally:
+            self.requirements = saved
+
+    def is_usable(self):
+        return not self.exhausted
+
+    def _requires_use_target(self):
+        for req in (
+            PlayReq.REQ_TARGET_TO_PLAY,
+            PlayReq.REQ_MINION_TARGET,
+            PlayReq.REQ_FRIENDLY_TARGET,
+            PlayReq.REQ_ENEMY_TARGET,
+            PlayReq.REQ_TARGET_IF_AVAILABLE,
+        ):
+            if req in self.requirements:
+                return True
+        return False
+
+    def use(self, target=None):
+        if not self.is_usable():
+            raise InvalidAction("%r can't be used." % (self,))
+        if self._requires_use_target():
+            if not target:
+                raise InvalidAction("%r requires a target." % (self,))
+            self.target = target
+        return self.game.queue_actions(
+            self.controller, [actions.UseLocation(self, target)]
+        )
 
 
 class HeroPower(PlayableCard):

@@ -616,6 +616,7 @@ MINION = EnumSelector(CardType.MINION)
 CHARACTER = MINION | HERO
 WEAPON = EnumSelector(CardType.WEAPON)
 SPELL = EnumSelector(CardType.SPELL)
+LOCATION_CARD = EnumSelector(CardType.LOCATION)
 SECRET = EnumSelector(GameTag.SECRET)
 QUEST = EnumSelector(GameTag.QUEST) | EnumSelector(GameTag.QUESTLINE)
 HERO_POWER = EnumSelector(CardType.HERO_POWER)

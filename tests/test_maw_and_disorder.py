@@ -73,6 +73,36 @@ def test_all_fel_breaks_loose_resurrects_demon():
     assert game.player1.field[-1].race == Race.DEMON
 
 
+def test_prosecutor_meltranix_locks_opponent_middle_hand_next_turn():
+    """Tier-4 fix: while the opponent is under Mel'tranix lockdown,
+    middle hand cards are unplayable (only leftmost and rightmost can
+    be played).  Lockdown lasts exactly the opponent's next turn."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    # Cast Mel'tranix on player1's turn.
+    game.player1.give("MAW_014").play()
+    game.end_turn()
+    # P2's turn — read the hand AFTER the turn-begin draw.
+    hand = game.player2.hand
+    assert len(hand) >= 3
+    assert hand[0].is_playable() or hand[0].cost > game.player2.mana
+    assert hand[-1].is_playable() or hand[-1].cost > game.player2.mana
+    # Middle cards: unplayable purely due to position (cost ignored).
+    middle_idx = len(hand) // 2
+    middle = hand[middle_idx]
+    # If cost > mana, that's a different reason — so force mana to max.
+    game.player2.max_mana = 10
+    game.player2.used_mana = 0
+    assert middle.is_playable() is False
+    # End the lockdown turn — next P2 turn cycle clears it.
+    game.end_turn()
+    game.end_turn()
+    # Now the same middle card should be playable (if cost OK).
+    if middle in game.player2.hand:
+        game.player2.max_mana = 10
+        game.player2.used_mana = 0
+        assert middle.is_playable() is True
+
+
 def test_all_fel_breaks_loose_infused_summons_three():
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     for _ in range(3):
@@ -207,6 +237,22 @@ def test_objection_counters_opponent_minion():
     assert target.zone != Zone.PLAY
 
 
+def test_objection_skips_battlecry():
+    """Tier-4 verification: Objection! must cancel the battlecry, not
+    just bounce the minion. Counter sets cant_play=True which gates
+    the battlecry branch in Play.do, so Novice Engineer (Draw 1)
+    should NOT draw a card."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.player1.give("MAW_006").play()
+    game.end_turn()
+    ne = game.player2.give("EX1_015")  # Novice Engineer: Battlecry Draw 1
+    pre_hand = len(game.player2.hand)  # after give
+    ne.play()
+    # Hand: pre -1 (play out of hand) +1 (bounce back) +0 (battlecry skipped)
+    assert len(game.player2.hand) == pre_hand
+    assert ne.zone == Zone.HAND
+
+
 def test_life_sentence_removes_minion_from_game():
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     wisp = game.player2.summon(WISP)
@@ -302,6 +348,24 @@ def test_clear_conscience_buffs_and_protects():
     assert m.atk == pre_atk + 2
     assert m.max_health == pre_hp + 3
     assert m.cant_be_targeted_by_opponents
+
+
+def test_theft_accusation_fires_only_on_copied_card():
+    """Tier-4 fix: Theft Trial now gates on
+    `_copied_from_opponent`.  Playing a non-copied card should NOT
+    trigger the destroy; playing one stamped via Incriminating
+    Psychic's deathrattle should."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    target = game.player2.summon("CS2_182")
+    game.player1.give("MAW_023").play(target=target)
+    # First — play a non-copied card. Accused must survive.
+    game.player1.give(WISP).play()
+    assert target.zone == Zone.PLAY
+    # Now stamp a hand card as copied-from-opponent and play it.
+    fake_copy = game.player1.give(WISP)
+    fake_copy._copied_from_opponent = True
+    fake_copy.play()
+    assert target.zone == Zone.GRAVEYARD
 
 
 def test_incriminating_psychic_copies_opponent_card_on_death():
@@ -564,6 +628,22 @@ def test_soul_seeker_swaps_with_opponent_deck_minion():
     assert any(c.id == "MAW_004" for c in game.player2.deck)
     # The picked card object is no longer in opp's deck.
     assert m not in game.player2.deck
+
+
+def test_tight_lipped_witness_blocks_secret_reveal():
+    """Tier-4 fix: while a TLW is on the board, Secrets can't be
+    revealed.  Counterspell (EX1_287) should NOT trigger when its
+    owner controls a TLW."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.player1.give("EX1_287").play()  # Counterspell secret
+    game.player1.summon("MAW_032")        # Tight-Lipped Witness
+    game.end_turn()
+    pre_secrets = len(game.player1.secrets)
+    fb = game.player2.give("CS2_024")    # Frostbolt — would normally counter
+    fb.play(target=game.player1.hero)
+    # Secret stays armed; Frostbolt resolves normally.
+    assert len(game.player1.secrets) == pre_secrets
+    assert game.player1.hero.health < 30
 
 
 def test_sylvanas_the_accused_destroys_enemy():

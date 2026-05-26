@@ -359,6 +359,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # morphs into its infused twin (resolved from the data tag
         # COLLECTION_RELATED_CARD_DATABASE_ID via cards.db.dbf).
         self.infuse_progress = 0
+        # Maw and Disorder — Theft Accusation marker: True if this card
+        # was copied (or otherwise produced) from the opponent's side.
+        # Currently stamped by Incriminating Psychic's deathrattle path;
+        # could be extended at more copy sites as they're touched.
+        self._copied_from_opponent = False
         # Sum of dying-minion atk across the infusing deaths. Used by
         # Sinfueled Golem ("gain stats equal to the Attack of the minions
         # that Infused this").
@@ -550,6 +555,15 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # one full turn cycle.
         if getattr(self, "unplayable_next_turn", 0) > 0:
             return False
+
+        # Maw and Disorder — Prosecutor Mel'tranix: while the controller
+        # is under the leftmost/rightmost lockdown, only the two outer
+        # hand cards are playable.
+        if getattr(self.controller, "_meltranix_lockdown_turns", 0) > 0:
+            hand = self.controller.hand
+            if self in hand and len(hand) > 2:
+                if self is not hand[0] and self is not hand[-1]:
+                    return False
 
         if self.parent_card:
             zone = self.parent_card.zone

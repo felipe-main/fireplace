@@ -1,6 +1,6 @@
 import uuid
 
-from hearthstone.enums import CardType
+from hearthstone.enums import CardType, Zone
 
 from . import logging
 
@@ -69,6 +69,20 @@ class BaseEntity(object):
         * \a event: The event being triggered
         * \a args: A list of arguments to pass to the callback
         """
+        # Maw and Disorder — Tight-Lipped Witness (MAW_032): while any
+        # MAW_032 is in play, Secrets can't be revealed. Suppress the
+        # entire trigger when the listener-host is a Secret card sitting
+        # in Zone.SECRET.
+        if (
+            getattr(self, "type", None) == CardType.SPELL
+            and getattr(getattr(self, "data", None), "secret", False)
+            and getattr(self, "zone", None) == Zone.SECRET
+        ):
+            game = getattr(self, "game", None) or getattr(source, "game", None)
+            if game is not None:
+                for player in game.players:
+                    if any(m.id == "MAW_032" for m in player.field):
+                        return None
         actions = []
         for action in event.actions:
             if callable(action):

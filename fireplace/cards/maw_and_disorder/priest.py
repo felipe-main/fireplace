@@ -28,9 +28,9 @@ class MAW_021e:
 
 class _TheftAccuse(TargetedAction):
     """Stamp the chosen minion onto controller._theft_accused and arm
-    the controller via Buff(MAW_023e). Approximation: provenance flag
-    ('copied from opponent') is not tracked, so the trial fires on the
-    NEXT card the controller plays — not strictly only on copies."""
+    the controller via Buff(MAW_023e).  Per-card provenance
+    (`_copied_from_opponent`) is now tracked — see the gate in
+    _TheftFireIfCopied."""
 
     TARGET = ActionArg()
 
@@ -40,6 +40,26 @@ class _TheftAccuse(TargetedAction):
         if not getattr(ctrl, "_theft_armed", False):
             ctrl._theft_armed = True
             source.buff(ctrl.hero, "MAW_023e")
+
+
+class _TheftFireIfCopied(TargetedAction):
+    """Theft Trial: only destroy accused minions if the played card
+    carries the `_copied_from_opponent` flag.  Otherwise no-op."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from hearthstone.enums import Zone
+        if not source.event_args:
+            return
+        played_card = source.event_args[1] if len(source.event_args) > 1 else None
+        if not played_card or not getattr(played_card, "_copied_from_opponent", False):
+            return
+        accused = list(getattr(target, "_theft_accused", []))
+        live = [m for m in accused if getattr(m, "zone", None) == Zone.PLAY]
+        setattr(target, "_theft_accused", [])
+        if live:
+            source.game.cheat_action(source, [Destroy(live)])
 
 
 def _make_accusation_fire(flag):
@@ -106,7 +126,7 @@ class MAW_023e:
         GameTag.CARDNAME: "Theft Trial",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
-    events = Play(CONTROLLER).after(_AccusationFireTheft(CONTROLLER))
+    events = Play(CONTROLLER).after(_TheftFireIfCopied(CONTROLLER))
 
 
 ##
@@ -115,7 +135,9 @@ class MAW_023e:
 
 class _IncriminatingPsychicCopy(TargetedAction):
     """Deathrattle: copy a random card from the opponent's hand into
-    the controller's hand."""
+    the controller's hand.  Stamps the copy with
+    `_copied_from_opponent = True` so Theft Accusation can recognize
+    it (the printed text uses "card copied from the opponent")."""
 
     TARGET = ActionArg()
 
@@ -124,7 +146,11 @@ class _IncriminatingPsychicCopy(TargetedAction):
         if not opp_hand:
             return
         pick = source.game.random.choice(opp_hand)
+        before_ids = {id(c) for c in target.hand}
         source.game.cheat_action(source, [Give(target, pick.id)])
+        for c in target.hand:
+            if id(c) not in before_ids:
+                c._copied_from_opponent = True
 
 
 class MAW_022:

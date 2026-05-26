@@ -37,20 +37,22 @@ class MAW_008:
 
 
 class _MeltranixLockHand(TargetedAction):
-    """Stamp the opponent with a 1-turn lockdown flag. Approximation: we
-    don't model UI playability constraints — the flag is descriptive
-    only and the engine still lets the opponent play any hand card."""
+    """Stamp the opponent with a leftmost/rightmost lockdown lasting
+    exactly their next turn.  Set to 2 because the engine ticks the
+    counter on turn-begin: 2 → 1 on opp's next begin (active), 1 → 0
+    on opp's turn after that (released)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        target._meltranix_lockdown_turns = 1
+        target._meltranix_lockdown_turns = 2
 
 
 class MAW_014:
     """Prosecutor Mel'tranix"""
 
     # Battlecry: Your opponent can only play their left- and right-most
-    # cards on their next turn. Approximation: stamp a flag; no engine
-    # enforcement (engine has no per-card playability gating hook).
+    # cards on their next turn.  Engine enforcement lives in
+    # card.py is_playable() (filters middle hand cards while the
+    # opponent's `_meltranix_lockdown_turns` is > 0).
     play = _MeltranixLockHand(OPPONENT)

@@ -447,6 +447,11 @@ class BaseGame(Entity):
         # draw one extra card at the start of each turn (rest of game).
         if getattr(player, "dew_process_active", False):
             self.queue_actions(player.hero, [Draw(player)])
+        # Maw and Disorder — Prosecutor Mel'tranix lockdown: tick down
+        # the leftmost/rightmost-only constraint on turn begin so it
+        # covers exactly the next opponent turn.
+        if getattr(player, "_meltranix_lockdown_turns", 0) > 0:
+            player._meltranix_lockdown_turns -= 1
         # Throne of the Tides per-card windows on the player's hand cards:
         # Coilfang's unplayable-next-turn marker and Immolate's burn timer.
         for hand_card in list(player.hand):

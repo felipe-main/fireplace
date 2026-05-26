@@ -132,15 +132,19 @@ class _BonelordFrostwhisperTick(TargetedAction):
 
 class _BonelordFrostwhisperArm(TargetedAction):
 	"""Bonelord Frostwhisper deathrattle — stamp the enemy hero with
-	`_frostwhisper_turns_left = 3` so the death-counter starts. The
-	'first card each turn costs (0)' aura is TODO (would need a cost-mod
-	hook keyed on per-turn card-played counter)."""
+	`_frostwhisper_turns_left = 3` so the death-counter starts, and flip
+	`_frostwhisper_first_card_free = True` so pay_cost zero-prices the
+	first card the (opponent) plays each turn for the rest of the game.
+	Resets to "first not yet consumed this turn" at OWN_TURN_BEGIN via
+	the `_frostwhisper_consumed_this_turn` flag."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
 		opp = source.controller.opponent
 		opp._frostwhisper_turns_left = 3
+		opp._frostwhisper_first_card_free = True
+		opp._frostwhisper_consumed_this_turn = False
 
 
 class _InvincibleBuffRandomUndead(TargetedAction):
@@ -179,6 +183,16 @@ class _LorthemarDoubleDeckStats(TargetedAction):
 				source,
 				[Buff(c, "RLK_593e", atk=c.atk, max_health=c.health)],
 			)
+
+
+class _SilvermoonArcanistArm(TargetedAction):
+	"""Silvermoon Arcanist battlecry — set the per-turn flag that filters
+	heroes out of spell-target picks. Cleared at OWN_TURN_END."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		target.spells_cant_target_heroes_this_turn = True
 
 
 class _AstalorBloodswornDamage(TargetedAction):
@@ -266,11 +280,15 @@ class RLK_218:
 	"""Silvermoon Arcanist"""
 
 	# Spell Damage +2. Battlecry: Your spells can't target heroes this turn.
-	# SPELLPOWER is set in data; the "can't target heroes" rider would
-	# need a per-turn requirements filter on spell targeting (TODO).
-	# Stub battlecry sets the per-turn flag so the engine wire-up can
-	# land later without a script change.
-	play = Buff(CONTROLLER, "RLK_218e")
+	# SPELLPOWER is set in data; the "can't target heroes" rider arms
+	# `controller.spells_cant_target_heroes_this_turn` (consumed by
+	# is_valid_target in targeting.py, reset at OWN_TURN_END in game.py).
+	# The Buff(CONTROLLER, "RLK_218e") below is purely cosmetic — the
+	# enchant has TAG_ONE_TURN_EFFECT so it visibly clears at turn end.
+	play = (
+		_SilvermoonArcanistArm(CONTROLLER),
+		Buff(CONTROLLER, "RLK_218e"),
+	)
 
 
 @custom_card
@@ -428,10 +446,11 @@ class RLK_677:
 	"""Sanctum Spellbender"""
 
 	# Whenever your opponent targets another minion with a spell, redirect
-	# it to this. Engine lacks a per-target spell-redirect hook;
-	# approximation: no-op. Vanilla 4/3/6 body still applies. TODO:
-	# add a Play.do hook that retargets enemy spell targets when a
-	# friendly Sanctum Spellbender is in play.
+	# it to this. Implemented via a redirect hook in PlayableCard.play()
+	# (fireplace/card.py): if the spell's controller is the enemy of one
+	# of our Spellbenders, the target is a minion other than the
+	# Spellbender, and the Spellbender is on the field, the target is
+	# rewritten to the Spellbender before play_targets is re-validated.
 	pass
 
 

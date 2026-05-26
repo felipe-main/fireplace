@@ -186,6 +186,17 @@ class Player(Entity, TargetableByAuras):
         self.minions_cost_armor_this_turn = False
         self.next_paladin_minion_costs_health_this_turn = False
         self.next_concoction_costs_zero = False
+        # MotLK — Silvermoon Arcanist: one-turn marker, while True the
+        # Spell.play() target picker filters heroes out. Set by the
+        # battlecry, cleared at OWN_TURN_END.
+        self.spells_cant_target_heroes_this_turn = False
+        # MotLK — Bonelord Frostwhisper: once armed (deathrattle), the
+        # *first* card the affected player plays each turn costs (0).
+        # `_frostwhisper_first_card_free` is permanent (rest of game);
+        # `_frostwhisper_consumed_this_turn` is reset to False at
+        # OWN_TURN_BEGIN and flipped True by pay_cost on the first card.
+        self._frostwhisper_first_card_free = False
+        self._frostwhisper_consumed_this_turn = False
         # Castle Nathria — per-game count of Relic spells (DH) cast.
         # Each Relic reads it to scale its bonus ("Improve your future
         # Relics"). Bumped in Play.do when card.id is a known Relic.
@@ -555,6 +566,16 @@ class Player(Entity, TargetableByAuras):
         Make player pay \a amount mana.
         Returns how much mana is spent, after temporary mana adjustments.
         """
+        # MotLK — Bonelord Frostwhisper: while the doom-aura is armed on
+        # this player, the first card they play each turn costs (0).
+        # Applies to every card type (spell/minion/weapon/HP-via-card).
+        if (
+            getattr(self, "_frostwhisper_first_card_free", False)
+            and not getattr(self, "_frostwhisper_consumed_this_turn", False)
+        ):
+            self._frostwhisper_consumed_this_turn = True
+            self.log("%s plays %r for 0 (Bonelord Frostwhisper)", self, source)
+            return 0
         # MotLK — Glacial Advance: "Your next spell this turn costs (2)
         # less." Single-use spell cost reduction (auto-cleared in
         # OWN_TURN_END cleanup via TAG_ONE_TURN_EFFECT on RLK_025e).

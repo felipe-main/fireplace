@@ -706,6 +706,31 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                     "Retargeting %r from %r to %r", self, target, new_target
                 )
                 target = new_target
+            # MotLK — Sanctum Spellbender (RLK_677): if this is a spell
+            # cast by the targeted minion's *opponent*, and the opponent
+            # of the spell caster (i.e. the targeted minion's controller)
+            # has a Sanctum Spellbender in play that isn't the target,
+            # redirect the spell to it. Only triggers for minion targets,
+            # never heroes.
+            if (
+                self.type == CardType.SPELL
+                and target is not None
+                and target.type == CardType.MINION
+                and target.controller is not self.controller
+            ):
+                from hearthstone.enums import Zone as _Zone
+                spellbenders = [
+                    m for m in target.controller.field
+                    if m.id == "RLK_677" and m is not target
+                    and m.zone == _Zone.PLAY
+                ]
+                if spellbenders:
+                    new_target = spellbenders[0]
+                    self.logger.info(
+                        "Sanctum Spellbender redirects %r from %r to %r",
+                        self, target, new_target,
+                    )
+                    target = new_target
         elif target:
             self.logger.warning(
                 "%r does not require a target, ignoring target %r", self, target

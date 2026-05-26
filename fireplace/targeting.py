@@ -64,6 +64,16 @@ def is_valid_target(self, target, requirements=None):
     if target.cant_be_targeted_by_opponents and self.controller != target.controller:
         return False
 
+    # MotLK — Silvermoon Arcanist: while this flag is set on the spell's
+    # controller, the caster's own spells can't target heroes (friendly
+    # or enemy). One-turn marker, cleared at OWN_TURN_END (game.py).
+    if (
+        self.type == CardType.SPELL
+        and target.type == CardType.HERO
+        and getattr(self.controller, "spells_cant_target_heroes_this_turn", False)
+    ):
+        return False
+
     if requirements is None:
         requirements = self.requirements.copy()
 

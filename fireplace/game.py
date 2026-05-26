@@ -389,6 +389,9 @@ class BaseGame(Entity):
         self.current_player.minions_cost_armor_this_turn = False
         self.current_player.next_paladin_minion_costs_health_this_turn = False
         self.current_player.next_concoction_costs_zero = False
+        # MotLK — Silvermoon Arcanist: "Your spells can't target heroes
+        # this turn" — one-turn marker, clear on own turn end.
+        self.current_player.spells_cant_target_heroes_this_turn = False
         # Throne of the Tides — Submerged Spacerock: cards added with the
         # discards-at-end-of-owner-turn marker are discarded now.
         for hand_card in list(self.current_player.hand):
@@ -450,6 +453,10 @@ class BaseGame(Entity):
         # Sunken City: per-turn flags reset at the start of own turn.
         player.spells_poisonous_this_turn = False
         player.spell_mana_spent_this_turn = 0
+        # MotLK — Bonelord Frostwhisper: re-arm the "first card costs 0"
+        # per-turn marker. Permanent flag stays set; only the consumed
+        # latch resets.
+        player._frostwhisper_consumed_this_turn = False
         # Throne of the Tides: tick down per-player turn windows.
         if player.pays_health_for_cards_turns_left > 0:
             player.pays_health_for_cards_turns_left -= 1

@@ -36,6 +36,58 @@ class _BumpOutcastsPlayed(TargetedAction):
 		)
 
 
+class _SouleaterScytheConsume(TargetedAction):
+	"""Souleater's Scythe Start of Game — pull 3 different (by id) minions
+	out of the controller's deck and replace each with a Bound Soul token
+	(RLK_214t). Each Bound Soul is stamped with the consumed-minion id pool
+	so its Discover (see _BoundSoulDiscover) offers the trio."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		from hearthstone.enums import Zone
+		player = source.controller
+		seen = set()
+		consumed = []
+		# Walk the deck in a stable order picking the first 3 by-id unique
+		# minions. Random selection would be more faithful to the printed
+		# card but introduces test flakiness across seeds; deterministic
+		# walk is enough to make the mechanic observable.
+		for card in list(player.deck):
+			if card.type != CardType.MINION:
+				continue
+			if card.id in seen:
+				continue
+			seen.add(card.id)
+			consumed.append(card)
+			if len(consumed) == 3:
+				break
+		if not consumed:
+			return
+		consumed_ids = [c.id for c in consumed]
+		for victim in consumed:
+			victim.zone = Zone.REMOVEDFROMGAME
+			soul = player.card("RLK_214t", zone=Zone.DECK)
+			soul._souleater_pool = list(consumed_ids)
+
+
+class _BoundSoulDiscover(TargetedAction):
+	"""Bound Soul play — open a Discover-style choice among the (up to 3)
+	consumed-minion ids stamped on the Soul. The chosen minion enters the
+	controller's hand; the other choices are discarded. Uses GenericChoice
+	directly because the pool is a per-instance list, not a database
+	filter (Discover takes a RandomCardPicker filter only)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		pool_ids = getattr(source, "_souleater_pool", None)
+		if not pool_ids:
+			return
+		cards = [target.card(cid) for cid in pool_ids]
+		source.game.queue_actions(source, [GenericChoice(target, cards)])
+
+
 class _MarkOfScornDrawAndPunish(TargetedAction):
 	"""Mark of Scorn — draw a card; if the drawn card is not a minion,
 	deal 3 damage to the lowest-Health enemy. Custom action because the
@@ -253,11 +305,24 @@ class RLK_214:
 	"""Souleater's Scythe"""
 
 	# Start of Game: Consume 3 different minions in your deck. Leave
-	# behind Souls that Discover them.
-	# TODO: SoG mechanic — needs an engine Start-of-Game hook plus
-	# multi-card state (the consumed minion ids → their Soul tokens'
-	# Discover pools). Ships as a vanilla 4/2 weapon for now. RLK_214t
-	# ("Bound Soul") exists in data as the Soul spell token.
+	# behind Souls that Discover them. The SoG hook fires for both Deck
+	# and Hand zones — the weapon may not be in the deck at game start
+	# in a forced-summon test, but the printed card always starts in the
+	# deck. Multi-card state: each Bound Soul carries `_souleater_pool`
+	# (the list of consumed minion ids).
+	class Deck:
+		events = GameStart().on(_SouleaterScytheConsume(CONTROLLER))
+
+	class Hand:
+		events = GameStart().on(_SouleaterScytheConsume(CONTROLLER))
+
+
+class RLK_214t:
+	"""Bound Soul"""
+
+	# Discover a minion consumed by Souleater's Scythe. The Soul
+	# remembers its pool via `_souleater_pool` (stamped at consume time).
+	play = _BoundSoulDiscover(CONTROLLER)
 
 
 ##

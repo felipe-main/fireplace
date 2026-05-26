@@ -160,6 +160,22 @@ def test_shadehound_attack_buffs_other_beasts():
     assert other.max_health == pre_hp + 2
 
 
+def test_shadehound_infused_keeps_attack_trigger_and_has_rush():
+    """Tier-2 verification: the Infused twin (MAW_009t) gains Rush from
+    its data tag and retains the same attack-buff trigger in events."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    twin = game.player1.summon("MAW_009t")
+    other = game.player1.summon("CS2_172")  # Bloodfen Raptor (Beast)
+    enemy = game.player2.summon("CS2_172")   # Beast for Rush to attack
+    pre_atk = other.atk
+    pre_hp = other.max_health
+    assert twin.rush
+    # Rush minions can attack other minions the turn played.
+    twin.attack(enemy)
+    assert other.atk == pre_atk + 2
+    assert other.max_health == pre_hp + 2
+
+
 def test_defense_attorney_nathanos_copies_deathrattle():
     game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
     # Kill a friendly Deathrattle minion (Loot Hoarder draws a card on DR).

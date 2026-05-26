@@ -200,6 +200,9 @@ class RLK_822:
 
 	# Deathrattle: Haunt a card in your hand. When you play it, summon a
 	# 3/3 Soldier.
+	# Data card is missing the DEATHRATTLE GameTag, so declare it here so
+	# has_deathrattle becomes True and the engine fires our script.
+	tags = {GameTag.DEATHRATTLE: True}
 	deathrattle = _HauntingNightmareStamp(SELF)
 
 
@@ -233,12 +236,13 @@ class RLK_822e:
 	# In-data buff "Cold Sweat" — stamped on a random hand card by
 	# Haunting Nightmare's deathrattle. When the haunted card is played,
 	# summon a 3/3 Haunted Soldier (RLK_822t) for the controller, then
-	# self-destruct so the trigger fires exactly once.
-
-	class Hand:
-		events = Play(OWNER).on(
-			Summon(CONTROLLER, "RLK_822t"), Destroy(SELF)
-		)
+	# self-destruct so the trigger fires exactly once. The listener lives
+	# on the top-level `events` (not Hand.events) because Play.do flips the
+	# host card's zone to PLAY before broadcasting, so Hand.events is gone
+	# by the time the listener would have a chance to match.
+	events = Play(CONTROLLER, OWNER).on(
+		Summon(CONTROLLER, "RLK_822t"), Destroy(SELF)
+	)
 
 
 class RLK_822t:

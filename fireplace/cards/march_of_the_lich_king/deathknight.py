@@ -567,6 +567,12 @@ class RLK_731:
     )
 
 
+class RLK_731e:
+    # In-data buff "Fallen to Dark" — +2 Attack on hand minions. The data
+    # card carries no ATK tag so the buff is a no-op until declared here.
+    tags = {GameTag.ATK: 2}
+
+
 # Battlecry: Destroy all other minions. Gain 1 Corpse for each enemy
 # destroyed.
 class _SoulstealerDestroy(TargetedAction):

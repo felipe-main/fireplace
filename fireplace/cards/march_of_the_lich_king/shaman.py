@@ -134,6 +134,9 @@ class RLK_550:
 
 class RLK_550e:
 	# In-data "Deathwatch" — Deathrattle: Give your minions +1/+1.
+	# Data card carries no DEATHRATTLE tag so has_deathrattle stays False
+	# and the granted deathrattle never registers — declare it here.
+	tags = {GameTag.DEATHRATTLE: True}
 	deathrattle = Buff(FRIENDLY_MINIONS, "RLK_550e2")
 
 

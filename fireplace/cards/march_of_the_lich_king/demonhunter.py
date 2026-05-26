@@ -22,7 +22,10 @@ class _OutcastsPlayedCount(LazyNum):
 		self.selector = None
 
 	def evaluate(self, source):
-		return getattr(source.controller, "outcasts_played_this_game", 0)
+		ret = getattr(source.controller, "outcasts_played_this_game", 0)
+		# LazyNum.__neg__ flips self.base from 1 to -1; honour it so
+		# `-_OutcastsPlayedCount()` actually subtracts from cost.
+		return int(ret * self.base)
 
 
 class _BumpOutcastsPlayed(TargetedAction):

@@ -200,7 +200,7 @@ class RLK_604:
 	# Modelled by summoning the Phoenix Egg (RLK_604t) in dormant form
 	# carrying a 2-charge revive counter that listens for friendly Fire
 	# spells while dormant.
-	deathrattle = Summon(CONTROLLER, "RLK_604").then(
+	deathrattle = Summon(CONTROLLER, "RLK_604t").then(
 		SetTag(Summon.CARD, GameTag.DORMANT)
 	)
 

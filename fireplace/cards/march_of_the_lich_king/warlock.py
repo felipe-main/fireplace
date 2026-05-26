@@ -85,9 +85,9 @@ class _DevourerGainDeathrattle(TargetedAction):
 		drs = list(entity.data.scripts.deathrattle or ())
 		if not drs:
 			return
-		# additional_deathrattles is a flat list of TargetedAction instances
-		# (not nested tuples); extend so each action is queued independently.
-		source.additional_deathrattles.extend(drs)
+		# additional_deathrattles is a list of action-iterables; each entry
+		# must itself be a tuple/list so Deathrattle can queue_actions on it.
+		source.additional_deathrattles.append(tuple(drs))
 		source.has_deathrattle = True
 
 
@@ -157,7 +157,9 @@ class RLK_538:
 	"""Devourer of Souls"""
 
 	# After a friendly minion dies, gain its Deathrattle.
-	events = Death(FRIENDLY_MINIONS - SELF).on(
+	# FRIENDLY + MINION (without IN_PLAY) lets the selector still match
+	# the dying minion which has already moved to GRAVEYARD by AFTER-time.
+	events = Death(FRIENDLY + MINION - SELF).on(
 		_DevourerGainDeathrattle(SELF, Death.ENTITY)
 	)
 

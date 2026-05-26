@@ -341,21 +341,14 @@ class RLK_110:
 # Battlecry: If a friendly Undead died after your last turn,
 # Discover an Unholy Rune card.
 class _NecroticMortician(TargetedAction):
+    """Reads the engine-managed `_undead_deaths_in_window` for the
+    precise "died after your last turn" check (Death.do appends,
+    OWN_TURN_END resets)."""
+
     TARGET = ActionArg()
 
     def do(self, source, target):
-        # Approximated: we trigger if the controller has any friendly
-        # Undead in their graveyard.  "After last turn" is not tracked
-        # at finer granularity here.
-        from hearthstone.enums import CardType, Race
-
-        has_dead_undead = any(
-            c.type == CardType.MINION
-            and getattr(c, "races", None) is not None
-            and Race.UNDEAD in c.races
-            for c in target.graveyard
-        )
-        if not has_dead_undead:
+        if not target._undead_deaths_in_window:
             return
         picker = _rune_discover_picker(GameTag.COST_UNHOLY)
         action = Discover(target, picker).then(Give(target, Discover.CARD))

@@ -336,6 +336,74 @@ def test_invincible_battlecry_buffs_random_friendly_undead():
 
 
 # ---------------------------------------------------------------------------
+# Tier-1 engine helper — _undead_deaths_in_window precise window tracker
+# ---------------------------------------------------------------------------
+
+
+def test_undead_deaths_in_window_resets_at_own_turn_end():
+    """The per-player Undead-deaths-in-window list appends on friendly
+    UNDEAD deaths and resets at the player's OWN_TURN_END."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    dk = game.player1 if game.player1.hero.id == "HERO_11" else game.player2
+    if game.current_player is not dk:
+        game.end_turn()
+    assert dk._undead_deaths_in_window == []
+    risen = dk.summon("RLK_008t")  # UNDEAD
+    risen.destroy()
+    assert len(dk._undead_deaths_in_window) == 1
+    # Non-UNDEAD death doesn't bump the Undead-only window.
+    # (Wisp was retroactively re-tribed UNDEAD in this data build —
+    # Goldshire Footman is a clean non-UNDEAD baseline.)
+    footman = dk.summon(GOLDSHIRE_FOOTMAN)
+    footman.destroy()
+    assert len(dk._undead_deaths_in_window) == 1
+    # End DK's turn — the window resets for them.
+    game.end_turn()
+    assert dk._undead_deaths_in_window == []
+
+
+def test_nerubian_flyer_uses_precise_window():
+    """RLK_956: with no recent Undead death, no Nerubian. With one
+    inside the window, exactly one Nerubian appears."""
+    game = prepare_game(CardClass.DRUID, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    # No deaths in window → battlecry no-ops.
+    pre = len(p.field)
+    p.give("RLK_956").play()
+    assert len(p.field) == pre + 1  # only the Flyer itself
+    assert not any(m.id == "RLK_956t" for m in p.field)
+    # Now kill an Undead and replay — the Nerubian summons.
+    p.give("RLK_008t").play()  # Risen Ghoul UNDEAD
+    ghoul = [m for m in p.field if m.id == "RLK_008t"][0]
+    ghoul.destroy()
+    p.give("RLK_956").play()
+    assert any(m.id == "RLK_956t" for m in p.field)
+
+
+def test_bone_flinger_uses_precise_window():
+    """RLK_123: only deals 2 damage if a friendly Undead died inside
+    the window."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    target = p.opponent.hero
+    target.max_health = 80
+    target.damage = 0
+    # No window deaths → no damage from the battlecry.
+    p.give("RLK_123").play(target=target)
+    assert target.damage == 0
+    # Kill an Undead, then replay.
+    p.summon("RLK_008t").destroy()
+    p.give("RLK_123").play(target=target)
+    assert target.damage == 2
+
+
+# ---------------------------------------------------------------------------
 # Smoke: full DK + non-DK games can both run a turn without crashing
 # ---------------------------------------------------------------------------
 

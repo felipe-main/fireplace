@@ -7,27 +7,14 @@ from ..utils import *
 
 class _UnlivingChampionCheck(TargetedAction):
 	"""Unliving Champion — Battlecry: If a friendly Undead died after the
-	controller's last turn, summon two 3/2 Zombies. Scans the controller's
-	graveyard for any minion with the UNDEAD race whose `turn_killed` is
-	more recent than `controller.last_turn` (mirrors the Nerubian Flyer
-	check in march_of_the_lich_king/druid.py)."""
+	controller's last turn, summon two 3/2 Zombies. Reads the
+	engine-managed `_undead_deaths_in_window` tracker."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
 		ctrl = source.controller
-		last = ctrl.last_turn if ctrl.last_turn is not None else -1
-		from hearthstone.enums import Race, CardType
-		found = False
-		for c in ctrl.graveyard:
-			if c.type != CardType.MINION:
-				continue
-			if getattr(c, "turn_killed", -1) <= last:
-				continue
-			if Race.UNDEAD in (c.race, getattr(c, "secondary_race", None)):
-				found = True
-				break
-		if found:
+		if ctrl._undead_deaths_in_window:
 			source.game.cheat_action(source, [Summon(ctrl, "RLK_909t") * 2])
 
 

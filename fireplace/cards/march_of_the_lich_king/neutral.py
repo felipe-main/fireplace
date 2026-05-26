@@ -2,6 +2,19 @@ from ..utils import *
 
 
 ##
+# Shared evaluators
+
+
+class _UndeadDiedAfterLastTurn(LazyNum):
+	"""Returns 1 if any friendly Undead died after the controller's last
+	OWN_TURN_END, else 0. Reads the engine-managed
+	`_undead_deaths_in_window` tracker."""
+
+	def evaluate(self, source):
+		return 1 if source.controller._undead_deaths_in_window else 0
+
+
+##
 # Custom actions
 
 
@@ -239,13 +252,12 @@ class RLK_123:
 	"""Bone Flinger"""
 
 	# Battlecry: If a friendly Undead died after your last turn, deal 2 damage.
-	# Approximation: gate on Count(FRIENDLY + KILLED + UNDEAD) > 0 — any
-	# friendly Undead ever in the graveyard. The "after your last turn"
-	# scoping is TODO (would need a per-turn-window death counter).
+	# Uses the engine-managed `_undead_deaths_in_window` (Death.do appends,
+	# OWN_TURN_END resets) — exact match to the printed window semantics.
 	requirements = {
 		PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
 	}
-	play = (Count(FRIENDLY + KILLED + UNDEAD) > 0) & Hit(TARGET, 2)
+	play = (_UndeadDiedAfterLastTurn() >= 1) & Hit(TARGET, 2)
 
 
 class RLK_218:
@@ -452,13 +464,10 @@ class RLK_834:
 	"""Nerubian Vizier"""
 
 	# Battlecry: Discover a spell. If a friendly Undead died after your
-	# last turn, it costs (2) less.
-	# Approximation: discount applies whenever any friendly Undead has
-	# ever died this game (Count(FRIENDLY + KILLED + UNDEAD) > 0). The
-	# "after your last turn" scoping is the same TODO as Bone Flinger.
+	# last turn, it costs (2) less. Uses the engine-managed
+	# `_undead_deaths_in_window` for the precise window check.
 	play = DISCOVER(RandomSpell()).then(
-		(Count(FRIENDLY + KILLED + UNDEAD) > 0)
-		& Buff(Give.CARD, "RLK_834e")
+		(_UndeadDiedAfterLastTurn() >= 1) & Buff(Give.CARD, "RLK_834e")
 	)
 
 

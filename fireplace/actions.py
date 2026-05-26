@@ -446,6 +446,11 @@ class Death(GameAction):
                 # (Corpses just sit unused for non-DK).
                 card.controller.corpses += 1
                 card.controller.corpses_gained_this_game += 1
+                # MotLK — precise "died after your last turn" window for
+                # Undead-synergy cards. Reset at OWN_TURN_END (see
+                # game.py:end_turn_cleanup).
+                if Race.UNDEAD in getattr(card, "races", []):
+                    card.controller._undead_deaths_in_window.append(card)
                 # Maw and Disorder — Afterlife Attendant (MAW_031): while
                 # any friendly Afterlife Attendant is on the board, the
                 # controller's deck cards also infuse alongside the hand.

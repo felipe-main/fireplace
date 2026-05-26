@@ -166,6 +166,15 @@ class Player(Entity, TargetableByAuras):
         # Per-game cumulative corpses GAINED (never decremented). Some
         # DK cards check lifetime corpses, not just current balance.
         self.corpses_gained_this_game = 0
+        # March of the Lich King — precise "died after your last turn"
+        # window. Tracks every friendly Undead minion that died since the
+        # controller's last OWN_TURN_END. Reset at OWN_TURN_END, appended
+        # in Death.do. Cards that read this: Nerubian Flyer, Bone Flinger,
+        # Nerubian Vizier, Necrotic Mortician, Noxious Infiltrator,
+        # Unliving Champion, Shadow Word: Undeath, High Cultist Basaleph,
+        # Grave Digging. Stored as a list of Minion entities (cleared
+        # references survive GC since they're in the graveyard too).
+        self._undead_deaths_in_window = []
         # Castle Nathria — per-game count of Relic spells (DH) cast.
         # Each Relic reads it to scale its bonus ("Improve your future
         # Relics"). Bumped in Play.do when card.id is a known Relic.

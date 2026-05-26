@@ -376,6 +376,11 @@ class BaseGame(Entity):
 
     def end_turn_cleanup(self):
         self.manager.step(self.next_step, Step.MAIN_NEXT)
+        # March of the Lich King — reset the "died after your last turn"
+        # window for the player whose turn just ended. Their Undead
+        # death-window begins now and accumulates through the opponent's
+        # turn + their own next turn (until their next OWN_TURN_END).
+        self.current_player._undead_deaths_in_window = []
         # Throne of the Tides — Submerged Spacerock: cards added with the
         # discards-at-end-of-owner-turn marker are discarded now.
         for hand_card in list(self.current_player.hand):

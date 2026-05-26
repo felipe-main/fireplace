@@ -6,50 +6,19 @@ from ..utils import *
 
 
 class _DiedSinceLastTurn(LazyNum):
-	"""Evaluator-style helper: returns 1 if any friendly Undead in the
-	controller's graveyard was killed after the controller's last turn
-	began, else 0. We expose it as a LazyNum so it composes with the
-	`&` / cost_mod operators just like `Attr(...)` / `Count(...)`.
-
-	"After your last turn" semantics: graveyard scan for any minion with
-	`turn_killed > player.last_turn`. The graveyard contains card objects
-	whose `turn_killed` is populated by card.py's death pipeline; the
-	first turn of the game has `last_turn is None`, which we treat as -1
-	(so anything that has died at all counts).
-	"""
+	"""Evaluator: 1 if any friendly Undead died after the controller's
+	last OWN_TURN_END, else 0. Reads the engine-managed
+	`_undead_deaths_in_window` tracker."""
 
 	def evaluate(self, source):
-		from hearthstone.enums import Race, CardType
-
-		ctrl = source.controller
-		last = ctrl.last_turn if ctrl.last_turn is not None else -1
-		for c in ctrl.graveyard:
-			if c.type != CardType.MINION:
-				continue
-			if getattr(c, "turn_killed", -1) <= last:
-				continue
-			if Race.UNDEAD in (c.race, getattr(c, "secondary_race", None)):
-				return 1
-		return 0
+		return 1 if source.controller._undead_deaths_in_window else 0
 
 
 def _friendly_undead_died_since_last_turn(ctrl):
-	"""Shared helper for action-side checks (Bonecaller / SW:Undeath /
-	High Cultist Basaleph). Returns the list of card objects in the
-	controller's graveyard that are Undead minions killed after the
-	controller's previous turn began."""
-	from hearthstone.enums import Race, CardType
-
-	last = ctrl.last_turn if ctrl.last_turn is not None else -1
-	out = []
-	for c in ctrl.graveyard:
-		if c.type != CardType.MINION:
-			continue
-		if getattr(c, "turn_killed", -1) <= last:
-			continue
-		if Race.UNDEAD in (c.race, getattr(c, "secondary_race", None)):
-			out.append(c)
-	return out
+	"""Shared helper for action-side checks (SW:Undeath, High Cultist
+	Basaleph). Returns the precise window list maintained by the engine
+	(Death.do appends + OWN_TURN_END resets)."""
+	return list(ctrl._undead_deaths_in_window)
 
 
 class _BonecallerResurrect(TargetedAction):

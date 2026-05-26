@@ -63,26 +63,16 @@ class _AnubRekhanArmCostMode(TargetedAction):
 
 class _NerubianFlyerCheck(TargetedAction):
 	"""Nerubian Flyer — "If a friendly Undead died after your last turn,
-	summon a 2/2 Nerubian." Scan the controller's graveyard for any
-	minion with the UNDEAD race that died after the controller's
-	previous turn began (i.e. turn_killed > player.last_turn). The
-	graveyard contains card objects with `turn_killed` populated by
-	card.py's death pipeline."""
+	summon a 2/2 Nerubian." Reads the controller's precise
+	`_undead_deaths_in_window` tracker (engine-managed in actions.py
+	Death.do + game.py end_turn_cleanup)."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
 		ctrl = source.controller
-		last = ctrl.last_turn if ctrl.last_turn is not None else -1
-		from hearthstone.enums import Race, CardType
-		for c in ctrl.graveyard:
-			if c.type != CardType.MINION:
-				continue
-			if getattr(c, "turn_killed", -1) <= last:
-				continue
-			if Race.UNDEAD in (c.race, getattr(c, "secondary_race", None)):
-				source.game.cheat_action(source, [Summon(ctrl, "RLK_956t")])
-				return
+		if ctrl._undead_deaths_in_window:
+			source.game.cheat_action(source, [Summon(ctrl, "RLK_956t")])
 
 
 ##

@@ -47,24 +47,14 @@ class _ScourgeIllusionistCopy(TargetedAction):
 
 class _NoxiousInfiltratorCheck(TargetedAction):
 	"""Noxious Infiltrator — "If a friendly Undead died after your last
-	turn, deal 1 damage to a minion."  Same window logic as Nerubian
-	Flyer: scan the controller's graveyard for Undead minions whose
-	`turn_killed` is strictly later than `player.last_turn`."""
+	turn, deal 1 damage to a minion." Reads the engine-managed
+	`_undead_deaths_in_window` tracker."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		ctrl = source.controller
-		last = ctrl.last_turn if ctrl.last_turn is not None else -1
-		from hearthstone.enums import Race, CardType as _CT
-		for c in ctrl.graveyard:
-			if c.type != _CT.MINION:
-				continue
-			if getattr(c, "turn_killed", -1) <= last:
-				continue
-			if Race.UNDEAD in (c.race, getattr(c, "secondary_race", None)):
-				source.game.cheat_action(source, [Hit(target, 1)])
-				return
+		if source.controller._undead_deaths_in_window:
+			source.game.cheat_action(source, [Hit(target, 1)])
 
 
 class _GhoulishAlchemistArm(TargetedAction):

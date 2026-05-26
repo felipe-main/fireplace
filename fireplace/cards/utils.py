@@ -203,6 +203,16 @@ MAGNETIC = lambda buff: Find(RIGHT_OF(SELF) + MECH) & (
 INVOKE = Invoke(MAIN_GALAKROND)
 
 
+# March of the Lich King — Manathirst (N): bonus effect only if the
+# controller has at least N max-mana crystals at play resolution.
+#   play = Damage(TARGET, 3) + (MANATHIRST(7) & Damage(TARGET, 2))
+MANATHIRST = lambda n: Attr(CONTROLLER, "max_mana") >= n
+
+# Death Knight Corpses (current balance).  Most DK cards gate on this
+# (Attr-comparator) and then `SpendCorpses(CONTROLLER, n)` to pay.
+CORPSES = Attr(CONTROLLER, "corpses")
+
+
 def SET(amt):
     return lambda self, i: amt
 
@@ -390,6 +400,15 @@ class GalakrondUtils:
 
 class ThresholdUtils(type):
     def __new__(cls, name, bases, namespace):
+        cardscript = db[name]
+        tag_id = cardscript.tags[GameTag.PLAYER_TAG_THRESHOLD_TAG_ID]
+        threshold = cardscript.tags[GameTag.PLAYER_TAG_THRESHOLD_VALUE]
+        # GameTag enum lookup once at class-build time
+        try:
+            tag_enum = GameTag(tag_id)
+        except ValueError:
+            tag_enum = tag_id
+
         def custom_cardtext(self):
             splited = self.data.description.split("@")
             if self.powered_up:
@@ -397,23 +416,18 @@ class ThresholdUtils(type):
             return splited[0] + splited[1]
 
         def cardtext_entity_0(self):
-            return self.player_tag_threshold_value - getattr(
-                self.controller, self.map[self.player_tag_threshold_tag_id], 0
-            )
+            # "N left" placeholder — current per-game progress on the
+            # threshold tag (read via Player's tag store) subtracted
+            # from the configured threshold. Both values captured in
+            # the closure at metaclass build time.
+            current = self.controller.tags.get(tag_enum, 0)
+            return max(threshold - current, 0)
 
         tags = {
             enums.CUSTOM_CARDTEXT: custom_cardtext,
             GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
         }
-
-        cardscript = db[name]
-        player_tag_threshold_tag_id = cardscript.tags[
-            GameTag.PLAYER_TAG_THRESHOLD_TAG_ID
-        ]
-        player_tag_threshold_value = cardscript.tags[GameTag.PLAYER_TAG_THRESHOLD_VALUE]
-        powered_up = (
-            Attr(CONTROLLER, player_tag_threshold_tag_id) >= player_tag_threshold_value
-        )
+        powered_up = Attr(CONTROLLER, tag_id) >= threshold
 
         namespace["custom_cardtext"] = custom_cardtext
         namespace["cardtext_entity_0"] = cardtext_entity_0

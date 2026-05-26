@@ -7,7 +7,7 @@ from pkgutil import iter_modules
 from typing import List, TypeVar, overload
 from xml.etree import ElementTree
 
-from hearthstone.enums import CardClass, CardType
+from hearthstone.enums import CardClass, CardType, GameTag
 
 from .logging import log
 from .entity import Entity
@@ -85,9 +85,42 @@ class CardList(list[T], Entity):
         )
 
 
-def random_draft(card_class: CardClass, exclude=[], include=[], game=None):
+def rune_cost(card_data) -> tuple[int, int, int]:
+    """March of the Lich King — read the (blood, frost, unholy) rune cost
+    triple off a card's data tags. Zero triple for non-DK cards."""
+    return (
+        card_data.tags.get(GameTag.COST_BLOOD, 0),
+        card_data.tags.get(GameTag.COST_FROST, 0),
+        card_data.tags.get(GameTag.COST_UNHOLY, 0),
+    )
+
+
+def valid_rune_setups() -> list[tuple[int, int, int]]:
+    """Enumerate every legal Death Knight rune setup: triples
+    (B, F, U) with B + F + U == 3 and each component in [0, 3]."""
+    return [
+        (b, f, 3 - b - f)
+        for b in range(4)
+        for f in range(4 - b)
+    ]
+
+
+def fits_setup(card_cost, setup) -> bool:
+    """True iff a card's (b, f, u) rune cost fits under the deck's setup."""
+    return all(c <= s for c, s in zip(card_cost, setup))
+
+
+def random_draft(
+    card_class: CardClass, exclude=[], include=[], game=None, rune_setup=None
+):
     """
-    Return a deck of 30 random cards for the \a card_class
+    Return a deck of 30 random cards for the \a card_class.
+
+    For Death Knight: optionally constrain the draft to a chosen rune
+    \a rune_setup (a (B, F, U) triple summing to 3). When None, picks
+    a random valid setup. Every non-neutral DK card chosen is
+    guaranteed to fit under the setup so the resulting deck is
+    rune-legal.
     """
     import random
     from . import cards
@@ -96,6 +129,14 @@ def random_draft(card_class: CardClass, exclude=[], include=[], game=None):
     deck = list(include)
     collection = []
     # hero = card_class.default_hero
+
+    # DK rune setup — pick once per draft so the whole deck shares it.
+    if card_class == CardClass.DEATHKNIGHT:
+        if rune_setup is None:
+            rng = game.random if game else random
+            rune_setup = rng.choice(valid_rune_setups())
+    else:
+        rune_setup = None
 
     for card in cards.db.keys():
         if card in exclude:
@@ -109,6 +150,11 @@ def random_draft(card_class: CardClass, exclude=[], include=[], game=None):
         if cls.card_class and cls.card_class not in [card_class, CardClass.NEUTRAL]:
             # Play with more possibilities
             continue
+        # Rune-cost filter: only DK class cards have non-zero rune cost
+        # (neutrals always pass). Out-of-budget DK cards are skipped.
+        if rune_setup is not None and cls.card_class == CardClass.DEATHKNIGHT:
+            if not fits_setup(rune_cost(cls), rune_setup):
+                continue
         collection.append(cls)
 
     while len(deck) < Deck.MAX_CARDS:
@@ -124,7 +170,7 @@ def random_draft(card_class: CardClass, exclude=[], include=[], game=None):
 
 def random_class(game=None):
     classes = [
-        # CardClass.DEATHKNIGHT,
+        CardClass.DEATHKNIGHT,
         CardClass.DRUID,
         CardClass.HUNTER,
         CardClass.MAGE,

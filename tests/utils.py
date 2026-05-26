@@ -89,8 +89,23 @@ class BaseTestGame(CoinRules, BaseGame):
         self.player2.max_mana = 10
 
 
+_PLAYABLE_CLASSES = [
+    CardClass.DEATHKNIGHT,
+    CardClass.DRUID,
+    CardClass.HUNTER,
+    CardClass.MAGE,
+    CardClass.PALADIN,
+    CardClass.PRIEST,
+    CardClass.ROGUE,
+    CardClass.SHAMAN,
+    CardClass.WARLOCK,
+    CardClass.WARRIOR,
+    CardClass.DEMONHUNTER,
+]
+
+
 def _random_class():
-    return CardClass(random.randint(2, 10))
+    return random.choice(_PLAYABLE_CLASSES)
 
 
 def _empty_mulligan(game: BaseGame):

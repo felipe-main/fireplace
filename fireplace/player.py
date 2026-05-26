@@ -159,6 +159,13 @@ class Player(Entity, TargetableByAuras):
         # died. Powers Sire Denathrius (every death adds +1 to the
         # battlecry damage). Bumped in Death.do; never reset.
         self.friendly_minions_died_this_game = 0
+        # March of the Lich King — Death Knight Corpses. +1 per friendly
+        # minion death; consumed by DK cards via Consume(n). Bumped in
+        # Death.do alongside friendly_minions_died_this_game.
+        self.corpses = 0
+        # Per-game cumulative corpses GAINED (never decremented). Some
+        # DK cards check lifetime corpses, not just current balance.
+        self.corpses_gained_this_game = 0
         # Castle Nathria — per-game count of Relic spells (DH) cast.
         # Each Relic reads it to scale its bonus ("Improve your future
         # Relics"). Bumped in Play.do when card.id is a known Relic.
@@ -421,7 +428,7 @@ class Player(Entity, TargetableByAuras):
             # Maestra of the Masquerad
             # You start the game as a different class until you play a Rogue card.
             classes = [
-                # CardClass.DEATHKNIGHT,
+                CardClass.DEATHKNIGHT,
                 CardClass.DRUID,
                 CardClass.HUNTER,
                 CardClass.MAGE,

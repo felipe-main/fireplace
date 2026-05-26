@@ -8,7 +8,7 @@ from ..enums import BoardEnum
 from ..logging import log
 from ..utils import CARD_SETS
 
-year = ZodiacYear.GRYPHON
+year = ZodiacYear.HYDRA
 default_language = "enUS"
 standard_board_skins = [
     BoardEnum.STORMWIND,

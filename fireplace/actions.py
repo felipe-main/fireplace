@@ -441,6 +441,11 @@ class Death(GameAction):
             # friendly-minion-deaths counter (Sire Denathrius reads it).
             if card.type == CardType.MINION and card.controller:
                 card.controller.friendly_minions_died_this_game += 1
+                # March of the Lich King — every friendly minion death
+                # gives the controller a Corpse, even non-DK players
+                # (Corpses just sit unused for non-DK).
+                card.controller.corpses += 1
+                card.controller.corpses_gained_this_game += 1
                 # Maw and Disorder — Afterlife Attendant (MAW_031): while
                 # any friendly Afterlife Attendant is on the board, the
                 # controller's deck cards also infuse alongside the hand.
@@ -1714,6 +1719,22 @@ class GainArmor(TargetedAction):
             target.controller.armor_gained_this_game += amount
         source.game.manager.targeted_action(self, source, target, amount)
         self.broadcast(source, EventListener.ON, target, amount)
+
+
+class SpendCorpses(TargetedAction):
+    """
+    March of the Lich King — spend \a amount Corpses from player targets.
+    Decrements `controller.corpses`. Caller is responsible for gating
+    on availability (most cards check `Attr(CONTROLLER, "corpses") >= n`
+    before queueing Spend).
+    """
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        target.corpses = max(target.corpses - amount, 0)
+        source.game.manager.targeted_action(self, source, target, amount)
 
 
 class GainMana(TargetedAction):

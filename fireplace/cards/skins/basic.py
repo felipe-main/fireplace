@@ -95,6 +95,24 @@ class HERO_10bp:
 HERO_10bpe = buff(atk=1)
 
 
+class HERO_11bp:
+    """Ghoul Charge (The Lich King)"""
+
+    # Summon a 1/1 Frail Ghoul (Charge, dies at end of turn — death-of-
+    # turn handled on the token itself via OWN_TURN_END.on(Destroy)).
+    requirements = {PlayReq.REQ_NUM_MINION_SLOTS: 1}
+    activate = Summon(CONTROLLER, "HERO_11bpt")
+
+
+class HERO_11bpt:
+    """Frail Ghoul"""
+
+    # Charge ships in card data; end-of-turn self-destruct is text-only,
+    # so wire it here. Lasts only the controller's turn (not opponent's
+    # turn end), matching printed "At the end of your turn".
+    events = OWN_TURN_END.on(Destroy(SELF))
+
+
 ##
 # Upgraded Hero Powers
 

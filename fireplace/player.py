@@ -175,6 +175,17 @@ class Player(Entity, TargetableByAuras):
         # Grave Digging. Stored as a list of Minion entities (cleared
         # references survive GC since they're in the graveyard too).
         self._undead_deaths_in_window = []
+        # MotLK — Glacial Advance per-turn next-spell cost reduction.
+        # Set by _ArmGlacialAdvance, consumed by pay_cost on the next
+        # spell played, reset at OWN_TURN_END.
+        self._next_spell_cost_reduction = 0
+        # MotLK per-turn cost-substitution flags. minions_cost_armor:
+        # Anub'Rekhan. next_paladin_minion_costs_health: Blood Crusader.
+        # next_concoction_costs_zero: Ghoulish Alchemist. All consumed
+        # by pay_cost (player.py) and reset at OWN_TURN_END.
+        self.minions_cost_armor_this_turn = False
+        self.next_paladin_minion_costs_health_this_turn = False
+        self.next_concoction_costs_zero = False
         # Castle Nathria — per-game count of Relic spells (DH) cast.
         # Each Relic reads it to scale its bonus ("Improve your future
         # Relics"). Bumped in Play.do when card.id is a known Relic.
@@ -544,6 +555,61 @@ class Player(Entity, TargetableByAuras):
         Make player pay \a amount mana.
         Returns how much mana is spent, after temporary mana adjustments.
         """
+        # MotLK — Glacial Advance: "Your next spell this turn costs (2)
+        # less." Single-use spell cost reduction (auto-cleared in
+        # OWN_TURN_END cleanup via TAG_ONE_TURN_EFFECT on RLK_025e).
+        if (
+            source.type == CardType.SPELL
+            and getattr(self, "_next_spell_cost_reduction", 0) > 0
+        ):
+            reduction = self._next_spell_cost_reduction
+            self._next_spell_cost_reduction = 0
+            amount = max(0, amount - reduction)
+            self.log("%s spell %r pays %i (Glacial Advance -%i)",
+                     self, source, amount, reduction)
+        # MotLK — Ghoulish Alchemist: "Your next Concoction costs (0)."
+        # Single-use Concoction cost zero (Concoctions are identified by
+        # their token id range RLK_570t1..t5).
+        if (
+            getattr(self, "next_concoction_costs_zero", False)
+            and getattr(source, "id", "") in (
+                "RLK_570t1", "RLK_570t2", "RLK_570t3",
+                "RLK_570t4", "RLK_570t5",
+            )
+        ):
+            self.next_concoction_costs_zero = False
+            self.log("%s Concoction %r is free (Ghoulish Alchemist)",
+                     self, source)
+            return 0
+        # MotLK — Anub'Rekhan: "This turn, your minions cost Armor
+        # instead of Mana." Pay from hero armor; if insufficient armor,
+        # fall through to normal mana payment.
+        if (
+            getattr(self, "minions_cost_armor_this_turn", False)
+            and source.type == CardType.MINION
+        ):
+            if self.hero.armor >= amount:
+                self.hero.armor -= amount
+                self.log("%s minion %r pays %i armor (Anub'Rekhan)",
+                         self, source, amount)
+                return amount
+        # MotLK — Blood Crusader: "Your next Paladin minion this turn
+        # costs Health instead of Mana." One-shot; consumed on the next
+        # Paladin minion play. Saurfang's deathrattle uses the same
+        # flag (its bounced copy is the "next minion" effectively).
+        if (
+            getattr(self, "next_paladin_minion_costs_health_this_turn", False)
+            and source.type == CardType.MINION
+            and (
+                CardClass.PALADIN in getattr(source, "classes", [])
+                or getattr(source, "card_class", None) == CardClass.PALADIN
+            )
+        ):
+            self.next_paladin_minion_costs_health_this_turn = False
+            self.log("%s minion %r pays %i health (Blood Crusader)",
+                     self, source, amount)
+            self.game.queue_actions(self, [Hit(self.hero, amount)])
+            return amount
         if self.spells_cost_health and source.type == CardType.SPELL:
             self.log("%s spells cost %i health", self, amount)
             self.game.queue_actions(self, [Hit(self.hero, amount)])

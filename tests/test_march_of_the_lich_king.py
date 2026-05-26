@@ -404,6 +404,132 @@ def test_bone_flinger_uses_precise_window():
 
 
 # ---------------------------------------------------------------------------
+# Tier-4 engine helper — pay_cost cost-substitution flags
+# ---------------------------------------------------------------------------
+
+
+def test_glacial_advance_reduces_next_spell_cost():
+    """RLK_512 Glacial Advance: deals 4 then reduces the next spell's
+    cost by 2 via `_next_spell_cost_reduction`. Consumed on next spell."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    dk = game.player1 if game.player1.hero.id == "HERO_11" else game.player2
+    if game.current_player is not dk:
+        game.end_turn()
+    dk.max_mana = 10
+    target = dk.opponent.summon("CS2_231")  # Wisp
+    target.max_health = 80
+    target.damage = 0
+    # Play Glacial Advance for 3 mana (deals 4 to target, primes -2).
+    dk.give("RLK_512").play(target=target)
+    assert dk._next_spell_cost_reduction == 2
+    # Next spell: Howling Blast (cost 3). With -2 reduction → pays 1.
+    pre_mana = dk.used_mana
+    dk.give("RLK_015").play(target=target)
+    paid = dk.used_mana - pre_mana
+    assert paid == 1
+    # Flag consumed.
+    assert dk._next_spell_cost_reduction == 0
+
+
+def test_anub_rekhan_minions_cost_armor_this_turn():
+    """RLK_659 Anub'Rekhan: +8 armor; this turn, minions cost Armor
+    instead of Mana (so long as armor is sufficient)."""
+    game = prepare_game(CardClass.DRUID, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    p.hero.armor = 0
+    p.give("RLK_659").play()  # +8 armor + arm flag
+    assert p.hero.armor == 8
+    assert p.minions_cost_armor_this_turn
+    # Play a 1-cost minion (Goldshire Footman): pays from armor.
+    pre_mana = p.used_mana
+    p.give(GOLDSHIRE_FOOTMAN).play()
+    paid = p.used_mana - pre_mana
+    assert paid == 0
+    assert p.hero.armor == 7
+
+
+def test_blood_crusader_next_paladin_minion_costs_health():
+    """RLK_927 Blood Crusader: next Paladin minion this turn costs
+    Health. Stub paladin = a basic 1-cost paladin minion."""
+    game = prepare_game(CardClass.PALADIN, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    p.give("RLK_927").play()
+    assert p.next_paladin_minion_costs_health_this_turn
+    pre_hp = p.hero.health
+    pre_mana = p.used_mana
+    # Use a 1-cost Paladin minion (Righteous Protector, ICC_038).
+    p.give("ICC_038").play()
+    paid_mana = p.used_mana - pre_mana
+    # Mana not spent; hero took 1 damage instead.
+    assert paid_mana == 0
+    assert p.hero.health == pre_hp - 1
+    # Flag consumed.
+    assert not p.next_paladin_minion_costs_health_this_turn
+
+
+def test_ghoulish_alchemist_next_concoction_is_free():
+    """RLK_570 Ghoulish Alchemist: next Concoction costs 0."""
+    game = prepare_game(CardClass.ROGUE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    p.give("RLK_570").play()
+    assert p.next_concoction_costs_zero
+    # Give a Concoction (RLK_570t1) and play it.
+    pre_mana = p.used_mana
+    p.give("RLK_570t1").play()
+    paid = p.used_mana - pre_mana
+    assert paid == 0
+    assert not p.next_concoction_costs_zero
+
+
+def test_saurfang_bounced_copy_costs_health():
+    """RLK_082 Deathbringer Saurfang: deathrattle returns a fresh
+    Saurfang to hand stamped with `card_costs_health=True`. Playing
+    that copy pays from hero health, not mana."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    dk = game.player1 if game.player1.hero.id == "HERO_11" else game.player2
+    if game.current_player is not dk:
+        game.end_turn()
+    dk.max_mana = 10
+    saur = dk.summon("RLK_082")
+    saur.destroy()
+    bounced = [c for c in dk.hand if c.id == "RLK_082"]
+    assert len(bounced) == 1
+    assert getattr(bounced[0], "card_costs_health", False)
+    pre_hp = dk.hero.health
+    pre_mana = dk.used_mana
+    bounced[0].play()
+    assert dk.used_mana - pre_mana == 0
+    assert dk.hero.health == pre_hp - bounced[0].data.cost
+
+
+def test_cost_substitution_flags_clear_at_own_turn_end():
+    """All four MotLK per-turn cost-substitution flags reset at the
+    player's OWN_TURN_END so they don't leak into next turn."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    p = game.player1 if game.player1.hero.id == "HERO_11" else game.player2
+    if game.current_player is not p:
+        game.end_turn()
+    p._next_spell_cost_reduction = 2
+    p.minions_cost_armor_this_turn = True
+    p.next_paladin_minion_costs_health_this_turn = True
+    p.next_concoction_costs_zero = True
+    game.end_turn()
+    assert p._next_spell_cost_reduction == 0
+    assert not p.minions_cost_armor_this_turn
+    assert not p.next_paladin_minion_costs_health_this_turn
+    assert not p.next_concoction_costs_zero
+
+
+# ---------------------------------------------------------------------------
 # Smoke: full DK + non-DK games can both run a turn without crashing
 # ---------------------------------------------------------------------------
 

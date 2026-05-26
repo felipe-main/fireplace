@@ -381,6 +381,14 @@ class BaseGame(Entity):
         # death-window begins now and accumulates through the opponent's
         # turn + their own next turn (until their next OWN_TURN_END).
         self.current_player._undead_deaths_in_window = []
+        # MotLK per-turn cost-substitution flags clear at OWN_TURN_END:
+        # Glacial Advance (next spell -2), Anub'Rekhan (minions cost
+        # armor), Blood Crusader (next paladin minion costs health),
+        # Ghoulish Alchemist (next Concoction free).
+        self.current_player._next_spell_cost_reduction = 0
+        self.current_player.minions_cost_armor_this_turn = False
+        self.current_player.next_paladin_minion_costs_health_this_turn = False
+        self.current_player.next_concoction_costs_zero = False
         # Throne of the Tides — Submerged Spacerock: cards added with the
         # discards-at-end-of-owner-turn marker are discarded now.
         for hand_card in list(self.current_player.hand):

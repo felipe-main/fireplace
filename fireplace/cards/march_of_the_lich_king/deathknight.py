@@ -246,6 +246,18 @@ class RLK_122:
     play = _FillBoardWithUndead(CONTROLLER)
 
 
+class _ArmGlacialAdvance(TargetedAction):
+    """Glacial Advance — "Your next spell this turn costs (2) less."
+    Stamps the controller's `_next_spell_cost_reduction`; pay_cost
+    (player.py) consumes it on the next spell played and clears it.
+    Also auto-clears at OWN_TURN_END (game.py end_turn_cleanup)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target._next_spell_cost_reduction = 2
+
+
 # Deal $4 damage. Your next spell this turn costs (2) less.
 class RLK_512:
     """Glacial Advance"""
@@ -254,23 +266,18 @@ class RLK_512:
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
     }
-    play = Hit(TARGET, 4), Buff(FRIENDLY_HERO, "RLK_025e")
+    play = Hit(TARGET, 4), _ArmGlacialAdvance(CONTROLLER)
 
 
 @custom_card
 class RLK_025e:
+    # Vestigial marker enchant (kept so any saved-state reference to the
+    # id resolves). Cost reduction is now owned by pay_cost +
+    # controller._next_spell_cost_reduction.
     tags = {
         GameTag.CARDNAME: "Glacial Advance",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
-    # Tracker for "next spell this turn costs (2) less."  We just stamp
-    # an attribute on the controller; the actual cost reduction is
-    # applied by a Hand-side cost_mod on every spell in hand.  Since we
-    # cannot easily express that without engine support, we approximate
-    # by giving the controller a one-shot spell discount counter.
-
-    class Hand:
-        events = OWN_TURN_END.on(Destroy(SELF))
 
 
 # Give all minions in your hand +1/+1.
@@ -823,13 +830,21 @@ class RLK_079:
 # support for an alternative cost mechanic; we just bounce the card back to
 # hand on death and leave a TODO for the cost-swap.)
 class _SaurfangBounce(TargetedAction):
+    """Saurfang deathrattle: return a fresh Saurfang to hand and arm the
+    "next Paladin minion costs Health" flag. Saurfang is itself a DK
+    minion (not Paladin), so we use a per-card flag `_costs_health`
+    that pay_cost (player.py) honours regardless of class."""
+
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        # Build a fresh copy of Saurfang in the controller's hand.
         source.game.cheat_action(source, [Give(ctrl, "RLK_082")])
-        # TODO: mark the new card as costing Health instead of Mana.
+        # Find the just-given copy and stamp it as costing Health.
+        for c in reversed(ctrl.hand):
+            if c.id == "RLK_082":
+                c.card_costs_health = True
+                break
 
 
 class RLK_082:

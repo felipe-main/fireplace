@@ -91,17 +91,23 @@ class _HauntingNightmareStamp(TargetedAction):
 class _MindEaterCopyDeck(TargetedAction):
 	"""Mind Eater deathrattle — add a copy of a random card from the
 	opponent's deck to the controller's hand. If the opponent's deck is
-	empty, nothing happens."""
+	empty, nothing happens. Uses ExactCopy so any in-deck buffs the
+	picked card had (e.g. cost discounts from Lothraxion, prior Buff
+	stamps) carry through to the new hand card — matches HS "copy"
+	semantics."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
+		from ...dsl.copy import ExactCopy
 		opp = source.controller.opponent
 		if not opp.deck:
 			return
 		picked = source.game.random.choice(list(opp.deck))
+		copy = ExactCopy(picked).copy(source, picked)
+		copy.controller = source.controller
 		source.game.cheat_action(
-			source, [Give(source.controller, picked.id)]
+			source, [Give(source.controller, copy)]
 		)
 
 
@@ -189,10 +195,14 @@ class RLK_816t3:
 	"""Vision of Darkness"""
 
 	# Discover a Shadow spell. (This stays in your hand.)
-	# The "stays in your hand" clause is cosmetic for fireplace — the
-	# discovered spell is added to hand via DISCOVER, and Vision of
-	# Darkness itself is consumed when cast (standard spell behaviour).
-	play = DISCOVER(RandomSpell(spell_school=SpellSchool.SHADOW))
+	# "Stays in your hand" — the Discover callback chain is extended
+	# so a fresh Vision of Darkness is re-added to hand after the
+	# discovered card lands. If hand is full, the Give silently fails
+	# (matches HS — overdrawn).
+	play = Discover(CONTROLLER, RandomSpell(spell_school=SpellSchool.SHADOW)).then(
+		Give(CONTROLLER, Discover.CARD),
+		Give(CONTROLLER, "RLK_816t3"),
+	)
 
 
 class RLK_822:

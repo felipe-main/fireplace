@@ -79,10 +79,11 @@ class _FleshBehemothDrawAndCopy(TargetedAction):
 		if not pool:
 			return
 		pick = source.game.random.choice(pool)
-		# Move the picked Undead from deck to hand (counts as the "draw"),
-		# then summon a copy of it on the controller's side.
-		from hearthstone.enums import Zone
-		pick.zone = Zone.HAND
+		# Route the draw through the standard Draw action so OWN_DRAW
+		# listeners (Vereesa Windrunner, Voracious Reader, etc.) fire,
+		# matching the printed "Draw another Undead" text. Then summon
+		# a fresh copy of the same id on the controller's side.
+		source.game.cheat_action(source, [Draw(target, pick)])
 		source.game.cheat_action(source, [Summon(target, pick.id)])
 
 

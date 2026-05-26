@@ -116,6 +116,10 @@ class _DrakuruResurrect(TargetedAction):
 		ctrl = source.controller
 		if len(ctrl.field) >= source.game.MAX_MINIONS_ON_FIELD:
 			return
+		# HS "Resurrect" idiom summons a fresh base-stats copy by id —
+		# buffs and granted deathrattles do NOT carry over. Matches every
+		# other resurrect effect in the engine (Animate Dead, Resurrect,
+		# Onyx Bishop, etc.).
 		source.game.cheat_action(source, [Summon(ctrl, defender.id)])
 
 

@@ -8,35 +8,20 @@ from ...dsl.lazynum import LazyNum
 
 
 class _OutcastsPlayedCount(LazyNum):
-	"""Read the controller's lifetime Outcast-cards-played counter, or 0
-	if never bumped. Used by Vengeful Walloper's cost_mod. The counter
-	is bumped by Wretched Exile's listener (RLK_210) and any other
-	in-file effect that wants to credit an Outcast play. A bona-fide
-	engine-level counter (Play.do bump on `card.play_outcast`) would be
-	the cleaner home; until then we count via card-driven listeners,
-	which is enough to make Walloper's discount visible whenever its
-	relevant tracking minions are in play."""
+	"""Read the controller's lifetime Outcast-cards-played counter.
+	The counter lives on Player.outcasts_played_this_game and is bumped
+	by Play.do whenever an Outcast card is played from the leftmost or
+	rightmost slot — see fireplace/actions.py Play.do."""
 
 	def __init__(self):
 		super().__init__()
 		self.selector = None
 
 	def evaluate(self, source):
-		ret = getattr(source.controller, "outcasts_played_this_game", 0)
+		ret = source.controller.outcasts_played_this_game
 		# LazyNum.__neg__ flips self.base from 1 to -1; honour it so
 		# `-_OutcastsPlayedCount()` actually subtracts from cost.
 		return int(ret * self.base)
-
-
-class _BumpOutcastsPlayed(TargetedAction):
-	"""Increment controller's outcasts_played_this_game counter by 1."""
-
-	TARGET = ActionArg()
-
-	def do(self, source, target):
-		target.outcasts_played_this_game = (
-			getattr(target, "outcasts_played_this_game", 0) + 1
-		)
 
 
 class _SouleaterScytheConsume(TargetedAction):
@@ -111,7 +96,11 @@ class _MarkOfScornDrawAndPunish(TargetedAction):
 		pool = LOWEST_HEALTH(ENEMY_CHARACTERS).eval(source.game, source)
 		if not pool:
 			return
-		victim = source.game.random.choice(pool)
+		# HS tiebreak for "lowest Health" targets is play-order
+		# (earliest-summoned first). Sort by entity_id (assigned at
+		# entity creation in order) for a deterministic pick instead
+		# of game.random.choice.
+		victim = min(pool, key=lambda e: getattr(e, "entity_id", 0))
 		source.game.cheat_action(source, [Hit(victim, 3)])
 
 
@@ -255,14 +244,10 @@ class RLK_210:
 	"""Wretched Exile"""
 
 	# After you play an Outcast card, add a random Outcast card to your
-	# hand. The same listener bumps the controller's
-	# outcasts_played_this_game counter so Vengeful Walloper's discount
-	# stays in sync whenever Exile sees an Outcast play. (Walloper
-	# played on its own with no Exile-style tracker on the board will
-	# see a stale 0 — a future engine bump in Play.do will close the
-	# gap. See RLK_213 docstring.)
+	# hand. The controller-wide outcasts_played_this_game counter is
+	# bumped by Play.do (engine), so this listener only needs to add
+	# the bonus card.
 	events = Play(CONTROLLER, OUTCAST).after(
-		_BumpOutcastsPlayed(CONTROLLER),
 		_WretchedExileAddOne(CONTROLLER),
 	)
 
@@ -284,11 +269,9 @@ class RLK_213:
 	"""Vengeful Walloper"""
 
 	# Rush. Costs (1) less for each Outcast card you've played this
-	# game. Reads outcasts_played_this_game off the controller (bumped
-	# by RLK_210's listener while Wretched Exile is on the board, and
-	# by any future engine-level Play.do hook on `card.play_outcast`).
-	# Until that engine hook lands, Walloper's discount only ticks
-	# while a tracking minion is in play — flagged in review.csv.
+	# game. Reads outcasts_played_this_game off the controller; the
+	# counter is bumped by Play.do whenever an Outcast card is played
+	# from the leftmost or rightmost slot.
 	cost_mod = -_OutcastsPlayedCount()
 
 

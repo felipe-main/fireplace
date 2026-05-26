@@ -140,10 +140,11 @@ class RLK_532:
 	"""Walking Dead"""
 
 	# Taunt. If you discard this minion, summon it.
-	# Engine pipes the dying-in-hand discard through
-	# `card.get_actions("discard")`, so a bare `discard = ...` script on
-	# the card is sufficient.
-	discard = Summon(CONTROLLER, "RLK_532")
+	# ExactCopy(SELF) preserves any in-hand buffs/enchants the dying card
+	# had picked up before the discard. Printed text says "summon it"
+	# (the actual card), not "summon a 3/4 Walking Dead" — so buffs from
+	# Power Word: Glory etc. should follow the summoned token.
+	discard = Summon(CONTROLLER, ExactCopy(SELF))
 
 
 class RLK_535:
@@ -201,7 +202,11 @@ class RLK_534:
 	play = Hit(RANDOM_ENEMY_CHARACTER, 1) * SPELL_DAMAGE(6)
 
 	class Hand:
-		events = Discard(SELF).on(Hit(RANDOM_ENEMY_CHARACTER, 1) * 6)
+		# Discard branch must scale with spell damage too — printed
+		# text doesn't distinguish "play" from "discard" damage; both
+		# are spell damage from Soul Barrage. SPELL_DAMAGE(6) consults
+		# the controller's current spell damage at trigger time.
+		events = Discard(SELF).on(Hit(RANDOM_ENEMY_CHARACTER, 1) * SPELL_DAMAGE(6))
 
 
 class RLK_536:

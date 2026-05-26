@@ -232,7 +232,10 @@ class _FillBoardWithUndead(TargetedAction):
         controller = source.controller
         from hearthstone.enums import Race
 
-        picker = RandomMinion(race=Race.UNDEAD)
+        # is_standard=True restricts the pool to the current standard year
+        # — Wild-only UNDEAD minions (rare, but possible once UNDEAD
+        # retro-tribing spreads to legacy sets) are excluded.
+        picker = RandomMinion(race=Race.UNDEAD, is_standard=True)
         while len(controller.field) < 7:
             card_id = picker.evaluate(source)
             if not card_id:
@@ -380,7 +383,11 @@ class _MeatGrinderShred(TargetedAction):
         if not minions:
             return
         victim = source.game.random.choice(minions)
-        victim.zone = Zone.REMOVEDFROMGAME
+        # Move to GRAVEYARD (not REMOVEDFROMGAME) so resurrect pools and
+        # "destroyed minions" trackers see the body. Deck-destroyed minions
+        # in HS don't fire their deathrattle (only in-play destroys do),
+        # so we skip the Deathrattle pipeline by setting the zone directly.
+        victim.zone = Zone.GRAVEYARD
         ctrl.corpses += 3
         ctrl.corpses_gained_this_game += 3
 
@@ -509,7 +516,31 @@ class RLK_706:
 
 # Battlecry: Give a minion in your hand Attack equal to this minion's
 # Attack.
+class _ViciousBloodwormApplyBuff(TargetedAction):
+    """Apply the +N Attack buff after the player Choice resolves."""
+
+    PLAYER = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+    AMOUNT = ActionArg()
+
+    def do(self, source, player, cards, picked, amount):
+        if isinstance(picked, list):
+            picked = picked[0] if picked else None
+        if picked is None:
+            return
+        if isinstance(amount, list):
+            amount = amount[0] if amount else 0
+        source.game.cheat_action(
+            source, [Buff(picked, "RLK_711e", atk=int(amount))]
+        )
+
+
 class _ViciousBloodwormBuff(TargetedAction):
+    """Open a player Choice over the controller's hand minions; the
+    chosen card receives a +N Attack buff where N is this minion's
+    current attack (snapshotted at trigger time)."""
+
     TARGET = ActionArg()
 
     def do(self, source, target):
@@ -519,10 +550,13 @@ class _ViciousBloodwormBuff(TargetedAction):
         minions = [c for c in ctrl.hand if c.type == CardType.MINION]
         if not minions:
             return
-        pick = source.game.random.choice(minions)
-        source.game.cheat_action(
-            source, [Buff(pick, "RLK_711e", atk=source.atk)]
+        atk = source.atk
+        choice = Choice(ctrl, minions).then(
+            _ViciousBloodwormApplyBuff(
+                Choice.PLAYER, Choice.CARDS, Choice.CARD, atk
+            )
         )
+        source.game.queue_actions(source, [choice])
 
 
 class RLK_711:
@@ -539,11 +573,20 @@ class _LadyDeathwhisperCopy(TargetedAction):
         ctrl = source.controller
         from hearthstone.enums import CardType, SpellSchool
 
+        def _is_frost(c):
+            # Match either a single-school Frost spell or a multi-school
+            # spell whose schools include Frost. Data exposes
+            # `spell_schools` (list[SpellSchool]) for multi-school spells
+            # and `spell_school` (single value) otherwise.
+            schools = getattr(c.data, "spell_schools", None)
+            if schools:
+                return SpellSchool.FROST in schools
+            return getattr(c.data, "spell_school", None) == SpellSchool.FROST
+
         frost_spells = [
             c
             for c in list(ctrl.hand)
-            if c.type == CardType.SPELL
-            and getattr(c.data, "spell_school", None) == SpellSchool.FROST
+            if c.type == CardType.SPELL and _is_frost(c)
         ]
         for spell in frost_spells:
             if len(ctrl.hand) >= ctrl.max_hand_size:
@@ -777,17 +820,19 @@ class _PatchwerkDestroy(TargetedAction):
         opp = source.controller.opponent
         from hearthstone.enums import CardType, Zone
 
-        # Hand: random minion card in opponent hand.
+        # Hand: random minion card in opponent hand. Move to GRAVEYARD
+        # so resurrect pools/destroyed-from-hand trackers see it.
         hand_minions = [c for c in list(opp.hand) if c.type == CardType.MINION]
         if hand_minions:
             victim = source.game.random.choice(hand_minions)
-            victim.zone = Zone.REMOVEDFROMGAME
+            victim.zone = Zone.GRAVEYARD
         # Deck: random minion card in opponent deck.
         deck_minions = [c for c in list(opp.deck) if c.type == CardType.MINION]
         if deck_minions:
             victim = source.game.random.choice(deck_minions)
-            victim.zone = Zone.REMOVEDFROMGAME
-        # Battlefield: random enemy minion in play.
+            victim.zone = Zone.GRAVEYARD
+        # Battlefield: random enemy minion in play (full destroy pipeline
+        # — deathrattle, friendly_minions_died_this_game, etc.).
         field = [m for m in list(opp.field) if not getattr(m, "dead", False)]
         if field:
             victim = source.game.random.choice(field)

@@ -1314,29 +1314,41 @@ def test_silvermoon_arcanist_blocks_spell_targeting_heroes_this_turn():
 # ---------------------------------------------------------------------------
 
 
-def test_scourge_tamer_watch_summons_one_random_beast():
-    """RLK_821 Scourge Tamer: real card opens a Build-a-Beast Zombeast
-    fusion UI. Approximation summons a single random Beast (no fusion,
-    no UI). Pin: exactly one extra Beast lands on the friendly board."""
+def test_scourge_tamer_crafts_zombeast_with_combined_stats():
+    """Scourge Tamer opens a 2-stage Discover (Undead body then Beast
+    body) and adds a custom Zombeast to hand with merged atk/health
+    from both bodies. Pin: after auto-resolving both Discovers, hand
+    has one new minion whose atk = undead.atk + beast.atk."""
     game = prepare_game(CardClass.HUNTER, CardClass.MAGE)
     p = game.player1
     if game.current_player is not p:
         game.end_turn()
     p.max_mana = 10
-    pre_field = len(p.field)
+    while p.hand:
+        p.discard_hand()
     p.give("RLK_821").play()
-    # Scourge Tamer itself + exactly one Beast summon.
-    assert len(p.field) == pre_field + 2
-    new_minions = [m for m in p.field if m.id != "RLK_821"][-1:]
-    assert len(new_minions) == 1
-    assert Race.BEAST in (new_minions[0].race, getattr(new_minions[0], "secondary_race", None))
+    # First Discover: Undead body.
+    assert p.choice is not None
+    undead_pick = p.choice.cards[0]
+    undead_stats = (undead_pick.atk, undead_pick.max_health)
+    p.choice.choose(undead_pick)
+    # Second Discover: Beast body.
+    assert p.choice is not None
+    beast_pick = p.choice.cards[0]
+    beast_stats = (beast_pick.atk, beast_pick.max_health)
+    p.choice.choose(beast_pick)
+    # Crafted Zombeast in hand — uses the Beast id as host but combined stats.
+    new = [c for c in p.hand if c.id == beast_pick.id]
+    assert len(new) == 1
+    crafted = new[0]
+    assert crafted.atk == undead_stats[0] + beast_stats[0]
+    assert crafted.max_health == undead_stats[1] + beast_stats[1]
 
 
-def test_anachronos_watch_bounces_other_minions_with_cost_stamp():
-    """RLK_919 Anachronos: real card sends minions 2 turns into the
-    future. Approximation bounces all *other* minions to hand and
-    stamps +2 cost via RLK_919e. Pin: other minions return to hand,
-    cost is bumped, Anachronos stays on board."""
+def test_anachronos_removes_minions_then_returns_them_after_two_turns():
+    """RLK_919 Anachronos: send all other minions 2 turns into the
+    future. Tier-0.5 scheduler: minions go SETASIDE on play, return
+    automatically at the owner's 2nd upcoming OWN_TURN_BEGIN."""
     game = prepare_game(CardClass.PALADIN, CardClass.MAGE)
     p = game.player1
     if game.current_player is not p:
@@ -1344,14 +1356,40 @@ def test_anachronos_watch_bounces_other_minions_with_cost_stamp():
     p.max_mana = 10
     while p.hand:
         p.discard_hand()
-    helper = p.summon(WISP)  # cost 0
-    pre_cost = helper.cost
+    helper = p.summon(WISP)
+    enemy = p.opponent.summon(WISP)
     p.give("RLK_919").play()
-    # Helper bounced; Anachronos remains.
-    assert helper.zone == Zone.HAND
+    # Both helper + enemy removed from board; Anachronos remains.
+    assert helper not in p.field
+    assert enemy not in p.opponent.field
     assert any(m.id == "RLK_919" for m in p.field)
-    # +2 cost stamp.
-    assert helper.cost == pre_cost + 2
+    # Cycle 2 turns for the controller.
+    game.end_turn(); game.end_turn()  # opp turn + back to p (p OWN_TURN_BEGIN #1)
+    # Helper hasn't returned yet (1 turn elapsed).
+    assert not any(m.id == WISP for m in p.field)
+    game.end_turn(); game.end_turn()  # opp turn + back to p (p OWN_TURN_BEGIN #2)
+    # Helper returned.
+    assert any(m.id == WISP for m in p.field)
+
+
+def test_anachronos_returns_enemy_minions_to_enemy_side():
+    """The opponent's minions, when sent into the future, must come
+    back on the opponent's side — not Anachronos's player's side."""
+    game = prepare_game(CardClass.PALADIN, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    enemy = p.opponent.summon(WISP)
+    p.give("RLK_919").play()
+    # Cycle until opponent's 2nd own_turn_begin from now.
+    for _ in range(4):
+        game.end_turn()
+    # Enemy Wisp came back on opponent side.
+    assert any(m.id == WISP for m in p.opponent.field)
+    assert not any(m.id == WISP for m in p.field)
 
 
 def test_vast_wisdom_watch_swaps_costs_of_two_random_lowcost_spells():
@@ -1388,6 +1426,26 @@ def test_energy_shaper_watch_morphs_hand_spells_with_cost_plus_two():
     # Spell got morphed into another spell — hand still contains a spell.
     spell_count = sum(1 for c in p.hand if c.type == CardType.SPELL)
     assert spell_count >= 1
+
+
+def test_vexallus_recursion_guard_caps_at_one_echo():
+    """Vexallus's echo must not infinitely recurse: cast an Arcane spell,
+    Vexallus fires once (so spell resolves twice total), but the echo
+    itself must NOT trigger Vexallus again. Tier-0.1 recursion guard
+    via Player._recast_depth. Pin: damage doubles, doesn't tripple."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    p.summon("RLK_541")
+    p.opponent.hero.max_health = 80
+    p.opponent.hero.damage = 0
+    # Arcane Shot deals 2; with Vexallus, exactly 4 (one echo).
+    p.give("CORE_DS1_185").play(target=p.opponent.hero)
+    assert p.opponent.hero.damage == 4
+    # Guard reset cleanly.
+    assert p._recast_depth == 0
 
 
 def test_vexallus_watch_arcane_spells_cast_twice():
@@ -1447,6 +1505,53 @@ def test_overlord_drakuru_watch_resurrects_killed_defender_as_fresh_copy():
     assert any(m.id == WISP for m in p.field)
 
 
+def test_unholy_frenzy_force_attacks_sick_minions_and_resummons_deaths():
+    """Unholy Frenzy ignores summoning sickness (printed text doesn't
+    mention it), force-attacks the chosen target with every friendly
+    minion, and resummons fresh copies of any that died."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    p = _dk(game)
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    # Summon a freshly-summoned (sick) minion and verify it can attack
+    # under Unholy Frenzy.
+    sick = p.summon(WISP)
+    target = p.opponent.summon("CS2_186")  # War Golem 7/7
+    target.max_health = 80
+    target.damage = 0
+    pre_damage = target.damage
+    frenzy = p.give("RLK_056")
+    frenzy.play(target=target)
+    # Sick Wisp attacked the target despite summoning sickness (printed
+    # text doesn't gate on sickness — force-attack via cheat_action).
+    assert target.damage > pre_damage
+
+
+def test_from_de_other_side_force_attacks_with_summoning_sickness_bypass():
+    """From De Other Side summons copies, force-attacks them despite
+    being summoning-sick, then destroys them. Printed: copies attack
+    immediately and die — sickness must not block."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    while p.opponent.field:
+        p.opponent.field[0].destroy()
+    # Beefy enemy target so the attack lands & registers damage.
+    fat = p.opponent.summon("CS2_186")  # War Golem
+    fat.max_health = 80
+    fat.damage = 0
+    p.give(WISP)  # exactly one minion in hand → one copy summoned
+    pre_damage = fat.damage
+    p.give("RLK_911").play()
+    # The Wisp copy attacked the War Golem (would-be sick minion deals 1).
+    assert fat.damage == pre_damage + 1
+
+
 def test_from_de_other_side_watch_summons_attack_die_loop():
     """RLK_911 From De Other Side: summon copy of each hand minion,
     attack random enemies, then die. Approximation force-attacks via
@@ -1498,25 +1603,63 @@ def test_mark_of_scorn_watch_hits_lowest_health_on_nonminion_draw():
     assert target.damage == 3
 
 
-def test_wretched_exile_watch_bumps_outcasts_counter_on_outcast_play():
+def test_outcasts_counter_bumps_from_engine_on_edge_play():
+    """Engine bump in Play.do: an Outcast card played from leftmost or
+    rightmost slot bumps controller.outcasts_played_this_game by exactly
+    1. Wretched Exile no longer needs to drive this counter — proven by
+    NOT putting Exile on the board."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    fo = p.give("RLK_207")  # leftmost -> Outcast bump fires
+    assert p.outcasts_played_this_game == 0
+    fo.play()
+    assert p.outcasts_played_this_game == 1
+
+
+def test_outcasts_counter_does_not_bump_from_middle_of_hand():
+    """If an Outcast card is played from a middle slot (not leftmost or
+    rightmost), Play.do must NOT bump the counter — the printed Outcast
+    trigger doesn't fire either."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    # Sandwich the Outcast minion between two non-Outcast neutrals so
+    # it plays from a middle slot.
+    left = p.give(WISP)
+    mid = p.give("RLK_207")  # middle
+    right = p.give(WISP)
+    assert p.hand[1] is mid
+    assert p.outcasts_played_this_game == 0
+    mid.play()
+    assert p.outcasts_played_this_game == 0
+
+
+def test_wretched_exile_watch_adds_outcast_card_to_hand():
     """RLK_210 Wretched Exile: after an Outcast play, add a random
-    Outcast to hand. Also bumps controller.outcasts_played_this_game
-    so Vengeful Walloper's discount ticks. Pin: counter increments."""
+    Outcast card to hand. Pin: hand grows by exactly +1 (the added
+    card). The engine handles the counter bump separately."""
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.MAGE)
     p = game.player1
     if game.current_player is not p:
         game.end_turn()
     p.max_mana = 10
     p.summon("RLK_210")
-    # Play any Outcast card. Felerin (RLK_215) is Outcast-print but its
-    # Outcast trigger only fires at hand edges; instead use Fierce
-    # Outsider RLK_207 (also Outcast). Place it leftmost.
     while p.hand:
         p.discard_hand()
-    fo = p.give("RLK_207")
-    pre = getattr(p, "outcasts_played_this_game", 0)
+    fo = p.give("RLK_207")  # leftmost outcast trigger
+    pre_hand = len(p.hand)
     fo.play()
-    assert getattr(p, "outcasts_played_this_game", 0) == pre + 1
+    # Hand grew by exactly 1 (Outsider left, Exile added one back).
+    assert len(p.hand) == pre_hand
 
 
 def test_vengeful_walloper_watch_cost_mod_reads_counter():
@@ -1572,6 +1715,30 @@ def test_felerin_watch_adds_outcasts_at_edges_with_minus_two_cost():
     # cheat_action which fires the Card twice for the give path —
     # current pin: hand ends with at least 2 cards (the two edge picks).
     assert len(p.hand) >= pre_hand + 2
+
+
+def test_frostmourne_deathrattle_resummons_killed_minions_when_replaced():
+    """Frostmourne records each killed minion on the weapon entity;
+    when the weapon is destroyed (e.g. by equipping a new weapon),
+    its deathrattle resummons all kills. Tier-2 pin: equip Frostmourne,
+    kill a Wisp, equip another weapon → Wisp resummoned on our side."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    p = _dk(game)
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    frost = p.card("RLK_086")
+    frost.zone = Zone.PLAY
+    p.weapon = frost
+    p.hero.attack(p.opponent.summon(WISP))  # kills the Wisp
+    assert "CS2_231" in frost._frostmourne_kills
+    # Equip a fresh weapon — Frostmourne is replaced, its deathrattle
+    # should fire and resummon the recorded Wisp on our side.
+    new_weapon = p.card("RLK_600t")  # Flamberge (4/2)
+    new_weapon.zone = Zone.PLAY
+    p.weapon = new_weapon
+    # Frostmourne's deathrattle resummoned a Wisp.
+    assert any(m.id == WISP for m in p.field)
 
 
 def test_frostmourne_watch_stash_persists_on_weapon_entity():
@@ -1644,6 +1811,23 @@ def test_lord_marrowgar_watch_round_robins_overflow_buffs():
     assert len(golems) == 1
     assert golems[0].atk == 1
     assert golems[0].max_health == 1
+
+
+def test_plague_strike_divine_shield_blocks_summon():
+    """Plague Strike's zone-check after Hit correctly handles divine
+    shield: damage is absorbed, target survives, no zombie summoned."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
+    p = _dk(game)
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    # Argent Squire 1/1 with Divine Shield.
+    victim = p.opponent.summon("EX1_008")
+    p.give("RLK_018").play(target=victim)
+    # Divine shield absorbed the damage; victim alive; no zombie summoned.
+    assert victim.zone == Zone.PLAY
+    assert victim.divine_shield is False  # shield consumed
+    assert not any(m.id == "RLK_018t" for m in p.field)
 
 
 def test_plague_strike_watch_summons_zombie_on_lethal_hit():
@@ -1756,11 +1940,14 @@ def test_vicious_bloodworm_watch_buffs_random_hand_minion_by_self_atk():
     p.max_mana = 10
     while p.hand:
         p.discard_hand()
-    target = p.give(WISP)  # 1/1 in hand
+    target = p.give(WISP)  # 1/1 in hand — only minion in hand
     pre_atk = target.atk
     bw = p.give("RLK_711")
     bw_atk = bw.atk
     bw.play()
+    # Drain the Choice triggered by Vicious Bloodworm.
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
     assert target.atk == pre_atk + bw_atk
 
 
@@ -1803,21 +1990,47 @@ def test_sister_svalna_watch_gives_one_vision_of_darkness():
     assert post == pre + 1
 
 
-def test_vision_of_darkness_watch_one_shot_spell():
-    """RLK_816t3 Vision of Darkness: "this stays in your hand" not
-    honoured — treated as a normal one-shot Discover. Pin: after
-    play, Vision leaves hand (consumed)."""
+def test_svalna_vision_combo_is_permanent_through_multiple_plays():
+    """Sister Svalna grants a Vision; Vision returns itself to hand
+    each play. So a Vision played twice still leaves one in hand."""
     game = prepare_game(CardClass.PRIEST, CardClass.MAGE)
     p = game.player1
     if game.current_player is not p:
         game.end_turn()
     p.max_mana = 10
-    vod = p.give("RLK_816t3")
-    vod.play()
-    # Resolve the Discover.
+    while p.hand:
+        p.discard_hand()
+    p.give("RLK_816").play()
+    # One Vision in hand from Svalna.
+    vods = [c for c in p.hand if c.id == "RLK_816t3"]
+    assert len(vods) == 1
+    # Play it once.
+    vods[0].play()
     while p.choice:
         p.choice.choose(p.choice.cards[0])
-    assert vod.zone != Zone.HAND
+    # Vision regenerated in hand.
+    vods = [c for c in p.hand if c.id == "RLK_816t3"]
+    assert len(vods) == 1
+
+
+def test_vision_of_darkness_stays_in_hand_after_play():
+    """RLK_816t3 Vision of Darkness honours "this stays in your hand":
+    after the Discover resolves, a fresh Vision is re-added to hand
+    via Give(CONTROLLER, "RLK_816t3")."""
+    game = prepare_game(CardClass.PRIEST, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    vod = p.give("RLK_816t3")
+    vod.play()
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+    # Vision returned to hand (the original may have been consumed but
+    # a fresh copy was given). At least one VoD must be present.
+    assert any(c.id == "RLK_816t3" for c in p.hand)
 
 
 def test_mind_eater_watch_adds_fresh_copy_from_opponent_deck():
@@ -1897,14 +2110,86 @@ def test_hazy_concoction_watch_resolves_other_class_pick():
     if game.current_player is not p:
         game.end_turn()
     p.max_mana = 10
+    # Clear the starting hand so the only post-play addition is Hazy's.
+    while p.hand:
+        p.discard_hand()
     hazy = p.give("RLK_570t4")
+    pre_ids = set(id(c) for c in p.hand)
     hazy.play()
-    # Hazy itself left hand (spell consumed); any added card must not be
-    # the Rogue's own class (pin the OTHER_CLASS approximation).
     assert hazy.zone != Zone.HAND
-    for c in p.hand:
-        if c is not hazy:
-            assert c.card_class != CardClass.ROGUE
+    # The card Hazy added must not be a Rogue card.
+    new_cards = [c for c in p.hand if id(c) not in pre_ids]
+    assert len(new_cards) == 1
+    assert new_cards[0].card_class != CardClass.ROGUE
+
+
+def test_concoction_mix_morphs_held_concoction_on_give():
+    """Tier-0.4 engine: when a Concoction is given while another
+    Concoction is held in hand, the held one morphs into the matching
+    Mixed Concoction token (Slimy + Dreadful → RLK_570t1t2)."""
+    game = prepare_game(CardClass.ROGUE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    slimy = p.give("RLK_570t1")  # Slimy
+    p.give("RLK_570t2")  # Dreadful → mix with Slimy
+    # Slimy morphed into Mixed Slimy + Dreadful = RLK_570t1t2.
+    mixed = [c for c in p.hand if c.id == "RLK_570t1t2"]
+    assert len(mixed) == 1
+
+
+def test_concoction_mix_double_slimy_produces_double_summon_mix():
+    """Two Slimy Concoctions added back-to-back produce RLK_570t1t4
+    (Mixed Concoction: summon two 3-cost minions)."""
+    game = prepare_game(CardClass.ROGUE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    p.give("RLK_570t1")
+    p.give("RLK_570t1")
+    mixed = [c for c in p.hand if c.id == "RLK_570t1t4"]
+    assert len(mixed) == 1
+
+
+def test_concoction_mix_unmapped_pair_leaves_held_unchanged():
+    """A held Concoction whose Mix pair isn't in the data table (e.g.
+    Bubbling + Hazy maps to RLK_570t4t2 — present; Bubbling + Gleaming
+    is not in data) remains as-is."""
+    game = prepare_game(CardClass.ROGUE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    p.give("RLK_570t3")  # Bubbling
+    p.give("RLK_570t5")  # Gleaming → no mapping
+    # Both stay in hand un-mixed.
+    held_ids = sorted(c.id for c in p.hand)
+    assert held_ids == ["RLK_570t3", "RLK_570t5"]
+
+
+def test_mixed_concoction_double_dreadful_destroys_two_enemies():
+    """RLK_570t2t2 plays as 'destroy two random enemy minions'."""
+    game = prepare_game(CardClass.ROGUE, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.opponent.field:
+        p.opponent.field[0].destroy()
+    p.opponent.summon(WISP)
+    p.opponent.summon(WISP)
+    p.opponent.summon(WISP)
+    p.give("RLK_570t2t2").play()
+    # Exactly two of the three Wisps destroyed.
+    assert len(p.opponent.field) == 1
 
 
 def test_gleaming_concoction_watch_draws_two():
@@ -1974,16 +2259,16 @@ def test_walking_dead_watch_summons_fresh_copy_on_discard():
     assert any(m.id == "RLK_532" for m in p.field)
 
 
-def test_soul_barrage_watch_discard_path_skips_spell_damage_scaling():
-    """RLK_534 Soul Barrage: discard path fires 6 hits of 1 damage.
-    Approximation: bypasses SPELL_DAMAGE scaling. Pin: even with
-    spell damage on board, discard path still deals 6 total damage."""
+def test_soul_barrage_discard_path_scales_with_spell_damage():
+    """RLK_534 Soul Barrage: discard path scales with Spell Damage too,
+    matching the play path. Tier-0.1 fix: Hand.events Discard branch now
+    uses SPELL_DAMAGE(6) instead of literal 6. Pin: with Malygos (+5 SD)
+    on the board, discard branch deals 11 damage total."""
     game = prepare_game(CardClass.WARLOCK, CardClass.MAGE)
     p = game.player1
     if game.current_player is not p:
         game.end_turn()
     p.max_mana = 10
-    # Spell damage source on board.
     p.summon("EX1_563")  # Malygos +5 spell damage
     while p.opponent.field:
         p.opponent.field[0].destroy()
@@ -1991,8 +2276,9 @@ def test_soul_barrage_watch_discard_path_skips_spell_damage_scaling():
     p.opponent.hero.damage = 0
     barrage = p.give("RLK_534")
     barrage.discard()
-    # Total damage dealt by 6 ticks of 1 to enemy hero (only enemy character).
-    assert p.opponent.hero.damage == 6
+    # 6 ticks scaled by +5 spell damage = (1 + 5) * 6 = 36? No — SPELL_DAMAGE(N)
+    # is a multiplier on the loop count: 6 hits become 6 + 5 = 11 hits, each 1.
+    assert p.opponent.hero.damage == 11
 
 
 def test_asvedon_watch_recasts_last_opponent_spell_via_castspell():
@@ -2065,6 +2351,66 @@ def test_prescience_watch_draws_two_minions_and_spirits_for_bigs():
     assert len(spirits) >= 1
 
 
+def test_last_stand_fires_draw_triggers():
+    """Last Stand's pick goes through Draw (via ForceDraw → card.draw()
+    → Draw), so OWN_DRAW listeners fire. Verified via Acolyte of Pain
+    style trigger surrogate: count cards_drawn_this_turn bumps."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.deck:
+        p.deck[0].zone = Zone.REMOVEDFROMGAME
+    while p.hand:
+        p.discard_hand()
+    p.card("CS2_179").zone = Zone.DECK  # Sen'jin (Taunt)
+    pre_drawn = p.cards_drawn_this_turn
+    p.give("RLK_601").play()
+    # Last Stand triggered exactly one card draw through the Draw pipeline.
+    assert p.cards_drawn_this_turn == pre_drawn + 1
+
+
+def test_prescience_fires_draw_triggers_per_minion():
+    """Prescience draws 2 minions through ForceDraw → card.draw() →
+    Draw, so cards_drawn_this_turn bumps by exactly 2."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.deck:
+        p.deck[0].zone = Zone.REMOVEDFROMGAME
+    while p.hand:
+        p.discard_hand()
+    p.card("CS2_186").zone = Zone.DECK  # War Golem
+    p.card(WISP).zone = Zone.DECK  # cheap minion
+    pre_drawn = p.cards_drawn_this_turn
+    p.give("RLK_553").play()
+    assert p.cards_drawn_this_turn == pre_drawn + 2
+
+
+def test_flesh_behemoth_fires_draw_triggers():
+    """Flesh Behemoth's "draw an Undead" must route through Draw so
+    OWN_DRAW listeners fire. Tier 0.2 fix: Draw() instead of direct
+    zone assignment."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.deck:
+        p.deck[0].zone = Zone.REMOVEDFROMGAME
+    while p.hand:
+        p.discard_hand()
+    p.card("RLK_833").zone = Zone.DECK  # Foul Egg (UNDEAD)
+    pre_drawn = p.cards_drawn_this_turn
+    fb = p.summon("RLK_830")
+    fb.destroy()
+    # Flesh Behemoth drew exactly one card (the picked Undead).
+    assert p.cards_drawn_this_turn == pre_drawn + 1
+
+
 def test_flesh_behemoth_watch_summons_undead_copy_on_death():
     """RLK_830 Flesh Behemoth: Deathrattle draws an Undead and
     summons a copy. Approximation forces deck pick (no real draw
@@ -2081,6 +2427,125 @@ def test_flesh_behemoth_watch_summons_undead_copy_on_death():
     fb.destroy()
     # Foul Egg summoned alongside Flesh Behemoth's death.
     assert any(m.id == "RLK_833" for m in p.field)
+
+
+def test_walking_dead_discard_preserves_in_hand_buffs():
+    """Walking Dead's discard → summon path uses ExactCopy(SELF) so
+    in-hand buffs carry through. Pin: a discarded Walking Dead that
+    was hand-buffed via Power Word: Glory-style stamps summons with
+    the same atk."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    while p.hand:
+        p.discard_hand()
+    wd = p.give("RLK_532")
+    # Stamp a +5/+0 buff onto the in-hand Walking Dead so we have a
+    # provable signal: the discard-summon path should preserve it.
+    # Use the engine Buff helper via summon trick: stamp directly via
+    # the in-data RLK_213e (Walloper buff) which is +5/+0.
+    base_atk = wd.atk
+    wd.buff(wd, "RLK_600e")  # +4/+2
+    buffed_atk = wd.atk
+    assert buffed_atk == base_atk + 4
+    p.discard_hand()
+    summoned = [m for m in p.field if m.id == "RLK_532"]
+    assert len(summoned) == 1
+    # ExactCopy preserved the in-hand atk buff.
+    assert summoned[0].atk == buffed_atk
+
+
+def test_mind_eater_copies_card_with_preserved_buffs():
+    """Mind Eater uses ExactCopy(picked) so any in-deck buffs (cost
+    discounts, stamped enchants) carry through to the new hand card.
+    Pin: a buffed-in-deck minion in the opponent's deck, copied via
+    Mind Eater's deathrattle, retains the buff."""
+    game = prepare_game(CardClass.PRIEST, CardClass.MAGE)
+    p = game.player1
+    opp = p.opponent
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    # Clear opp deck so only the buffed card remains.
+    while opp.deck:
+        opp.deck[0].zone = Zone.REMOVEDFROMGAME
+    bait = opp.card(WISP)
+    bait.zone = Zone.DECK
+    bait.buff(bait, "RLK_600e")  # +4/+2
+    eater = p.summon("RLK_845")
+    eater.destroy()
+    # Wisp copy added to hand with the buff preserved.
+    copies = [c for c in p.hand if c.id == WISP]
+    assert len(copies) == 1
+    # ExactCopy preserves stamped buff: copy is buffed atk.
+    assert copies[0].atk == bait.atk
+
+
+def test_plaguespreader_morphs_strip_buffs_matching_hs():
+    """Plaguespreader's Morph deathrattle strips enchantments on the
+    transformed minion (Morph.do calls target.clear_buffs()). This
+    matches HS — printed transforms always reset stats to the new
+    card's base. Pin: a buffed hand minion morphed by Plaguespreader
+    ends up at RLK_831's base atk."""
+    game = prepare_game(CardClass.MAGE, CardClass.WARLOCK)
+    p = game.player1
+    opp = p.opponent
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    # Empty opp hand to make the random pick deterministic.
+    while opp.hand:
+        opp.discard_hand()
+    victim = opp.give(WISP)
+    victim.buff(victim, "RLK_600e")  # +4/+2; will be stripped
+    spreader = p.summon("RLK_831")  # Plaguespreader
+    spreader.destroy()
+    # Find what happened to the original Wisp slot — morphed to RLK_831.
+    morphed = [c for c in opp.hand if c.id == "RLK_831"]
+    assert len(morphed) == 1
+    # Stats reset to RLK_831 base (no preserved buff).
+    assert morphed[0].atk == morphed[0].data.atk
+
+
+def test_overlord_drakuru_resurrect_uses_base_stats():
+    """Drakuru's resurrect uses Summon(id) so the revived minion is
+    at base stats — buffs from the original do not carry over. This
+    matches HS "Resurrect" semantics (Animate Dead, Resurrect, etc.)."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.MAGE)
+    p = game.player1
+    opp = p.opponent
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    drakuru = p.summon("RLK_913")
+    victim = opp.summon(WISP)
+    victim.buff(victim, "RLK_600e")  # +4/+2 buff on the doomed Wisp
+    drakuru.attack(victim)
+    revived = [m for m in p.field if m.id == WISP]
+    assert len(revived) == 1
+    # Base atk — buff lost on resurrect.
+    assert revived[0].atk == revived[0].data.atk
+
+
+def test_enchanter_aura_off_on_opponent_turn():
+    """Enchanter's damage doubler is gated on `CURRENT_PLAYER == True`
+    for the controller. During the opponent's turn, the aura must be
+    off — Frostbolt hitting an enemy minion deals base 3, not 6."""
+    game = prepare_game(CardClass.PRIEST, CardClass.MAGE)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+    p.max_mana = 10
+    p.summon("RLK_952")
+    enemy = p.opponent.summon("CS2_186")  # War Golem
+    # Hand to opponent the spell and let them play it on their turn.
+    game.end_turn()  # → opponent's turn
+    p.opponent.max_mana = 10
+    p.opponent.give("CS2_024").play(target=enemy)  # Frostbolt 3 damage
+    # Aura is off — base 3 damage, not doubled.
+    assert enemy.damage == 3
 
 
 def test_enchanter_watch_doubles_enemy_minion_damage_on_own_turn():

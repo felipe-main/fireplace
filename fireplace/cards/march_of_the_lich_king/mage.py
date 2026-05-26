@@ -133,12 +133,40 @@ class RLK_843:
 # Minions
 
 
+class _VexallusEchoOnce(TargetedAction):
+	"""Vexallus echo — cast a copy of the just-played Arcane spell, but
+	only if we are not already inside a Vexallus-driven recast (guards
+	against infinite recursion when a recast itself triggers OWN_SPELL_PLAY
+	listeners that match the original spell)."""
+
+	TARGET = ActionArg()
+	SPELL = ActionArg()
+	SPELL_TARGET = ActionArg()
+
+	def do(self, source, target, spell, spell_target):
+		if isinstance(spell, list):
+			spell = spell[0] if spell else None
+		if isinstance(spell_target, list):
+			spell_target = spell_target[0] if spell_target else None
+		if spell is None:
+			return
+		if target._recast_depth > 0:
+			return
+		target._recast_depth += 1
+		try:
+			source.game.cheat_action(source, [CastSpell(spell.id, spell_target)])
+		finally:
+			target._recast_depth -= 1
+
+
 class RLK_541:
 	"""Vexallus"""
 
 	# Your Arcane spells cast twice.
+	# Recursion guard via Player._recast_depth so a recast triggering
+	# another OWN_SPELL_PLAY hook doesn't infinitely re-fire Vexallus.
 	events = Play(CONTROLLER, SPELL + ARCANE_SPELL).after(
-		CastSpell(Play.CARD, Play.TARGET)
+		_VexallusEchoOnce(CONTROLLER, Play.CARD, Play.TARGET)
 	)
 
 

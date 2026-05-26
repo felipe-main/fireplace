@@ -140,3 +140,35 @@ class RandomID(RandomCardPicker):
 
     def evaluate(self, source):
         return super().evaluate(source, self._cards)
+
+
+class RandomOtherClassCollectible(RandomCardPicker):
+    """Pick a random collectible card whose primary class is neither the
+    source's controller's hero class nor Neutral. Used by Hazy Concoction
+    + Mixed Concoction tokens for the "card from another class" effect."""
+
+    def __init__(self, **kw):
+        from hearthstone.enums import CardType
+        kw.setdefault("collectible", True)
+        super().__init__(**kw)
+
+    def evaluate(self, source):
+        from hearthstone.enums import CardClass
+        from .. import cards as card_module
+        controller_class = getattr(source.controller.hero, "card_class", CardClass.INVALID)
+        all_ids = card_module.db.filter(collectible=True)
+        filtered = []
+        for cid in all_ids:
+            c = card_module.db[cid]
+            classes = getattr(c, "classes", None) or [c.card_class]
+            # Exclude any card whose class list contains the controller's
+            # class (multiclass cards with the controller's class are also
+            # excluded — they're "your class" cards) or only Neutral.
+            if controller_class in classes:
+                continue
+            if classes == [CardClass.NEUTRAL]:
+                continue
+            filtered.append(cid)
+        if not filtered:
+            return []
+        return [source.game.random.choice(filtered)]

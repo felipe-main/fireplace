@@ -34,20 +34,31 @@ class _TimewardenStartAura(TargetedAction):
 
 class _AnachronosTimeJump(TargetedAction):
 	"""Anachronos — printed text "Send all other minions 2 turns into
-	the future." Real card temporarily removes every other minion and
-	returns them at the start of their owner's turn after next.
-	Approximation: bounce every other minion to its owner's hand and
-	stamp +2 cost via RLK_919e. No automatic delay-then-resummon."""
+	the future." Snapshot every other minion's id/atk/health, send them
+	to SETASIDE, and register a delayed-return entry on each owner's
+	_anachronos_returns. The game's begin_turn ticks down and re-summons
+	at the owner's 2nd upcoming turn (Tier-0.5 scheduler)."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
+		from hearthstone.enums import Zone
 		for m in list(source.game.board):
 			if m is source:
 				continue
-			source.game.queue_actions(
-				source, [Bounce(m).then(Buff(m, "RLK_919e"))]
-			)
+			owner = m.controller
+			entry = {
+				"turns_left": 2,
+				"id": m.id,
+				"atk": m.atk,
+				"max_health": m.max_health,
+			}
+			if not hasattr(owner, "_anachronos_returns"):
+				owner._anachronos_returns = []
+			owner._anachronos_returns.append(entry)
+			# Remove the minion from play (treat as setaside, not destroyed
+			# — death triggers/Reborn shouldn't fire).
+			m.zone = Zone.SETASIDE
 
 
 class _BloodCrusaderArm(TargetedAction):
@@ -204,14 +215,11 @@ class RLK_919:
 	"""Anachronos"""
 
 	# Battlecry: Send all other minions 2 turns into the future.
-	# Approximation: bounce all other minions to hand + stamp +2 cost
-	# via RLK_919e. The "2 turns" delay/auto-return semantics are TODO.
+	# Implementation: every other minion is moved to SETASIDE and a
+	# delayed-return entry is appended to its owner. The engine's
+	# begin_turn (game.py) ticks down each entry and summons a fresh
+	# copy with snapshotted atk/health when the count hits 0.
 	play = _AnachronosTimeJump(SELF)
-
-
-class RLK_919e:
-	# In-data card ("Time Travel"). Real text adds +2 cost while bounced.
-	tags = {GameTag.COST: 2}
 
 
 class RLK_921:

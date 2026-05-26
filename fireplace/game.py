@@ -18,6 +18,7 @@ from .actions import (
     GameStart,
     Play,
     Reward,
+    Summon,
     Trade,
 )
 from .card import THE_COIN
@@ -491,6 +492,34 @@ class BaseGame(Entity):
                 entity.dormant_turns -= 1
                 if entity.dormant_turns == 0:
                     self.queue_actions(player, [Awaken(entity)])
+
+        # MotLK — Anachronos delayed-return scheduler. Each entry is
+        # (turns_left, card_id, owner_id, atk, max_health). At the start
+        # of the owner's turn, decrement turns_left; on hitting 0, summon
+        # a fresh copy of the stashed minion and apply the snapshotted
+        # buffed atk/health. Filters out matured entries in-place.
+        scheduled = getattr(player, "_anachronos_returns", None)
+        if scheduled:
+            still_pending = []
+            for entry in scheduled:
+                turns_left = entry["turns_left"] - 1
+                if turns_left <= 0:
+                    cid = entry["id"]
+                    self.queue_actions(player, [Summon(player, cid)])
+                    # Apply atk/health snapshot if it diverged from base.
+                    summoned = next(
+                        (m for m in reversed(player.field) if m.id == cid),
+                        None,
+                    )
+                    if summoned is not None:
+                        if entry.get("atk") is not None and summoned.atk != entry["atk"]:
+                            summoned.atk = entry["atk"]
+                        if entry.get("max_health") is not None:
+                            summoned.max_health = entry["max_health"]
+                else:
+                    entry["turns_left"] = turns_left
+                    still_pending.append(entry)
+            player._anachronos_returns = still_pending
 
         if player.hero.power:
             player.hero.power.activations_this_turn = 0

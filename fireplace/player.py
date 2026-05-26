@@ -197,6 +197,14 @@ class Player(Entity, TargetableByAuras):
         # OWN_TURN_BEGIN and flipped True by pay_cost on the first card.
         self._frostwhisper_first_card_free = False
         self._frostwhisper_consumed_this_turn = False
+        # MotLK — count of Outcast cards played from leftmost/rightmost
+        # slot this game. Bumped in Play.do when card.has_outcast and
+        # card.play_outcast. Read by Vengeful Walloper's cost_mod.
+        self.outcasts_played_this_game = 0
+        # MotLK — recursion guard for self-recasting effects (Vexallus,
+        # Soul Barrage). Bumped when a re-cast trigger fires; checked
+        # to skip cascading re-casts.
+        self._recast_depth = 0
         # Castle Nathria — per-game count of Relic spells (DH) cast.
         # Each Relic reads it to scale its bonus ("Improve your future
         # Relics"). Bumped in Play.do when card.id is a known Relic.

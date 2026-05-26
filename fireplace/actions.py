@@ -734,6 +734,12 @@ class Play(GameAction):
             for entity in player.field[:]:
                 if entity.has_spellburst:
                     source.game.queue_actions(card, [Spellburst(entity, card)])
+        # MotLK Outcast counter: bump if this card has the OUTCAST tag
+        # and was played from the leftmost or rightmost slot. Single
+        # engine bump replaces per-card listeners (Wretched Exile used
+        # to be the only thing keeping the counter alive).
+        if card.has_outcast and card.play_outcast:
+            player.outcasts_played_this_game += 1
         player.cards_played_this_turn += 1
         player.cards_played_this_game.append(card)
         card.turn_played = source.game.turn
@@ -1823,7 +1829,57 @@ class Give(TargetedAction):
             ret.append(card)
             source.game.manager.targeted_action(self, source, target, card)
             self.broadcast(source, EventListener.AFTER, target, card)
+            # MotLK — Concoction Mix: if `card` is a Concoction and the
+            # target already holds another Concoction, transform the
+            # held one into the corresponding Mixed Concoction.
+            _concoction_mix_on_give(target, card)
         return ret
+
+
+# MotLK — Concoction Mix lookup. Maps (held_id, given_id) → mixed token
+# id. The data only ships a sparse set of explicit pairs; (a, b) and
+# (b, a) map to the same product. Unmapped pairs leave the held card
+# untouched (the engine has no token for the combination).
+CONCOCTION_IDS = {
+    "RLK_570t1", "RLK_570t2", "RLK_570t3", "RLK_570t4", "RLK_570t5",
+}
+_CONCOCTION_MIXES_RAW = {
+    ("RLK_570t1", "RLK_570t1"): "RLK_570t1t4",  # Slimy + Slimy
+    ("RLK_570t1", "RLK_570t2"): "RLK_570t1t2",  # Slimy + Dreadful
+    ("RLK_570t1", "RLK_570t3"): "RLK_570t1t3",  # Slimy + Bubbling
+    ("RLK_570t1", "RLK_570t4"): "RLK_570t1t1",  # Slimy + Hazy
+    ("RLK_570t1", "RLK_570t5"): "RLK_570tt1",   # Slimy + Gleaming
+    ("RLK_570t2", "RLK_570t2"): "RLK_570t2t2",  # Dreadful + Dreadful
+    ("RLK_570t2", "RLK_570t3"): "RLK_570t2t1",  # Dreadful + Bubbling
+    ("RLK_570t2", "RLK_570t4"): "RLK_570t4t1",  # Dreadful + Hazy
+    ("RLK_570t3", "RLK_570t3"): "RLK_570t3t",   # Bubbling + Bubbling
+    ("RLK_570t3", "RLK_570t4"): "RLK_570t4t2",  # Bubbling + Hazy
+    ("RLK_570t4", "RLK_570t4"): "RLK_570t4t3",  # Hazy + Hazy
+}
+# Symmetric lookup (both orderings of the pair).
+CONCOCTION_MIXES = {}
+for (a, b), mix in _CONCOCTION_MIXES_RAW.items():
+    CONCOCTION_MIXES[(a, b)] = mix
+    CONCOCTION_MIXES[(b, a)] = mix
+
+
+def _concoction_mix_on_give(player, given_card):
+    """If the just-given card is a Concoction and the player holds at
+    least one other Concoction, morph the held one into the matching
+    Mixed Concoction. Only one held Concoction mixes per give — pick
+    the leftmost in hand for determinism."""
+    if given_card.id not in CONCOCTION_IDS:
+        return
+    for held in list(player.hand):
+        if held is given_card:
+            continue
+        if held.id not in CONCOCTION_IDS:
+            continue
+        mix_id = CONCOCTION_MIXES.get((held.id, given_card.id))
+        if mix_id is None:
+            return
+        player.game.cheat_action(given_card, [Morph(held, mix_id)])
+        return
 
 
 class Hit(TargetedAction):

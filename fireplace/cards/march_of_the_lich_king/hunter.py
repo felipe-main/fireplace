@@ -116,15 +116,95 @@ class RLK_820e:
 	}
 
 
+class _ScourgeTamerCraftStep2(TargetedAction):
+	"""Second-stage Discover callback — picks the Beast body, combines
+	with the previously-stored Undead body, and gives the controller a
+	custom Zombeast (uses the Beast as the physical card with merged
+	atk/health from both bodies)."""
+
+	TARGET = ActionArg()
+	CARDS = ActionArg()
+	CARD = ActionArg()
+
+	def do(self, source, player, cards_offered, beast_card):
+		if isinstance(beast_card, list):
+			beast_card = beast_card[0] if beast_card else None
+		if beast_card is None:
+			return
+		undead_id = getattr(player, "_scourge_tamer_undead", None)
+		if undead_id is None:
+			# No staged Undead body — fall back to giving the Beast.
+			source.game.cheat_action(source, [Give(player, beast_card.id)])
+			return
+		undead_card = player.card(undead_id)
+		combined_atk = (undead_card.atk or 0) + (beast_card.atk or 0)
+		combined_health = (undead_card.max_health or 0) + (beast_card.max_health or 0)
+		combined_cost = max(
+			0, ((undead_card.cost or 0) + (beast_card.cost or 0) + 1) // 2
+		)
+		# Give the Beast (as the host card body) and stamp custom-stat
+		# attributes so it acts as the Zombeast. We don't have a true
+		# "merged minion" engine path; this is the closest we get with
+		# the existing custom_card hook. Find the newly-added card by
+		# id-and-not-yet-stamped search (handles nested cheat_action
+		# return shapes).
+		pre_hand_ids = set(id(c) for c in player.hand)
+		source.game.cheat_action(source, [Give(player, beast_card.id)])
+		given = next(
+			(c for c in player.hand if id(c) not in pre_hand_ids),
+			None,
+		)
+		if given is None:
+			return
+		given.custom_card = True
+
+		def create(card):
+			card.atk = combined_atk
+			card.max_health = combined_health
+			card.cost = combined_cost
+
+		given.create_custom_card = create
+		given.create_custom_card(given)
+		player._scourge_tamer_undead = None
+
+
+class _ScourgeTamerCraftStep1(TargetedAction):
+	"""First-stage Discover callback — picks the Undead body and stages
+	it on the controller, then opens the Beast Discover."""
+
+	TARGET = ActionArg()
+	CARDS = ActionArg()
+	CARD = ActionArg()
+
+	def do(self, source, player, cards_offered, undead_card):
+		if isinstance(undead_card, list):
+			undead_card = undead_card[0] if undead_card else None
+		if undead_card is None:
+			return
+		player._scourge_tamer_undead = undead_card.id
+		beast_picker = RandomMinion(race=Race.BEAST)
+		beast_discover = Discover(player, beast_picker).then(
+			_ScourgeTamerCraftStep2(
+				Discover.TARGET, Discover.CARDS, Discover.CARD
+			)
+		)
+		source.game.queue_actions(source, [beast_discover])
+
+
 class RLK_821:
 	"""Scourge Tamer"""
 
 	# Battlecry: Craft a custom Zombeast.
-	# TODO: The real card opens a Build-a-Beast-style mini-builder that
-	# fuses two Undead/Beast minions into a custom token. The full
-	# selection UI is out of scope; approximate by summoning one random
-	# Beast onto the board so the battlecry isn't a no-op.
-	play = Summon(CONTROLLER, RandomMinion(race=Race.BEAST))
+	# Two-stage Discover: pick an Undead body, then a Beast body. The
+	# combined Zombeast is given to hand using the Beast as the base
+	# entity with custom atk/health/cost derived from the sum of both
+	# bodies (the engine has no "merged minion" path so we ride
+	# custom_card to set the stats post-Give).
+	play = Discover(CONTROLLER, RandomMinion(race=Race.UNDEAD)).then(
+		_ScourgeTamerCraftStep1(
+			Discover.TARGET, Discover.CARDS, Discover.CARD
+		)
+	)
 
 
 class RLK_825(HeroAttacksCardtextMixin):

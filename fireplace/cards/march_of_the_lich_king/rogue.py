@@ -248,7 +248,7 @@ class RLK_570t4:
 	# Add a card to your hand from another class. It costs (3) less.
 	# Approximation: random collectible from any class other than the
 	# controller's, stamped with a -3 cost enchant.
-	play = Give(CONTROLLER, RandomCollectible(card_class=OTHER_CLASS)).then(
+	play = Give(CONTROLLER, RandomOtherClassCollectible()).then(
 		Buff(Give.CARD, "RLK_570t4e")
 	)
 
@@ -267,3 +267,123 @@ class RLK_570t5:
 
 	# Draw 2 cards.
 	play = Draw(CONTROLLER) * 2
+
+
+##
+# Mixed Concoction tokens — produced by the Give-time Mix hook in
+# actions.py (CONCOCTION_MIXES table). Each combines the standalone
+# effects of its two ingredient Concoctions. Targeting requirements
+# only apply to mixes that include the Bubbling (3 damage) effect.
+
+
+class RLK_570t1t1:
+	"""Mixed Concoction"""
+
+	# Slimy + Hazy: summon a random 3-cost minion + add a card from
+	# another class (-3 cost).
+	play = (
+		Summon(CONTROLLER, RandomMinion(cost=3)),
+		Give(CONTROLLER, RandomOtherClassCollectible()).then(
+			Buff(Give.CARD, "RLK_570t4e")
+		),
+	)
+
+
+class RLK_570t1t2:
+	"""Mixed Concoction"""
+
+	# Slimy + Dreadful: summon a random 3-cost minion + destroy random enemy.
+	play = (
+		Summon(CONTROLLER, RandomMinion(cost=3)),
+		Destroy(RANDOM(ENEMY_MINIONS)),
+	)
+
+
+class RLK_570t1t3:
+	"""Mixed Concoction"""
+
+	# Slimy + Bubbling: 3 damage to a target + summon a random 3-cost minion.
+	requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
+	play = (
+		Hit(TARGET, 3),
+		Summon(CONTROLLER, RandomMinion(cost=3)),
+	)
+
+
+class RLK_570t1t4:
+	"""Mixed Concoction"""
+
+	# Double Slimy: summon two random 3-cost minions.
+	play = Summon(CONTROLLER, RandomMinion(cost=3)) * 2
+
+
+class RLK_570t2t1:
+	"""Mixed Concoction"""
+
+	# Dreadful + Bubbling: 3 damage + destroy random enemy minion.
+	requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
+	play = (
+		Hit(TARGET, 3),
+		Destroy(RANDOM(ENEMY_MINIONS)),
+	)
+
+
+class RLK_570t2t2:
+	"""Mixed Concoction"""
+
+	# Double Dreadful: destroy two random enemy minions.
+	play = Destroy(RANDOM(ENEMY_MINIONS)) * 2
+
+
+class RLK_570t3t:
+	"""Mixed Concoction"""
+
+	# Double Bubbling: deal 3 damage, twice.
+	requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
+	play = Hit(TARGET, 3) * 2
+
+
+class RLK_570t4t1:
+	"""Mixed Concoction"""
+
+	# Hazy + Dreadful: add other-class card (-3 cost) + destroy random enemy.
+	play = (
+		Give(CONTROLLER, RandomOtherClassCollectible()).then(
+			Buff(Give.CARD, "RLK_570t4e")
+		),
+		Destroy(RANDOM(ENEMY_MINIONS)),
+	)
+
+
+class RLK_570t4t2:
+	"""Mixed Concoction"""
+
+	# Hazy + Bubbling: 3 damage + add other-class card (-3 cost).
+	requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
+	play = (
+		Hit(TARGET, 3),
+		Give(CONTROLLER, RandomOtherClassCollectible()).then(
+			Buff(Give.CARD, "RLK_570t4e")
+		),
+	)
+
+
+class RLK_570t4t3:
+	"""Mixed Concoction"""
+
+	# Double Hazy: add two other-class cards (-3 cost each).
+	play = (
+		Give(CONTROLLER, RandomOtherClassCollectible()).then(
+			Buff(Give.CARD, "RLK_570t4e")
+		),
+	) * 2
+
+
+class RLK_570tt1:
+	"""Mixed Concoction"""
+
+	# Gleaming + Slimy: draw 2 + summon a random 3-cost minion.
+	play = (
+		Draw(CONTROLLER) * 2,
+		Summon(CONTROLLER, RandomMinion(cost=3)),
+	)

@@ -131,12 +131,12 @@ March of the Lich King,Significant approximations,Prescience,Iterates deck for m
 March of the Lich King,Significant approximations,Flesh Behemoth,"Picks a random Undead from deck and forces it to hand zone then summons a copy — the ""draw"" doesn't trigger draw-watchers",Taunt. Deathrattle: Draw another Undead and summon a copy of it.,open,
 March of the Lich King,Significant approximations,Enchanter,Uses INCOMING_DAMAGE_MULTIPLIER which doubles for ALL incoming damage on enemy minions (not just damage from your side),Enemy minions take double damage during your turn.,open,
 March of the Lich King,Significant approximations,"Astalor, the Flamebringer",`(MANATHIRST(10) & 16-tick) | 8-tick` — verify the un-thirsted 8-tick is not also fired when Manathirst(10) is active,Battlecry: Deal 8 damage randomly split between all enemies. Manathirst (10): Deal 16 instead.,open,
-March of the Lich King,Cosmetic,Astalor Bloodsworn,Printed text contains @ progress placeholder not rendered,,open,
-March of the Lich King,Cosmetic,"Astalor, the Protector",Printed text contains @ progress placeholder not rendered,,open,
-March of the Lich King,Cosmetic,"Astalor, the Flamebringer",Printed text contains @ progress placeholder not rendered,,open,
-March of the Lich King,Cosmetic,Silvermoon Sentinel,Manathirst (@) placeholder not rendered,,open,
-March of the Lich King,Cosmetic,Silvermoon Armorer,Manathirst (@) placeholder not rendered,,open,
-March of the Lich King,Cosmetic,Shockspitter,Battlecry text has @ placeholder for current hero-attack count — not substituted in custom_cardtext,,open,
+March of the Lich King,Cosmetic,Astalor Bloodsworn,Printed text contains @ progress placeholder not rendered,,fixed,b72957ba — ManathirstCardtextMixin + HeroAttacksCardtextMixin substitute @
+March of the Lich King,Cosmetic,"Astalor, the Protector",Printed text contains @ progress placeholder not rendered,,fixed,b72957ba — ManathirstCardtextMixin + HeroAttacksCardtextMixin substitute @
+March of the Lich King,Cosmetic,"Astalor, the Flamebringer",Printed text contains @ progress placeholder not rendered,,fixed,b72957ba — ManathirstCardtextMixin + HeroAttacksCardtextMixin substitute @
+March of the Lich King,Cosmetic,Silvermoon Sentinel,Manathirst (@) placeholder not rendered,,fixed,b72957ba — ManathirstCardtextMixin + HeroAttacksCardtextMixin substitute @
+March of the Lich King,Cosmetic,Silvermoon Armorer,Manathirst (@) placeholder not rendered,,fixed,b72957ba — ManathirstCardtextMixin + HeroAttacksCardtextMixin substitute @
+March of the Lich King,Cosmetic,Shockspitter,Battlecry text has @ placeholder for current hero-attack count — not substituted in custom_cardtext,,fixed,b72957ba — ManathirstCardtextMixin + HeroAttacksCardtextMixin substitute @
 March of the Lich King,Once-overs,Tomb Guardians,Variable corpse-spend (4) gates Reborn buff on both summoned tokens — verify edge case when only 1 board slot is free,,open,
 March of the Lich King,Once-overs,Corpse Bride,Variable spend (up to 8) summons a 1/1 Risen Groom then stacks delta via Buff kwargs — verify summon-then-buff ordering preserves stat-buff auras,,open,
 March of the Lich King,Once-overs,Marrow Manipulator,Up-to-5 corpse spend each fires Hit(RANDOM_ENEMY_CHARACTER 2) — verify a tick that kills its target doesn't re-pick the same dying target,,open,

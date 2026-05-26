@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import ManathirstCardtextMixin
+
 
 ##
 # Shared evaluators
@@ -311,43 +313,47 @@ class RLK_221:
 	) | (MANATHIRST(5) & Summon(CONTROLLER, RandomMinion(cost=3)))
 
 
-class RLK_222:
+class RLK_222(ManathirstCardtextMixin):
 	"""Astalor Bloodsworn"""
 
 	# Battlecry: Add Astalor, the Protector to your hand. Manathirst (5):
-	# Deal 2 damage. (@ placeholder cosmetic — left unrendered for now.)
+	# Deal 2 damage.
+	manathirst_threshold = 5
 	play = (
 		Give(CONTROLLER, "RLK_222t1"),
 		_AstalorBloodswornDamage(CONTROLLER),
 	)
 
 
-class RLK_222t1:
+class RLK_222t1(ManathirstCardtextMixin):
 	"""Astalor, the Protector"""
 
 	# Battlecry: Add Astalor, the Flamebringer to your hand. Manathirst
 	# (8): Gain 8 Armor.
+	manathirst_threshold = 8
 	play = (
 		Give(CONTROLLER, "RLK_222t2"),
 		MANATHIRST(8) & GainArmor(FRIENDLY_HERO, 8),
 	)
 
 
-class RLK_222t2:
+class RLK_222t2(ManathirstCardtextMixin):
 	"""Astalor, the Flamebringer"""
 
 	# Battlecry: Deal 8 damage randomly split between all enemies.
 	# Manathirst (10): Deal 16 instead.
+	manathirst_threshold = 10
 	play = (
 		(MANATHIRST(10) & Hit(RANDOM_ENEMY_CHARACTER, 1) * 16)
 		| (Hit(RANDOM_ENEMY_CHARACTER, 1) * 8),
 	)
 
 
-class RLK_518:
+class RLK_518(ManathirstCardtextMixin):
 	"""Silvermoon Sentinel"""
 
 	# Taunt. Manathirst (5): Gain +2/+2 and Divine Shield.
+	manathirst_threshold = 5
 	play = MANATHIRST(5) & (
 		Buff(SELF, "RLK_518e"),
 		GiveDivineShield(SELF),
@@ -562,10 +568,11 @@ class RLK_952:
 	)
 
 
-class RLK_955:
+class RLK_955(ManathirstCardtextMixin):
 	"""Silvermoon Armorer"""
 
 	# Rush. Manathirst (5): Gain +2/+2.
+	manathirst_threshold = 5
 	play = MANATHIRST(5) & Buff(SELF, "RLK_955e")
 
 

@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .utils import HeroAttacksCardtextMixin
+
 
 ##
 # Custom actions
@@ -125,13 +127,13 @@ class RLK_821:
 	play = Summon(CONTROLLER, RandomMinion(race=Race.BEAST))
 
 
-class RLK_825:
+class RLK_825(HeroAttacksCardtextMixin):
 	"""Shockspitter"""
 
 	# Battlecry: Deal @ damage. (Improved by your hero attacks this game!)
 	# Damage scales with the controller's lifetime hero-attack counter
-	# (`num_hero_attacks_this_game`, maintained by the engine). Target is
-	# any character; falls under standard battlecry targeting reqs.
+	# (`num_hero_attacks_this_game`, maintained by the engine). Mixin
+	# renders the `@` placeholder to the current counter value.
 	requirements = {
 		PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
 	}

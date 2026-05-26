@@ -6,9 +6,25 @@ from ..utils import *
 # Spells
 
 
-class _PerjuryFire(TargetedAction):
-    """Perjury secret: when controller's turn starts, Discover (random
-    pick) and cast a Secret from another class."""
+class _PerjuryCastChosen(TargetedAction):
+    """Choose-callback: receives the Discover-chosen Secret card and
+    casts it on the controller's side, then reveals the source Perjury."""
+
+    PLAYER = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, cards, picked):
+        if isinstance(picked, list):
+            if not picked:
+                return
+            picked = picked[0]
+        source.game.cheat_action(source, [Reveal(source), CastSpell(picked.id)])
+
+
+class _PerjuryOpenDiscover(TargetedAction):
+    """Open a real 3-card Discover over collectible Secrets from
+    classes OTHER than the controller's hero class (and not Neutral)."""
 
     TARGET = ActionArg()
 
@@ -25,18 +41,22 @@ class _PerjuryFire(TargetedAction):
         ]
         if not pool:
             return
-        pick = source.game.random.choice(pool)
-        source.game.cheat_action(
-            source, [Reveal(source), CastSpell(pick.id)]
+        n = min(3, len(pool))
+        picks = source.game.random.sample(pool, n)
+        offered = [target.card(p.id, source=source) for p in picks]
+        choice = Choice(target, offered).then(
+            _PerjuryCastChosen(Choice.PLAYER, Choice.CARDS, Choice.CARD)
         )
+        source.game.queue_actions(source, [choice])
 
 
 class MAW_018:
     """Perjury"""
 
     # Secret: When your turn starts, Discover and cast a Secret from
-    # another class. Approximated as random Secret from another class.
-    secret = OWN_TURN_BEGIN.on(_PerjuryFire(CONTROLLER))
+    # another class.  Opens a real 3-card Discover over non-self-class
+    # Secrets; the chosen card is cast on the controller's side.
+    secret = OWN_TURN_BEGIN.on(_PerjuryOpenDiscover(CONTROLLER))
 
 
 class _ApplyMurderTrial(TargetedAction):

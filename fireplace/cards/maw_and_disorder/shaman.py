@@ -7,9 +7,25 @@ from ..castle_nathria.utils import InfuseCardtextMixin
 # Spells
 
 
-class _TotemicEvidenceSummonBasic(TargetedAction):
-    """Pick a random basic Totem the controller does not yet have on
-    the board, and summon it. Mirrors HS's UI choice approximation."""
+class _TotemicEvidenceSummonOnPick(TargetedAction):
+    """Choose-callback for Totemic Evidence: summon the chosen Totem
+    on the controller's side."""
+
+    PLAYER = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, cards, picked):
+        if isinstance(picked, list):
+            if not picked:
+                return
+            picked = picked[0]
+        source.game.cheat_action(source, [Summon(source.controller, picked.id)])
+
+
+class _TotemicEvidenceOpenChoice(TargetedAction):
+    """Open a real Choose-One over the (up to 4) basic Totems the
+    controller doesn't already have on the board."""
 
     TARGET = ActionArg()
 
@@ -18,16 +34,20 @@ class _TotemicEvidenceSummonBasic(TargetedAction):
         avail = [tid for tid in BASIC_TOTEMS if tid not in on_board]
         if not avail:
             return
-        pick = source.game.random.choice(avail)
-        source.game.cheat_action(source, [Summon(target, pick)])
+        offered = [target.card(tid, source=source) for tid in avail]
+        choice = Choice(target, offered).then(
+            _TotemicEvidenceSummonOnPick(Choice.PLAYER, Choice.CARDS, Choice.CARD)
+        )
+        source.game.queue_actions(source, [choice])
 
 
 class MAW_003(InfuseCardtextMixin):
     """Totemic Evidence"""
 
     # Choose a basic Totem and summon it. (Infuse (3 Totems): Summon
-    # all 4 instead.)
-    play = _TotemicEvidenceSummonBasic(CONTROLLER)
+    # all 4 instead.)  Opens a real Choose-One over the available
+    # basic Totems.
+    play = _TotemicEvidenceOpenChoice(CONTROLLER)
 
 
 class MAW_003t:

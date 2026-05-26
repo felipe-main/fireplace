@@ -214,7 +214,10 @@ def test_defense_attorney_nathanos_copies_deathrattle():
     pre_hand = len(game.player1.hand)
     nathanos = game.player1.give("MAW_011")
     nathanos.play()
-    # Battlecry triggers the deathrattle once; should be +1 draw.
+    # Battlecry opens a real Discover; auto-pick the only DR minion.
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    # Trigger fires DR once; should be +1 draw.
     assert len(game.player1.hand) == pre_hand + 1
     # Nathanos gains the deathrattle: killing him should draw again.
     pre_hand = len(game.player1.hand)
@@ -388,12 +391,17 @@ def test_perjury_casts_secret_from_another_class_on_turn_start():
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     sec = game.player1.give("MAW_018")
     sec.play()
-    pre_secrets = len(game.player1.secrets)
     game.end_turn()
     game.end_turn()
-    # Perjury fires on own turn begin: should reveal + cast a non-Rogue
-    # secret. The cast secret enters secrets[]; Perjury itself is gone.
-    assert len(game.player1.secrets) >= pre_secrets
+    # Perjury opens a real 3-Secret Discover on own turn begin; pick
+    # the first offered.  Resulting secret enters secrets[].
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    # Perjury is revealed (gone), one new non-Rogue Secret is armed.
+    assert "MAW_018" not in [s.id for s in game.player1.secrets]
+    assert len(game.player1.secrets) == 1
+    from hearthstone.enums import CardClass as CC
+    assert game.player1.secrets[0].card_class != CC.ROGUE
 
 
 def test_murder_accusation_destroys_after_enemy_minion_dies():
@@ -442,6 +450,9 @@ def test_totemic_evidence_summons_basic_totem():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
     pre = len(game.player1.field)
     game.player1.give("MAW_003").play()
+    # Opens a real Choose-One over basic Totems.
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
     assert len(game.player1.field) == pre + 1
     assert game.player1.field[-1].id in BASIC_TOTEMS
 
@@ -488,9 +499,10 @@ def test_imp_oster_morphs_into_other_imp():
     pre_field_ids = [m.id for m in game.player1.field]
     impo = game.player1.give("MAW_000")
     impo.play()
-    # Morph creates a new entity in Imp-oster's slot; the original
-    # MAW_000 object goes to SETASIDE. Check the FIELD now has an
-    # extra copy of BRM_006 (the morph target).
+    # Opens a real Choose over friendly Imps; auto-pick the only Imp.
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
+    # Morph creates a new entity in Imp-oster's slot.
     field_ids = [m.id for m in game.player1.field]
     assert field_ids.count("BRM_006") == pre_field_ids.count("BRM_006") + 1
     assert "MAW_000" not in field_ids
@@ -530,6 +542,9 @@ def test_habeas_corpses_resurrects_friendly_minion():
     m.destroy()
     pre = len(game.player1.field)
     game.player1.give("MAW_002").play()
+    # Opens a real 3-card Discover over the friendly graveyard.
+    while game.player1.choice:
+        game.player1.choice.choose(game.player1.choice.cards[0])
     assert len(game.player1.field) == pre + 1
     rezzed = game.player1.field[-1]
     assert rezzed.charge or rezzed.rush  # Rush keyword applied

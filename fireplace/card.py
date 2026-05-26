@@ -1587,8 +1587,19 @@ class Secret(Spell):
     @property
     def events(self):
         ret = super().events
-        if self.zone == Zone.SECRET and not self.exhausted:
-            ret += self.data.scripts.secret
+        if self.zone == Zone.SECRET:
+            if not self.exhausted:
+                ret += self.data.scripts.secret
+            else:
+                # OWN_TURN_BEGIN secrets (Perjury, Rigged Faire Game)
+                # fire on their owner's own turn start.  The standard
+                # exhausted gate (current_player is set BEFORE the
+                # broadcast) would hide them; let those listeners
+                # through specifically.
+                from .actions import BeginTurn
+                for ev in self.data.scripts.secret:
+                    if isinstance(getattr(ev, "trigger", None), BeginTurn):
+                        ret.append(ev)
         return ret
 
     @property

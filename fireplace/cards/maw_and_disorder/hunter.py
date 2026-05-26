@@ -65,40 +65,62 @@ class MAW_009t:
     events = Attack(SELF).on(Buff(FRIENDLY_MINIONS + BEAST - SELF, "MAW_009e"))
 
 
-class _NathanosTriggerAndGain(TargetedAction):
-    """Defense Attorney Nathanos: pick a random friendly Deathrattle
-    minion from this game's graveyard, queue its deathrattle to fire,
-    and gain a copy of the deathrattle on Nathanos. Approximation of
-    the Discover (no live UI).  No-op if the friendly graveyard has no
-    Deathrattle minion."""
+class _NathanosTriggerOnPick(TargetedAction):
+    """Choose-callback: receives the Discover-chosen card, triggers
+    its deathrattle once on Nathanos's controller's side, and grafts
+    the deathrattle onto Nathanos so it fires when he dies."""
+
+    PLAYER = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, cards, picked):
+        # `source` is Nathanos (the Discover's source).  `picked` is
+        # the graveyard card the player chose.  ActionArg eval can wrap
+        # a single card in a 1-list — unwrap defensively.
+        if isinstance(picked, list):
+            if not picked:
+                return
+            picked = picked[0]
+        deathrattle = list(picked.data.scripts.deathrattle)
+        if not deathrattle:
+            return
+        nathanos = source
+        source.game.cheat_action(nathanos, deathrattle)
+        nathanos.additional_deathrattles.append(tuple(deathrattle))
+        nathanos.has_deathrattle = True
+
+
+class _NathanosOpenDiscover(TargetedAction):
+    """Open a real Choice (up to 3 picks) over the friendly graveyard's
+    Deathrattle minions.  The Discover's callback triggers the chosen
+    card's DR and grafts it onto Nathanos."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         from hearthstone.enums import CardType
+        ctrl = target.controller
         pool = [
-            c for c in target.controller.graveyard
+            c for c in ctrl.graveyard
             if c.type == CardType.MINION and c.data.scripts.deathrattle
         ]
         if not pool:
             return
-        pick = source.game.random.choice(pool)
-        # Trigger the chosen card's deathrattle once on Nathanos's
-        # controller's side (cheat_action accepts a list of actions).
-        deathrattle = list(pick.data.scripts.deathrattle)
-        source.game.cheat_action(target, deathrattle)
-        # Gain the deathrattle on Nathanos so it fires when he dies.
-        # `additional_deathrattles` expects iterables of actions (the
-        # engine iterates twice: outer over deathrattles, inner over
-        # actions in each).  Stamp HAS_DEATHRATTLE so the engine
-        # consults the list at all (the gate in card.deathrattles).
-        target.additional_deathrattles.append(tuple(deathrattle))
-        target.has_deathrattle = True
+        n = min(3, len(pool))
+        picks = source.game.random.sample(pool, n)
+        offered = [ctrl.card(p.id, source=source) for p in picks]
+        choice = Choice(ctrl, offered).then(
+            _NathanosTriggerOnPick(Choice.PLAYER, Choice.CARDS, Choice.CARD)
+        )
+        source.game.queue_actions(source, [choice])
 
 
 class MAW_011:
     """Defense Attorney Nathanos"""
 
     # Battlecry: Discover a friendly Deathrattle minion that died this
-    # game. Trigger and gain its Deathrattle. Approximated as random.
-    play = _NathanosTriggerAndGain(SELF)
+    # game. Trigger and gain its Deathrattle.  Opens a real 3-card
+    # Discover over the friendly graveyard's DR minions; the chosen
+    # card's DR fires once and is grafted onto Nathanos.
+    play = _NathanosOpenDiscover(SELF)

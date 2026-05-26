@@ -74,10 +74,34 @@ class MAW_001e2:
     tags = {GameTag.CARDNAME: "Accused of Arson"}
 
 
-class _HabeasResurrect(TargetedAction):
-    """Discover-from-graveyard approximation: pick a random friendly
-    minion that died this game, resurrect it with Rush and an end-of-
-    turn auto-destroy."""
+class _HabeasResurrectOnPick(TargetedAction):
+    """Choose-callback for Habeas Corpses: resurrect the chosen
+    friendly graveyard minion on the controller's side with Rush + an
+    end-of-turn auto-destroy."""
+
+    PLAYER = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, cards, picked):
+        if isinstance(picked, list):
+            if not picked:
+                return
+            picked = picked[0]
+        ctrl = source.controller
+        source.game.cheat_action(source, [Summon(ctrl, picked.id)])
+        for m in ctrl.field:
+            if m.id == picked.id and not getattr(m, "_habeas_marked", False):
+                m._habeas_marked = True
+                source.game.cheat_action(
+                    source, [GiveRush(m), Buff(m, "MAW_002e")]
+                )
+                break
+
+
+class _HabeasOpenDiscover(TargetedAction):
+    """Open a real 3-card Discover over the friendly graveyard's
+    minions; the chosen card is resurrected (Rush + end-of-turn)."""
 
     TARGET = ActionArg()
 
@@ -86,25 +110,22 @@ class _HabeasResurrect(TargetedAction):
         pool = [c for c in target.graveyard if c.type == CardType.MINION]
         if not pool:
             return
-        pick = source.game.random.choice(pool)
-        source.game.cheat_action(source, [Summon(target, pick.id)])
-        # Find the just-summoned copy and stamp Rush + end-of-turn death.
-        for m in target.field:
-            if m.id == pick.id and not getattr(m, "_habeas_marked", False):
-                m._habeas_marked = True
-                source.game.cheat_action(
-                    source, [GiveRush(m), Buff(m, "MAW_002e")]
-                )
-                break
+        n = min(3, len(pool))
+        picks = source.game.random.sample(pool, n)
+        offered = [target.card(p.id, source=source) for p in picks]
+        choice = Choice(target, offered).then(
+            _HabeasResurrectOnPick(Choice.PLAYER, Choice.CARDS, Choice.CARD)
+        )
+        source.game.queue_actions(source, [choice])
 
 
 class MAW_002:
     """Habeas Corpses"""
 
     # Discover a friendly minion to resurrect and give it Rush. It dies
-    # at the end of turn. Approximated as a random resurrection from the
-    # friendly graveyard (Discover UI not modeled).
-    play = _HabeasResurrect(CONTROLLER)
+    # at the end of turn.  Opens a real 3-card Discover over the
+    # friendly graveyard's minions.
+    play = _HabeasOpenDiscover(CONTROLLER)
 
 
 @custom_card
@@ -120,9 +141,31 @@ class MAW_002e:
 # Minions
 
 
-class _ImpOsterMorph(TargetedAction):
-    """Pick a random friendly Imp on the board (excluding Imp-oster) and
-    morph Imp-oster into a copy of it. No-op if no other Imps."""
+class _ImpOsterMorphOnPick(TargetedAction):
+    """Choose-callback for Imp-oster: morph Imp-oster (stamped on the
+    source) into a copy of the chosen friendly Imp."""
+
+    PLAYER = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, cards, picked):
+        if isinstance(picked, list):
+            if not picked:
+                return
+            picked = picked[0]
+        # `source` is Imp-oster itself.  Morph it into a copy of the
+        # picked card.  No-op if Imp-oster is no longer on the field
+        # (somehow died mid-choice).
+        from hearthstone.enums import Zone
+        if source.zone != Zone.PLAY:
+            return
+        source.game.cheat_action(source, [Morph(source, picked.id)])
+
+
+class _ImpOsterOpenChoice(TargetedAction):
+    """Open a real Choose over the friendly Imps on the board
+    (excluding Imp-oster itself).  No-op if no other Imps."""
 
     TARGET = ActionArg()
 
@@ -132,13 +175,17 @@ class _ImpOsterMorph(TargetedAction):
         pool = [m for m in pool if m is not target]
         if not pool:
             return
-        pick = source.game.random.choice(pool)
-        source.game.cheat_action(source, [Morph(target, pick.id)])
+        ctrl = target.controller
+        offered = [ctrl.card(m.id, source=source) for m in pool]
+        choice = Choice(ctrl, offered).then(
+            _ImpOsterMorphOnPick(Choice.PLAYER, Choice.CARDS, Choice.CARD)
+        )
+        source.game.queue_actions(source, [choice])
 
 
 class MAW_000:
     """Imp-oster"""
 
     # Battlecry: Choose a friendly Imp. Transform into a copy of it.
-    # Approximated as random-friendly-Imp transform (no UI choice).
-    play = _ImpOsterMorph(SELF)
+    # Opens a real Choose-One over the friendly Imps on the board.
+    play = _ImpOsterOpenChoice(SELF)

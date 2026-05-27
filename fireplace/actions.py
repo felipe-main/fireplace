@@ -597,6 +597,12 @@ class Play(GameAction):
 
         player.pay_cost(card, card.cost)
 
+        # Festival of Legends — Finale flag captured at the post-pay-cost
+        # moment. If pay_cost left the controller with 0 mana, the card
+        # was played as a Finale (spent all remaining mana). Read by
+        # FINALE-gated card scripts.
+        card.play_finale = (player.mana == 0)
+
         card.target = target
         card._summon_index = index
 
@@ -1939,8 +1945,17 @@ class Heal(TargetedAction):
         if source.controller.healing_as_damage:
             return source.game.queue_actions(source.controller, [Hit(target, amount)])
 
-        amount = source.get_heal(amount, target)
-        amount = min(amount, target.damage)
+        # Festival of Legends — track requested heal vs. actually-applied
+        # on the target so Overheal-aware listeners (Hedanis, Heartthrob,
+        # Dreamboat) can read the overheal amount. Pure-overheal calls
+        # (target was already full) do NOT broadcast a Heal event — that
+        # would break Lightwarden / Northshire Cleric / Truesilver, which
+        # gate on "an actual heal happened".
+        requested = source.get_heal(amount, target)
+        actual = min(requested, target.damage)
+        target._last_heal_requested = requested
+        target._last_heal_overheal = max(0, requested - actual)
+        amount = actual
         if amount:
             # Undamaged targets do not receive heals
             log.info("%r heals %r for %i", source, target, amount)

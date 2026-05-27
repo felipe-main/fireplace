@@ -329,6 +329,15 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         self.cast_on_friendly_minions = False
         self.play_left_most = False
         self.play_right_most = False
+        # Festival of Legends — Finale flag. Set True by Play.do when
+        # pay_cost left the controller with exactly 0 mana (the card
+        # was played with the player's last mana crystal). Read by
+        # Finale-gated `play` actions.
+        self.play_finale = False
+        # Festival of Legends — ETC, Band Manager sideboard. Populated
+        # at deck-draft time with the 3 cards picked for the band.
+        # Empty for every other card. Read by ETC's Battlecry Discover.
+        self._etc_sideboard = []
         self.custom_card = False
         self.temporary = False
         # Sunken City "while holding this" trackers — bumped by the engine

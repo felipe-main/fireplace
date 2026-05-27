@@ -10,7 +10,7 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 25.0.0.158725](https://hearthstone.wiki.gg/wiki/Patch_25.0.0.158725)
+Now updated to [Patch 26.0.0.170824](https://hearthstone.wiki.gg/wiki/Patch_26.0.0.170824)
 * **100%** Classic (245 of 245 cards)
 * **100%** Curse of Naxxramas (30 of 30 cards)
 * **100%** Goblins vs Gnomes (123 of 123 cards)
@@ -44,6 +44,7 @@ Now updated to [Patch 25.0.0.158725](https://hearthstone.wiki.gg/wiki/Patch_25.0
 * **100%** Murder at Castle Nathria (135 of 135 cards)
 * **100%** Maw and Disorder mini-set (35 of 35 cards)
 * **100%** March of the Lich King (171 of 171 cards) — adds Death Knight as the 11th class
+* **100%** Festival of Legends (145 of 145 cards) — adds the Finale keyword
 * **100%** Legacy (167 of 167 cards)
 * **100%** Core (235 of 235 cards)
 * **100%** Vanilla (383 of 383 cards)

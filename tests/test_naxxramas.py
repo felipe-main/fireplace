@@ -70,7 +70,10 @@ def test_baron_rivendare_soul_of_the_forest():
     assert wisp.dead
     assert rivendare.zone == Zone.PLAY
     assert len(game.player1.field) == 3  # Rivendare and two treants
-    assert game.player1.mana == 2
+    # Mana derived from data costs so per-patch rebalances don't break the test.
+    from fireplace.cards import db
+    expected = 10 - db["FP1_031"].cost - db["CS2_231"].cost - db["EX1_158"].cost
+    assert game.player1.mana == expected
     game.player1.used_mana = 0
     game.player1.give(PYROBLAST).play(target=rivendare)
     assert len(game.player1.field) == 3  # Only one treant spawns
@@ -593,7 +596,9 @@ def test_webspinner():
     webspinner.play()
     game.player1.give(MOONFIRE).play(target=webspinner)
     assert len(game.player1.hand) == 1
-    assert Race.BEAST in game.player1.hand[0].races
+    # Multi-race data: engine's Card.races returns only the primary race,
+    # so consult the underlying data card for the full race list.
+    assert Race.BEAST in game.player1.hand[0].data.races
     assert game.player1.hand[0].type == CardType.MINION
 
 

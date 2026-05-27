@@ -1169,6 +1169,8 @@ def test_druid_of_the_claw():
     assert claw_in_field1.rush
     assert not claw_in_field1.taunt
 
+    # Refill so we can play the second instance regardless of per-patch cost.
+    game.current_player.used_mana = 0
     claw2 = game.current_player.give("EX1_165")
     with pytest.raises(InvalidAction):
         claw2.play()

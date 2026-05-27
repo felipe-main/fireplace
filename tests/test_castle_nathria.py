@@ -908,8 +908,11 @@ def test_remornia_transforms_into_weapon_after_attacking():
     assert rem.zone == Zone.GRAVEYARD
     assert game.player1.weapon is not None
     assert game.player1.weapon.id == "REV_316t"
-    assert game.player1.weapon.atk == 4
-    assert game.player1.weapon.durability == 10
+    # Stats read from data so per-patch rebalances don't break the test.
+    from fireplace.cards import db
+    data = db["REV_316t"]
+    assert game.player1.weapon.atk == data.atk
+    assert game.player1.weapon.durability == data.durability
 
 
 def test_sanguine_depths_deals_1_and_buffs_attack():

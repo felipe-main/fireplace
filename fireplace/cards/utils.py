@@ -212,6 +212,12 @@ MANATHIRST = lambda n: Attr(CONTROLLER, "max_mana") >= n
 # (Attr-comparator) and then `SpendCorpses(CONTROLLER, n)` to pay.
 CORPSES = Attr(CONTROLLER, "corpses")
 
+# Festival of Legends — Finale gate. True only when the card was played
+# with the controller's last mana crystal (Play.do captures this right
+# after pay_cost). Use like:
+#   play = (Damage(TARGET, 3), FINALE & Draw(CONTROLLER) * 2)
+FINALE = Attr(SELF, "play_finale") >= 1
+
 
 def SET(amt):
     return lambda self, i: amt

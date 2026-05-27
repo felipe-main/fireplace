@@ -151,7 +151,10 @@ LOE_061e = buff(+3, +3)
 class LOE_073:
     """Fossilized Devilsaur"""
 
-    powered_up = Find(FRIENDLY_MINIONS + BEAST)
+    # Printed text changed to "another Beast" once data updated Devilsaur
+    # to be multi-tribe Undead+Beast — exclude SELF so it doesn't
+    # self-satisfy the condition.
+    powered_up = Find(FRIENDLY_MINIONS + BEAST - SELF)
     play = powered_up & Taunt(SELF)
 
 

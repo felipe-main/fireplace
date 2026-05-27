@@ -184,6 +184,10 @@ class Player(Entity, TargetableByAuras):
         # Set by _ArmGlacialAdvance, consumed by pay_cost on the next
         # spell played, reset at OWN_TURN_END.
         self._next_spell_cost_reduction = 0
+        # Audiopocalypse — Abyssal Bassist cost-mod reads this. Bumped
+        # by Weapon._set_zone(Zone.PLAY) every time the player equips a
+        # weapon; never resets per game.
+        self.weapons_equipped_this_game = 0
         # MotLK per-turn cost-substitution flags. minions_cost_armor:
         # Anub'Rekhan. next_paladin_minion_costs_health: Blood Crusader.
         # next_concoction_costs_zero: Ghoulish Alchemist. All consumed

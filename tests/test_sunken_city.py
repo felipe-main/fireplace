@@ -185,7 +185,8 @@ def test_predation_costs_zero_after_naga_played():
     """TSC_058 Predation: cost (0) if a Naga was played while holding it."""
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     predation = game.player1.give("TSC_058")
-    assert predation.cost == 3
+    # Printed cost is whatever data currently says (rebalanced to 2 in Patch 26.2).
+    assert predation.cost == predation.data.cost
     naga = game.player1.give("TSC_941t")
     naga.play()
     game.refresh_auras()

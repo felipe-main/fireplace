@@ -1201,6 +1201,12 @@ class Character(LiveEntity):
                 Race.PIRATE,
                 Race.TOTEM,
             ]
+        # python-hearthstone exposes secondary tribes via data.races. Use
+        # that when present so multi-tribe minions (e.g. Jukebox Totem
+        # = Mech+Totem) are recognised by tribe-filtering selectors.
+        data_races = getattr(self.data, "races", None)
+        if data_races:
+            return list(data_races)
         return [self.race]
 
     @property
@@ -1899,6 +1905,7 @@ class Weapon(rules.WeaponRules, LiveEntity):
                 self.log("Destroying old weapon %r", self.controller.weapon)
                 self.controller.weapon.destroy()
             self.controller.weapon = self
+            self.controller.weapons_equipped_this_game += 1
         elif self.zone == Zone.PLAY:
             self.controller.weapon = None
         super()._set_zone(zone)

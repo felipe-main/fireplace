@@ -143,18 +143,19 @@ class _FelerinAddOutcastsAtEdges(TargetedAction):
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		from ...card import Card
 		for edge in ("left", "right"):
 			cid = _random_dh_outcast_id(source.game)
 			if cid is None:
 				continue
-			card = Card(cid)
-			card.controller = target
-			card.zone = Zone.HAND
+			# Route through player.card() so the new entity gets a real
+			# entity_id. Bare Card(cid) instances crash later when a
+			# downstream Attack action compares them via __eq__.
+			card = target.card(cid, zone=Zone.SETASIDE)
 			if edge == "left":
 				target.hand.insert(0, card)
 			else:
 				target.hand.append(card)
+			card.zone = Zone.HAND
 			source.game.cheat_action(source, [Buff(card, "RLK_215e")])
 
 

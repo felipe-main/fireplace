@@ -179,12 +179,17 @@ class RLK_216e:
 
 class RLK_217e:
 	# In-data buff "Illusion" — set stats to 4/4 and reduce cost by 4.
-	# Stats are SET (not deltas); we use SET() for atk/health and
-	# COST: -4 for the delta.  The COST: -100 trick (Sunken City Ring of
-	# Tides) is for "set cost to 0"; here we want a -4 delta.
+	# Stats are SET (not deltas). SET() *cannot* go in the tags dict —
+	# it gets stamped onto the enchant's per-instance _atk / _max_health
+	# slot as a callable, and any later read of host.atk / .health
+	# crashes inside Enchantment._getattr (int += function). CLAUDE.md
+	# documents this gotcha. The safe path is to put SET() at the script
+	# class level so it lands on data.scripts.<attr> and is called by
+	# _getattr's tail (data.scripts.attr(self, i)) rather than added
+	# numerically. Cost still goes in tags as a delta.
+	atk = SET(4)
+	max_health = SET(4)
 	tags = {
-		GameTag.ATK: SET(4),
-		GameTag.HEALTH: SET(4),
 		GameTag.COST: -4,
 	}
 

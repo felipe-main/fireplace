@@ -84,13 +84,9 @@ class JAM_008:
 ##
 # Enchantments
 
-@custom_card
 class JAM_006e:
-	# Cold Feet — +5 cost while on an enemy hand minion. Self-destroys
-	# at the end of the controller's (the enemy's) next turn.
-	tags = {
-		GameTag.CARDNAME: "Cold Feet",
-		GameTag.CARDTYPE: CardType.ENCHANTMENT,
-		GameTag.COST: 5,
-	}
+	# Cold Feet — +5 cost while on an enemy hand minion. Data ships
+	# the enchant id but no COST tag and no expiry trigger; declare
+	# both at script level (the merge code joins script tags with data).
+	tags = {GameTag.COST: 5}
 	events = OWN_TURN_END.on(Destroy(SELF))

@@ -46,8 +46,8 @@ class JAM_012:
 
 class JAM_012t:
 	"""Loud Totemcarver"""
-	# Battlecry: Summon a 0/3 Stereo Totem.
-	play = Summon(CONTROLLER, "JAM_012ta")
+	# Battlecry: Summon a 0/3 Stereo Totem (ETC_105 from Festival).
+	play = Summon(CONTROLLER, "ETC_105")
 
 
 class JAM_012t2:

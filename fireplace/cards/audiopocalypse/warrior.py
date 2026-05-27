@@ -62,7 +62,15 @@ class JAM_015t:
 	play = Buff(SELF, "JAM_015te")
 
 
-JAM_015te = buff(atk=2)
+@custom_card
+class JAM_015te:
+	# Sharpened Tuning Fork's +2 attack enchant. Not in data; register
+	# explicitly so Buff(SELF, "JAM_015te") doesn't KeyError.
+	tags = {
+		GameTag.CARDNAME: "Sharpened",
+		GameTag.CARDTYPE: CardType.ENCHANTMENT,
+		GameTag.ATK: 2,
+	}
 
 
 class JAM_015t2:

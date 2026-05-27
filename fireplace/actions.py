@@ -863,6 +863,44 @@ class UseLocation(GameAction):
             source.game.process_deaths()
 
 
+class UseTitanAbility(GameAction):
+    """TITANS — use the next sequential ability of a Titan minion.
+
+    Fires the `play` actions from the ability sub-card (e.g. TTN_075t),
+    increments _titan_ability_index, then broadcasts events.  After all
+    three abilities are used the Titan may finally attack.
+    """
+
+    TITAN = CardArg()
+    TARGET = CardArg()
+
+    def do(self, source, titan, target):
+        from fireplace.cards import db as _db, get_script_definition
+        ability_order = getattr(titan.scripts, "titan_ability_order", None)
+        if not ability_order:
+            return
+        idx = titan._titan_ability_index
+        if idx >= len(ability_order):
+            return
+
+        sub_id = ability_order[idx]
+        sub_script = get_script_definition(sub_id, _db.get(sub_id))
+
+        source.game.manager.game_action(self, source, titan, target)
+        self.broadcast(source, EventListener.ON, titan, target)
+
+        source.game.action_start(BlockType.PLAY, titan, 0, target)
+        if sub_script:
+            actions_to_run = getattr(sub_script, "play", None)
+            if actions_to_run:
+                source.game.main_power(titan, actions_to_run, target)
+        source.game.action_end(BlockType.PLAY, titan)
+
+        titan._titan_ability_index += 1
+
+        self.broadcast(source, EventListener.AFTER, titan, target)
+
+
 class Overload(GameAction):
     PLAYER = CardArg()
     AMOUNT = IntArg()
@@ -2979,6 +3017,32 @@ class Corrupt(TargetedAction):
         source.game.queue_actions(source, [Morph(target, corrupt_card)])
         source.game.manager.targeted_action(self, source, target)
         return corrupt_card
+
+
+class ForgeCard(TargetedAction):
+    """TITANS — Forge a card in hand.
+
+    Spends 2 extra mana (the universal Forge premium) and morphs the card
+    into its Forged version.  `forge_card` is a class attribute on the card
+    script (a string card ID, e.g. "TTN_042t").  Also bumps
+    `controller.cards_forged_this_game` for Ignis / Melted Maker synergy.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        forge_id = getattr(target, "forge_card", None)
+        if not forge_id:
+            return
+        ctrl = target.controller
+        if ctrl.used_mana + 2 > ctrl.max_mana:
+            return
+        ctrl.used_mana += 2
+        forged = ctrl.card(forge_id)
+        copy_buffs(source, target, forged)
+        source.game.queue_actions(source, [Morph(target, forged)])
+        ctrl.cards_forged_this_game += 1
+        source.game.manager.targeted_action(self, source, target)
 
 
 class Spellburst(TargetedAction):

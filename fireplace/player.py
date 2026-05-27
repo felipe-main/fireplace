@@ -192,6 +192,9 @@ class Player(Entity, TargetableByAuras):
         # whenever a heal produces overheal (requested > actual); reset
         # at OWN_TURN_BEGIN in game.py begin_turn.
         self.overheals_triggered_this_turn = 0
+        # TITANS — Ignis, Melted Maker synergy. Bumped in ForgeCard.do.
+        # Counts Forge activations this game (never resets).
+        self.cards_forged_this_game = 0
         # MotLK per-turn cost-substitution flags. minions_cost_armor:
         # Anub'Rekhan. next_paladin_minion_costs_health: Blood Crusader.
         # next_concoction_costs_zero: Ghoulish Alchemist. All consumed

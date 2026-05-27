@@ -331,6 +331,20 @@ def play_turn(game):
 
                 continue
 
+        # TITANS: randomly use Titan abilities on eligible minions.
+        from fireplace.actions import UseTitanAbility
+        for minion in list(player.field):
+            ability_order = getattr(minion.scripts, "titan_ability_order", None)
+            if not ability_order:
+                continue
+            if minion._titan_ability_index >= len(ability_order):
+                continue
+            if game.random.random() < 0.5:
+                try:
+                    game.queue_actions(player, [UseTitanAbility(minion, None)])
+                except Exception:
+                    pass
+
         # Randomly attack with whatever can attack
         for character in player.characters:
             if character.can_attack():

@@ -406,9 +406,18 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
     @property
     def infused_card_id(self):
         dbf = self.data.tags.get(GameTag.COLLECTION_RELATED_CARD_DATABASE_ID, 0)
-        if not dbf:
-            return None
-        return cards.db.dbf.get(dbf)
+        if dbf:
+            result = cards.db.dbf.get(dbf)
+            if result:
+                return result
+        # 27.0+ dropped COLLECTION_RELATED_CARD_DATABASE_ID from some Infuse
+        # cards. Scan by ID prefix for a non-collectible with the INFUSED tag.
+        prefix = self.id
+        for cid, cdata in cards.db.items():
+            if cid.startswith(prefix) and cid != prefix:
+                if cdata.tags.get(GameTag.INFUSED, 0):
+                    return cid
+        return None
 
     def dump(self):
         data = super().dump()
@@ -1102,6 +1111,10 @@ class Character(LiveEntity):
         # to 0 when the minion enters PLAY (see _set_zone) and bumped in
         # Play.do for spells. Powers Dozing Kelpkeeper's awaken rule.
         self.spell_mana_spent_in_play = 0
+        # TITANS: how many Titan abilities have been used. Resets to 0 when
+        # the minion enters PLAY (see _set_zone). While < len(titan_ability_order)
+        # the minion cannot attack (checked in can_attack).
+        self._titan_ability_index = 0
         super().__init__(data)
 
     def dump(self):
@@ -1156,6 +1169,10 @@ class Character(LiveEntity):
         if not self.zone == Zone.PLAY:
             return False
         if self.cant_attack:
+            return False
+        # TITANS: a Titan minion cannot attack until all abilities are used.
+        _tao = getattr(self.scripts, "titan_ability_order", None)
+        if _tao and self._titan_ability_index < len(_tao):
             return False
         if not self.controller.current_player:
             return False
@@ -1224,6 +1241,8 @@ class Character(LiveEntity):
     def _set_zone(self, zone):
         if self.zone == Zone.PLAY and zone != Zone.PLAY:
             self.damage = 0
+        if zone == Zone.PLAY:
+            self._titan_ability_index = 0
         return super()._set_zone(zone)
 
     @property

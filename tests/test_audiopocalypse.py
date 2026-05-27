@@ -455,6 +455,33 @@ def test_ambient_lightspawn_finale_overheal_buffs_other_minion():
 	assert other.health == pre_hp + 2
 
 
+def test_ambient_lightspawn_no_overheal_no_buff():
+	"""JAM_024 — Finale alone (no overheal) does NOT buff."""
+	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+	other = game.player1.summon("CS2_200")
+	pre_atk, pre_hp = other.atk, other.health
+	# No overheal flag stamped. Exact-mana play (Finale) but Overheal
+	# gate fails → no buff applies.
+	light = game.player1.give("JAM_024")
+	game.player1.used_mana = game.player1.max_mana - light.cost
+	light.play()
+	assert other.atk == pre_atk
+	assert other.health == pre_hp
+
+
+def test_ambient_lightspawn_no_finale_no_buff():
+	"""JAM_024 — Overheal alone (no Finale) does NOT buff."""
+	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+	other = game.player1.summon("CS2_200")
+	pre_atk, pre_hp = other.atk, other.health
+	game.player1.hero._last_heal_overheal = 2
+	light = game.player1.give("JAM_024")
+	game.player1.used_mana = game.player1.max_mana - light.cost - 3  # leftover
+	light.play()
+	assert other.atk == pre_atk
+	assert other.health == pre_hp
+
+
 def test_funnel_cake_heals_3_to_minion_and_neighbours():
 	"""JAM_025 — heal 3 to target + neighbours; per overheal, refresh
 	a Mana Crystal."""
@@ -574,6 +601,41 @@ def test_reverberations_summons_copy_of_target():
 	game.player1.give("JAM_031").play(target=target)
 	post_count = sum(1 for m in game.player1.field if m.id == "CS2_200")
 	assert post_count == pre_count + 1
+
+
+def test_reverberations_copy_dies_on_any_damage():
+	"""JAM_031 — the summoned copy is glass: any damage destroys it.
+	Original target is unaffected."""
+	game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+	target = game.player1.summon("CS2_200")
+	target.max_health = 80
+	target.damage = 0
+	game.player1.give("JAM_031").play(target=target)
+	copy = next(m for m in game.player1.field if m is not target and m.id == "CS2_200")
+	assert getattr(copy, "_glass_dies", False)
+	# Original target takes 1 damage — survives (it's not glass).
+	game.queue_actions(game.player1.hero, [Hit(target, 1)])
+	assert target.zone == Zone.PLAY
+	# Glass copy takes 1 damage — dies.
+	game.queue_actions(game.player1.hero, [Hit(copy, 1)])
+	assert copy.zone == Zone.GRAVEYARD
+
+
+def test_emotional_rhapsody_plus_5_atk_drops_at_turn_end():
+	"""JAM_018t3 — the +5 Attack enchant clears at OWN_TURN_END."""
+	game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+	# Equip a 1-atk weapon so we can observe attack changes cleanly.
+	game.player1.give("CS2_106").play()
+	pre_atk = game.player1.hero.atk
+	rhapsody = game.player1.give("JAM_018")
+	rhapsody._remix_variant_id = "JAM_018t3"
+	rhapsody.play()
+	# Hero gained +5 atk this turn.
+	assert game.player1.hero.atk == pre_atk + 5
+	game.end_turn()  # OWN_TURN_END fires; JAM_018t3e self-destroys.
+	game.end_turn()  # back to player1 turn
+	# +5 dropped; hero's atk is back to the weapon-only value.
+	assert game.player1.hero.atk == pre_atk
 
 
 def test_fiddlefire_imp_adds_fire_mage_and_warlock_spells():

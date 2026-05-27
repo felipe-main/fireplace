@@ -52,9 +52,11 @@ class JAM_018t3:
 
 
 class JAM_018t3e:
-	# +5 Attack this turn — exists in data, just declare so the merge
-	# step recognises it as a script-bound enchant.
+	# +5 Attack this turn — exists in data with TAG_ONE_TURN_EFFECT but
+	# no ATK tag, so we declare ATK and the end-of-turn self-destroy
+	# here (TAG_ONE_TURN_EFFECT is a no-op in our engine).
 	tags = {GameTag.ATK: 5}
+	events = OWN_TURN_END.on(Destroy(SELF))
 
 
 class JAM_018t4:

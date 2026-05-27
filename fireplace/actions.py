@@ -1326,6 +1326,12 @@ class Damage(TargetedAction):
             if target.type == CardType.MINION:
                 if target.has_frenzy:
                     source.game.queue_actions(source, [Frenzy(target, amount)])
+                # Audiopocalypse — Reverberations glass copies destroy
+                # themselves on any damage. The copy carries _glass_dies;
+                # destroy via queued action so we don't interrupt the
+                # current damage broadcast.
+                if getattr(target, "_glass_dies", False) and target.zone == Zone.PLAY:
+                    source.game.queue_actions(source, [Destroy(target)])
             target.damaged_this_turn += amount
             if target.type == CardType.HERO:
                 target.controller.hero_health_changed_this_turn += 1

@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _FatigueCardtextMixin
 
 
 ##
@@ -288,14 +289,14 @@ class ETC_034:
 	play = (Count(FRIENDLY_MINIONS - SELF) == 0) & Hit(ENEMY_MINIONS, 3)
 
 
-class ETC_068:
+class ETC_068(_FatigueCardtextMixin):
 	"""Baritone Imp"""
 
 	# Battlecry: Take Fatigue damage. Gain that much Attack and Health.
 	play = _BaritoneImpFatigue(SELF)
 
 
-class ETC_070:
+class ETC_070(_FatigueCardtextMixin):
 	"""Crazed Conductor"""
 
 	# Battlecry: Take Fatigue damage. Summon that many 3/3 Imps.
@@ -327,7 +328,7 @@ class ETC_081:
 # Spells
 
 
-class ETC_069:
+class ETC_069(_FatigueCardtextMixin):
 	"""Crescendo"""
 
 	# Take Fatigue damage. Deal that much damage to all enemies.

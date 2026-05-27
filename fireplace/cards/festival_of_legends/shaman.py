@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _WeaponCounterCardtextMixin
 
 
 ##
@@ -238,7 +239,7 @@ class ETC_370:
 # Weapons
 
 
-class ETC_813:
+class ETC_813(_WeaponCounterCardtextMixin):
 	"""Jazz Bass"""
 
 	# Deathrattle: Your next spell costs (@) less. (Overload while
@@ -247,6 +248,7 @@ class ETC_813:
 	# death the counter is dumped into the controller's
 	# _next_spell_cost_reduction (consumed by pay_cost on next spell).
 	overload_while_equipped = 0
+	counter_attr = "overload_while_equipped"
 	events = Overload(CONTROLLER).on(_JazzBassOverloadBump(SELF))
 	deathrattle = _JazzBassDeathrattle(SELF)
 

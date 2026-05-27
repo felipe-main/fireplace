@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _TrailingProgressCardtextMixin, _WeaponCounterCardtextMixin
 
 
 ##
@@ -140,13 +141,27 @@ class ETC_400:
 	)
 
 
-class ETC_410:
+class ETC_410(_TrailingProgressCardtextMixin):
 	"""Snakebite"""
 
 	# Rush. Battlecry: Gain +1/+1 for each minion that died this turn.
 	# RUSH in data. Stack ETC_410e once per dead minion (this turn,
 	# both sides).
 	play = Buff(SELF, "ETC_410e") * _SnakebiteCountDeaths()
+
+	def cardtext_entity_0(self):
+		ctrl = getattr(self, "controller", None)
+		if ctrl is None:
+			return "0"
+		return str(
+			(ctrl.minions_killed_this_turn or 0)
+			+ (ctrl.opponent.minions_killed_this_turn or 0)
+		)
+
+	tags = {
+		**_TrailingProgressCardtextMixin.tags,
+		GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+	}
 
 
 @custom_card
@@ -242,7 +257,7 @@ class ETC_413e:
 # Weapons
 
 
-class ETC_405:
+class ETC_405(_WeaponCounterCardtextMixin):
 	"""Glaivetar"""
 
 	# Deathrattle: Draw @ cards. (Play Outcast cards while equipped to
@@ -250,6 +265,7 @@ class ETC_405:
 	# is bumped by the in-play Play(CONTROLLER, OUTCAST) listener (custom
 	# action — pure side-effect, lives outside the events lambda twice-
 	# evaluation trap).
+	counter_attr = "_outcasts_played_while_equipped"
 	events = Play(CONTROLLER, OUTCAST).after(
 		_GlaivetarBumpOutcastCounter(SELF),
 	)

@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _TrailingProgressCardtextMixin
 
 
 ##
@@ -226,11 +227,12 @@ class ETC_206e_marker:
 	events = OWN_TURN_END.on(Give(CONTROLLER, "ETC_206"), Destroy(SELF))
 
 
-class ETC_528:
+class ETC_528(_TrailingProgressCardtextMixin):
 	"""Lightshow"""
 
 	# Shoot two beams at enemies that deal $2 damage. Shoot one more for
 	# each Lightshow cast this game.
+	counter_attr = "lightshows_cast_this_game"
 	play = _LightshowHits(CONTROLLER)
 
 

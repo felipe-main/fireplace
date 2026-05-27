@@ -3,6 +3,19 @@ from ..utils import *
 from hearthstone.enums import Race as _Race
 from ...actions import IntArg
 
+from .utils import _TrailingProgressCardtextMixin, _WeaponCounterCardtextMixin
+
+
+def _count_minion_types_played(ctrl):
+    seen = set()
+    for card in ctrl.cards_played_this_game:
+        if card.type != CardType.MINION:
+            continue
+        for race in getattr(card, "races", []):
+            if race != _Race.INVALID:
+                seen.add(int(race))
+    return len(seen)
+
 
 ##
 # Custom actions and helpers
@@ -204,11 +217,20 @@ class ETC_355:
 
 
 # Rush. Battlecry: Gain +1/+1 for each minion type you've played this game.
-class ETC_408:
+class ETC_408(_TrailingProgressCardtextMixin):
     """Power Slider"""
 
     play = Buff(SELF, "ETC_408e", atk=_CountMinionTypesPlayed(),
                 max_health=_CountMinionTypesPlayed())
+
+    def cardtext_entity_0(self):
+        ctrl = getattr(self, "controller", None)
+        return str(_count_minion_types_played(ctrl) if ctrl else 0)
+
+    tags = {
+        **_TrailingProgressCardtextMixin.tags,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
 
 
 ##
@@ -298,12 +320,13 @@ class ETC_417:
 
 # Deathrattle: Deal @ damage to all minions.
 # (Gain Armor while equipped to improve!)
-class ETC_520:
+class ETC_520(_WeaponCounterCardtextMixin):
     """Kodohide Drumkit"""
 
     # Armor-gain listener bumps the per-weapon counter; deathrattle reads
     # it and hits all minions. The armor listener fires on every GainArmor
     # event but is gated to the equipped weapon's lifetime.
+    counter_attr = "_armor_gained_while_equipped"
     events = GainArmor(FRIENDLY_HERO).on(
         _KodoArmorListener(SELF, GainArmor.AMOUNT)
     )

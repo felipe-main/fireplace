@@ -1,5 +1,5 @@
 from ..utils import *
-from .utils import _HarmonicSwap
+from .utils import _HarmonicSwap, _DoubleAtCardtextMixin
 
 
 ##
@@ -264,13 +264,14 @@ class _IncDiscoCounter(TargetedAction):
 		)
 
 
-class ETC_317:
+class ETC_317(_DoubleAtCardtextMixin):
 	"""Disco Maul"""
 
 	# Deathrattle: Give a random friendly minion +@/+@.
 	# Counter `_disco_minions_played` is bumped on every minion Play
 	# while this weapon is equipped on the controller's hero. On
 	# weapon-destroy, the deathrattle reads the counter and buffs.
+	counter_attr = "_disco_minions_played"
 	events = Play(CONTROLLER, MINION).after(_IncDiscoCounter(SELF))
 	deathrattle = _DiscoMaulBuff(SELF)
 

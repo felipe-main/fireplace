@@ -1,5 +1,9 @@
 from ..utils import *
-from .utils import _HarmonicSwap
+from .utils import (
+    _HarmonicSwap,
+    _DoubleAtCardtextMixin,
+    _ClimacticExplosionCardtextMixin,
+)
 
 from hearthstone.enums import Zone
 
@@ -381,11 +385,15 @@ class _ClimacticExplosion(TargetedAction):
                 )
 
 
-class ETC_210:
+class ETC_210(_ClimacticExplosionCardtextMixin):
     """Climactic Necrotic Explosion"""
 
     play = _ClimacticExplosion(CONTROLLER)
-    tags = {GameTag.LIFESTEAL: True}
+    # Merge the mixin's text-rendering tags with the LIFESTEAL flag.
+    tags = {
+        GameTag.LIFESTEAL: True,
+        **_ClimacticExplosionCardtextMixin.tags,
+    }
 
 
 # Choose a minion. Spread its Deathrattle to adjacent minions.
@@ -413,9 +421,10 @@ class ETC_427:
 
 
 # Deathrattle: Summon a @/@ Lifesteal Undead.
-class ETC_423:
+class ETC_423(_DoubleAtCardtextMixin):
     """Arcanite Ripper"""
 
+    counter_attr = "_health_changes_while_equipped"
     events = (
         Heal(FRIENDLY_HERO).on(_ArcaniteRipperListener(SELF)),
         Damage(FRIENDLY_HERO).on(_ArcaniteRipperListener(SELF)),

@@ -2,6 +2,8 @@ from ..utils import *
 
 from hearthstone.enums import Zone, Race as _Race, Rarity as _Rarity, SpellSchool
 
+from .utils import _TrailingProgressCardtextMixin, _MetrognomeCardtextMixin
+
 
 ##
 # Custom actions / helpers
@@ -760,12 +762,42 @@ class ETC_103:
 
 
 # Deathrattle: Give ANY other minion +1/+1 and this Deathrattle.
+class _CrowdSurferChain(TargetedAction):
+    """Pick a random other minion (any side), give it +1/+1 and append
+    THIS deathrattle as an additional_deathrattle so the chain keeps
+    going when the recipient dies."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        candidates = [
+            m for m in source.game.player1.field + source.game.player2.field
+            if m is not source
+        ]
+        if not candidates:
+            return
+        pick = source.game.random.choice(candidates)
+        source.game.cheat_action(source, [Buff(pick, "ETC_104e")])
+        # Append this same chained action as an additional_deathrattle
+        # on the recipient (so the chain propagates on next death).
+        pick.additional_deathrattles.append((_CrowdSurferChain(SELF),))
+        if not pick.has_deathrattle:
+            pick.has_deathrattle = True
+
+
 class ETC_104:
     """Crowd Surfer"""
 
-    # ETC_104e in data is the "Crowd Surfing" enchant carrying the chained
-    # deathrattle. We Buff a random other minion in play (any side).
-    deathrattle = Buff(RANDOM(ALL_MINIONS - SELF), "ETC_104e")
+    deathrattle = _CrowdSurferChain(SELF)
+
+
+class ETC_104e:
+    """Crowd Surfing"""
+
+    # In-data enchant — stat tags (+1/+1) aren't parsed; declare here.
+    # The chained deathrattle behaviour is wired via
+    # _CrowdSurferChain.additional_deathrattles, not via this enchant.
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
 
 
 # At the end of your turn, give a random minion in your hand +2/+2.
@@ -861,10 +893,24 @@ class ETC_326:
 
 
 # Charge. Battlecry: Gain +1/+1 for each other Freebird you've played this game.
-class ETC_336:
+class ETC_336(_TrailingProgressCardtextMixin):
     """Freebird"""
 
     play = _FreebirdBuff(SELF)
+
+    def cardtext_entity_0(self):
+        ctrl = getattr(self, "controller", None)
+        if ctrl is None:
+            return "0"
+        return str(sum(
+            1 for c in ctrl.cards_played_this_game
+            if c.id == "ETC_336" and c is not self
+        ))
+
+    tags = {
+        **_TrailingProgressCardtextMixin.tags,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
 
 
 # Deathrattle: Summon a random 5-Cost minion from the past.
@@ -882,10 +928,28 @@ class ETC_350:
 
 
 # Battlecry: Gain a random bonus effect for each minion type you've played this game.
-class ETC_409:
+class ETC_409(_TrailingProgressCardtextMixin):
     """The One-Amalgam Band"""
 
     play = _OneAmalgamBonus(SELF)
+
+    def cardtext_entity_0(self):
+        ctrl = getattr(self, "controller", None)
+        if ctrl is None:
+            return "0"
+        seen = set()
+        for c in ctrl.cards_played_this_game:
+            if c.type != CardType.MINION:
+                continue
+            for race in getattr(c, "races", []):
+                if race != _Race.INVALID:
+                    seen.add(int(race))
+        return str(len(seen))
+
+    tags = {
+        **_TrailingProgressCardtextMixin.tags,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
 
 
 # Battlecry: Draw a weapon.
@@ -929,7 +993,7 @@ class ETC_420:
 
 
 # After you play a {0}-Cost card, draw a {1}-Cost card. (Then increase!)
-class ETC_422:
+class ETC_422(_MetrognomeCardtextMixin):
     """Metrognome"""
 
     events = Play(CONTROLLER).after(_MetrognomeTick(SELF, Play.CARD))

@@ -1,5 +1,9 @@
 from ..utils import *
-from .utils import _HarmonicSwap
+from .utils import (
+	_HarmonicSwap,
+	_WeaponCounterCardtextMixin,
+	_ZokFogsnoutCardtextMixin,
+)
 
 
 ##
@@ -306,7 +310,7 @@ class ETC_385:
 	deathrattle = _GroovyCatBumpAttack(CONTROLLER)
 
 
-class ETC_386:
+class ETC_386(_ZokFogsnoutCardtextMixin):
 	"""Zok Fogsnout"""
 
 	# Battlecry: Summon two {hero_atk + armor_gained_this_turn}/{same}
@@ -335,12 +339,13 @@ class ETC_386e:
 # Weapons
 
 
-class ETC_388:
+class ETC_388(_WeaponCounterCardtextMixin):
 	"""Timber Tambourine"""
 
 	# Deathrattle: Summon @ 5/5 Ancients. (Play cards that cost (5)+
 	# while equipped to improve!) Per-weapon counter is bumped by an
 	# in-play Play listener gated on the played card's cost.
+	counter_attr = "_cards_cost_5_plus_played_while_equipped"
 	events = Play(CONTROLLER).after(
 		_TimberTambourineBumpCounter(Play.CARD),
 	)

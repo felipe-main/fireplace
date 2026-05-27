@@ -1,5 +1,9 @@
 from ..utils import *
-from .utils import _HarmonicSwap
+from .utils import (
+	_HarmonicSwap,
+	_TrailingProgressCardtextMixin,
+	_WeaponCounterCardtextMixin,
+)
 
 
 ##
@@ -78,7 +82,7 @@ class ETC_072:
 	combo = Hit(RANDOM(ENEMY_CHARACTERS - DEAD), 1) * 4
 
 
-class ETC_073:
+class ETC_073(_TrailingProgressCardtextMixin):
 	"""Rhyme Spinner"""
 
 	# Rush. Combo: Gain +1/+1 for each other Combo card you've played
@@ -88,6 +92,24 @@ class ETC_073:
 	# cards_played_this_game (Play.do appends BEFORE the combo block
 	# runs, per actions.py).
 	combo = Buff(SELF, "ETC_073e")
+
+	def cardtext_entity_0(self):
+		ctrl = getattr(self, "controller", None)
+		if ctrl is None:
+			return "0"
+		n = sum(
+			1 for c in ctrl.cards_played_this_game
+			if c.has_combo and c is not self
+		)
+		return str(n)
+
+	# Override the inherited tag so the entity_0 callable picks up our
+	# combo-aware lookup (the mixin's default reads `counter_attr`,
+	# which doesn't apply here).
+	tags = {
+		**_TrailingProgressCardtextMixin.tags,
+		GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+	}
 
 
 @custom_card
@@ -198,7 +220,7 @@ class ETC_717:
 # Weapons
 
 
-class ETC_518:
+class ETC_518(_WeaponCounterCardtextMixin):
 	"""Record Scratcher"""
 
 	# Deathrattle: Refresh @ Mana Crystals. (Play Combo cards while
@@ -206,6 +228,7 @@ class ETC_518:
 	# card the controller plays while equipped; counter is consumed by
 	# the deathrattle which restores that many mana crystals.
 	combo_played_while_equipped = 0
+	counter_attr = "combo_played_while_equipped"
 	events = Play(CONTROLLER, COMBO - SELF).on(_RecordScratcherBump(SELF))
 	deathrattle = _RecordScratcherDeathrattle(SELF)
 

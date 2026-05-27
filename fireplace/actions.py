@@ -2259,6 +2259,21 @@ class Summon(TargetedAction):
             ):
                 _summon_colossal_limbs(source, target, card)
 
+            # Thornmantle Musician (ETC_831) Finale: the NEXT Beast the
+            # controller summons gets +1/+1. Consume the one-shot
+            # `next_beast_summon_bonus` counter here so it lands on the
+            # first eligible Beast and self-clears.
+            if (
+                card.type == CardType.MINION
+                and getattr(target, "next_beast_summon_bonus", 0) > 0
+                and Race.BEAST in getattr(card, "races", [])
+            ):
+                target.next_beast_summon_bonus -= 1
+                source.game.cheat_action(
+                    source,
+                    [Buff(card, "ETC_831e")],
+                )
+
         return cards
 
 

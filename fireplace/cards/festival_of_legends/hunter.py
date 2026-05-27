@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _WeaponCounterCardtextMixin
 
 
 ##
@@ -326,13 +327,35 @@ class ETC_840:
 # Weapons
 
 
-class ETC_832:
+class ETC_832(_WeaponCounterCardtextMixin):
 	"""Jungle Jammer"""
 
 	# Deathrattle: Summon a random @-Cost Beast. (Cast spells while
 	# equipped to improve!) Per-weapon counter bumped by an in-play
 	# OWN_SPELL_PLAY listener.
+	counter_attr = "_spells_cast_while_equipped"
 	events = OWN_SPELL_PLAY.after(
 		_JungleJammerBumpSpellCounter(SELF),
 	)
 	deathrattle = _JungleJammerDeathrattle(CONTROLLER)
+
+
+##
+# Enchantments not parsed in data XML.
+
+
+class ETC_831e:
+	"""Thornmantle's Muse"""
+
+	# In-data buff "Thornmantle's Muse" — Thornmantle Musician's Finale
+	# +1/+1 stamped on the next Beast the controller summons. Stats
+	# aren't parsed from data; declare them so Buff() lands as +1/+1.
+	tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
+
+
+class ETC_840e:
+	"""Dino-star"""
+
+	# In-data buff "Dino-star" — runtime atk/max_health supplied via
+	# Buff(... atk=, max_health=). No static stat tags needed.
+	tags = {}

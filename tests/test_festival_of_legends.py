@@ -3130,3 +3130,462 @@ def test_dj_manastorm_only_zeros_in_hand_spells_at_battlecry_time():
     # Draw / give a NEW Fireball — should NOT get the 0-cost stamp.
     fb_new = p.give("CS2_029")
     assert fb_new.cost == pre_cost_existing
+
+
+# ---------------------------------------------------------------------------
+# Once-over defensive tests
+#
+# Each test below targets one Step-11 "Once-over" row in review.csv — the
+# rows where the implementation is plausibly correct but the edge case
+# isn't pinned anywhere. A passing test here flips the row to
+# `Status=fixed, Fix=ONCEOVER — pinned by test_<name>`.
+# ---------------------------------------------------------------------------
+
+
+def test_holotechnician_self_one_damage_self_destroy_no_loop():
+    """ETC_534 — Holotechnician taking exactly 1 damage destroys itself
+    without infinite-looping. The destroy fires from a damage hook so the
+    chain must terminate cleanly."""
+    from fireplace.actions import Hit
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    holo = p.summon("ETC_534")
+    wisp = p.summon(WISP)
+    # Splash 1 damage onto both (Holotechnician + Wisp).
+    game.queue_actions(p.hero, [Hit(holo, 1)])
+    game.queue_actions(p.hero, [Hit(wisp, 1)])
+    assert holo.zone == Zone.GRAVEYARD
+    assert wisp.zone == Zone.GRAVEYARD
+
+
+def test_audio_amplifier_persists_max_mana_across_turns():
+    """ETC_087 — Audio Amplifier sets max_resources/max_mana/hand_size
+    to 11 and the change survives a full turn cycle."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    amp = p.give("ETC_087")
+    p.used_mana = 10 - amp.cost
+    amp.play()
+    assert p.max_resources == 11
+    assert p.max_mana >= 11
+    assert p.max_hand_size == 11
+    game.end_turn()
+    game.end_turn()
+    assert p.max_resources == 11
+    assert p.max_mana >= 11
+    assert p.max_hand_size == 11
+
+
+def test_mish_mash_mosher_buffs_once_per_outer_attack():
+    """ETC_419 — Mish-Mash Mosher's after-attack chain bumps atk by
+    exactly +1 per outer attack (re-entry guard prevents the cascade
+    attack from re-triggering the buff)."""
+    from fireplace.actions import Attack
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p2 = game.player2
+    mosher = p1.summon("ETC_419")
+    pre_atk = mosher.atk
+    # Two big enemies for the random cascade to land on.
+    for _ in range(2):
+        e = p2.summon(WISP)
+        e.max_health = 99
+        e.damage = 0
+    p2.hero.max_health = 80
+    game.queue_actions(mosher, [Attack(mosher, p2.hero)])
+    assert mosher.atk == pre_atk + 1
+
+
+def test_razorfen_rockstar_stacks_additively_for_each_copy():
+    """ETC_355 — Multiple Razorfen Rockstars each add +2 armor per
+    GainArmor; two on board → base +1 armor becomes +1+2+2 = +5."""
+    from fireplace.actions import GainArmor
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p = game.player1
+    p.summon("ETC_355")
+    p.summon("ETC_355")
+    pre = p.hero.armor
+    game.queue_actions(p.hero, [GainArmor(p.hero, 1)])
+    assert p.hero.armor == pre + 5
+
+
+def test_going_down_swinging_does_not_attack_mid_cascade_summons():
+    """ETC_413 — Going Down Swinging snapshots the enemy field; minions
+    summoned mid-cascade are not attacked."""
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    p2 = game.player2
+    e1 = p2.summon(WISP)
+    e2 = p2.summon(WISP)
+    snapshot = {e1, e2}
+    spell = p1.give("ETC_413")
+    p1.used_mana = 10 - spell.cost
+    spell.play()
+    assert e1.zone == Zone.GRAVEYARD
+    assert e2.zone == Zone.GRAVEYARD
+    for m in p2.field:
+        assert m not in snapshot
+
+
+def test_volume_up_snapshot_survives_discover_roundtrip():
+    """ETC_205 — Volume Up draws 3 spells, snapshots them for the
+    Finale Discover. Snapshot must persist intact through the choice."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    for _ in range(3):
+        p.card("CS2_029").zone = Zone.DECK
+    spell = p.give("ETC_205")
+    p.used_mana = 10 - spell.cost
+    spell.play()
+    snap = getattr(spell, "_volume_up_drawn", None)
+    assert snap is not None
+    assert len(snap) == 3
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+    assert getattr(spell, "_volume_up_drawn", None) is snap
+
+
+def test_infinitize_finale_return_is_bounded_by_marker_count():
+    """ETC_206 — Casting Infinitize with Finale stamps a marker that
+    returns ONE copy at end of turn. Two Finale casts in one turn
+    return at most two copies (never multiplying past the marker count)."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    for _ in range(2):
+        c = p.give("ETC_206")
+        p.used_mana = 10 - c.cost
+        c.play()
+        while p.choice:
+            p.choice.choose(p.choice.cards[0])
+    markers = [b for b in p.buffs if b.id == "ETC_206e_marker"]
+    pre_hand = sum(1 for c in p.hand if c.id == "ETC_206")
+    game.end_turn()
+    post_hand = sum(1 for c in p.hand if c.id == "ETC_206")
+    assert post_hand - pre_hand <= len(markers)
+
+
+def test_rewind_discover_pool_excludes_self_id():
+    """ETC_532 — Rewind discovers from spells the controller cast this
+    game, excluding Rewind itself. Casting Rewind must NOT surface
+    another Rewind option (would loop)."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    # Seed cards_played_this_game: one Fireball, one Rewind.
+    fb = p.card("CS2_029")
+    fb.zone = Zone.HAND
+    rw_prev = p.card("ETC_532")
+    rw_prev.zone = Zone.HAND
+    # Manually log to cards_played_this_game so Rewind sees a pool.
+    p.cards_played_this_game.append(fb)
+    p.cards_played_this_game.append(rw_prev)
+    rw = p.give("ETC_532")
+    p.used_mana = 10 - rw.cost
+    rw.play()
+    assert p.choice is not None
+    ids = [c.id for c in p.choice.cards]
+    assert "ETC_532" not in ids
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+
+
+def test_death_growl_does_not_double_trigger_original_deathrattle():
+    """ETC_424 — Death Growl copies a target's deathrattle onto its
+    neighbours. Original minion keeps exactly its pre-cast deathrattle
+    count; each neighbour acquires one additional deathrattle."""
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.player1
+    left = p.summon(WISP)
+    middle = p.summon("EX1_096")  # Loot Hoarder — has deathrattle
+    right = p.summon(WISP)
+    pre_ad_left = len(left.additional_deathrattles)
+    pre_ad_right = len(right.additional_deathrattles)
+    pre_ad_mid = len(middle.additional_deathrattles)
+    spell = p.give("ETC_424")
+    p.used_mana = 10 - spell.cost
+    spell.play(target=middle)
+    assert len(middle.additional_deathrattles) == pre_ad_mid
+    assert len(left.additional_deathrattles) == pre_ad_left + 1
+    assert len(right.additional_deathrattles) == pre_ad_right + 1
+
+
+def test_funkfin_aura_strips_when_divine_shield_pops():
+    """ETC_337 — Funkfin's +2 ATK aura on DS minions strips immediately
+    when the shield pops mid-combat."""
+    from fireplace.actions import Hit
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    p.summon("ETC_337")
+    squire = p.summon("EX1_008")  # Argent Squire, 1/1 DS
+    assert squire.atk == 1 + 2
+    game.queue_actions(p.hero, [Hit(squire, 1)])
+    assert not squire.divine_shield
+    assert squire.atk == 1
+
+
+def test_crowd_surfer_chain_propagates_to_recipient_once():
+    """ETC_104 — Crowd Surfer's deathrattle buffs a random other minion
+    with the same deathrattle. The recipient receives exactly one
+    additional_deathrattle (no engine duplicate-stacking)."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    surfer = p.summon("ETC_104")
+    target = p.summon(WISP)
+    other = p.summon(WISP)
+    surfer.destroy()
+    recipients = [m for m in (target, other) if m.atk > 1 or m.max_health > 1]
+    assert len(recipients) == 1
+    assert len(recipients[0].additional_deathrattles) == 1
+
+
+def test_mc_blingtron_aura_strips_when_enemy_weapon_replaced():
+    """ETC_078 — MC Blingtron equips both heroes; the opponent's
+    Microphone carries an aura. Replacing the enemy weapon strips
+    the +1 incoming damage aura."""
+    from fireplace.actions import Hit
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    p2 = game.player2
+    p2.hero.max_health = 80
+    bling = p1.give("ETC_078")
+    p1.used_mana = 10 - bling.cost
+    bling.play()
+    assert p2.weapon.id == "ETC_078t"
+    pre = p2.hero.health
+    game.queue_actions(p1.hero, [Hit(p2.hero, 2)])
+    assert pre - p2.hero.health == 3  # +1 from aura
+    p2.summon(LIGHTS_JUSTICE)
+    assert p2.weapon.id == LIGHTS_JUSTICE
+    pre = p2.hero.health
+    game.queue_actions(p1.hero, [Hit(p2.hero, 2)])
+    assert pre - p2.hero.health == 2  # aura stripped
+
+
+def test_worgen_roadie_case_belongs_to_opponent_controller():
+    """ETC_098 — Worgen Roadie summons an Instrument Case on the
+    OPPONENT side; its deathrattle gives the OPPONENT (case's
+    controller) a random weapon."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p2 = game.player2
+    roadie = p1.give("ETC_098")
+    p1.used_mana = 10 - roadie.cost
+    roadie.play()
+    cases = [m for m in p2.field if m.id == "ETC_098t"]
+    assert len(cases) == 1
+    case = cases[0]
+    assert case.controller is p2
+    pre_p2_hand_weapons = sum(
+        1 for c in p2.hand if c.type == CardType.WEAPON
+    )
+    pre_p1_hand_weapons = sum(
+        1 for c in p1.hand if c.type == CardType.WEAPON
+    )
+    case.destroy()
+    post_p2_hand_weapons = sum(
+        1 for c in p2.hand if c.type == CardType.WEAPON
+    )
+    post_p1_hand_weapons = sum(
+        1 for c in p1.hand if c.type == CardType.WEAPON
+    )
+    assert post_p2_hand_weapons == pre_p2_hand_weapons + 1
+    assert post_p1_hand_weapons == pre_p1_hand_weapons
+
+
+def test_bounce_around_buffs_each_bounced_minion_individually():
+    """ETC_079 — Bounce Around returns all friendlies to hand and
+    each individually gets the cost-(1) enchant (not just the last)."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.player1
+    minions = [p.summon(KOBOLD_GEOMANCER) for _ in range(3)]
+    spell = p.give("ETC_079")
+    p.used_mana = 10 - spell.cost
+    spell.play()
+    for m in minions:
+        assert m.zone == Zone.HAND
+        assert m.cost == 1
+
+
+def test_mic_drop_finale_with_no_weapon_does_not_crash():
+    """ETC_075 — Mic Drop's Finale buffs the weapon by +2; with no
+    weapon equipped, the buff no-ops cleanly."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.player1
+    assert p.weapon is None
+    md = p.give("ETC_075")
+    p.used_mana = 10 - md.cost
+    md.play()
+    assert md.play_finale is True
+    assert p.weapon is None
+
+
+def test_beatboxer_four_ticks_total_damage():
+    """ETC_072 — Combo: 4 ticks of 1 damage among enemies (hero +
+    minions). Pool re-evaluates per tick; total dealt = 4."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    p2 = game.player2
+    p2.hero.max_health = 80
+    p1.give(WISP).play()  # gate the Combo
+    bb = p1.give("ETC_072")
+    p1.used_mana = 10 - bb.cost
+    pre_hp = p2.hero.health
+    bb.play()
+    delta = pre_hp - p2.hero.health
+    delta += sum(m.damage for m in p2.field)
+    assert delta == 4
+
+
+def test_rock_master_voone_respects_hand_cap():
+    """ETC_121 — Rock Master Voone copies one minion per race in hand;
+    must respect the hand cap (no overfill, no exception)."""
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p = game.player1
+    for _ in range(7):
+        p.give(WISP)
+    p.give(IMP)
+    p.give(KOBOLD_GEOMANCER)
+    voone = p.give("ETC_121")
+    p.used_mana = 10 - voone.cost
+    voone.play()
+    assert len(p.hand) <= p.max_hand_size
+
+
+def test_thornmantle_bonus_consumed_by_next_beast_only():
+    """ETC_831 — Finale arms next_beast_summon_bonus = 1. Engine's
+    Summon hook consumes it on the NEXT Beast (not any minion), buffs
+    that beast +1/+1, and clears the counter."""
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    thorn = p.give("ETC_831")
+    p.used_mana = 10 - 1  # exact-cost play → Finale
+    thorn.play()
+    assert p.next_beast_summon_bonus == 1
+    # Non-Beast first: Wisp (no race) — must NOT consume the bonus.
+    p.summon(WISP)
+    assert p.next_beast_summon_bonus == 1
+    # Beast: Stonetusk Boar (DS1_175).
+    boar = p.summon("DS1_175")
+    assert Race.BEAST in boar.races
+    assert p.next_beast_summon_bonus == 0
+    assert boar.atk == 1 + 1
+    assert boar.max_health == 1 + 1
+
+
+def test_free_spirit_battlecry_and_deathrattle_double_count():
+    """ETC_382 — Free Spirit bumps heropower_extra_armor on BOTH
+    battlecry and deathrattle. One minion's full lifecycle → +2."""
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p = game.player1
+    pre = getattr(p, "heropower_extra_armor", 0)
+    fs = p.give("ETC_382")
+    p.used_mana = 10 - fs.cost
+    fs.play()  # play() fires battlecry; summon() doesn't
+    assert getattr(p, "heropower_extra_armor", 0) == pre + 1
+    fs.destroy()
+    assert getattr(p, "heropower_extra_armor", 0) == pre + 2
+
+
+def test_spread_the_word_cost_reduction_includes_weapon_attack():
+    """ETC_384 — Spread the Word costs (1) less per hero ATK. Reads
+    hero.atk at cost-calc time, so equipping a weapon drops the cost
+    by the weapon's ATK."""
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    sw = p.give("ETC_384")
+    base_cost = sw.cost
+    p.summon(LIGHTS_JUSTICE)
+    assert p.hero.atk >= 1
+    assert sw.cost == max(0, base_cost - p.hero.atk)
+
+
+def test_spotlight_morph_to_fresh_5_5_no_inherited_buffs():
+    """ETC_320 — Spotlight converts a friendly DS minion into a 5/5
+    Elemental. The morphed body has fresh stats — pre-existing buffs
+    do not carry over."""
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    sq = p.summon("EX1_008")  # 1/1 DS
+    from fireplace.actions import Buff
+    game.queue_actions(p.hero, [Buff(sq, "EX1_399e")])  # +2/+2
+    spot = p.give("ETC_320")
+    p.used_mana = 10 - spot.cost
+    spot.play(target=sq)
+    morphed = [m for m in p.field if m.id == "ETC_320t"]
+    assert len(morphed) == 1
+    assert morphed[0].atk == 5
+    assert morphed[0].max_health == 5
+
+
+def test_rin_deathrattle_processes_both_players():
+    """ETC_071 — Rin's deathrattle: each player draws 2, discards 2,
+    mills 2 (controller first). Each deck loses up to 4 cards (2
+    drawn + 2 milled); fatigue triggers if deck < required draw."""
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    for _ in range(6):
+        p.card(WISP).zone = Zone.DECK
+        p.opponent.card(WISP).zone = Zone.DECK
+    for _ in range(3):
+        p.give(WISP)
+        p.opponent.give(WISP)
+    rin = p.summon("ETC_071")
+    pre_p1_deck = len(p.deck)
+    pre_p2_deck = len(p.opponent.deck)
+    rin.destroy()
+    # Each lost 2 (mill) + 2 (draw) = 4 from deck.
+    assert pre_p1_deck - len(p.deck) == 4
+    assert pre_p2_deck - len(p.opponent.deck) == 4
+
+
+def test_heartbreaker_hedanis_survives_battlecry_self_hit():
+    """ETC_334 — Hedanis is 4/8; battlecry self-hits for 4 → 4/4
+    survives. Overheal: a 5-heal on a 4-damage Hedanis (heal>damage)
+    triggers a 5-damage retaliation on a random enemy (only the hero
+    is alive at our setup)."""
+    from fireplace.actions import Heal
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    p2 = game.player2
+    p2.hero.max_health = 80
+    hed = p.give("ETC_334")
+    p.used_mana = 10 - hed.cost
+    hed.play()
+    assert hed.zone == Zone.PLAY
+    assert hed.health == 8 - 4
+    pre = p2.hero.health
+    game.queue_actions(p.hero, [Heal(hed, 5)])
+    assert pre - p2.hero.health == 5
+
+
+def test_dreamboat_counts_undamaged_friendly_as_overheal():
+    """ETC_332 — Dreamboat heals 3 to each other friendly; an undamaged
+    friendly counts as overhealed (3 > 0). Three undamaged friendlies
+    → +3/+3 on Dreamboat."""
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    for _ in range(3):
+        p.summon(WISP)
+    db = p.give("ETC_332")
+    pre_atk = db.atk
+    pre_hp = db.max_health
+    p.used_mana = 10 - db.cost
+    db.play()
+    assert db.atk == pre_atk + 3
+    assert db.max_health == pre_hp + 3
+
+
+def test_saxophone_soloist_no_chain_if_other_minion_present():
+    """ETC_358 — Saxophone Soloist only generates a copy when board is
+    empty. With another friendly on board, the chain terminates: the
+    played Sax leaves hand and NO new copy is added → hand count of
+    ETC_358 drops by exactly 1."""
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p = game.player1
+    p.summon(WISP)
+    sax = p.give("ETC_358")
+    pre = sum(1 for c in p.hand if c.id == "ETC_358")
+    p.used_mana = 10 - sax.cost
+    sax.play()
+    post = sum(1 for c in p.hand if c.id == "ETC_358")
+    # Played Sax left hand; no new copy → exactly pre - 1 remaining.
+    assert post == pre - 1

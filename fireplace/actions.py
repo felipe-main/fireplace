@@ -1987,7 +1987,13 @@ class Heal(TargetedAction):
         requested = source.get_heal(amount, target)
         actual = min(requested, target.damage)
         target._last_heal_requested = requested
-        target._last_heal_overheal = max(0, requested - actual)
+        overheal_amount = max(0, requested - actual)
+        target._last_heal_overheal = overheal_amount
+        if overheal_amount > 0:
+            # Audiopocalypse — per-turn counter for Ambient Lightspawn.
+            # Bumped only when an actual overheal happens; reset at
+            # OWN_TURN_BEGIN.
+            source.controller.overheals_triggered_this_turn += 1
         amount = actual
         if amount:
             # Undamaged targets do not receive heals

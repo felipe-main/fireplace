@@ -20,28 +20,17 @@ class _PlagiarizarrrCopyTop(TargetedAction):
 
 class _AmbientLightspawnBuff(TargetedAction):
 	"""Ambient Lightspawn — Finale and Overheal: give another random
-	friendly minion +2/+2. Both gates must be true; the Overheal flag
-	is `_last_heal_overheal` stamped on the heal target by Heal.do."""
+	friendly minion +2/+2. Both gates must be true. Overheal gate
+	reads the controller's per-turn overheals_triggered_this_turn
+	counter (bumped in Heal.do, cleared at OWN_TURN_BEGIN)."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
 		if not source.play_finale:
 			return
-		# Overheal gate: this Finale Overheal happens when the play's
-		# heal action overhealed. Ambient Lightspawn has a separate
-		# heal (printed text: "Battlecry: Restore X Health to a friendly
-		# minion") that we don't model here; check the most recently
-		# overhealed target.
-		# Approximation: rely on _last_heal_overheal stamped on any
-		# friendly character within this same action_block.
 		ctrl = source.controller
-		overheal_seen = False
-		for ent in list(ctrl.field) + [ctrl.hero]:
-			if getattr(ent, "_last_heal_overheal", 0) > 0:
-				overheal_seen = True
-				break
-		if not overheal_seen:
+		if ctrl.overheals_triggered_this_turn <= 0:
 			return
 		others = [m for m in ctrl.field if m is not source]
 		if not others:

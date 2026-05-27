@@ -441,13 +441,15 @@ def test_plagiarizarrr_copies_top_of_enemy_deck():
 
 def test_ambient_lightspawn_finale_overheal_buffs_other_minion():
 	"""JAM_024 — Finale + Overheal both met: another friendly minion
-	gains +2/+2. Stamp the overheal flag directly to simulate the
-	prior heal."""
+	gains +2/+2. Real overheal earlier in turn bumps the per-turn
+	counter that Lightspawn reads."""
 	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
 	other = game.player1.summon("CS2_200")
 	pre_atk, pre_hp = other.atk, other.health
-	# Pre-stamp an overheal on the hero so the gate passes.
-	game.player1.hero._last_heal_overheal = 2
+	# Trigger a real overheal: heal a hero damaged for 1 by 3.
+	game.player1.hero.damage = 1
+	game.queue_actions(game.player1.hero, [Heal(game.player1.hero, 3)])
+	assert game.player1.overheals_triggered_this_turn == 1
 	light = game.player1.give("JAM_024")
 	game.player1.used_mana = game.player1.max_mana - light.cost
 	light.play()
@@ -456,12 +458,13 @@ def test_ambient_lightspawn_finale_overheal_buffs_other_minion():
 
 
 def test_ambient_lightspawn_no_overheal_no_buff():
-	"""JAM_024 — Finale alone (no overheal) does NOT buff."""
+	"""JAM_024 — Finale alone (no overheal this turn) does NOT buff."""
 	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
 	other = game.player1.summon("CS2_200")
 	pre_atk, pre_hp = other.atk, other.health
-	# No overheal flag stamped. Exact-mana play (Finale) but Overheal
+	# No overheal this turn. Exact-mana play (Finale) but Overheal
 	# gate fails → no buff applies.
+	assert game.player1.overheals_triggered_this_turn == 0
 	light = game.player1.give("JAM_024")
 	game.player1.used_mana = game.player1.max_mana - light.cost
 	light.play()
@@ -474,9 +477,48 @@ def test_ambient_lightspawn_no_finale_no_buff():
 	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
 	other = game.player1.summon("CS2_200")
 	pre_atk, pre_hp = other.atk, other.health
-	game.player1.hero._last_heal_overheal = 2
+	game.player1.hero.damage = 1
+	game.queue_actions(game.player1.hero, [Heal(game.player1.hero, 3)])
 	light = game.player1.give("JAM_024")
 	game.player1.used_mana = game.player1.max_mana - light.cost - 3  # leftover
+	light.play()
+	assert other.atk == pre_atk
+	assert other.health == pre_hp
+
+
+def test_ambient_lightspawn_overheal_counter_resets_each_turn():
+	"""JAM_024 — overheal that happened LAST turn does not carry over;
+	the per-turn counter resets at OWN_TURN_BEGIN."""
+	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+	other = game.player1.summon("CS2_200")
+	pre_atk, pre_hp = other.atk, other.health
+	# Overheal this turn.
+	game.player1.hero.damage = 1
+	game.queue_actions(game.player1.hero, [Heal(game.player1.hero, 3)])
+	assert game.player1.overheals_triggered_this_turn == 1
+	# End turn cycle — counter should reset on player1's next turn.
+	game.end_turn(); game.end_turn()
+	assert game.player1.overheals_triggered_this_turn == 0
+	light = game.player1.give("JAM_024")
+	game.player1.used_mana = game.player1.max_mana - light.cost
+	light.play()
+	# No overheal THIS turn → no buff.
+	assert other.atk == pre_atk
+	assert other.health == pre_hp
+
+
+def test_ambient_lightspawn_no_overheal_when_target_damaged_for_full_heal():
+	"""JAM_024 — a heal that exactly matches damage (no overheal)
+	does NOT bump the counter; Lightspawn doesn't fire."""
+	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+	other = game.player1.summon("CS2_200")
+	pre_atk, pre_hp = other.atk, other.health
+	# Damage hero by 3 then heal by 3 — exact match, no overheal.
+	game.player1.hero.damage = 3
+	game.queue_actions(game.player1.hero, [Heal(game.player1.hero, 3)])
+	assert game.player1.overheals_triggered_this_turn == 0
+	light = game.player1.give("JAM_024")
+	game.player1.used_mana = game.player1.max_mana - light.cost
 	light.play()
 	assert other.atk == pre_atk
 	assert other.health == pre_hp

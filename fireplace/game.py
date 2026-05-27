@@ -484,6 +484,8 @@ class BaseGame(Entity):
         # Sunken City: per-turn flags reset at the start of own turn.
         player.spells_poisonous_this_turn = False
         player.spell_mana_spent_this_turn = 0
+        # Audiopocalypse — Ambient Lightspawn counter resets per turn.
+        player.overheals_triggered_this_turn = 0
         # MotLK — Bonelord Frostwhisper: re-arm the "first card costs 0"
         # per-turn marker. Permanent flag stays set; only the consumed
         # latch resets.

@@ -259,13 +259,13 @@ def test_annoy_o_troupe_deathrattle_summons_three_tokens():
     p = game.player1
     troupe = p.summon("ETC_321")
     troupe.destroy()
-    tokens = [m for m in p.field if m.id == "ETC_321t"]
+    tokens = [m for m in p.field if m.id == "BOT_270t"]
     assert len(tokens) == 3
     for t in tokens:
         assert t.atk == 1
         assert t.max_health == 2
-        assert t.taunt is True
-        assert t.divine_shield is True
+        assert bool(t.taunt) is True
+        assert bool(t.divine_shield) is True
 
 
 def test_funkfin_aura_buffs_divine_shield_minions():
@@ -274,7 +274,7 @@ def test_funkfin_aura_buffs_divine_shield_minions():
     game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
     p = game.player1
     # Place a Divine Shield ally (Annoy-o-Tron Jr. token has DS).
-    troupe_token = p.summon("ETC_321t")
+    troupe_token = p.summon("BOT_270t")
     pre_atk = troupe_token.atk
     funkfin = p.summon("ETC_337")
     # Aura applied next tick — read after.
@@ -2781,7 +2781,7 @@ def test_hipster_strict_exclusion_no_widening_fallback():
 
 
 def test_annoy_o_troupe_token_matches_printed_text():
-    """ETC_321 Annoy-o-Troupe deathrattle summons three ETC_321t
+    """ETC_321 Annoy-o-Troupe deathrattle summons three BOT_270t
     (Annoy-o-Tron Jr.) — verify each is 1/2 Mech with Taunt + DS."""
     game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
     p = game.player1
@@ -2789,7 +2789,7 @@ def test_annoy_o_troupe_token_matches_printed_text():
         m.destroy()
     troupe = p.summon("ETC_321")
     troupe.destroy()
-    spawns = [m for m in p.field if m.id == "ETC_321t"]
+    spawns = [m for m in p.field if m.id == "BOT_270t"]
     assert len(spawns) == 3
     for s in spawns:
         assert s.atk == 1
@@ -3845,33 +3845,31 @@ def test_watchclose_heartthrob_spawn_cost_equals_overheal_amount():
     assert spawn_data.cost == 3
 
 
-def test_watchclose_annoy_o_tron_jr_custom_card_blocked_on_data():
-    """WATCHCLOSE — Annoy-o-Troupe / Annoy-o-Tron Jr. (ETC_321t). Pin
-    that the data carddb does NOT contain an entry for the printed
-    'Annoy-o-Tron Jr.' name in this patch — the custom_card registration
-    is the only path. If a future patch ships ETC_321t in data this
-    test fails and the watch row should re-open."""
+def test_watchclose_annoy_o_troupe_summons_canonical_annoy_o_tron_token():
+    """WATCHCLOSE — Annoy-o-Troupe deathrattle reuses BOT_270t, the
+    canonical in-data 2/1/2 Annoy-o-Tron token (Taunt + DS, Mech)
+    shipped by Giggling Inventor. The printed Troupe text never names
+    the spawn — 'three 1/2 Mechs with Taunt and Divine Shield' matches
+    BOT_270t's stats and keywords exactly."""
     from hearthstone.cardxml import load as _xml_load
     import hearthstone_data as _hs_data
     _raw_db, _ = _xml_load(
         path=_hs_data.get_carddefs_path(), locale="enUS"
     )
-    # The fireplace CardDB always contains ETC_321t (it's registered via
-    # @custom_card). The check that matters is whether the *raw* CardXML
-    # ships an entry — if it does, we should drop @custom_card and use a
-    # plain class declaration.
-    assert "ETC_321t" not in _raw_db, (
-        "ETC_321t has appeared in raw CardXML — switch ETC_321t to a "
-        "plain class declaration (drop @custom_card) and re-open this row."
-    )
-    # And the registered custom card produces the printed stats.
+    # Sanity-check: BOT_270t is the canonical Annoy-o-Tron token (in data).
+    assert "BOT_270t" in _raw_db
+    token_data = _raw_db["BOT_270t"]
+    assert token_data.name == "Annoy-o-Tron"
+    assert token_data.atk == 1
+    assert token_data.health == 2
+    # The deathrattle produces three of these with the printed keywords.
     game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
     p = game.player1
     for m in list(p.field):
         m.destroy()
     troupe = p.summon("ETC_321")
     troupe.destroy()
-    spawns = [m for m in p.field if m.id == "ETC_321t"]
+    spawns = [m for m in p.field if m.id == "BOT_270t"]
     assert len(spawns) == 3
     for s in spawns:
         assert s.atk == 1

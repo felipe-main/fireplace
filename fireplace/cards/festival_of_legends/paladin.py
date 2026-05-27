@@ -183,23 +183,13 @@ class ETC_321:
 	"""Annoy-o-Troupe"""
 
 	# Taunt, Divine Shield. Deathrattle: Summon three 1/2 Mechs with
-	# Taunt and Divine Shield.
-	deathrattle = Summon(CONTROLLER, "ETC_321t") * 3
-
-
-@custom_card
-class ETC_321t:
-	"""Annoy-o-Tron Jr."""
-
-	tags = {
-		GameTag.CARDNAME: "Annoy-o-Tron Jr.",
-		GameTag.CARDTYPE: CardType.MINION,
-		GameTag.ATK: 1,
-		GameTag.HEALTH: 2,
-		GameTag.TAUNT: True,
-		GameTag.DIVINE_SHIELD: True,
-		GameTag.CARDRACE: Race.MECHANICAL,
-	}
+	# Taunt and Divine Shield. Token reuses BOT_270t — the in-data
+	# non-collectible 2/1/2 Mech-Taunt-DS Annoy-o-Tron token shipped
+	# by Giggling Inventor (Boomsday). Stats and keywords match the
+	# printed text exactly; the printed deathrattle doesn't name the
+	# token, so reusing Blizzard's canonical Annoy-o-Tron token id is
+	# the closest-to-canonical choice.
+	deathrattle = Summon(CONTROLLER, "BOT_270t") * 3
 
 
 class ETC_324:

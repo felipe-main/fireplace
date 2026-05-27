@@ -296,6 +296,15 @@ class BaseGame(Entity):
                     listener = source
                 listener._events.append(action)
             else:
+                if not hasattr(action, "trigger"):
+                    # Defensive: occasionally a card script's deathrattle
+                    # / events list yields a raw function or other
+                    # non-Action element (typically from a callable
+                    # deathrattle returning a single item instead of a
+                    # tuple). Skip rather than crash so the rest of the
+                    # action queue still resolves.
+                    log.info("Skipping non-Action %r in queue", action)
+                    continue
                 ret.append(action.trigger(source))
         return ret
 

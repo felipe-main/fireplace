@@ -154,6 +154,14 @@ class ActionArg(LazyValue):
         # XXX we rely on source.event_args to be set, but it's very racey.
         # If multiple events happen on an entity at once, stuff will go wrong.
         assert source.event_args
+        # Defensive bounds check — concurrent event broadcasts (a
+        # listener firing during another listener's resolution) can
+        # leave source.event_args with fewer slots than this ActionArg
+        # expects. Return None instead of crashing so downstream callers
+        # (which mostly tolerate None via isinstance/list checks) can
+        # skip the no-op rather than the soak collapsing.
+        if self.index >= len(source.event_args):
+            return None
         return source.event_args[self.index]
 
 
@@ -322,7 +330,16 @@ class Attack(GameAction):
         if attacker.should_exit_combat:
             log.info("Attack has been interrupted.")
             attacker.attack_target = None
-            defender.defending = False
+            if defender is not None:
+                defender.defending = False
+            return
+        if defender is None:
+            # An on-attack trigger nullified the defender (e.g. a
+            # redirect that didn't propagate a replacement). Treat as
+            # interrupted — clean up and bail rather than crashing on
+            # defender.atk below.
+            log.info("Attack defender was nullified mid-resolution; bailing.")
+            attacker.attack_target = None
             return
 
         assert attacker is not defender, "Why are you hitting yourself %r?" % (attacker)
@@ -1426,7 +1443,15 @@ class ExtraBattlecry(Battlecry):
             old_requirements = source.requirements
             source.requirements = card.requirements
             if source.requires_target():
-                target = source.game.random.choice(source.play_targets)
+                # ExtraBattlecry can fire when the original target is
+                # no longer valid (it died, moved zones, etc.). With
+                # no playable target, fall through with target=None
+                # — the battlecry_requires_target() check below skips
+                # the extra trigger cleanly. Without this guard,
+                # random.choice([]) crashes the soak.
+                targets = source.play_targets
+                if targets:
+                    target = source.game.random.choice(targets)
             source.requirements = old_requirements
 
         if source == "GIL_820" and card == "GIL_820":
@@ -2498,7 +2523,10 @@ class CastSpell(TargetedAction):
         old_choice = player.choice
         player.choice = None
 
-        if card.twinspell:
+        # `twinspell` is only defined on Spell; guard for the rare path
+        # where this CastSpell-style branch resolves a Minion (e.g. a
+        # Discover chain that lands a non-spell card).
+        if getattr(card, "twinspell", None):
             source.game.queue_actions(card, [Give(player, card.twinspell_copy)])
         if card.must_choose_one:
             card = source.game.random.choice(card.choose_cards)

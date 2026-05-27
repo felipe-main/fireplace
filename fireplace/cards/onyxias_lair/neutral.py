@@ -157,8 +157,17 @@ class ONY_005ta10:
     )
 
 
+@custom_card
 class ONY_005ta10e:
-    tags = {GameTag.COST: -3}
+    """Spyglass"""
+
+    # Spyglass cost reduction. Not in raw CardXML (Onyxia mini-set
+    # data gap), so register manually via @custom_card.
+    tags = {
+        GameTag.CARDNAME: "Spyglass",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -3,
+    }
 
 
 class ONY_005tb2:

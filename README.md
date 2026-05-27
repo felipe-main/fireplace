@@ -10,7 +10,8 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 26.2.0.178555](https://hearthstone.wiki.gg/wiki/Patch_26.2.0.178555)
+Now updated to [Patch 27.0.0.181554](https://hearthstone.wiki.gg/wiki/Patch_27.0.0.181554)
+* **100%** TITANS (147 of 147 cards) — adds Titan + Forge mechanics
 * **100%** Classic (245 of 245 cards)
 * **100%** Curse of Naxxramas (30 of 30 cards)
 * **100%** Goblins vs Gnomes (123 of 123 cards)

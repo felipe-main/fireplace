@@ -118,7 +118,8 @@ class _JungleJammerDeathrattle(TargetedAction):
 class _BigDreamsSummonDormantBeast(TargetedAction):
 	"""Big Dreams — Summon the highest-cost Beast from your hand. It
 	goes Dormant for 2 turns. We pick the top-cost Beast in hand,
-	Summon it directly (bypasses cost), then queue Dormant(2)."""
+	route through Summon (so on-summon triggers fire — Knife Juggler,
+	Imp Master, etc.), then queue Dormant(2)."""
 
 	TARGET = ActionArg()
 
@@ -127,10 +128,15 @@ class _BigDreamsSummonDormantBeast(TargetedAction):
 		if not beasts:
 			return
 		pick = max(beasts, key=lambda c: c.cost or 0)
-		# Summon from hand: pull the card out, put it in play.
+		# Route through Summon(target, pick) — pick is the actual hand
+		# entity; Summon transitions it to PLAY and fires the on-summon
+		# broadcast (which the bare `pick.zone = Zone.PLAY` swap skipped).
+		source.game.cheat_action(source, [Summon(target, pick)])
+		# Only apply Dormant if the summon actually landed (e.g. board
+		# wasn't full).
 		from hearthstone.enums import Zone
-		pick.zone = Zone.PLAY
-		source.game.cheat_action(source, [Dormant(pick, 2)])
+		if pick.zone == Zone.PLAY:
+			source.game.cheat_action(source, [Dormant(pick, 2)])
 
 
 ##

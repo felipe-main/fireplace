@@ -84,6 +84,7 @@ class _CorpseExplosionTick(TargetedAction):
         if controller.corpses <= 0:
             return
         controller.corpses -= 1
+        controller.corpses_spent_this_game += 1
         source.game.cheat_action(source, [Hit(ALL_MINIONS, 1)])
         # If any minions still alive, repeat.
         alive = [
@@ -214,6 +215,7 @@ class _TombGuardiansSummon(TargetedAction):
         spend_reborn = controller.corpses >= 4
         if spend_reborn:
             controller.corpses -= 4
+            controller.corpses_spent_this_game += 4
             for m in new:
                 source.game.cheat_action(source, [GiveReborn(m)])
 
@@ -323,6 +325,7 @@ class _DiscoverBloodRune(TargetedAction):
         if target.corpses <= 0:
             return
         target.corpses -= 1
+        target.corpses_spent_this_game += 1
         picker = _rune_discover_picker(GameTag.COST_BLOOD)
         action = Discover(target, picker).then(Give(target, Discover.CARD))
         source.game.queue_actions(source, [action])
@@ -424,6 +427,7 @@ class _CorpseBrideSummon(TargetedAction):
         if spend <= 0:
             return
         ctrl.corpses -= spend
+        ctrl.corpses_spent_this_game += spend
         source.game.cheat_action(source, [Summon(ctrl, "RLK_506t")])
         groom = [m for m in ctrl.field if m.id == "RLK_506t"]
         if not groom:
@@ -457,6 +461,7 @@ class _MarrowManipulator(TargetedAction):
         if spend <= 0:
             return
         ctrl.corpses -= spend
+        ctrl.corpses_spent_this_game += spend
         for _ in range(spend):
             source.game.cheat_action(source, [Hit(RANDOM_ENEMY_CHARACTER, 2)])
 
@@ -477,6 +482,7 @@ class _BoneguardSummon(TargetedAction):
         if spend <= 0:
             return
         ctrl.corpses -= spend
+        ctrl.corpses_spent_this_game += spend
         for _ in range(spend):
             source.game.cheat_action(source, [Summon(ctrl, "RLK_061t")])
 
@@ -648,6 +654,7 @@ class _MalignantHorrorTick(TargetedAction):
         if ctrl.corpses < 5:
             return
         ctrl.corpses -= 5
+        ctrl.corpses_spent_this_game += 5
         source.game.cheat_action(source, [Summon(ctrl, "RLK_745")])
 
 
@@ -740,6 +747,7 @@ class _MightOfMenethilFreeze(TargetedAction):
         if spend <= 0:
             return
         ctrl.corpses -= spend
+        ctrl.corpses_spent_this_game += spend
         enemies = list(ctrl.opponent.field)
         if not enemies:
             return
@@ -916,6 +924,7 @@ class _MarrowgarRaise(TargetedAction):
         if spend <= 0:
             return
         ctrl.corpses -= spend
+        ctrl.corpses_spent_this_game += spend
         slots = max(0, 7 - len(ctrl.field))
         summon_count = min(spend, slots)
         overflow = spend - summon_count
@@ -1088,6 +1097,7 @@ class _YmirjarSummon(TargetedAction):
         if ctrl.corpses < 3:
             return
         ctrl.corpses -= 3
+        ctrl.corpses_spent_this_game += 3
         source.game.cheat_action(source, [Summon(ctrl, "RLK_226t")])
 
 

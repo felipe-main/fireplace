@@ -9,9 +9,12 @@ from hearthstone.enums import Zone, Race as _Race, Rarity as _Rarity, SpellSchoo
 
 class _ETCBandManagerDiscover(TargetedAction):
     """E.T.C., Band Manager Battlecry — Discover one of the controller's
-    stamped sideboard (3 cards). If the sideboard is empty (no draft-time
-    stamp, e.g. test games), populate on demand with 3 random Neutral
-    collectible minions, then open a GenericChoice over them."""
+    stamped sideboard (3 cards) when populated by deck-time stamping
+    (see PlayableCard.__init__ in fireplace/card.py). When the sideboard
+    is empty (no deck-time stamp, e.g. test games or non-drafted games),
+    fall back to 3 random Neutral collectible minions for THIS play
+    only — do NOT write the random pool back to `_etc_sideboard`, so
+    repeat plays / future games stay in the uninitialized state."""
 
     TARGET = ActionArg()
 
@@ -19,7 +22,8 @@ class _ETCBandManagerDiscover(TargetedAction):
         ctrl = source.controller
         sideboard = source._etc_sideboard
         if not sideboard:
-            # On-demand fallback: stamp 3 random Neutral collectibles.
+            # On-demand fallback: 3 random Neutral collectibles. Do NOT
+            # persist back onto source._etc_sideboard.
             from .. import db as _db
             pool = [
                 cid for cid, c in _db.items()
@@ -30,9 +34,7 @@ class _ETCBandManagerDiscover(TargetedAction):
             ]
             if not pool:
                 return
-            picks = source.game.random.sample(pool, min(3, len(pool)))
-            sideboard = picks
-            source._etc_sideboard = picks
+            sideboard = source.game.random.sample(pool, min(3, len(pool)))
         # Materialise the 3 cards on the controller's side.
         cards = [ctrl.card(cid) for cid in sideboard]
         source.game.queue_actions(source, [GenericChoice(ctrl, cards)])
@@ -445,25 +447,15 @@ class _PyrotechnicianAddFireSpell(TargetedAction):
 
 
 class _TonySwap(TargetedAction):
-    """Tony, King of Piracy — Battlecry: Swap both decks."""
+    """Tony, King of Piracy — Battlecry: Swap both decks. Hands the
+    existing card entities across (controllers re-pointed) so in-deck
+    enchants / per-card state survive the swap. Uses the engine's
+    SwapDecks GameAction primitive."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ctrl = source.controller
-        opp = ctrl.opponent
-        # Swap the CardList objects (controllers updated below).
-        a_deck = list(ctrl.deck)
-        b_deck = list(opp.deck)
-        for c in a_deck:
-            c.zone = Zone.REMOVEDFROMGAME
-        for c in b_deck:
-            c.zone = Zone.REMOVEDFROMGAME
-        # Repopulate decks with the swapped contents (by id).
-        for c in a_deck:
-            opp.card(c.id, zone=Zone.DECK)
-        for c in b_deck:
-            ctrl.card(c.id, zone=Zone.DECK)
+        source.game.cheat_action(source, [SwapDecks()])
 
 
 class _FestivalSecurityForceAttack(TargetedAction):

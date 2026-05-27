@@ -218,6 +218,7 @@ class _MoshPitGiveReborn(TargetedAction):
         if ctrl.corpses < 3:
             return
         ctrl.corpses -= 3
+        ctrl.corpses_spent_this_game += 3
         source.game.cheat_action(source, [GiveReborn(target)])
 
 
@@ -292,28 +293,50 @@ class ETC_526t:
 # Spells
 
 
-# Lifesteal. Deal $6 damage. Summon 3 2/2 Souls. (Randomly improved by Corpses spent.)
-# Approximation: fixed 6 to all enemies + 3 2/2 souls. Real card scales by spent corpses.
+# Lifesteal. Deal $X damage. Summon Y Z/Z Souls. (Randomly improved by
+# Corpses you've spent.) Base = 1 damage to ALL enemies + 1 1/1 Soul.
+# Then three random "improvement" bumps from {damage+1, count+1, stat+1}
+# are applied. Lifetime corpses spent (controller.corpses_spent_this_game)
+# is the named scaling axis from the printed text — kept here as a hook
+# for future per-corpse-threshold gating; currently three fixed random
+# bumps are picked (one improvement per "tick").
 class _ClimacticExplosion(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        # Damage: 6 to all enemies (approximation; real version randomly
-        # picks one of several improvement buckets based on lifetime
-        # corpses spent — TODO upgrade once we wire that ladder).
+        # Base values.
+        damage = 1
+        count = 1
+        stat = 1
+        # Three random improvement bumps picked from the three buckets.
+        # Each bump independently chooses damage / count / stat. The
+        # corpses_spent_this_game axis is the printed flavour driver;
+        # bump count is fixed at 3 (mirrors a typical mid-game corpse
+        # spend); future work could scale this with the ladder.
+        BUCKETS = ("damage", "count", "stat")
+        for _ in range(3):
+            choice = source.game.random.choice(BUCKETS)
+            if choice == "damage":
+                damage += 1
+            elif choice == "count":
+                count += 1
+            else:
+                stat += 1
+        # Damage all enemies for the rolled amount.
         for c in list(ctrl.opponent.characters):
-            source.game.cheat_action(source, [Hit(c, 6)])
-        # Summon 3 2/2 Souls — use ETC_522t (Die-Hard Fan) as the soul
-        # token, buffed to 2/2.
+            source.game.cheat_action(source, [Hit(c, damage)])
+        # Summon `count` Souls (clamped to remaining board slots),
+        # buffed to (stat / stat).
         slots = max(0, 7 - len(ctrl.field))
-        for _ in range(min(3, slots)):
+        delta = stat - 1
+        for _ in range(min(count, slots)):
             source.game.cheat_action(source, [Summon(ctrl, "ETC_522t")])
             souls = [m for m in ctrl.field if m.id == "ETC_522t"]
-            if souls:
+            if souls and delta > 0:
                 source.game.cheat_action(
                     source,
-                    [Buff(souls[-1], "ETC_522te", atk=1, max_health=1)],
+                    [Buff(souls[-1], "ETC_522te", atk=delta, max_health=delta)],
                 )
 
 

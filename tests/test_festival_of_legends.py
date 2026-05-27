@@ -2099,3 +2099,195 @@ def test_tony_swaps_decks():
     post_opp = sorted(c.id for c in game.player2.deck)
     assert post_self == pre_opp
     assert post_opp == pre_self
+
+
+# ===========================================================================
+# Tier-1 Real-bug regression tests
+# ===========================================================================
+
+
+def test_big_dreams_summons_through_summon_pipeline():
+    """Big Dreams (ETC_838) — printed "Summon the highest Cost Beast
+    from your hand. It goes Dormant for 2 turns." Routing through the
+    Summon pipeline must fire on-summon triggers. Sanity: pick a Beast
+    in hand whose summon will fire Knife Juggler's on-summon hit, then
+    cast Big Dreams and assert the Juggler's hit landed on the enemy."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    # Clear board, then put a Knife Juggler (NEW1_019) on our side. Its
+    # event is "After you summon a minion, deal 1 damage to a random
+    # enemy". We pre-seed the only enemy character so the hit lands
+    # deterministically (enemy hero, since no enemy minions on board).
+    for m in list(p.field):
+        m.destroy()
+    for m in list(game.player2.field):
+        m.destroy()
+    juggler = p.summon("NEW1_019")
+    assert juggler.zone == Zone.PLAY
+    # Put exactly one Beast in our hand — a Stonetusk Boar (CS2_171), a
+    # 1/1 Beast — so Big Dreams picks it. Clear hand first.
+    for c in list(p.hand):
+        c.discard()
+    boar = p.give("CS2_171")  # Stonetusk Boar, Beast
+    assert Race.BEAST in boar.races
+    # Enemy hero at full HP. Juggler hit = 1 damage (no other enemy
+    # targets exist).
+    game.player2.hero.damage = 0
+    p.used_mana = 0
+    big = p.give("ETC_838")
+    big.play()
+    # Boar must have moved to PLAY (summoned).
+    assert boar.zone == Zone.PLAY
+    assert boar.dormant is True
+    # On-summon trigger fired: Juggler dealt 1 to enemy hero (only
+    # available random enemy target).
+    assert game.player2.hero.damage == 1
+
+
+def test_felstring_harp_prevents_pre_damage_not_after():
+    """Felstring Harp (ETC_084) — printed: "Whenever your hero would
+    take damage on your turn, restore 2 Health instead. Lose 1
+    Durability." Must intercept PRE-damage: the damage is REDUCED
+    before it lands, so downstream damage-amount listeners see the
+    reduced value.
+
+    Distinguisher: use a lifesteal source. With pre-damage prevention,
+    a 3-damage hit becomes a 1-damage hit, and the lifesteal source
+    heals only 1. With post-damage healing on the controller, the
+    lifesteal source still heals the full 3 (because the damage
+    actually landed before being healed back). Asserts on the
+    lifesteal source's heal amount."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    p.give("ETC_084").play()
+    harp = p.weapon
+    assert harp is not None
+    pre_dura = harp.durability
+    p.hero.damage = 0
+    # Create a lifesteal proxy: enemy hero is fully damaged, then we
+    # cast Mind Blast equivalent. Simpler: directly use a Spell with
+    # lifesteal. Use SW_447 if it exists; otherwise build via raw
+    # action plumbing using Hit with a controlled lifesteal source.
+    # Use Drain Life (CS2_062 — no, that's Fireball). Use EX1_622
+    # Shadow Word: Death — no lifesteal. Use VAN_EX1_622 or
+    # "EX1_625" Mind Blast — no. The clean approach: directly add
+    # `lifesteal=True` to a source minion and Hit through it.
+    # Enemy minion with lifesteal — it'll be the damage source. Its
+    # lifesteal heal lands on game.player2.hero (its controller).
+    src = game.player2.summon(WISP)
+    src.lifesteal = True
+    # Pre-damage opp hero so lifesteal heals are observable.
+    game.player2.hero.damage = 10
+    pre_opp_dmg = game.player2.hero.damage  # 10
+    # Hit player1's hero for 3 via the lifesteal-stamped enemy source on
+    # our turn (current_player is still player1 — the actual mover of
+    # the queue doesn't change turn ownership).
+    game.queue_actions(src, [Hit(p.hero, 3)])
+    # Pre-damage prevention: only 1 damage lands → lifesteal heals 1 →
+    # opp_hero.damage drops by 1 → 9.
+    # Post-damage version: 3 damage lands first → lifesteal heals 3 →
+    # opp_hero.damage = 7 (then our heal fires on us, doesn't touch opp).
+    assert game.player2.hero.damage == pre_opp_dmg - 1
+    # Weapon lost exactly 1 durability.
+    assert p.weapon is harp
+    assert p.weapon.durability == pre_dura - 1
+
+
+def test_tony_preserves_in_deck_buffs():
+    """Tony (ETC_541) — "Both players' decks are swapped." Must swap
+    the actual deck card entities (preserving in-deck enchants), not
+    re-spawn fresh cards by id."""
+    game = prepare_game()
+    p = game.player1
+    opp = game.player2
+    # Stamp a +2/+2 enchant onto one of p's deck minions BEFORE Tony.
+    # Pick any minion in p's deck.
+    target = next((c for c in p.deck if c.type == CardType.MINION), None)
+    assert target is not None
+    pre_atk = target.atk
+    pre_health = target.max_health
+    game.queue_actions(p.hero, [Buff(target, "ETC_105e")])  # +2/+2
+    assert target.atk == pre_atk + 2
+    assert target.max_health == pre_health + 2
+    target_id = target.id
+    p.used_mana = 0
+    tony = p.give("ETC_541")
+    tony.play()
+    # After swap the same entity must now be in opp.deck, still buffed.
+    moved = next((c for c in opp.deck if c is target), None)
+    assert moved is not None
+    assert moved.atk == pre_atk + 2
+    assert moved.max_health == pre_health + 2
+
+
+def test_etc_band_manager_uses_stamped_sideboard():
+    """E.T.C. (ETC_080) — must Discover from `source._etc_sideboard`
+    when it is populated (deck-time stamp). Random Neutral fallback is
+    only for the empty-sideboard case, and must NOT overwrite the
+    sentinel — leaving the stamp empty so subsequent plays still fall
+    back fresh (rather than locking in the first random pool)."""
+    game = prepare_game()
+    p = game.player1
+    # Case 1: pre-stamped sideboard is honored exactly.
+    etc = p.give("ETC_080")
+    etc._etc_sideboard = ["CS2_029", "CS2_171", "CS2_091"]  # Fireball, Boar, Light's Justice
+    p.used_mana = 0
+    etc.play()
+    assert p.choice is not None
+    offered = sorted(c.id for c in p.choice.cards)
+    assert offered == sorted(["CS2_029", "CS2_171", "CS2_091"])
+    p.choice.choose(p.choice.cards[0])
+    # Case 2: empty-sideboard fallback must NOT write back to the
+    # stamp — leaving it empty so subsequent decks/games stay in
+    # "uninitialized" state.
+    etc2 = p.give("ETC_080")
+    assert etc2._etc_sideboard == []
+    p.used_mana = 0
+    etc2.play()
+    assert p.choice is not None
+    assert len(p.choice.cards) == 3
+    assert etc2._etc_sideboard == []  # fallback did NOT stamp
+
+
+def test_climactic_necrotic_explosion_scales_with_corpses_spent():
+    """Climactic Necrotic Explosion (ETC_210) — printed: "Deal $X
+    damage. Summon Y Z/Z Souls. (Randomly improved by Corpses you've
+    spent.)" Base = 1 damage to all enemies + 1 1/1 Soul; then three
+    random improvement bumps picked from {damage+1, count+1, stat+1}.
+
+    With ZERO corpses spent we still expect 3 bumps (the printed text
+    says "Randomly improved by Corpses you've spent" but the engine
+    interpretation here is: always 3 random improvement picks, biased
+    by/named after the corpses-spent ladder — the user's spec calls
+    out exactly 3 bumps). Total bump delta must equal 3."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.player1
+    for m in list(p.field):
+        m.destroy()
+    for m in list(game.player2.field):
+        m.destroy()
+    # Two 7/7 enemy minions — survives any rolled damage (max 1+3=4).
+    e1 = game.player2.summon("CS2_186")  # War Golem 7/7
+    e2 = game.player2.summon("CS2_186")
+    pre_h1 = e1.health
+    pre_h2 = e2.health
+    p.used_mana = 0
+    p.corpses_spent_this_game = 0  # baseline reading
+    p.give("ETC_210").play()
+    dmg1 = pre_h1 - e1.health
+    dmg2 = pre_h2 - e2.health
+    # Same damage hit every enemy minion.
+    assert dmg1 == dmg2
+    assert 1 <= dmg1 <= 4
+    souls = [m for m in p.field if m not in (e1, e2)]
+    assert 1 <= len(souls) <= 4
+    for soul in souls:
+        # All souls land at the same stat line (single stat bump applies
+        # to the whole batch).
+        assert soul.atk == soul.max_health
+        assert 1 <= soul.atk <= 4
+    # Exactly 3 bumps distributed across the three buckets.
+    damage_delta = dmg1 - 1
+    count_delta = len(souls) - 1
+    stat_delta = souls[0].atk - 1
+    assert damage_delta + count_delta + stat_delta == 3

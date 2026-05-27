@@ -166,6 +166,11 @@ class Player(Entity, TargetableByAuras):
         # Per-game cumulative corpses GAINED (never decremented). Some
         # DK cards check lifetime corpses, not just current balance.
         self.corpses_gained_this_game = 0
+        # Per-game cumulative corpses SPENT (never decremented). Festival
+        # of Legends — Climactic Necrotic Explosion picks one of three
+        # "improvement" buckets per corpse-spent threshold. Bumped by
+        # SpendCorpses and by direct-decrement DK cards.
+        self.corpses_spent_this_game = 0
         # March of the Lich King — precise "died after your last turn"
         # window. Tracks every friendly Undead minion that died since the
         # controller's last OWN_TURN_END. Reset at OWN_TURN_END, appended

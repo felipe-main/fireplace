@@ -1750,7 +1750,9 @@ class SpendCorpses(TargetedAction):
     AMOUNT = IntArg()
 
     def do(self, source, target, amount):
+        spent = min(target.corpses, max(amount, 0))
         target.corpses = max(target.corpses - amount, 0)
+        target.corpses_spent_this_game += spent
         source.game.manager.targeted_action(self, source, target, amount)
 
 

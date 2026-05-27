@@ -198,21 +198,22 @@ class _SymphonyOfSinsPlay(TargetedAction):
 
 
 class _FelstringHarpDamageGuard(TargetedAction):
-	"""Felstring Harp — listens for damage about to land on the
-	controller's hero during the controller's own turn. Substitutes a
-	2-heal for the damage and chews 1 durability off the weapon. Uses
-	a Damage.on listener (pre-Damage) so we can intercept by cancelling
-	the queued hit and queueing a Heal instead. Since we can't truly
-	cancel a damage post-broadcast, this is an approximation: we let
-	the damage land, then heal 2 immediately after, and consume 1
-	durability."""
+	"""Felstring Harp — listens PRE-damage on the controller's hero
+	during their own turn. Substitutes the incoming amount with
+	max(amount - 2, 0) by re-queueing Predamage at the reduced value,
+	and chews 1 durability off the weapon. Fires from
+	Predamage(FRIENDLY_HERO).on so the reduction lands before the
+	damage itself (lifesteal sources see the reduced amount, lethal
+	hits are clamped, etc.)."""
 
 	TARGET = ActionArg()
 	AMOUNT = IntArg()
 
 	def do(self, source, target, amount):
-		# `source` is the weapon. Only fire when the controller is the
-		# current player and the weapon has durability left.
+		# `source` is the weapon (SELF). `target` here is also SELF
+		# because the action was queued with SELF as TARGET — the actual
+		# damaged entity is the controller's hero (the Predamage event
+		# fired on FRIENDLY_HERO).
 		ctrl = source.controller
 		if ctrl is not source.game.current_player:
 			return
@@ -220,10 +221,14 @@ class _FelstringHarpDamageGuard(TargetedAction):
 			return
 		if (source.durability or 0) <= 0:
 			return
-		# Heal the hero by 2; chew 1 durability off the weapon. The
-		# damage was already broadcast (engine ordering), so this is a
-		# best-effort approximation rather than a true pre-damage swap.
-		source.game.cheat_action(source, [Heal(ctrl.hero, 2)])
+		if amount <= 0:
+			return
+		hero = ctrl.hero
+		# Prevent up to 2 of the incoming hit by overwriting hero.predamage.
+		new_amount = max(0, amount - 2)
+		hero.predamage = new_amount
+		# Chew 1 durability per prevention event (regardless of how much
+		# was actually prevented — matches printed text).
 		source.damage = (source.damage or 0) + 1
 		if source.durability <= 0:
 			source.game.cheat_action(source, [Destroy(source)])
@@ -322,10 +327,12 @@ class ETC_084:
 	"""Felstring Harp"""
 
 	# Whenever your hero would take damage on your turn, restore 2 Health
-	# instead. Lose 1 Durability. Approximation: post-damage trigger
-	# (heal 2 + chew 1 durability) rather than a true pre-damage swap.
-	events = Damage(FRIENDLY_HERO).on(
-		_FelstringHarpDamageGuard(SELF, Damage.AMOUNT)
+	# instead. Lose 1 Durability. Pre-damage interception via Predamage
+	# listener — re-stamps target.predamage to max(amount - 2, 0) before
+	# the damage actually lands, so lifesteal sources / lethal hits see
+	# the reduced value.
+	events = Predamage(FRIENDLY_HERO).on(
+		_FelstringHarpDamageGuard(SELF, Predamage.AMOUNT)
 	)
 
 

@@ -876,7 +876,7 @@ class UseTitanAbility(GameAction):
 
     def do(self, source, titan, target):
         from fireplace.cards import db as _db, get_script_definition
-        ability_order = getattr(titan.scripts, "titan_ability_order", None)
+        ability_order = getattr(getattr(titan.data, "scripts", None), "titan_ability_order", None)
         if not ability_order:
             return
         idx = titan._titan_ability_index
@@ -889,12 +889,25 @@ class UseTitanAbility(GameAction):
         source.game.manager.game_action(self, source, titan, target)
         self.broadcast(source, EventListener.ON, titan, target)
 
+        # Set titan.target so TARGET selectors in sub-card actions resolve
+        # correctly when the ability requires a target (e.g. Hit(TARGET, 20)).
+        old_target = getattr(titan, "target", None)
+        titan.target = target
         source.game.action_start(BlockType.PLAY, titan, 0, target)
         if sub_script:
-            actions_to_run = getattr(sub_script, "play", None)
+            # Prefer the merged card's scripts.play (already normalised to a
+            # tuple by the card-DB merge) so that single-action sub-cards
+            # (e.g. `play = Hit(...)`) don't trigger a TypeError when
+            # trigger_actions tries to iterate over a bare Action object.
+            merged = _db.get(sub_id)
+            if merged is not None and hasattr(merged, "scripts"):
+                actions_to_run = getattr(merged.scripts, "play", None)
+            else:
+                actions_to_run = getattr(sub_script, "play", None)
             if actions_to_run:
                 source.game.main_power(titan, actions_to_run, target)
         source.game.action_end(BlockType.PLAY, titan)
+        titan.target = old_target
 
         titan._titan_ability_index += 1
 
@@ -3031,7 +3044,15 @@ class ForgeCard(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
+        # forge_card may be on the card instance OR on its script class
+        # (card.data.scripts). Check both so tests that forge cards directly
+        # work even when the card instance doesn't shadow the class attribute.
         forge_id = getattr(target, "forge_card", None)
+        if not forge_id:
+            forge_id = getattr(
+                getattr(getattr(target, "data", None), "scripts", None),
+                "forge_card", None,
+            )
         if not forge_id:
             return
         ctrl = target.controller

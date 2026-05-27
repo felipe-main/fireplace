@@ -1030,7 +1030,7 @@ class LiveEntity(PlayableCard, Entity):
 
     @property
     def immune(self):
-        if self.immune_while_attacking and self.attacking:
+        if self.immune_while_attacking and getattr(self, "attacking", False):
             return True
         return self.cant_be_damaged
 
@@ -1171,7 +1171,7 @@ class Character(LiveEntity):
         if self.cant_attack:
             return False
         # TITANS: a Titan minion cannot attack until all abilities are used.
-        _tao = getattr(self.scripts, "titan_ability_order", None)
+        _tao = getattr(getattr(self.data, "scripts", None), "titan_ability_order", None)
         if _tao and self._titan_ability_index < len(_tao):
             return False
         if not self.controller.current_player:

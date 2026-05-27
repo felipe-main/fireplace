@@ -195,6 +195,9 @@ class Player(Entity, TargetableByAuras):
         # TITANS — Ignis, Melted Maker synergy. Bumped in ForgeCard.do.
         # Counts Forge activations this game (never resets).
         self.cards_forged_this_game = 0
+        # TITANS — Chained Guardian cost_mod. Bumped in _shuffle_one_plague
+        # each time a Plague is shuffled into the opponent's deck.
+        self.plagues_shuffled_into_enemy = 0
         # MotLK per-turn cost-substitution flags. minions_cost_armor:
         # Anub'Rekhan. next_paladin_minion_costs_health: Blood Crusader.
         # next_concoction_costs_zero: Ghoulish Alchemist. All consumed
@@ -644,6 +647,18 @@ class Player(Entity, TargetableByAuras):
             self._love_everlasting_consumed_this_turn = True
             amount = max(0, amount - 2)
             self.log("%s spell %r pays %i (Love Everlasting -2)",
+                     self, source, amount)
+        # TITANS — Golganneth, the Thunderer: "Your first spell each turn
+        # costs (3) less." Mirrors Love Everlasting but for -3 and keyed
+        # to _golganneth_active / _golganneth_consumed_this_turn.
+        if (
+            source.type == CardType.SPELL
+            and getattr(self, "_golganneth_active", False)
+            and not getattr(self, "_golganneth_consumed_this_turn", False)
+        ):
+            self._golganneth_consumed_this_turn = True
+            amount = max(0, amount - 3)
+            self.log("%s spell %r pays %i (Golganneth -3)",
                      self, source, amount)
         # MotLK — Ghoulish Alchemist: "Your next Concoction costs (0)."
         # Single-use Concoction cost zero (Concoctions are identified by

@@ -490,6 +490,11 @@ class BaseGame(Entity):
         # per-turn marker. Permanent flag stays set; only the consumed
         # latch resets.
         player._frostwhisper_consumed_this_turn = False
+        # TITANS — Golganneth, the Thunderer: re-arm the per-turn "first
+        # spell costs (3) less" latch. The permanent _golganneth_active
+        # flag stays set; only the consumed latch resets each turn.
+        if getattr(player, "_golganneth_active", False):
+            player._golganneth_consumed_this_turn = False
         # Throne of the Tides: tick down per-player turn windows.
         if player.pays_health_for_cards_turns_left > 0:
             player.pays_health_for_cards_turns_left -= 1

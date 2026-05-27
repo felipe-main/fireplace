@@ -198,6 +198,8 @@ class Player(Entity, TargetableByAuras):
         # TITANS — Chained Guardian cost_mod. Bumped in _shuffle_one_plague
         # each time a Plague is shuffled into the opponent's deck.
         self.plagues_shuffled_into_enemy = 0
+        # TITANS — Helya: when True, each Plague drawn is re-shuffled into deck.
+        self._plagues_are_unending = False
         # TITANS — Starstrung Bow cost_mod. Bumped when a Secret triggers.
         self.secrets_triggered_this_game = 0
         # TITANS — Aqua Archivist / Tram Operator one-shot cost discounts.

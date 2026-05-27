@@ -28,6 +28,45 @@ def _shuffle_two_plagues(source, opponent):
         _shuffle_one_plague(source, opponent)
 
 
+class _PlagueUnendingCheck(TargetedAction):
+    """Helya — when a Plague is drawn and _plagues_are_unending is True,
+    immediately shuffle a fresh copy of that Plague back into the deck."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        if not getattr(ctrl, "_plagues_are_unending", False):
+            return
+        from hearthstone.enums import Zone
+        new_plague = ctrl.card(source.id)
+        if len(ctrl.deck) < ctrl.max_deck_size:
+            new_plague.zone = Zone.DECK
+            ctrl.shuffle_deck()
+
+
+##
+# Plague tokens (non-collectible; drawn by the opponent when shuffled in)
+
+
+class TTN_450t:
+    """Blood Plague"""
+
+    draw = _PlagueUnendingCheck(SELF)
+
+
+class TTN_450t2:
+    """Unholy Plague"""
+
+    draw = _PlagueUnendingCheck(SELF)
+
+
+class TTN_450t3:
+    """Frost Plague"""
+
+    draw = _PlagueUnendingCheck(SELF)
+
+
 ##
 # Minions
 
@@ -360,9 +399,7 @@ class _HelyaPlay(TargetedAction):
             plague = opp.card(plague_id)
             if len(opp.deck) < opp.max_deck_size:
                 plague.zone = Zone.DECK
-            ctrl.plagues_shuffled_into_enemy = (
-                getattr(ctrl, "plagues_shuffled_into_enemy", 0) + 1
-            )
+            ctrl.plagues_shuffled_into_enemy += 1
         opp.shuffle_deck()
         # Arm the "unending plagues" flag on the opponent: TTN_450t-family
         # cards' Draw triggers re-shuffle a copy on draw when this is True.

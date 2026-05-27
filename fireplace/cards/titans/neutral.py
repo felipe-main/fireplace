@@ -712,11 +712,13 @@ class TTN_924:
     """Razorscale"""
 
     # Cards can't cost less than (2).
-    # TODO: This global cost floor is not yet supported by the engine. The
-    # card.cost property clamps to max(0, ret); adding a per-game minimum
-    # requires either patching card.py or tracking a player.min_cost_floor
-    # attribute and enforcing it in cost computation.
-    pass
+    # Approximate via update aura: Refresh all hand cards to max(current, 2).
+    # Full implementation would require patching cost evaluation; this covers
+    # the common case of cheap cards being capped at (2).
+    update = Refresh(
+        FRIENDLY_HAND + ENEMY_HAND,
+        {GameTag.COST: lambda self, i: max(i, 2)},
+    )
 
 
 class TTN_931:

@@ -198,6 +198,12 @@ class Player(Entity, TargetableByAuras):
         # TITANS — Chained Guardian cost_mod. Bumped in _shuffle_one_plague
         # each time a Plague is shuffled into the opponent's deck.
         self.plagues_shuffled_into_enemy = 0
+        # TITANS — Starstrung Bow cost_mod. Bumped when a Secret triggers.
+        self.secrets_triggered_this_game = 0
+        # TITANS — Aqua Archivist / Tram Operator one-shot cost discounts.
+        # Consumed in Play.do when the next Elemental/Mech is played.
+        self._next_elemental_discount = 0
+        self._next_mech_cost_reduction = 0
         # MotLK per-turn cost-substitution flags. minions_cost_armor:
         # Anub'Rekhan. next_paladin_minion_costs_health: Blood Crusader.
         # next_concoction_costs_zero: Ghoulish Alchemist. All consumed

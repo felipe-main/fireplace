@@ -706,6 +706,16 @@ class Play(GameAction):
         ):
             _summon_colossal_limbs(card, player, card)
 
+        # TITANS — Aqua Archivist / Tram Operator: apply one-shot cost discounts
+        # BEFORE the battlecry fires so the card cannot consume its own discount.
+        if card.type == CardType.MINION:
+            if Race.ELEMENTAL in card.races and player._next_elemental_discount > 0:
+                player.used_mana = max(0, player.used_mana - player._next_elemental_discount)
+                player._next_elemental_discount = 0
+            if Race.MECHANICAL in card.races and player._next_mech_cost_reduction > 0:
+                player.used_mana = max(0, player.used_mana - player._next_mech_cost_reduction)
+                player._next_mech_cost_reduction = 0
+
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:
             if trigger_battlecry:
@@ -2189,6 +2199,8 @@ class Reveal(TargetedAction):
         if target.zone == Zone.SECRET and target.data.secret:
             self.broadcast(source, EventListener.ON, target)
             target.triggered_secret = True
+            # TITANS — Starstrung Bow: count friendly secrets that have triggered.
+            target.controller.secrets_triggered_this_game += 1
             target.zone = Zone.GRAVEYARD
             # Castle Nathria — Halkias's soul: if this secret was
             # marked, resummon Halkias when it triggers.
@@ -3064,6 +3076,8 @@ class ForgeCard(TargetedAction):
         source.game.queue_actions(source, [Morph(target, forged)])
         ctrl.cards_forged_this_game += 1
         source.game.manager.targeted_action(self, source, target)
+        # Broadcast AFTER event so Melted Maker can listen for Forge activations.
+        self.broadcast(source, EventListener.AFTER, forged)
 
 
 class Spellburst(TargetedAction):

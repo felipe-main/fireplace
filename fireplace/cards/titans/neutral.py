@@ -120,7 +120,7 @@ class _TramOperatorMechDiscount(TargetedAction):
 
     def do(self, source, target):
         ctrl = source.controller
-        ctrl._next_mech_cost_reduction = getattr(ctrl, "_next_mech_cost_reduction", 0) + 2
+        ctrl._next_mech_cost_reduction += 2
 
 
 class _RavenousKrakenStore(TargetedAction):
@@ -570,10 +570,8 @@ class TTN_729:
     """Melted Maker"""
 
     # After you Forge a card, get a copy of it.
-    # TODO: ForgeCard does not broadcast a listenable event. A full
-    # implementation would require wiring an event in ForgeCard.do and
-    # adding a listener here. For now this card has no effect.
-    pass
+    # ForgeCard.do broadcasts AFTER with the forged card as the event arg.
+    events = ForgeCard(FRIENDLY_HAND).after(Give(CONTROLLER, ForgeCard.TARGET))
 
 
 class TTN_731:

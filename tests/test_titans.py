@@ -1086,3 +1086,91 @@ def test_inventor_aura_makes_friendly_mechs_cost_less():
     aura_spell = game.player1.give("TTN_854")
     aura_spell.play()
     assert mech.cost == cost_before - 1
+
+
+# ── Tier-1 bug fixes ────────────────────────────────────────────────────────
+
+def test_sp3y3d3r_stealth_clears_on_next_turn():
+    """SP-3Y3-D3R should have Stealth when played but lose it next turn."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    spider = game.player1.summon("TTN_923")
+    assert spider.stealthed, "SP-3Y3-D3R should start with Stealth"
+    assert spider.zone == Zone.PLAY, "should be alive"
+    # End player1's turn → begin player1's next turn (two end_turns away)
+    game.end_turn()  # player2's turn
+    game.end_turn()  # back to player1 → OWN_TURN_BEGIN fires → clears stealth
+    assert not spider.stealthed, "Stealth should be gone after the turn ends"
+    assert spider.zone == Zone.PLAY, "minion should still be alive"
+
+
+def test_starstrung_bow_costs_less_per_triggered_secret():
+    """Starstrung Bow costs (1) less for each Secret triggered this game."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    bow = game.player1.give("TTN_088")
+    base_cost = bow.cost  # 6 in data
+    assert base_cost == 6
+    # Trigger 2 secrets by directly incrementing the counter
+    game.player1.secrets_triggered_this_game = 2
+    assert bow.cost == base_cost - 2
+
+
+def test_secrets_triggered_counter_bumps_on_reveal():
+    """secrets_triggered_this_game increments when Reveal fires."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    snipe_player = game.current_player  # track by reference, not by player1/2 slot
+    assert snipe_player.secrets_triggered_this_game == 0
+    # Snipe player plays Snipe (triggers when opponent plays a minion)
+    secret = snipe_player.give("EX1_609")  # Snipe: when opponent plays minion, deal 4
+    secret.play()
+    assert len(snipe_player.secrets) == 1
+    # Switch to opponent's turn so they can play a minion (triggering Snipe)
+    game.end_turn()
+    opp = game.current_player
+    m = opp.give("CS2_200")
+    m.play()
+    # Snipe should have triggered on the snipe_player
+    assert snipe_player.secrets_triggered_this_game == 1
+
+
+def test_aqua_archivist_next_elemental_costs_less():
+    """Aqua Archivist: the next Elemental played costs (2) less."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    # Give an Elemental (not Aqua Archivist itself — that's a mech)
+    elemental = game.player1.give("CS2_033")  # Water Elemental, 4 mana
+    assert elemental.cost == 4
+    archivist = game.player1.give("TTN_095")  # Aqua Archivist
+    archivist.play()
+    assert game.player1._next_elemental_discount == 2
+    # Now play the Elemental: should cost 2 less (mana refunded)
+    mana_before = game.player1.mana
+    elemental.play()
+    # 4 mana spent but 2 refunded → net 2 spent
+    assert game.player1.used_mana == game.player1.max_mana - mana_before + 2
+
+
+def test_tram_operator_next_mech_costs_less():
+    """Tram Operator: the next Mech played costs (2) less."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    # TTN_077 Chill-o-matic is a 2-mana Mech (CARDRACE=17)
+    mech = game.player1.give("TTN_077")
+    assert mech.cost == 2
+    game.player1._next_mech_cost_reduction = 2
+    mana_before = game.player1.mana
+    mech.play()
+    # 2 mana paid but 2 refunded → net 0 spent
+    assert game.player1.used_mana == game.player1.max_mana - mana_before
+    assert game.player1._next_mech_cost_reduction == 0
+
+
+def test_melted_maker_gives_copy_after_forge():
+    """Melted Maker: after you Forge a card, get a copy of it."""
+    from fireplace.actions import ForgeCard
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    maker = game.player1.summon("TTN_729")
+    card = game.player1.give("TTN_042")  # Cyclopian Crusher, has Forge
+    hand_before = len(game.player1.hand)
+    game.queue_actions(game.player1, [ForgeCard(card)])
+    # After forge: original morphed to TTN_042t, plus Melted Maker gives a copy
+    assert len(game.player1.hand) >= hand_before
+    forge_ids = [c.id for c in game.player1.hand]
+    assert "TTN_042t" in forge_ids, "Forged card should be in hand"

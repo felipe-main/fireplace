@@ -5,6 +5,15 @@ from ..utils import *
 # Custom actions
 
 
+class _ClearStealthAction(TargetedAction):
+    """Remove stealth from TARGET (used for SP-3Y3-D3R 'Stealth for 1 turn')."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target.stealthed = False
+
+
 class _GearShiftAction(TargetedAction):
     """Gear Shift (TTN_922) — Shuffle the two left-most cards in the
     controller's hand into their deck, then Draw 3.
@@ -170,7 +179,7 @@ class TTN_923:
     # Magnetic. Stealth for 1 turn.
     # Stealth is set in data; the "for 1 turn" part: remove stealth at
     # the start of the controller's next turn.
-    events = OWN_TURN_BEGIN.on(Unstealth(SELF), Destroy(SELF))
+    events = OWN_TURN_BEGIN.on(_ClearStealthAction(SELF))
 
     # TTN_923e is in data — no script needed beyond the turn-begin removal.
 

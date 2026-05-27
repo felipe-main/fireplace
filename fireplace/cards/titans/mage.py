@@ -104,9 +104,7 @@ class _AquaArchivistDiscount(TargetedAction):
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		target._next_elemental_discount = (
-			getattr(target, "_next_elemental_discount", 0) + 2
-		)
+		target._next_elemental_discount += 2
 
 
 ##
@@ -254,8 +252,6 @@ class TTN_095:
 	"""Aqua Archivist"""
 
 	# Battlecry: The next Elemental you play costs (2) less.
-	# TODO: No engine hook for "next elemental costs less" — _next_elemental_discount
-	# is set on the controller but not consumed by Play.do yet.
 	play = _AquaArchivistDiscount(CONTROLLER)
 
 

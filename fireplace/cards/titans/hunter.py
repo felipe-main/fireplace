@@ -226,10 +226,7 @@ class TTN_088:
     """Starstrung Bow"""
 
     # Costs (1) less for each friendly Secret that has triggered this game.
-    # TODO: secrets_triggered_this_game counter is not tracked in the engine;
-    # the cost reduction is not implemented. The weapon stats work via data.
-    # cost_mod = -Count(FRIENDLY + KILLED + SECRET)  # approximation below
-    pass
+    cost_mod = -Attr(CONTROLLER, "secrets_triggered_this_game")
 
 
 class TTN_302:

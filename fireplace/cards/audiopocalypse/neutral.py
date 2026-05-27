@@ -64,16 +64,19 @@ class _MagathaDrawAndShare(TargetedAction):
 
 
 class _RockDuelTick(TargetedAction):
-	"""Elite Tauren Champion's Rock Duel — at each OWN_TURN_END, if
-	the turn-ending player did NOT spend all their mana, deal 8 damage
-	to them. SOURCE = the per-player Rock-Duel enchant; TARGET = the
-	player whose turn just ended."""
+	"""Elite Tauren Champion's Rock Duel — at TURN_END, if the
+	turn-ending player did NOT spend all their mana, deal 8 damage to
+	them. The turn-ending player is game.current_player at the moment
+	EndTurn fires (before begin_turn swaps it)."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		if target.used_mana < target.max_mana:
-			source.game.cheat_action(source, [Hit(target.hero, 8)])
+		turn_player = source.game.current_player
+		if turn_player is None:
+			return
+		if turn_player.used_mana < turn_player.max_mana:
+			source.game.cheat_action(source, [Hit(turn_player.hero, 8)])
 
 
 ##
@@ -139,13 +142,10 @@ class JAM_037:
 	"""Elite Tauren Champion"""
 
 	# Finale: Start a ROCK DUEL! Players must spend all their Mana each
-	# turn or else they take 8 damage. Implemented by stamping the
-	# Rock-Duel enchant on both players (JAM_037e) — its events fire on
-	# EndTurn for either player and apply the 8-damage penalty.
-	play = FINALE & (
-		Buff(CONTROLLER, "JAM_037e"),
-		Buff(OPPONENT, "JAM_037e"),
-	)
+	# turn or else they take 8 damage. Stamp a SINGLE Rock-Duel enchant
+	# on the controller; it listens for TURN_END (any player) and
+	# damages whoever ended their turn with unspent mana.
+	play = FINALE & Buff(CONTROLLER, "JAM_037e")
 
 
 ##
@@ -166,11 +166,12 @@ class JAM_034e:
 
 @custom_card
 class JAM_037e:
-	# Elite Tauren Champion's Rock Duel — at OWN_TURN_END, the player
-	# this enchant rides on takes 8 damage if they ended their turn
-	# with unspent mana. Persists for the rest of the game.
+	# Elite Tauren Champion's Rock Duel — single enchant on the
+	# original ETC controller. Fires on TURN_END (either player); the
+	# turn-ending Player is the EndTurn target, and the action damages
+	# that player's hero if they had leftover mana.
 	tags = {
 		GameTag.CARDNAME: "ROCK DUEL!",
 		GameTag.CARDTYPE: CardType.ENCHANTMENT,
 	}
-	events = OWN_TURN_END.on(_RockDuelTick(CONTROLLER))
+	events = TURN_END.on(_RockDuelTick(SELF))

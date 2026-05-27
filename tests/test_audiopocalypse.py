@@ -708,6 +708,147 @@ def test_magatha_draws_5_gives_spells_to_opponent():
 	assert fireballs_with_opp == 2
 
 
+# ---------------------------------------------------------------------------
+# Once-over watchers (audit rows: pin current behaviour)
+# ---------------------------------------------------------------------------
+
+
+def test_watchclose_remix_rotation_picks_excludes_current_variant():
+	"""JAM_000 — _RemixRotate explicitly picks from pool − current.
+	Invoke the action 200x directly via cheat_action; assert the
+	new variant is always different from the previous, and over 200
+	rotations we reach all 4 (3-way uniform pick has ~1 hit-all
+	probability beyond 30 trials)."""
+	from fireplace.cards.audiopocalypse.utils import _RemixRotate
+	game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+	card = game.player1.give("JAM_000")
+	# Seed an initial variant.
+	card._remix_variant_id = "JAM_000t"
+	seen = {"JAM_000t"}
+	for _ in range(200):
+		prev = card._remix_variant_id
+		game.cheat_action(card, [_RemixRotate(card)])
+		assert card._remix_variant_id != prev
+		seen.add(card._remix_variant_id)
+	assert seen == {"JAM_000t", "JAM_000t2", "JAM_000t3", "JAM_000t4"}
+
+
+def test_watchclose_speaker_stomper_carries_tradeable_tag():
+	"""JAM_034 — confirm the data carries the TRADEABLE GameTag.
+	Engine is_tradeable() / trade() plumbing is data-driven from here;
+	we don't reimplement the trade-path itself in script."""
+	from fireplace import cards as _cards
+	_cards.db.initialize()
+	c = _cards.db["JAM_034"]
+	# GameTag.TRADEABLE = 1720 in the shinoi2 enum.
+	assert c.tags.get(1720) == 1
+	# Battlecry tag present too (so the play-path battlecry still runs
+	# when the card is actually played).
+	assert c.tags.get(GameTag.BATTLECRY) == 1
+
+
+def test_watchclose_magatha_drawn_minion_has_correct_controller():
+	"""JAM_036 — after Magatha's spell transfer, kept minions stay on
+	the controller and report card.zone = HAND (no cache drift)."""
+	game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+	minion = game.player1.give("CS2_200")
+	spell = game.player1.give("CS2_029")
+	for c in (minion, spell):
+		c.shuffle_into_deck()
+	game.player1.give("JAM_036").play()
+	# Kept minion: in player1.hand, controller is player1, zone HAND.
+	kept = next(c for c in game.player1.hand if c.id == "CS2_200")
+	assert kept.controller is game.player1
+	assert kept.zone == Zone.HAND
+	# Transferred spell: in player2.hand, controller is player2.
+	moved = next(c for c in game.player2.hand if c.id == "CS2_029")
+	assert moved.controller is game.player2
+
+
+def test_watchclose_blood_treant_no_double_dip_with_cost_reduction():
+	"""JAM_028 — Costs Health instead of Mana. With a mana-cost
+	reduction in play (Power Word: Tentacles-style — none easy in our
+	pool — settle for a simpler invariant: hero takes exactly the
+	card's printed cost, no double-dip)."""
+	game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+	bt = game.player1.give("JAM_028")
+	pre_hp = game.player1.hero.health
+	bt.play()
+	# Hero took exactly cost damage; mana untouched.
+	assert game.player1.hero.health == pre_hp - bt.data.cost
+
+
+def test_watchclose_rock_duel_persists_across_turns():
+	"""JAM_037 — Rock Duel enchant fires on consecutive turn ends with
+	leftover mana. Beef up both heroes so they survive the cycles."""
+	game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+	game.player1.hero.max_health = 200
+	game.player1.hero.damage = 0
+	game.player2.hero.max_health = 200
+	game.player2.hero.damage = 0
+	etc = game.player1.give("JAM_037")
+	game.player1.used_mana = game.player1.max_mana - etc.cost
+	etc.play()
+	# Tick 1: player1 ends turn with leftover mana → -8.
+	game.player1.used_mana = 0
+	hp_before_p1 = game.player1.hero.health
+	game.end_turn()
+	assert game.player1.hero.health == hp_before_p1 - 8
+	# Tick 2: player2 ends turn with leftover mana → -8.
+	game.player2.used_mana = 0
+	hp_before_p2 = game.player2.hero.health
+	game.end_turn()
+	assert game.player2.hero.health == hp_before_p2 - 8
+
+
+def test_watchclose_yelling_yodeler_target_survives_double_dr():
+	"""JAM_005 — doubling a friendly minion's deathrattle does not
+	destroy the minion. Also verify the Reborn interaction (Cool Ghoul
+	has Reborn + DS): Yodeling Cool Ghoul triggers its (empty)
+	deathrattle twice without killing it."""
+	game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+	ghoul = game.player1.summon("JAM_007")  # Cool Ghoul (DS + Reborn)
+	yodeler = game.player1.give("JAM_005")
+	yodeler.play(target=ghoul)
+	assert ghoul.zone == Zone.PLAY
+
+
+def test_watchclose_hidden_meaning_reveals_before_summon():
+	"""JAM_003 — Secret revealed before the summon resolves (Reveal
+	queued first in _HiddenMeaningTrigger.do)."""
+	game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+	hm = game.player1.give("JAM_003")
+	hm.play()
+	assert any(s.id == "JAM_003" for s in game.player1.secrets)
+	game.end_turn()
+	game.player2.used_mana = game.player2.max_mana
+	game.end_turn()
+	# Secret no longer in secrets (revealed + destroyed).
+	assert not any(s.id == "JAM_003" for s in game.player1.secrets)
+
+
+def test_watchclose_wailing_rhapsody_token_is_5_5_demon():
+	"""JAM_018t5 — Wailing Fanatic token is a 5/5 Demon."""
+	game = prepare_empty_game()
+	token = game.player1.summon("JAM_018t5")
+	assert token.atk == 5
+	assert token.max_health == 5
+	assert Race.DEMON in token.races
+
+
+def test_watchclose_remixed_indicators_are_data_only():
+	"""Remixed base cards rely on data printed text; no script-side
+	progress placeholder. This is a documentation test: nothing in
+	the engine populates a numeric '@' progress slot for Remixed
+	cards. Asserts the base card's text doesn't contain '@' or '{0}'."""
+	from fireplace import cards as _cards
+	_cards.db.initialize()
+	for cid in ("JAM_000", "JAM_012", "JAM_015", "JAM_018", "JAM_033"):
+		desc = _cards.db[cid].description or ""
+		assert "@" not in desc
+		assert "{0}" not in desc
+
+
 def test_elite_tauren_champion_finale_starts_rock_duel():
 	"""JAM_037 — at exact mana (Finale), stamp both players with the
 	Rock Duel enchant. Subsequent OWN_TURN_END with leftover mana

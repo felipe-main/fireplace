@@ -114,37 +114,77 @@ class _DirgeOfDespairSummonDemon(TargetedAction):
 		source.game.cheat_action(source, [Summon(ctrl, pick.id)])
 
 
-class _DemonicDynamicsPlay(TargetedAction):
-	"""Demonic Dynamics — Discover 2 Demons sequentially, then (Finale)
-	stamp +1/+2 on the freshly-discovered copies. The Discovers go to
-	the controller; picks are stashed on the source spell so the
-	Finale callback can buff them."""
+class _DemonicDynamicsTrackPick(TargetedAction):
+	"""Demonic Dynamics — record the just-given Discover entity on the
+	source spell so the Finale callback can buff exactly those two
+	cards (no positional best-effort proxy)."""
+
+	TARGET = ActionArg()
+	CARD = ActionArg()
+
+	def do(self, source, target, card):
+		if isinstance(card, list):
+			card = card[0] if card else None
+		if card is None:
+			return
+		picks = getattr(source, "_demonic_dynamics_picks", None)
+		if picks is None:
+			picks = []
+			source._demonic_dynamics_picks = picks
+		picks.append(card)
+
+
+class _DemonicDynamicsBuffPicks(TargetedAction):
+	"""Demonic Dynamics — Finale: buff exactly the two cards previously
+	stashed on the source via _DemonicDynamicsTrackPick. Skips cards
+	that have left the hand between Discover-resolve and Finale-buff
+	(unusual edge case)."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		ctrl = source.controller
-		# Queue two sequential Discovers of Demons. Each goes through
-		# the standard DISCOVER(...) wrapper which sets player.choice
-		# and on-pick gives the card to the controller's hand.
-		source.game.cheat_action(
-			source, [DISCOVER(RandomMinion(race=Race.DEMON))]
-		)
-		source.game.cheat_action(
-			source, [DISCOVER(RandomMinion(race=Race.DEMON))]
-		)
-		# Finale: walk the hand from the right and buff the two most
-		# recently added Demons +1/+2 (best-effort proxy for "the
-		# freshly-picked cards").
 		if not source.play_finale:
 			return
-		demons_buffed = 0
-		for c in reversed(list(ctrl.hand)):
-			if demons_buffed >= 2:
-				break
-			if c.type == CardType.MINION and Race.DEMON in c.races:
-				source.game.cheat_action(source, [Buff(c, "ETC_083e")])
-				demons_buffed += 1
+		picks = getattr(source, "_demonic_dynamics_picks", []) or []
+		from hearthstone.enums import Zone
+		for c in picks:
+			if c is None:
+				continue
+			if c.zone != Zone.HAND:
+				continue
+			source.game.cheat_action(source, [Buff(c, "ETC_083e")])
+
+
+class _DemonicDynamicsPlay(TargetedAction):
+	"""Demonic Dynamics — Discover 2 Demons sequentially; track the two
+	picked entities by id and (Finale) +1/+2 exactly those two cards.
+	The two Discovers MUST nest via .then() — flat tuples both grab
+	player.choice and only the second one survives (CLAUDE.md choice
+	sequencing note)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		# Reset the per-cast pick list (the spell may be re-played via
+		# a copy / Renew mechanic).
+		source._demonic_dynamics_picks = []
+		picker = RandomMinion(race=Race.DEMON)
+		# Outer Discover → Give → track pick → inner Discover → Give →
+		# track pick → buff (Finale gate inside _DemonicDynamicsBuffPicks).
+		action = Discover(source.controller, picker).then(
+			Give(source.controller, Discover.CARD).then(
+				_DemonicDynamicsTrackPick(source.controller, Give.CARD).then(
+					Discover(source.controller, picker).then(
+						Give(source.controller, Discover.CARD).then(
+							_DemonicDynamicsTrackPick(source.controller, Give.CARD).then(
+								_DemonicDynamicsBuffPicks(SELF),
+							),
+						),
+					),
+				),
+			),
+		)
+		source.game.queue_actions(source, [action])
 
 
 _MOVEMENTS = (
@@ -346,6 +386,11 @@ class ETC_068e:
 	tags = {}
 
 
+class ETC_083e:
+	# In-data buff "Demonic Dynamics" — +1/+2 not parsed from data.
+	tags = {GameTag.ATK: 1, GameTag.HEALTH: 2}
+
+
 ##
 # Tokens — Movement of Sloth's 6/6 Demon summon
 
@@ -496,24 +541,15 @@ class ETC_085t8:
 
 
 class _MovementOfSlothSummon(TargetedAction):
-	"""Movement of Sloth — summon a 6/6 Taunt Reborn Demon. No printed
-	demon token id is available in current data; spawn a generic Imp
-	(EX1_598) and stat-stamp it to 6/6 with Taunt + Reborn."""
+	"""Movement of Sloth — summon a 6/6 Taunt Reborn Demon. The printed
+	token is ETC_t8t (Bored Doomlord): 6/6 Demon with Taunt + Reborn
+	directly from data — no stat stamping or marker enchant needed."""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
 		ctrl = source.controller
-		source.game.cheat_action(
-			source,
-			[SummonCustomMinion(ctrl, "EX1_598", 6, 6, 6)],
-		)
-		if ctrl.field:
-			demon = ctrl.field[-1]
-			source.game.cheat_action(
-				source,
-				[Buff(demon, "ETC_085t8e")],
-			)
+		source.game.cheat_action(source, [Summon(ctrl, "ETC_t8t")])
 
 
 ETC_085t8.play = _MovementOfSlothSummon(CONTROLLER)

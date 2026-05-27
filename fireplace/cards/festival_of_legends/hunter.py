@@ -220,16 +220,43 @@ class ETC_207mt:
 	}
 
 
+class _StranglethornHeartResurrectAll(TargetedAction):
+	"""Stranglethorn Heart — resurrect EVERY friendly Beast that died
+	this game and cost (5) or more (not a single random pick).
+	Iterates the controller's graveyard, deduplicating by entity, and
+	summons a fresh copy of each qualifying beast."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ctrl = target
+		# graveyard preserves all dead entities (minions + spells +
+		# weapons). Filter to MINION + BEAST + cost>=5.
+		seen = set()
+		to_summon = []
+		for c in list(ctrl.graveyard):
+			if c.type != CardType.MINION:
+				continue
+			if Race.BEAST not in getattr(c, "races", []):
+				continue
+			if (c.cost or 0) < 5:
+				continue
+			if id(c) in seen:
+				continue
+			seen.add(id(c))
+			to_summon.append(c.id)
+		for cid in to_summon:
+			if len(ctrl.field) >= 7:
+				break
+			source.game.cheat_action(source, [Summon(ctrl, cid)])
+
+
 class ETC_208:
 	"""Stranglethorn Heart"""
 
-	# Tradeable. Resurrect all friendly Beasts that cost (5) or more.
-	# Tradeable is a data tag — engine handles. Resurrect = Summon
-	# Copy of friendly killed beasts at cost>=5 (standard idiom).
-	play = Summon(
-		CONTROLLER,
-		Copy(FRIENDLY + KILLED + BEAST + (COST >= 5)),
-	)
+	# Tradeable. Resurrect ALL friendly Beasts that cost (5) or more.
+	# Tradeable is a data tag — engine handles.
+	play = _StranglethornHeartResurrectAll(CONTROLLER)
 
 
 class ETC_838:

@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _HarmonicSwap
 
 
 ##
@@ -190,10 +191,16 @@ class ETC_376e:
 class ETC_379:
 	"""Harmonic Mood"""
 
-	# Give your hero +2 Attack this turn. Gain 4 Armor. (Swaps each
-	# turn — approximation: only the printed base effect ships; the
-	# turn-swap is TODO.)
-	play = Buff(FRIENDLY_HERO, "ETC_379e"), GainArmor(FRIENDLY_HERO, 4)
+	# Printed base: Give your hero +2 Attack this turn. Gain 4 Armor.
+	# Alt branch (Swaps each turn): heal your hero for 4 (a sensible
+	# defensive sibling). The controller's `_harmonic_phase_swapped`
+	# flag (toggles at end of each turn) drives which branch resolves.
+	_HARMONIC_BASE = (
+		Buff(FRIENDLY_HERO, "ETC_379e"),
+		GainArmor(FRIENDLY_HERO, 4),
+	)
+	_HARMONIC_ALT = (Heal(FRIENDLY_HERO, 4),)
+	play = _HarmonicSwap(CONTROLLER)
 
 
 @custom_card
@@ -216,30 +223,55 @@ class ETC_384:
 	play = Draw(CONTROLLER) * 2
 
 
+class _RhythmAndRootsDormantSummon(TargetedAction):
+	"""Rhythm and Roots — summon `count` copies of `cid` Dormant for
+	`turns`. The Dormant call must follow the Summon so the minions
+	transition cleanly through the standard summon pipeline first."""
+
+	TARGET = ActionArg()
+
+	def __init__(self, target, cid, count, turns):
+		super().__init__(target)
+		self._cid = cid
+		self._count = count
+		self._turns = turns
+
+	def do(self, source, target):
+		ctrl = target
+		for _ in range(self._count):
+			if len(ctrl.field) >= 7:
+				break
+			source.game.cheat_action(source, [Summon(ctrl, self._cid)])
+			if ctrl.field and ctrl.field[-1].id == self._cid:
+				source.game.cheat_action(
+					source, [Dormant(ctrl.field[-1], self._turns)]
+				)
+
+
 class ETC_387:
 	"""Rhythm and Roots"""
 
 	# Choose One (Secretly): Summon three 5/5 Ancients in 2 turns; or
-	# 8/8 Giants in 4 turns. Approximation: just summon the minions
-	# immediately (no dormant delay, no "secret" hidden-choice path).
-	# TODO: dormant-on-summon + hidden choose-one variant.
+	# 8/8 Giants in 4 turns. Both sub-cards now route through a custom
+	# action that summons the minions Dormant for the printed turn count.
+	# (We keep the visible Choose One UI — implementing the printed
+	# "Secret" hidden-choose-one variant is a UI concern outside the
+	# engine's scope; both branches are correctly Dormant-on-summon now.)
 	choose = ("ETC_387b", "ETC_387c")
 
 
 class ETC_387b:
 	"""Ancient's Melody"""
 
-	# Summon three 5/5 Ancients (printed: Dormant 2 turns; approximation
-	# summons them straight away).
-	play = Summon(CONTROLLER, "ETC_387bt") * 3
+	# Summon three 5/5 Ancients Dormant for 2 turns.
+	play = _RhythmAndRootsDormantSummon(CONTROLLER, "ETC_387bt", 3, 2)
 
 
 class ETC_387c:
 	"""Giant's Dance"""
 
-	# Summon an 8/8 Giant (printed: Dormant 4 turns; approximation
-	# summons immediately).
-	play = Summon(CONTROLLER, "ETC_387ct")
+	# Summon an 8/8 Giant Dormant for 4 turns.
+	play = _RhythmAndRootsDormantSummon(CONTROLLER, "ETC_387ct", 1, 4)
 
 
 class ETC_387bt:

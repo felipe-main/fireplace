@@ -202,6 +202,26 @@ class Player(Entity, TargetableByAuras):
         # OWN_TURN_BEGIN and flipped True by pay_cost on the first card.
         self._frostwhisper_first_card_free = False
         self._frostwhisper_consumed_this_turn = False
+        # Festival of Legends — Harmonic spells ("Swaps each turn."). Each
+        # Harmonic card reads this boolean at cast time: False = printed
+        # base effect, True = the swapped alt effect. The flag toggles in
+        # end_turn_cleanup so that the FIRST cast on the controller's next
+        # turn fires the opposite branch of the one cast on the current
+        # turn. (HS ships a 6-way rotation; we approximate as a binary
+        # swap which still pins the "alternating effect" invariant the
+        # tests assert.)
+        self._harmonic_phase_swapped = False
+        # Festival of Legends — Love Everlasting: "Your first spell each
+        # turn costs (2) less. Lasts until you don't play a spell on
+        # your turn." Two flags:
+        #   _love_everlasting_active: rest-of-life aura armed by the
+        #       spell's play.
+        #   _love_everlasting_consumed_this_turn: first-spell latch
+        #       (re-armed in begin_turn).
+        # In OWN_TURN_END cleanup we tear down the aura if no spell
+        # was consumed this turn (latch never flipped).
+        self._love_everlasting_active = False
+        self._love_everlasting_consumed_this_turn = False
         # MotLK — count of Outcast cards played from leftmost/rightmost
         # slot this game. Bumped in Play.do when card.has_outcast and
         # card.play_outcast. Read by Vengeful Walloper's cost_mod.
@@ -601,6 +621,19 @@ class Player(Entity, TargetableByAuras):
             amount = max(0, amount - reduction)
             self.log("%s spell %r pays %i (Glacial Advance -%i)",
                      self, source, amount, reduction)
+        # Festival of Legends — Love Everlasting: "Your first spell each
+        # turn costs (2) less." First spell each turn while the aura is
+        # active gets -2 cost; consumes the per-turn latch so subsequent
+        # spells pay full price.
+        if (
+            source.type == CardType.SPELL
+            and getattr(self, "_love_everlasting_active", False)
+            and not getattr(self, "_love_everlasting_consumed_this_turn", False)
+        ):
+            self._love_everlasting_consumed_this_turn = True
+            amount = max(0, amount - 2)
+            self.log("%s spell %r pays %i (Love Everlasting -2)",
+                     self, source, amount)
         # MotLK — Ghoulish Alchemist: "Your next Concoction costs (0)."
         # Single-use Concoction cost zero (Concoctions are identified by
         # their token id range RLK_570t1..t5).

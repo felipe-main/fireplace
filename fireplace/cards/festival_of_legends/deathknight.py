@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _HarmonicSwap
 
 from hearthstone.enums import Zone
 
@@ -9,9 +10,9 @@ from hearthstone.enums import Zone
 
 class _BoneshredderStealDeathrattle(TargetedAction):
     """Boneshredder — pay 5 corpses, pick a random friendly minion that
-    died this game and had a Deathrattle, and graft its Deathrattle onto
-    Boneshredder. Approximation: copy the dead minion's `additional_deathrattles`
-    + base deathrattle action set."""
+    died this game and had a Deathrattle, then both TRIGGER the picked
+    deathrattle now AND graft it onto Boneshredder so it fires again on
+    Boneshredder's own death (printed text: "trigger AND gain")."""
 
     TARGET = ActionArg()
 
@@ -40,17 +41,31 @@ class _BoneshredderStealDeathrattle(TargetedAction):
         if not candidates:
             return
         pick = source.game.random.choice(candidates)
-        # Graft the picked minion's deathrattle actions onto Boneshredder
-        # via additional_deathrattles. Read directly from the data card's
-        # merged scripts (PlayableCard instances don't expose `.scripts`).
-        scripts = getattr(pick.data, "deathrattle", None)
+        # Collect the deathrattle action(s) from the picked minion. The
+        # actions live on `data.scripts.deathrattle` (a tuple of
+        # TargetedActions); `data.deathrattle` is just the boolean tag.
+        scripts = getattr(getattr(pick.data, "scripts", None), "deathrattle", ())
+        dr_actions = []
         if scripts:
             if not isinstance(scripts, (list, tuple)):
                 scripts = (scripts,)
-            for d in scripts:
-                source.additional_deathrattles.append(d)
-        for d in list(pick.additional_deathrattles):
-            source.additional_deathrattles.append(d)
+            dr_actions.extend(scripts)
+        dr_actions.extend(list(pick.additional_deathrattles))
+        if not dr_actions:
+            return
+        # FIRE the picked deathrattle right now (source = Boneshredder
+        # so the effect originates from Boneshredder on the board).
+        # Then graft a copy onto Boneshredder so subsequent death also
+        # runs it (set has_deathrattle so the deathrattle pipeline
+        # actually walks the additional_deathrattles list).
+        source.game.cheat_action(source, list(dr_actions))
+        # `additional_deathrattles` entries are passed to queue_actions
+        # as a single object each — the engine expects each entry to
+        # already be an iterable of actions. Wrap each leaf action in
+        # a 1-tuple so iteration walks the actions cleanly.
+        for d in dr_actions:
+            source.additional_deathrattles.append((d,))
+        source.has_deathrattle = True
 
 
 class _ScreamingBansheeHeal(TargetedAction):
@@ -114,6 +129,19 @@ class _HarmonicMetalBuff(TargetedAction):
             source.game.cheat_action(source, [Buff(m, "ETC_427e")])
 
 
+class _HarmonicMetalAlt(TargetedAction):
+    """Harmonic Metal — alt branch (Swaps each turn): +1/+1 to every
+    minion in the controller's hand instead of +2/+2 to 4 random ones."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        for m in list(ctrl.hand):
+            if m.type == CardType.MINION:
+                source.game.cheat_action(source, [Buff(m, "ETC_427e_alt")])
+
+
 class _DeathGrowlSpread(TargetedAction):
     """Death Growl — copy the chosen minion's Deathrattle onto its
     left/right neighbours."""
@@ -136,8 +164,10 @@ class _DeathGrowlSpread(TargetedAction):
         # script class via `target.data` (the merged CardDB entry), whose
         # `.deathrattle` attr is the (already-tuple-wrapped) action list.
         dr_set = []
-        if target.has_deathrattle and getattr(target.data, "deathrattle", None):
-            scripts = target.data.deathrattle
+        # data.deathrattle is just the bool tag — actions live on
+        # data.scripts.deathrattle (tuple of TargetedActions).
+        scripts = getattr(getattr(target.data, "scripts", None), "deathrattle", ())
+        if target.has_deathrattle and scripts:
             if not isinstance(scripts, (list, tuple)):
                 scripts = (scripts,)
             for d in scripts:
@@ -148,7 +178,8 @@ class _DeathGrowlSpread(TargetedAction):
             return
         for n in neighbours:
             for d in dr_set:
-                n.additional_deathrattles.append(d)
+                n.additional_deathrattles.append((d,))
+            n.has_deathrattle = True
 
 
 class _ArcaniteRipperDeathrattle(TargetedAction):
@@ -209,13 +240,23 @@ class _HardcoreCultistFinale(TargetedAction):
 
 
 class _MoshPitGiveReborn(TargetedAction):
-    """Mosh Pit (Location) — spend 3 Corpses, give a friendly minion Reborn."""
+    """Mosh Pit (Location) — spend 3 Corpses, give a friendly minion
+    Reborn. Refuses activation if the controller has < 3 corpses (no
+    cooldown burn, no half-effect). The location itself shouldn't be
+    activatable in that case — but in case the engine routed an
+    activation through, refund the cooldown so the next turn it can
+    fire normally."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
         if ctrl.corpses < 3:
+            # Refund: reset the location's cooldown / used flag so the
+            # activation didn't waste a turn. Locations expose a
+            # `cooldown` attr (turns until next activation).
+            if hasattr(source, "cooldown"):
+                source.cooldown = 0
             return
         ctrl.corpses -= 3
         ctrl.corpses_spent_this_game += 3
@@ -358,11 +399,13 @@ class ETC_424:
     play = _DeathGrowlSpread(TARGET)
 
 
-# Give 4 random minions in your hand +2/+2.
+# Give 4 random minions in your hand +2/+2. (Swaps each turn.)
 class ETC_427:
     """Harmonic Metal"""
 
-    play = _HarmonicMetalBuff(CONTROLLER)
+    _HARMONIC_BASE = (_HarmonicMetalBuff(CONTROLLER),)
+    _HARMONIC_ALT = (_HarmonicMetalAlt(CONTROLLER),)
+    play = _HarmonicSwap(CONTROLLER)
 
 
 ##
@@ -425,6 +468,17 @@ class ETC_423te:
 class ETC_427e:
     # In-data buff "Harmonic Presence" — +2/+2 not parsed from data.
     tags = {GameTag.ATK: 2, GameTag.HEALTH: 2}
+
+
+@custom_card
+class ETC_427e_alt:
+    # +1/+1 buff used by Harmonic Metal's alt branch.
+    tags = {
+        GameTag.CARDNAME: "Harmonic Presence",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 1,
+        GameTag.HEALTH: 1,
+    }
 
 
 class ETC_424e:

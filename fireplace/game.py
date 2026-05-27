@@ -382,6 +382,27 @@ class BaseGame(Entity):
         # death-window begins now and accumulates through the opponent's
         # turn + their own next turn (until their next OWN_TURN_END).
         self.current_player._undead_deaths_in_window = []
+        # Festival of Legends — toggle the controller's Harmonic phase so
+        # the next Harmonic spell they cast fires the alt branch.
+        self.current_player._harmonic_phase_swapped = (
+            not self.current_player._harmonic_phase_swapped
+        )
+        # Festival of Legends — Love Everlasting expiry. If the latch
+        # never flipped this turn the player didn't cast a spell, so
+        # the aura tears down (printed text: "Lasts until you don't
+        # play a spell on your turn.").
+        if (
+            getattr(self.current_player, "_love_everlasting_active", False)
+            and not getattr(
+                self.current_player,
+                "_love_everlasting_consumed_this_turn",
+                False,
+            )
+        ):
+            self.current_player._love_everlasting_active = False
+        # Re-arm the per-turn latch for the next turn (consumed flag
+        # resets so the FIRST spell next turn gets the discount).
+        self.current_player._love_everlasting_consumed_this_turn = False
         # MotLK per-turn cost-substitution flags clear at OWN_TURN_END:
         # Glacial Advance (next spell -2), Anub'Rekhan (minions cost
         # armor), Blood Crusader (next paladin minion costs health),

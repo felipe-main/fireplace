@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _HarmonicSwap
 
 
 ##
@@ -178,14 +179,19 @@ class ETC_079:
 class ETC_717:
 	"""Harmonic Hip Hop"""
 
-	# Deal $1 damage. Give your weapon +3 Attack.
+	# Printed base: Deal $1 damage. Give your weapon +3 Attack.
+	# Alt branch (Swaps each turn): deal $2 damage to the target instead
+	# (no weapon buff). Drives off the controller's
+	# `_harmonic_phase_swapped` flag.
 	requirements = {
 		PlayReq.REQ_TARGET_TO_PLAY: 0,
 	}
-	play = (
+	_HARMONIC_BASE = (
 		Hit(TARGET, 1),
 		Buff(FRIENDLY_WEAPON, "ETC_717e"),
 	)
+	_HARMONIC_ALT = (Hit(TARGET, 2),)
+	play = _HarmonicSwap(TARGET)
 
 
 ##

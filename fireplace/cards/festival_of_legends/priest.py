@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _HarmonicSwap
 
 
 ##
@@ -100,35 +101,82 @@ class _PowerChordCopyAndMaybeBuff(TargetedAction):
 			)
 
 
+def _fight_over_me_resolve(source, a, b):
+	"""Resolve the Fight Over Me strike between two enemy minions A
+	and B. Simultaneous-strike: both deal their atk to each other,
+	then a copy of each casualty lands in the controller's hand."""
+	from ...dsl.copy import ExactCopy
+	from hearthstone.enums import Zone
+	if a is None or b is None or a is b:
+		return
+	t_atk = a.atk
+	m_atk = b.atk
+	source.game.cheat_action(
+		source, [Hit(a, m_atk), Hit(b, t_atk)]
+	)
+	for c in (a, b):
+		if c is None:
+			continue
+		if c.zone == Zone.GRAVEYARD or getattr(c, "dead", False):
+			copy = ExactCopy(c).copy(source, c)
+			copy.controller = source.controller
+			source.game.cheat_action(
+				source, [Give(source.controller, copy)]
+			)
+
+
+class _FightOverMePickB:
+	"""Lightweight pick-an-entity choice opened on the controller.
+	Exposes the same `.cards` / `.choose(card)` interface as the
+	engine's GenericChoice so the soak's choice-resolver loop
+	(`player.choice.choose(random.choice(player.choice.cards))`) can
+	drive it without modification. `choose(card)` fires the resolver
+	against the stashed A and the just-picked B."""
+
+	type = "ENTITY_CHOICE"
+	source = None
+	player = None
+	min_count = 1
+	max_count = 1
+	cards = ()
+
+	def __init__(self, source, player, cards):
+		self.source = source
+		self.player = player
+		self.cards = list(cards)
+
+	def choose(self, card):
+		if card not in self.cards:
+			raise ValueError("not a valid pick")
+		self.player.choice = None
+		a = getattr(self.source, "_fightovermeA", None)
+		_fight_over_me_resolve(self.source, a, card)
+
+
 class _FightOverMeAction(TargetedAction):
-	"""Fight Over Me — TARGET is a chosen enemy minion. Pick a random
-	other enemy minion as the second combatant; both deal their attack
-	to each other simultaneously. Add a copy of any combatant that dies
-	to the controller's hand."""
+	"""Fight Over Me — TARGET is the first chosen enemy minion.
+	Open a pick-an-entity choice over the OTHER enemy minions so the
+	controller picks the second combatant. Resolution happens in
+	`choose()` on _FightOverMePickB. (The prior approximation picked
+	the second combatant at random — printed text says "Choose two".)"""
 
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		from ...dsl.copy import ExactCopy
-		from hearthstone.enums import Zone
 		opp = source.controller.opponent
 		others = [m for m in opp.field if m is not target]
 		if not others:
 			return
-		mate = source.game.random.choice(others)
-		combatants = [target, mate]
-		t_atk = target.atk
-		m_atk = mate.atk
-		source.game.cheat_action(
-			source, [Hit(target, m_atk), Hit(mate, t_atk)]
+		source._fightovermeA = target
+		pre_existing_B = getattr(source, "_fightovermeB", None)
+		if pre_existing_B is not None and pre_existing_B in others:
+			# Test-injected pre-pick: skip the choice UI.
+			source._fightovermeB = None
+			_fight_over_me_resolve(source, target, pre_existing_B)
+			return
+		source.controller.choice = _FightOverMePickB(
+			source, source.controller, others
 		)
-		for c in combatants:
-			if c.zone == Zone.GRAVEYARD or getattr(c, "dead", False):
-				copy = ExactCopy(c).copy(source, c)
-				copy.controller = source.controller
-				source.game.cheat_action(
-					source, [Give(source.controller, copy)]
-				)
 
 
 ##
@@ -152,8 +200,15 @@ class ETC_305:
 class ETC_314:
 	"""Harmonic Pop"""
 
-	# Deal $3 damage to all minions. Summon a 6/6 Popstar.
-	play = Hit(ALL_MINIONS, 3), Summon(CONTROLLER, "ETC_314t_popstar")
+	# Printed base: Deal $3 damage to all minions. Summon a 6/6 Popstar.
+	# Alt branch (Swaps each turn): deal $6 damage to all enemy minions
+	# instead (no Popstar summon, no friendly minion damage).
+	_HARMONIC_BASE = (
+		Hit(ALL_MINIONS, 3),
+		Summon(CONTROLLER, "ETC_314t_popstar"),
+	)
+	_HARMONIC_ALT = (Hit(ENEMY_MINIONS, 6),)
+	play = _HarmonicSwap(CONTROLLER)
 
 
 @custom_card

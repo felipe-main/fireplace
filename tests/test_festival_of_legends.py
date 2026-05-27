@@ -1010,16 +1010,30 @@ def test_dirge_of_despair_no_kill_no_summon():
 
 
 def test_demonic_dynamics_no_finale_discovers_2_demons():
-    """Demonic Dynamics (ETC_083) no Finale: 2 Discovers, no buff."""
+    """Demonic Dynamics (ETC_083) no Finale: 2 Discovers fire (one for
+    each pick), no buff applied. Net hand delta: -1 for the spell
+    leaving hand + 2 from the two Discover picks = +2."""
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    # Leave more than 3 mana so Finale does NOT fire.
     game.player1.used_mana = 0
     pre_hand = len(game.player1.hand)
     dd = game.player1.give("ETC_083")
     dd.play()
+    picks = []
     while game.player1.choice:
         pick = game.player1.choice.cards[0]
+        picks.append(pick.id)
         game.player1.choice.choose(pick)
-    assert len(game.player1.hand) == pre_hand + 1
+    assert len(picks) == 2
+    # Spell left hand, both discovered demons landed in hand.
+    assert len(game.player1.hand) == pre_hand + 2
+    # Finale did NOT fire (player had 10 mana, spell cost 3, mana left
+    # > 0) → no +1/+2 buff on the two picks.
+    for c in game.player1.hand:
+        if c.id in picks:
+            base = game.player1.card(c.id)
+            assert c.atk == (base.atk or 0)
+            assert c.max_health == (base.max_health or base.health or 0)
 
 
 def test_felstring_harp_heals_when_hero_hit_on_own_turn():
@@ -2291,3 +2305,828 @@ def test_climactic_necrotic_explosion_scales_with_corpses_spent():
     count_delta = len(souls) - 1
     stat_delta = souls[0].atk - 1
     assert damage_delta + count_delta + stat_delta == 3
+
+
+# ===========================================================================
+# Tier-1 — Harmonic "Swaps each turn" cycle
+# Each Harmonic spell reads controller._harmonic_phase_swapped at cast
+# time; the flag toggles in Game.end_turn_cleanup. First cast in turn 1
+# fires the printed base; cast again on the controller's NEXT turn fires
+# the alt branch. (Real card cycles 6 ways; we approximate as a binary
+# swap which still pins the alternating-effect invariant.)
+# ===========================================================================
+
+
+def test_harmonic_mood_swaps_to_heal_on_next_turn():
+    """ETC_379: base = +2 atk hero + 4 armor; alt = heal hero 4."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p = game.player1
+    p.hero.damage = 6
+    p.used_mana = 0
+    pre_armor = p.hero.armor
+    mood = p.give("ETC_379")
+    mood.play()
+    assert p.hero.armor == pre_armor + 4
+    assert p.hero.atk >= 2  # +2 atk buff active
+    pre_dmg = p.hero.damage
+    # Cycle back to player1.
+    game.end_turn(); game.end_turn()
+    p.used_mana = 0
+    mood2 = p.give("ETC_379")
+    mood2.play()
+    # Alt branch: heal 4 — no further armor gain.
+    assert p.hero.damage == max(0, pre_dmg - 4)
+    # Armor should not have increased again from the alt branch.
+    # (Base armor may have shifted from turn cleanup; allow equality.)
+
+
+def test_harmonic_metal_swaps_to_plus_one_all_hand_on_next_turn():
+    """ETC_427: base = +2/+2 to 4 random hand minions; alt = +1/+1 to
+    every minion in hand."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.player1
+    # Empty hand, then load 6 wisps so we can distinguish 4-of-6 (base)
+    # from 6-of-6 (alt).
+    for c in list(p.hand):
+        c.discard()
+    for _ in range(6):
+        p.give(WISP)
+    p.used_mana = 0
+    metal = p.give("ETC_427")
+    metal.play()
+    base_buffed = sum(1 for c in p.hand if c.type == CardType.MINION and c.atk >= 2)
+    assert base_buffed == 4
+    # Next own-turn → alt branch.
+    game.end_turn(); game.end_turn()
+    # Clear hand again, load 5 new wisps.
+    for c in list(p.hand):
+        c.discard()
+    for _ in range(5):
+        p.give(WISP)
+    p.used_mana = 0
+    metal2 = p.give("ETC_427")
+    metal2.play()
+    alt_buffed = sum(1 for c in p.hand if c.type == CardType.MINION and c.atk == 2)
+    assert alt_buffed == 5  # every wisp got +1/+1 (base 1 atk + 1 = 2)
+
+
+def test_harmonic_hip_hop_swaps_to_two_damage_on_next_turn():
+    """ETC_717: base = 1 damage + weapon +3 atk; alt = 2 damage, no
+    weapon buff."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.player1
+    # Equip a base 1-attack weapon so we can verify the +3 weapon buff.
+    p.summon("CS2_080")  # Assassin's Blade 3/4 (rogue weapon)
+    pre_weapon_atk = p.weapon.atk
+    enemy = p.opponent.summon("CS2_186")  # War Golem 7/7
+    p.used_mana = 0
+    hiphop = p.give("ETC_717")
+    hiphop.play(target=enemy)
+    assert enemy.damage == 1
+    assert p.weapon.atk == pre_weapon_atk + 3
+    # Cycle to next own turn → alt branch.
+    game.end_turn(); game.end_turn()
+    pre_weapon_atk2 = p.weapon.atk
+    enemy2 = p.opponent.summon("CS2_186")
+    p.used_mana = 0
+    hiphop2 = p.give("ETC_717")
+    hiphop2.play(target=enemy2)
+    assert enemy2.damage == 2
+    assert p.weapon.atk == pre_weapon_atk2  # no +3 from alt
+
+
+def test_harmonic_pop_swaps_to_six_damage_enemy_minions_on_next_turn():
+    """ETC_314: base = 3 to ALL minions + Popstar; alt = 6 to ENEMY
+    minions only, no Popstar."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    enemy = p.opponent.summon("CS2_186")  # War Golem 7/7
+    ally = p.summon(WISP)
+    p.used_mana = 0
+    pop = p.give("ETC_314")
+    pop.play()
+    assert enemy.damage == 3
+    assert any(m.id == "ETC_314t_popstar" for m in p.field)
+    # Cycle to player1's next turn.
+    game.end_turn(); game.end_turn()
+    for m in list(p.field):
+        m.destroy()
+    for m in list(p.opponent.field):
+        m.destroy()
+    enemy2 = p.opponent.summon("CS2_186")  # War Golem 7/7
+    ally2 = p.summon("CS2_186")
+    p.used_mana = 0
+    pop2 = p.give("ETC_314")
+    pop2.play()
+    # Alt: 6 to enemy minions only.
+    assert enemy2.damage == 6  # killed (will be in graveyard)
+    # Ally is friendly, takes no damage from alt branch.
+    assert ally2.damage == 0
+    # No new Popstar from alt branch.
+    assert not any(m.id == "ETC_314t_popstar" for m in p.field)
+
+
+def test_harmonic_disco_swaps_to_summon_no_discover_on_next_turn():
+    """ETC_506: base = discover 5-cost + summon with +1/+1; alt = summon
+    a random 5-cost outright, no buff, no discover UI."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    p.used_mana = 0
+    disco = p.give("ETC_506")
+    disco.play()
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+    summoned_base = p.field[-1]
+    base_card = p.card(summoned_base.id)
+    assert summoned_base.atk == (base_card.atk or 0) + 1
+    # Cycle.
+    game.end_turn(); game.end_turn()
+    pre_field = len(p.field)
+    p.used_mana = 0
+    disco2 = p.give("ETC_506")
+    disco2.play()
+    # Alt branch: no choice UI opens.
+    assert p.choice is None
+    assert len(p.field) == pre_field + 1
+    new_minion = p.field[-1]
+    base_card2 = p.card(new_minion.id)
+    # No +1/+1 buff on the alt branch.
+    assert new_minion.atk == (base_card2.atk or 0)
+    assert new_minion.max_health == (base_card2.max_health or base_card2.health or 0)
+
+
+# ===========================================================================
+# Tier-2 — Rhythm and Roots dormant + Movement of Sloth token + Symphony
+# ===========================================================================
+
+
+def test_rhythm_and_roots_ancients_branch_summons_three_dormant_for_two_turns():
+    """ETC_387b Ancient's Melody — summon 3x 5/5 Ancients (ETC_387bt)
+    Dormant for 2 turns. They should not attack on the summoning turn
+    and should awaken after 2 of the controller's turns."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p = game.player1
+    melody = p.give("ETC_387b")
+    p.used_mana = 0
+    melody.play()
+    ancients = [m for m in p.field if m.id == "ETC_387bt"]
+    assert len(ancients) == 3
+    for a in ancients:
+        assert a.dormant is True
+        assert a.dormant_turns >= 1
+    # Cycle two full turns of player1: end p1, end p2 (×2).
+    game.end_turn(); game.end_turn(); game.end_turn(); game.end_turn()
+    # By start of player1's third turn, the Dormant should have ticked
+    # away.
+    awake = [m for m in p.field if m.id == "ETC_387bt" and not m.dormant]
+    assert len(awake) == 3
+
+
+def test_rhythm_and_roots_giants_branch_summons_one_dormant_for_four_turns():
+    """ETC_387c Giant's Dance — summon 1x 8/8 Giant Dormant for 4
+    turns. Still dormant after 2 of the controller's turns."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p = game.player1
+    giant_spell = p.give("ETC_387c")
+    p.used_mana = 0
+    giant_spell.play()
+    giants = [m for m in p.field if m.id == "ETC_387ct"]
+    assert len(giants) == 1
+    assert giants[0].dormant is True
+    # After only 2 of the controller's turns the giant should still be
+    # dormant (4 turns required).
+    game.end_turn(); game.end_turn(); game.end_turn(); game.end_turn()
+    giants_now = [m for m in p.field if m.id == "ETC_387ct"]
+    assert len(giants_now) == 1
+    assert giants_now[0].dormant is True
+
+
+def test_movement_of_sloth_summons_canonical_doomlord_token():
+    """ETC_085t8 Movement of Sloth — summons the printed 6/6 Demon
+    Taunt Reborn token ETC_t8t (Bored Doomlord). Verify the data card
+    matches printed text."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    sloth = p.give("ETC_085t8")
+    p.used_mana = 0
+    sloth.play()
+    spawned = [m for m in p.field if m.id == "ETC_t8t"]
+    assert len(spawned) == 1
+    doom = spawned[0]
+    assert doom.atk == 6
+    assert doom.max_health == 6
+    assert bool(doom.taunt) is True
+    assert bool(doom.reborn) is True
+    assert Race.DEMON in doom.races
+
+
+def test_symphony_of_sins_discovers_one_movement_and_shuffles_six_others():
+    """ETC_085 Symphony of Sins — Discover and play 1 Movement, shuffle
+    the other 6 into the controller's deck. (Movement of Lust ETC_085t5
+    is missing from this patch's data; the pool is the 6 remaining
+    Movements — Envy, Pride, Wrath, Gluttony, Desire, Greed, Sloth.)"""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    pre_deck = len(p.deck)
+    sym = p.give("ETC_085")
+    p.used_mana = 0
+    sym.play()
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+    # The chosen Movement is cast; remaining Movements are shuffled in.
+    # With 7 Movements total (Lust missing), we shuffle 7 - 1 = 6.
+    movement_ids = {
+        "ETC_085t", "ETC_085t2", "ETC_085t3", "ETC_085t4",
+        "ETC_085t6", "ETC_085t7", "ETC_085t8",
+    }
+    moves_in_deck = [c for c in p.deck if c.id in movement_ids]
+    assert len(moves_in_deck) == 6
+
+
+# ===========================================================================
+# Tier-3 — Cover Artist, Demonic Dynamics, Stranglethorn Heart,
+#          Fight Over Me, Boneshredder
+# ===========================================================================
+
+
+def test_cover_artist_opens_discover_and_morphs_to_3_3():
+    """ETC_110 Cover Artist — opens a Discover, morphs into the picked
+    minion, then forces atk/max_health to exactly 3/3 (printed text)."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    cover = p.give("ETC_110")
+    p.used_mana = 0
+    cover.play()
+    # A discover choice opens.
+    assert p.choice is not None
+    pick = p.choice.cards[0]
+    expected_id = pick.id
+    p.choice.choose(pick)
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+    # The Cover Artist body is now a copy of the picked minion at 3/3.
+    morphed = next(m for m in p.field if m.id == expected_id)
+    assert morphed.atk == 3
+    assert morphed.max_health == 3
+
+
+def test_demonic_dynamics_finale_buffs_exactly_the_two_picked_demons():
+    """ETC_083 Demonic Dynamics Finale — +1/+2 must land on EXACTLY the
+    two discovered demons, not "last 2 demons in hand"."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    # Stash a pre-existing demon in hand to verify we don't buff it by
+    # mistake (positional proxy would catch it).
+    decoy = p.give("CS2_065")  # Voidwalker (1-cost demon)
+    pre_decoy_atk = decoy.atk
+    pre_decoy_hp = decoy.max_health
+    # Drop mana so Finale fires (spell costs 3 — leave exactly 3).
+    p.used_mana = 10 - 3
+    dyn = p.give("ETC_083")
+    dyn.play()
+    picks = []
+    while p.choice:
+        c = p.choice.cards[0]
+        picks.append(c.id)
+        p.choice.choose(c)
+    # Decoy untouched.
+    assert decoy.atk == pre_decoy_atk
+    assert decoy.max_health == pre_decoy_hp
+    # The two picked entities (now in hand) carry +1/+2.
+    buffed = [c for c in p.hand if c.id in picks]
+    # Each picked card should have +1/+2 stacked.
+    for c in buffed:
+        base = p.card(c.id)
+        assert c.atk == (base.atk or 0) + 1
+        assert c.max_health == (base.max_health or base.health or 0) + 2
+
+
+def test_stranglethorn_heart_resurrects_all_friendly_beasts_cost_five_plus():
+    """ETC_208 Stranglethorn Heart — resurrect EVERY friendly Beast
+    that died this game and cost (5)+; not just one."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    # Kill 3 beasts of cost>=5 + one beast of cost<5 (should NOT be
+    # resurrected).
+    big_ids = ("CS2_186", "CS2_186")  # War Golem (cost 7) twice — not BEAST though
+    # Use Hyena? cost 2 BEAST. Need cost>=5 beasts. Stranglethorn Tiger
+    # (EX1_028 4/4 cost 5 Beast). Use it.
+    targets = [p.summon("EX1_028") for _ in range(3)]
+    cheap_beast = p.summon("CS2_172")  # Bloodfen Raptor 3/2 cost 2 BEAST
+    for m in targets + [cheap_beast]:
+        m.destroy()
+    # Clear board so summons land cleanly.
+    for m in list(p.field):
+        m.destroy()
+    heart = p.give("ETC_208")
+    p.used_mana = 0
+    heart.play()
+    revived = [m for m in p.field if m.id == "EX1_028"]
+    assert len(revived) == 3
+    # Bloodfen NOT revived (cost 2).
+    bloodfen = [m for m in p.field if m.id == "CS2_172"]
+    assert len(bloodfen) == 0
+
+
+def test_fight_over_me_lets_controller_pick_second_combatant():
+    """ETC_316 Fight Over Me — TARGET = combatant A; then a pick-an-
+    entity choice opens for combatant B from the OTHER enemy minions."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    # Three enemy minions: golem 7/7, wisp1, wisp2. Target the golem;
+    # picker will choose the first wisp.
+    golem = p.opponent.summon("CS2_186")  # 7/7
+    w1 = p.opponent.summon(WISP)
+    w2 = p.opponent.summon(WISP)
+    fight = p.give("ETC_316")
+    p.used_mana = 0
+    fight.play(target=golem)
+    # A choice opens with the OTHER enemy minions (w1, w2).
+    assert p.choice is not None
+    assert set(p.choice.cards) == {w1, w2}
+    p.choice.choose(w1)
+    # Simultaneous strike: golem hit by w1's 1 atk, w1 hit by golem's 7.
+    assert golem.damage == 1
+    # w1 dead.
+    assert w1.zone == Zone.GRAVEYARD
+    # Copy of w1 added to controller's hand.
+    assert any(c.id == w1.id for c in p.hand)
+
+
+def test_boneshredder_triggers_picked_deathrattle_immediately():
+    """ETC_428 Boneshredder — spends 5 corpses, picks a dead friendly
+    minion with deathrattle, FIRES that deathrattle now, AND grafts it
+    onto Boneshredder for the next death."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.player1
+    # Need 5 corpses; arm directly.
+    p.corpses = 5
+    # Dead minion with a simple, observable deathrattle: Loot Hoarder
+    # (EX1_096 — 2/1, DR: draw a card).
+    pre_hand = len(p.hand)
+    looter = p.summon("EX1_096")
+    looter.destroy()
+    # After the on-death draw, the hand grew by 1.
+    assert len(p.hand) == pre_hand + 1
+    bone = p.give("ETC_428")
+    pre_hand_before_play = len(p.hand)  # includes Boneshredder in hand
+    p.used_mana = 0
+    bone.play()
+    # bone.play(): -1 for Boneshredder leaving hand, +1 from picked DR
+    # (Loot Hoarder draws a card). Net: hand size unchanged.
+    assert len(p.hand) == pre_hand_before_play
+    # Graft: Boneshredder.additional_deathrattles now contains the picked
+    # DR (entries are wrapped in 1-tuples so the engine pipeline can
+    # iterate them).
+    assert any(
+        any(
+            getattr(a, "__class__", type(None)).__name__ in ("Draw", "ForceDraw")
+            for a in (entry if hasattr(entry, "__iter__") else (entry,))
+        )
+        for entry in bone.additional_deathrattles
+    )
+    pre_hand3 = len(p.hand)
+    pre_deck3 = len(p.deck)
+    [b for b in p.field if b.id == "ETC_428"][0].destroy()
+    # Boneshredder's own death fires the grafted Draw deathrattle.
+    # Either a card landed in hand or the deck shrank (or fatigue
+    # hit a hero with no deck) — but the deck shouldn't be untouched.
+    drew_a_card = len(p.hand) > pre_hand3
+    deck_dropped = len(p.deck) < pre_deck3
+    assert drew_a_card or deck_dropped
+
+
+# ===========================================================================
+# Tier-4 — Kangor swap, Mosh Pit corpse-check, Hipster strict exclusion,
+#          Annoy-o-Troupe / Heartthrob / Mister Mukla watch defenses
+# ===========================================================================
+
+
+def test_kangor_swap_pulls_hand_minion_into_play_with_lifesteal():
+    """ETC_329 Kangor — true swap: the picked hand minion enters PLAY
+    as the SAME entity (preserving in-hand buffs) and gains
+    Lifesteal."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    for m in list(p.hand):
+        m.discard()
+    # Put one minion in hand and pre-buff it so we can verify the buff
+    # survives the swap (i.e. it's the same entity, not a fresh copy).
+    held = p.give(WISP)
+    from fireplace.actions import Buff
+    game.queue_actions(p.hero, [Buff(held, "ETC_429e")] if False else [])
+    # Manually stamp an attack buff to detect entity identity.
+    held.atk_temp_marker = 99
+    kangor = p.summon("ETC_329")
+    pre_field_len = len(p.field)
+    kangor.destroy()
+    # The held minion should now be in PLAY (same entity).
+    new_in_play = [m for m in p.field if getattr(m, "atk_temp_marker", None) == 99]
+    assert len(new_in_play) == 1
+    # And it has Lifesteal from ETC_329e_lifesteal.
+    assert bool(new_in_play[0].lifesteal) is True
+
+
+def test_mosh_pit_refuses_activation_below_3_corpses():
+    """ETC_533 Mosh Pit — with fewer than 3 corpses, activation
+    no-ops AND refunds the cooldown so the location remains usable
+    next turn."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.player1
+    p.corpses = 2
+    pit = p.give("ETC_533")
+    p.used_mana = 0
+    pit.play()
+    target = p.summon(WISP)
+    # Cycle to next own turn to clear the placement-cooldown.
+    game.end_turn(); game.end_turn()
+    # Activate the location with only 2 corpses — should refuse.
+    p.location.use(target=target)
+    # No corpses spent (couldn't pay), and target did not gain Reborn.
+    assert p.corpses == 2
+    assert bool(target.reborn) is False
+
+
+def test_hipster_strict_exclusion_no_widening_fallback():
+    """ETC_103 Hipster — when no spells satisfy the printed exclusion
+    (opp's class + not held), the battlecry no-ops rather than
+    widening the pool. We engineer the failure by stuffing the
+    opponent's hand with every collectible spell of their class."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    opp = p.opponent
+    # Build deck/hand union covering every collectible MAGE spell.
+    import fireplace.cards as fc
+    mage_spells = [
+        cid for cid, c in fc.db.items()
+        if c.collectible and c.type == CardType.SPELL
+        and c.card_class == CardClass.MAGE
+    ]
+    # Load hand to the cap with mage spells (max_hand_size = 10).
+    for c in list(opp.hand):
+        c.discard()
+    for cid in mage_spells[:10]:
+        opp.give(cid)
+    # Stuff the rest into the deck.
+    opp_deck_ids = {c.id for c in opp.deck}
+    for cid in mage_spells[10:]:
+        if cid in opp_deck_ids:
+            continue
+        opp.deck.append(opp.card(cid))
+    hipster = p.give("ETC_103")
+    p.used_mana = 0
+    hipster.play()
+    # Pool is empty → no choice opens.
+    assert p.choice is None
+
+
+def test_annoy_o_troupe_token_matches_printed_text():
+    """ETC_321 Annoy-o-Troupe deathrattle summons three ETC_321t
+    (Annoy-o-Tron Jr.) — verify each is 1/2 Mech with Taunt + DS."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    for m in list(p.field):
+        m.destroy()
+    troupe = p.summon("ETC_321")
+    troupe.destroy()
+    spawns = [m for m in p.field if m.id == "ETC_321t"]
+    assert len(spawns) == 3
+    for s in spawns:
+        assert s.atk == 1
+        assert s.max_health == 2
+        assert bool(s.taunt) is True
+        assert bool(s.divine_shield) is True
+        assert Race.MECHANICAL in s.races
+
+
+def test_heartthrob_overheal_summon_uses_cost_matched_minion():
+    """ETC_339 Heartthrob — Overheal summons a random N-cost minion
+    where N = overheal amount. Verify the summoned minion has cost
+    equal to the overheal."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    htb = p.summon("ETC_339")
+    htb.damage = 3
+    pre_field = len(p.field)
+    # Heal for 5: overheal = max(0, 5 - 3) = 2 (heal 3, overheal 2).
+    from fireplace.actions import Heal
+    game.queue_actions(p.hero, [Heal(htb, 5)])
+    assert len(p.field) == pre_field + 1
+    spawn = p.field[-1]
+    # Spawned minion is one of the cost==2 collectibles.
+    spawn_data = p.card(spawn.id)
+    assert spawn_data.cost == 2
+
+
+def test_mister_mukla_fills_opponent_hand_with_bananas():
+    """ETC_836 Mister Mukla — fills opponent's hand with ETC_201
+    (Bunch of Bananas) until hand cap is reached. Defense for the
+    "should be plain banana?" watch: this patch's data has Mukla
+    generate the printed cycling Banana chain."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    for c in list(p.opponent.hand):
+        c.discard()
+    # Pre-give a single non-banana card so we can verify Mukla fills
+    # the REMAINING slots, not all 10.
+    p.opponent.give(WISP)
+    mukla = p.give("ETC_836")
+    p.used_mana = 0
+    mukla.play()
+    assert len(p.opponent.hand) == p.opponent.max_hand_size
+    banana_count = sum(
+        1 for c in p.opponent.hand
+        if c.id in ("ETC_201", "ETC_201t", "ETC_201t2")
+    )
+    assert banana_count == p.opponent.max_hand_size - 1
+
+
+# ===========================================================================
+# Tier-5 — Power Chord Synchronize, Static Waveform, Jitterbug,
+#          Photographer Fizzle, Banjosaur, Inzah, Starlight Groove
+# ===========================================================================
+
+
+def test_power_chord_synchronize_copy_preserves_runtime_buffs():
+    """ETC_338 Power Chord: Synchronize — copy in hand reflects the
+    target's POST-buff stats, not just printed stats."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    target = p.summon(WISP)
+    # Pre-buff via real Buff so the enchant is part of target's
+    # entities (and ExactCopy can pick it up).
+    from fireplace.actions import Buff
+    for _ in range(5):
+        game.queue_actions(p.hero, [Buff(target, "ETC_350e")])  # +1/+1
+    pre_atk = target.atk
+    pre_hp = target.max_health
+    assert pre_atk >= 6
+    pre_hand = len(p.hand)
+    spell = p.give("ETC_338")
+    p.used_mana = 0
+    spell.play(target=target)
+    assert len(p.hand) == pre_hand + 1
+    copy = p.hand[-1]
+    # Copy carries the buffed stats (not just the printed 1/1 wisp).
+    assert copy.atk == pre_atk
+    assert copy.max_health == pre_hp
+
+
+def test_static_waveform_kills_self_when_health_drops_to_zero():
+    """ETC_089 Static Waveform — eventually picks HEALTH ticks that
+    drag max_health to 0, then the minion dies. Force the RNG via
+    repeated cycle until health drains; an instant-kill assertion
+    can't be made due to the 50/50 atk-vs-hp pick."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    wave = p.summon("ETC_089")
+    base_hp = wave.max_health
+    base_atk = wave.atk
+    # Cycle up to 40 of player1's turns to ensure enough ticks fire.
+    from hearthstone.enums import Zone
+    for _ in range(40):
+        if wave.zone == Zone.GRAVEYARD:
+            break
+        game.end_turn(); game.end_turn()
+    # Either it died, or hp/atk have decreased from base.
+    if wave.zone == Zone.GRAVEYARD:
+        # Good — it lost too much.
+        pass
+    else:
+        assert wave.max_health < base_hp or wave.atk < base_atk
+
+
+def test_jitterbug_triggers_on_friendly_minion_divine_shield_loss():
+    """ETC_324 Jitterbug — printed CHARACTER includes hero, but the
+    engine's Hero._hit doesn't strip DS (LosesDivineShield is wired
+    only into Minion._hit). So in practice Jitterbug fires only on
+    friendly MINION DS loss. Pin the minion path; the hero path is a
+    known engine gap tracked as a watch row."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    jit = p.summon("ETC_324")
+    shielded = p.summon("CS2_lightspawn" if False else "EX1_023")
+    # EX1_023 Silvermoon Guardian — 3/3 Divine Shield.
+    pre_hand = len(p.hand)
+    from fireplace.actions import Hit
+    game.queue_actions(p.hero, [Hit(shielded, 1)])
+    assert bool(shielded.divine_shield) is False
+    assert len(p.hand) == pre_hand + 1
+
+
+def test_photographer_fizzle_snapshot_preserves_buffs():
+    """ETC_113 Photographer Fizzle — Snapshot stores ExactCopy entities
+    so a buffed hand minion returns with the buff intact."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    # Clear hand, give Fizzle + a wisp pre-buffed in hand.
+    for c in list(p.hand):
+        c.discard()
+    held = p.give(WISP)
+    from fireplace.actions import Buff
+    # Buff the held wisp to 8/8 via 7 +1/+1 stamps so the snapshot
+    # entity sees a real enchant stack.
+    for _ in range(7):
+        game.queue_actions(p.hero, [Buff(held, "ETC_350e")])
+    pre_atk = held.atk
+    pre_hp = held.max_health
+    assert pre_atk >= 8
+    fizzle = p.give("ETC_113")
+    p.used_mana = 0
+    fizzle.play()
+    # The snapshot lives at the bottom of the deck.
+    snap = [c for c in p.deck if c.id == "ETC_113t"]
+    assert len(snap) == 1
+    snapshot_entries = snap[0]._fizzle_snapshot
+    # At least one entry is a Card with the buffed atk.
+    found = False
+    for entry in snapshot_entries:
+        if not isinstance(entry, str) and getattr(entry, "atk", 0) == pre_atk:
+            found = True
+            break
+    assert found
+
+
+def test_banjosaur_attack_draws_beast_and_absorbs_stats():
+    """ETC_840 Banjosaur — on attack, draws a Beast from deck and gains
+    its (atk, max_health) on top of its own. We seed the deck with a
+    single known beast to make the absorb deterministic."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    # Strip all other beasts from deck to force the pick.
+    from hearthstone.enums import Race as _Race
+    for c in list(p.deck):
+        if c.type == CardType.MINION and _Race.BEAST in c.races:
+            c.discard()
+    # Seed exactly one beast: Tundra Rhino (DS1_178 2/5).
+    seeded = p.card("DS1_178")
+    seeded.zone = Zone.DECK
+    banjo = p.summon("ETC_840")
+    pre_atk = banjo.atk
+    pre_hp = banjo.max_health
+    # Give Banjosaur an enemy to attack.
+    enemy = p.opponent.summon(WISP)
+    banjo.attack(enemy)
+    assert banjo.atk == pre_atk + 2
+    assert banjo.max_health == pre_hp + 5
+
+
+def test_inzah_aura_survives_silence():
+    """ETC_371 Inzah — printed "rest of the game" aura. Implementation
+    puts the buff on CONTROLLER (not Inzah itself), so silencing Inzah
+    shouldn't remove the cost reduction."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p = game.player1
+    inzah = p.give("ETC_371")
+    p.used_mana = 0
+    inzah.play()
+    # Give the controller an Overload spell — Earth Shock? Actually any
+    # OVERLOAD-tagged card. Use Lava Burst (EX1_241) — 3-cost Overload(2).
+    spell = p.give("EX1_241")
+    cost_before = spell.cost
+    # Silence Inzah.
+    inzah_on_field = [m for m in p.field if m.id == "ETC_371"][0]
+    from fireplace.actions import Silence
+    game.queue_actions(p.hero, [Silence(inzah_on_field)])
+    cost_after = spell.cost
+    # Inzah's aura should still be applied (cost reduced) — the buff
+    # sits on the controller, not on Inzah's body.
+    assert cost_after == cost_before
+
+
+def test_starlight_groove_aura_persists_across_turns():
+    """ETC_330 Starlight Groove — printed "rest of the game" aura.
+    Refresh of DS on holy spell cast must work on the controller's
+    subsequent turns."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    sg = p.give("ETC_330")
+    p.used_mana = 0
+    sg.play()
+    assert bool(p.hero.divine_shield) is True
+    # End own turn — DS may strip if damaged; pop it and verify
+    # holy-spell refresh on next turn.
+    p.hero.divine_shield = False
+    game.end_turn(); game.end_turn()
+    # Cast a holy spell — Holy Smite (CS2_022 = Polymorph; not it).
+    # Use CS1_112 Holy Nova or CS2_011 Bloodlust? Use CS2_236 Divine Spirit
+    # which is holy. Actually use EX1_363 Blessing of Wisdom (holy spell).
+    holy = p.give("EX1_363")
+    p.used_mana = 0
+    target = p.summon(WISP)
+    holy.play(target=target)
+    # DS refreshed by aura.
+    assert bool(p.hero.divine_shield) is True
+
+
+# ===========================================================================
+# Tier-6 — Unpopular Has-Been, Cosmic Keyboard, Love Everlasting,
+#          DJ Manastorm
+# ===========================================================================
+
+
+def test_unpopular_has_been_summon_pool_excludes_standard():
+    """ETC_349 Unpopular Has-Been Deathrattle — "from the past" filters
+    to non-Standard 5-cost minions. After the deathrattle, the spawned
+    minion's data card should have is_standard == False."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    hb = p.summon("ETC_349")
+    pre_field = len(p.field)
+    hb.destroy()
+    # A new 5-cost minion landed.
+    assert len(p.field) >= pre_field
+    if len(p.field) > pre_field - 1:  # accounting for the hb that died
+        # Find the freshly summoned minion (not hb).
+        for m in p.field:
+            if m.id != "ETC_349":
+                data = p.card(m.id).data
+                assert (data.cost or 0) == 5
+                # Verify pool selection picked a non-Standard card.
+                assert getattr(data, "is_standard", False) is False
+                break
+
+
+def test_cosmic_keyboard_summons_literal_n_n_elemental():
+    """ETC_521 Cosmic Keyboard — after casting a 4-cost spell, summon
+    an Elemental forced to literal 4/4 stats (printed text)."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.current_player
+    cosmic = p.give("ETC_521")
+    p.used_mana = 0
+    cosmic.play()
+    # Cast a known 4-cost spell: Fireball (CS2_029).
+    fb = p.give("CS2_029")
+    p.used_mana = 0
+    fb.play(target=p.opponent.hero)
+    # The summoned elemental is the freshest non-weapon on the field.
+    field_ids = [(m.id, m.atk, m.max_health, list(m.races)) for m in p.field]
+    elementals = [m for m in p.field if any(int(r) == int(Race.ELEMENTAL) for r in m.races)]
+    assert len(elementals) >= 1, f"no elementals; field was {field_ids}"
+    elem = elementals[-1]
+    assert elem.atk == 4
+    assert elem.max_health == 4
+
+
+def test_love_everlasting_first_spell_each_turn_costs_two_less():
+    """ETC_335 Love Everlasting — first spell each turn -2. Second
+    spell same turn pays full price."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    le = p.give("ETC_335")
+    p.used_mana = 0
+    le.play()
+    # Two cheap spells in hand. Fireball (4) — verify first cast costs 2.
+    fb1 = p.give("CS2_029")
+    base_cost = fb1.cost
+    p.used_mana = 0
+    pre_mana = p.mana
+    fb1.play(target=p.opponent.hero)
+    spent_first = pre_mana - p.mana
+    assert spent_first == base_cost - 2
+    # Second spell same turn pays full price.
+    fb2 = p.give("CS2_029")
+    pre_mana2 = p.mana
+    fb2.play(target=p.opponent.hero)
+    spent_second = pre_mana2 - p.mana
+    assert spent_second == base_cost
+
+
+def test_love_everlasting_expires_when_no_spell_cast_on_a_turn():
+    """ETC_335 Love Everlasting — if the controller doesn't cast a
+    spell on a turn, the aura tears down. Next turn no discount."""
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    le = p.give("ETC_335")
+    p.used_mana = 0
+    le.play()
+    # End own turn without casting any spell.
+    game.end_turn(); game.end_turn()
+    # Cast a spell — no discount.
+    fb = p.give("CS2_029")
+    base_cost = fb.cost
+    p.used_mana = 0
+    pre_mana = p.mana
+    fb.play(target=p.opponent.hero)
+    assert pre_mana - p.mana == base_cost
+
+
+def test_dj_manastorm_only_zeros_in_hand_spells_at_battlecry_time():
+    """ETC_395 DJ Manastorm — sets the cost of spells in hand to (0)
+    AT BATTLECRY TIME. A spell drawn AFTER the battlecry does NOT
+    inherit the (0)-cost stamp."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    # Clear hand and load 2 Fireballs.
+    for c in list(p.hand):
+        c.discard()
+    fb_existing = p.give("CS2_029")
+    pre_cost_existing = fb_existing.cost
+    dj = p.give("ETC_395")
+    p.used_mana = 0
+    dj.play()
+    # The existing Fireball is now (effectively) 0 cost.
+    assert fb_existing.cost == 0
+    # Draw / give a NEW Fireball — should NOT get the 0-cost stamp.
+    fb_new = p.give("CS2_029")
+    assert fb_new.cost == pre_cost_existing

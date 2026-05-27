@@ -67,9 +67,11 @@ class _InfinitizeReturnAtEndOfTurn(TargetedAction):
 
 
 class _CosmicKeyboardSpawn(TargetedAction):
-	"""Cosmic Keyboard — after the controller casts a spell, summon a
-	random N/N Elemental whose intrinsic cost equals that spell's cost.
-	Then the weapon loses 1 durability (handled by Hit)."""
+	"""Cosmic Keyboard — after the controller casts a spell, summon
+	a generic Elemental forced to literal N/N stats where N = the
+	spell's printed cost. Uses SummonCustomMinion to overwrite the
+	chassis card's stats so the printed "stats equal to its Cost"
+	text reads exactly N/N regardless of the source minion's data."""
 
 	TARGET = ActionArg()
 	SPELL = ActionArg()
@@ -80,14 +82,29 @@ class _CosmicKeyboardSpawn(TargetedAction):
 		if spell is None:
 			return
 		cost = spell.cost or 0
+		if cost <= 0:
+			return
 		from ... import cards as _cards
-		pool = _cards.db.filter(
-			collectible=True, type=CardType.MINION, race=Race.ELEMENTAL, cost=cost
-		)
+		# Pick any collectible Elemental chassis at any cost (its printed
+		# stats are about to be overwritten). Iterate the db directly so
+		# the race comparison is exact (db.filter loosely matches multi-
+		# race minions and would let a Mech like Steel Rager slip in).
+		pool = [
+			cid for cid, c in _cards.db.items()
+			if c.collectible
+			and c.type == CardType.MINION
+			and int(getattr(c, "race", 0) or 0) == int(Race.ELEMENTAL)
+		]
 		if not pool:
 			return
-		picked = source.game.random.choice(pool)
-		source.game.cheat_action(source, [Summon(target, picked)])
+		picked_id = source.game.random.choice(pool)
+		# SummonCustomMinion expects a card entity (it sets per-instance
+		# atk/max_health/cost on the entity). Materialise the picked id.
+		card_entity = target.card(picked_id)
+		source.game.cheat_action(
+			source,
+			[SummonCustomMinion(target, card_entity, cost, cost, cost)],
+		)
 
 
 class _LightshowHits(TargetedAction):

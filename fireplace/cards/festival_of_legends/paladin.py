@@ -1,4 +1,5 @@
 from ..utils import *
+from .utils import _HarmonicSwap
 
 
 ##
@@ -27,11 +28,14 @@ class _DiscoMaulBuff(TargetedAction):
 
 
 class _KangorSwapWithHand(TargetedAction):
-	"""Kangor deathrattle — swap this minion with a random minion in the
-	controller's hand and give that minion Lifesteal. Implementation:
-	pick a random minion in hand, summon a fresh copy to the board (at
-	Kangor's old slot, best effort) with Lifesteal stamped on, and the
-	picked card discards from hand."""
+	"""Kangor deathrattle — Swap this minion with a minion from your
+	hand and give it Lifesteal. Implementation: pull the SAME card
+	entity (not a fresh copy) from hand into PLAY via Summon-route,
+	preserving any in-hand buffs / cost mods. Then stamp Lifesteal.
+
+	"Swap" in printed HS lingo here means the hand minion comes out
+	while Kangor's body dies; Kangor isn't returned to hand (his
+	deathrattle has already triggered)."""
 
 	TARGET = ActionArg()
 
@@ -41,15 +45,15 @@ class _KangorSwapWithHand(TargetedAction):
 		if not minions:
 			return
 		picked = source.game.random.choice(minions)
-		picked.discard()
-		source.game.cheat_action(
-			source,
-			[
-				Summon(ctrl, picked.id).then(
-					Buff(Summon.CARD, "ETC_329e_lifesteal")
-				)
-			],
-		)
+		# Route the picked hand entity through Summon so on-summon
+		# triggers fire and the entity (not a fresh copy) lands on
+		# the board with its in-hand buffs intact.
+		source.game.cheat_action(source, [Summon(ctrl, picked)])
+		from hearthstone.enums import Zone
+		if picked.zone == Zone.PLAY:
+			source.game.cheat_action(
+				source, [Buff(picked, "ETC_329e_lifesteal")]
+			)
 
 
 class _HarmonicDiscoBuff(TargetedAction):
@@ -65,6 +69,20 @@ class _HarmonicDiscoBuff(TargetedAction):
 			source,
 			[Discover(target, picker).then(_HarmonicDiscoFinish(target, Discover.CARD))],
 		)
+
+
+class _HarmonicDiscoAlt(TargetedAction):
+	"""Harmonic Disco — alt branch (Swaps each turn): summon a random
+	5-cost minion directly with no Discover and no +1/+1 buff."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		pick = RandomMinion(cost=5).evaluate(source)
+		if not pick:
+			return
+		cid = pick[0] if isinstance(pick, list) else pick
+		source.game.cheat_action(source, [Summon(target, cid)])
 
 
 class _HarmonicDiscoFinish(TargetedAction):
@@ -149,8 +167,12 @@ class ETC_330e_aura:
 class ETC_506:
 	"""Harmonic Disco"""
 
-	# Discover a 5-Cost minion. Summon it with +1/+1.
-	play = _HarmonicDiscoBuff(CONTROLLER)
+	# Printed base: Discover a 5-Cost minion. Summon it with +1/+1.
+	# Alt branch (Swaps each turn): summon a random 5-cost minion outright
+	# (no discover UI, no +1/+1 buff).
+	_HARMONIC_BASE = (_HarmonicDiscoBuff(CONTROLLER),)
+	_HARMONIC_ALT = (_HarmonicDiscoAlt(CONTROLLER),)
+	play = _HarmonicSwap(CONTROLLER)
 
 
 ##

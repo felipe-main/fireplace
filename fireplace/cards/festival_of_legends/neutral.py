@@ -120,7 +120,10 @@ class _HipsterDiscover(TargetedAction):
 
     def do(self, source, target):
         opp = target.opponent
-        deck_ids = {c.id for c in opp.deck}
+        # Also exclude what's in the opponent's hand — the printed text
+        # ("isn't in their deck") in modern HS reads as "not currently
+        # in the opponent's library" which includes the hand.
+        held_ids = {c.id for c in opp.deck} | {c.id for c in opp.hand}
         opp_class = opp.hero.card_class
         from .. import db as _db
         pool = [
@@ -128,17 +131,10 @@ class _HipsterDiscover(TargetedAction):
             if c.collectible
             and c.type == CardType.SPELL
             and c.card_class == opp_class
-            and cid not in deck_ids
+            and cid not in held_ids
         ]
         if not pool:
-            # Fallback: any spell from opponent class.
-            pool = [
-                cid for cid, c in _db.items()
-                if c.collectible
-                and c.type == CardType.SPELL
-                and c.card_class == opp_class
-            ]
-        if not pool:
+            # Printed text exclusion is strict — no widening fallback.
             return
         picks = source.game.random.sample(pool, min(3, len(pool)))
         cards = [target.card(cid) for cid in picks]
@@ -206,19 +202,61 @@ class _StripFanBuff(TargetedAction):
                 b.destroy()
 
 
+class _AcousticCoverFinish(TargetedAction):
+    """Cover Artist — once a discover pick has been made, morph SELF
+    into that minion and then re-stamp 3/3 stats by setting the
+    morphed entity's atk / max_health to 3 (the printed text forces
+    3/3 regardless of the source minion's printed stats)."""
+
+    TARGET = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, card):
+        if isinstance(card, list):
+            card = card[0] if card else None
+        if card is None:
+            return
+        cid = card.id if hasattr(card, "id") else card
+        # Morph the original Cover Artist body into the chosen minion.
+        source.game.cheat_action(source, [Morph(target, cid)])
+        # After Morph, `target` retains its identity but `.id` switches
+        # to the morph target. Read the post-morph entity off the field.
+        morphed = None
+        for m in target.controller.field:
+            if m is target or m.id == cid:
+                morphed = m
+                break
+        if morphed is None:
+            return
+        # Stamp the printed 3/3 line by overwriting the base stats. We
+        # apply a 3/3-set enchant: clamp atk & max_health to exactly 3.
+        delta_atk = 3 - (morphed.atk or 0)
+        delta_hp = 3 - (morphed.max_health or 0)
+        if delta_atk != 0 or delta_hp != 0:
+            source.game.cheat_action(
+                source,
+                [Buff(morphed, "ETC_110e", atk=delta_atk, max_health=delta_hp)],
+            )
+
+
 class _AcousticCoverMorph(TargetedAction):
-    """Cover Artist — Battlecry: Transform into a 3/3 copy of a (random)
-    minion. We morph SELF into a random 3-cost minion (approximation;
-    real card discovers/copies)."""
+    """Cover Artist — Battlecry: Discover a 3/3 copy of a minion. Opens
+    a Discover over 3 random minions (cost-agnostic — printed text says
+    "a minion", no cost restriction), morphs SELF into the picked card,
+    then forces stats to 3/3."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        picker = RandomMinion(cost=3)
-        cid = picker.evaluate(source)
-        if not cid:
-            return
-        source.game.cheat_action(source, [Morph(source, cid)])
+        picker = RandomMinion()
+        source.game.cheat_action(
+            source,
+            [
+                Discover(source.controller, picker).then(
+                    _AcousticCoverFinish(target, Discover.CARD)
+                ),
+            ],
+        )
 
 
 class _CrowdSurferReborn(TargetedAction):
@@ -239,33 +277,52 @@ class _CrowdSurferReborn(TargetedAction):
 
 
 class _FizzleSnapshotStamp(TargetedAction):
-    """Photographer Fizzle — snapshot the current hand. Create a copy of
-    Fizzle's Snapshot (ETC_113t) stamped with the list of card-ids in
-    hand, and shuffle it into the controller's deck."""
+    """Photographer Fizzle — snapshot the current hand. Stores
+    ExactCopy entities of each card so atk/hp/cost-mod state is
+    preserved through the shuffle-and-redraw cycle. The snapshot
+    token (ETC_113t) is then shuffled into the controller's deck."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
+        from ...dsl.copy import ExactCopy
         ctrl = source.controller
-        snapshot = [c.id for c in ctrl.hand if c is not source]
+        snapshot = []
+        for c in list(ctrl.hand):
+            if c is source:
+                continue
+            try:
+                copy = ExactCopy(c).copy(source, c)
+                copy.controller = ctrl
+                snapshot.append(copy)
+            except Exception:
+                # Fall back to id-only if ExactCopy doesn't apply (rare
+                # for non-playable hand entities).
+                snapshot.append(c.id)
         token = ctrl.card("ETC_113t")
         token._fizzle_snapshot = snapshot
         token.zone = Zone.DECK
 
 
 class _FizzleSnapshotResolve(TargetedAction):
-    """Fizzle's Snapshot — add the stamped cards back to the controller's
-    hand."""
+    """Fizzle's Snapshot — add the stamped cards back to the
+    controller's hand. Entries that are Card entities (with preserved
+    buffs/cost mods) are moved straight to HAND; legacy id-only
+    entries fall back to Give(id)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
         snapshot = getattr(source, "_fizzle_snapshot", None) or []
-        for cid in snapshot:
+        for entry in snapshot:
             if len(ctrl.hand) >= ctrl.max_hand_size:
                 break
-            source.game.cheat_action(source, [Give(ctrl, cid)])
+            if isinstance(entry, str):
+                source.game.cheat_action(source, [Give(ctrl, entry)])
+            else:
+                entry.controller = ctrl
+                entry.zone = Zone.HAND
 
 
 class _FreebirdBuff(TargetedAction):
@@ -540,8 +597,10 @@ class _MerchSellerPutSpellOnTop(TargetedAction):
 
 class _UnpopularHasBeenSummon(TargetedAction):
     """Unpopular Has-Been Deathrattle — summon a random 5-cost minion
-    from the past (older Standard cards). Approximation: any
-    collectible 5-cost minion."""
+    "from the past" (i.e. Wild-rotated cards). Filters to collectible
+    5-cost minions whose card set is NOT in the modern Standard
+    rotation. The Standard set list is read from `is_standard` on the
+    data card so the pool tracks future-patch rotations automatically."""
 
     TARGET = ActionArg()
 
@@ -552,7 +611,17 @@ class _UnpopularHasBeenSummon(TargetedAction):
             if c.collectible
             and c.type == CardType.MINION
             and (c.cost or 0) == 5
+            and not getattr(c, "is_standard", False)
         ]
+        if not pool:
+            # Fallback: any 5-cost collectible (avoids no-op if the
+            # data parser doesn't carry is_standard on this patch).
+            pool = [
+                cid for cid, c in _db.items()
+                if c.collectible
+                and c.type == CardType.MINION
+                and (c.cost or 0) == 5
+            ]
         if not pool:
             return
         cid = source.game.random.choice(pool)
@@ -1007,6 +1076,17 @@ class ETC_108e:
 
 class ETC_109e:
     tags = {GameTag.CANT_ATTACK: True}
+
+
+@custom_card
+class ETC_110e:
+    # Cover Artist — runtime-stamped delta-buff used to force the
+    # morphed minion's atk/max_health to exactly 3. Stats come from
+    # Buff() kwargs each cast.
+    tags = {
+        GameTag.CARDNAME: "Cover Artist",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
 
 
 class ETC_089e:

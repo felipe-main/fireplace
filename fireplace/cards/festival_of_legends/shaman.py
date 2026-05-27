@@ -249,7 +249,7 @@ class ETC_813(_WeaponCounterCardtextMixin):
 	# _next_spell_cost_reduction (consumed by pay_cost on next spell).
 	overload_while_equipped = 0
 	counter_attr = "overload_while_equipped"
-	events = Overload(CONTROLLER).on(_JazzBassOverloadBump(SELF))
+	events = Overload(CONTROLLER).on(_JazzBassOverloadBump(SELF, Overload.AMOUNT))
 	deathrattle = _JazzBassDeathrattle(SELF)
 
 

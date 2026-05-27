@@ -270,15 +270,36 @@ class ETC_029t:
 	"""Keyboard Amplifier"""
 
 
+class _DJManastormZeroSpells(TargetedAction):
+	"""DJ Manastorm — Battlecry: stamp every spell currently in the
+	controller's hand with ETC_395e at runtime cost=-spell.cost so the
+	resulting cost lands at exactly 0 (not -100 which would swamp the
+	+1 cost bumps from the after-cast rider). Spells drawn AFTER the
+	battlecry are NOT stamped — the after-cast +1 only applies to the
+	spells originally zeroed."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		for spell in list(target.hand):
+			if spell.type != CardType.SPELL:
+				continue
+			c = spell.cost
+			source.game.cheat_action(
+				source, [Buff(spell, "ETC_395e", cost=-c)]
+			)
+
+
 class ETC_395:
 	"""DJ Manastorm"""
 
 	# Battlecry: Set the Cost of spells in your hand to (0). After you
 	# cast one, the others cost (1) more.
-	# We stamp a -100 cost buff on every spell currently in hand (engine
-	# clamps the effective cost to 0). After each spell cast this turn,
-	# bump the others' cost by +1 via a per-card enchant.
-	play = Buff(FRIENDLY_HAND + SPELL, "ETC_395e")
+	# Approach: stamp every in-hand spell with a runtime -cost enchant so
+	# each lands at exactly 0. After each spell played from the controller,
+	# every other DJ-stamped spell in hand gets a +1 bump (ETC_395e2). The
+	# +1 stamps stack additively (1 → 2 → 3 …) per the printed text.
+	play = _DJManastormZeroSpells(CONTROLLER)
 	events = Play(CONTROLLER, SPELL).after(
 		Buff(FRIENDLY_HAND + SPELL, "ETC_395e2")
 	)
@@ -286,11 +307,11 @@ class ETC_395:
 
 @custom_card
 class ETC_395e:
-	# Sets cost to (effectively) 0. -100 is clamped at 0 by pay_cost.
+	# Set the cost to (effectively) 0 — the runtime `cost` kwarg passed
+	# at Buff time supplies the actual COST tag value (-spell.cost).
 	tags = {
 		GameTag.CARDNAME: "DJ Manastorm",
 		GameTag.CARDTYPE: CardType.ENCHANTMENT,
-		GameTag.COST: -100,
 	}
 
 

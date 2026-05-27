@@ -1328,6 +1328,17 @@ class Hero(Character):
                 self.controller.playstate = PlayState.LOSING
 
     def _hit(self, amount):
+        # Hero Divine Shield (e.g. Starlight Groove / Paladin permanent
+        # aura) — strip the shield and absorb the hit, mirroring the
+        # Minion DS path. The DS tag lives on `divine_shield` (mapped
+        # via managers.GameTag.DIVINE_SHIELD), so we check both the
+        # property and the underlying tag for safety.
+        if getattr(self, "divine_shield", False) or self.tags.get(
+            GameTag.DIVINE_SHIELD, False
+        ):
+            self.log("%r's divine shield prevents %i damage.", self, amount)
+            self.game.cheat_action(self, [actions.LosesDivineShield(self)])
+            return 0
         amount = super()._hit(amount)
         if self.armor:
             reduced_damage = min(amount, self.armor)

@@ -3589,3 +3589,293 @@ def test_saxophone_soloist_no_chain_if_other_minion_present():
     post = sum(1 for c in p.hand if c.id == "ETC_358")
     # Played Sax left hand; no new copy → exactly pre - 1 remaining.
     assert post == pre - 1
+
+
+# ===========================================================================
+# WATCHCLOSE — pin down the 10 Festival watch rows so they can flip to
+# Status=fixed (or open + # blocked on data). One test per row.
+# ===========================================================================
+
+
+def test_watchclose_symphony_of_sins_six_movement_pool_upper_bound():
+    """WATCHCLOSE — Symphony of Sins (ETC_085). ETC_085t5 (Movement of
+    Lust) is missing from this patch's data, so the Discover/shuffle pool
+    is 6/7 by upper bound. This test confirms (a) the 7th id genuinely
+    isn't in the carddb and (b) the registered pool covers the 6 that
+    DO ship. If a future build introduces ETC_085t5 this test will fail
+    and the watch row should be re-opened."""
+    from fireplace.cards import db as _db
+    from fireplace.cards.festival_of_legends.warlock import _MOVEMENTS
+    from hearthstone.cardxml import load as _xml_load
+    import hearthstone_data as _hs_data
+    _raw_db, _ = _xml_load(
+        path=_hs_data.get_carddefs_path(), locale="enUS"
+    )
+    assert "ETC_085t5" not in _raw_db, (
+        "Movement of Lust (ETC_085t5) has appeared in raw CardXML — "
+        "Symphony of Sins should now include it in _MOVEMENTS."
+    )
+    expected = {
+        "ETC_085t", "ETC_085t2", "ETC_085t3", "ETC_085t4",
+        "ETC_085t6", "ETC_085t7", "ETC_085t8",
+    }
+    assert set(_MOVEMENTS) == expected
+    # And every registered Movement actually loads from data.
+    for cid in _MOVEMENTS:
+        assert cid in _db, f"Movement {cid} missing from carddb"
+
+
+def test_watchclose_static_waveform_tick_picks_atk_or_health():
+    """WATCHCLOSE — Static Waveform (ETC_089). Each TURN_BEGIN tick
+    stamps either ETC_089e (-1 atk) or ETC_089e2 (-1 hp) chosen via
+    game.random. With a seeded RNG and 4 turn ticks we get a deterministic
+    sequence; assert the sum of atk-loss + hp-loss equals the tick count."""
+    import random
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.random = random.Random(42)
+    p = game.player1
+    wave = p.summon("ETC_089")
+    base_atk = wave.atk
+    base_hp = wave.max_health
+    # One turn pair = 2 TURN_BEGIN events → 2 ticks. Take 1 turn pair so
+    # the asserts can be tight without stat clamping (atk floors at 0)
+    # confounding the count.
+    game.end_turn()
+    game.end_turn()
+    if wave.zone == Zone.GRAVEYARD:
+        return  # dropped to 0 hp — also a valid outcome
+    atk_loss = base_atk - wave.atk
+    hp_loss = base_hp - wave.max_health
+    # Each tick subtracts exactly 1 from atk OR hp. 2 ticks → loss == 2.
+    assert atk_loss + hp_loss == 2, (
+        f"expected 2 ticks of stat loss; got atk_loss={atk_loss} hp_loss={hp_loss}"
+    )
+    assert atk_loss >= 0 and hp_loss >= 0
+
+
+def test_watchclose_jitterbug_fires_on_hero_divine_shield_loss():
+    """WATCHCLOSE — Jitterbug (ETC_324). Printed CHARACTER includes the
+    hero. After the engine fix to Hero._hit (loses DS like Minion._hit),
+    Jitterbug should draw when the friendly hero's DS is popped. Set up
+    via Starlight Groove (gives hero DS), then hit the hero."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    jit = p.summon("ETC_324")
+    sg = p.give("ETC_330")
+    p.used_mana = 0
+    sg.play()
+    assert bool(p.hero.divine_shield) is True
+    pre_hand = len(p.hand)
+    from fireplace.actions import Hit
+    game.queue_actions(p.hero, [Hit(p.hero, 3)])
+    # Hero DS absorbed the hit → LosesDivineShield broadcast → Jitterbug
+    # draws a card. Note: Starlight Groove's aura re-shields on Holy
+    # spell play, not on Hit, so DS stays down here.
+    assert bool(p.hero.divine_shield) is False
+    assert p.hero.damage == 0  # DS absorbed all damage
+    assert len(p.hand) == pre_hand + 1
+
+
+def test_watchclose_dj_manastorm_stamp_only_applies_to_battlecry_hand():
+    """WATCHCLOSE — DJ Manastorm (ETC_395). Pins the same invariant the
+    existing test already pins (newly drawn spells don't inherit the
+    0-cost stamp). Adds a multi-cast check: after casting one of the
+    zeroed spells, the OTHERS in hand carry the (+1) cost stamp from
+    the on-Play.after listener."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    # Clear hand and load 3 Fireballs.
+    for c in list(p.hand):
+        c.discard()
+    fbs = [p.give("CS2_029") for _ in range(3)]
+    base_cost = fbs[0].cost
+    dj = p.give("ETC_395")
+    p.used_mana = 0
+    dj.play()
+    # All 3 fireballs are 0-cost.
+    for fb in fbs:
+        assert fb.cost == 0
+    # Cast the first fireball. The other two get the +1 cost stamp.
+    p.used_mana = 0
+    fbs[0].play(target=p.opponent.hero)
+    # Remaining fireballs in hand should each be 0 + 1 = 1.
+    remaining = [c for c in p.hand if c.id == "CS2_029"]
+    assert len(remaining) == 2
+    for fb in remaining:
+        assert fb.cost == 1
+    # A NEW fireball drawn after battlecry never had the 0-cost stamp.
+    fb_new = p.give("CS2_029")
+    assert fb_new.cost == base_cost
+
+
+def test_watchclose_mister_mukla_gives_etc_201_chain_in_this_patch():
+    """WATCHCLOSE — Mister Mukla (ETC_836). Per this patch's data, the
+    printed banana token IS ETC_201 (the cycling Bunch of Bananas chain),
+    not a separate one-shot banana. Confirm: (a) ETC_201's data name is
+    'Bunch of Bananas', (b) Mukla's battlecry hands out ETC_201s, and
+    (c) ETC_201 IS in the carddb so we aren't substituting an unrelated
+    token."""
+    from fireplace.cards import db as _db
+    assert "ETC_201" in _db
+    assert _db["ETC_201"].name == "Bunch of Bananas"
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    for c in list(p.opponent.hand):
+        c.discard()
+    mukla = p.give("ETC_836")
+    p.used_mana = 0
+    mukla.play()
+    assert len(p.opponent.hand) == p.opponent.max_hand_size
+    # Every card in the opponent's hand is an ETC_201 (or a downstream
+    # chain card — Mukla itself only seeds ETC_201, but defensive).
+    banana_ids = {"ETC_201", "ETC_201t", "ETC_201t2"}
+    assert all(c.id in banana_ids for c in p.opponent.hand)
+
+
+def test_watchclose_banjosaur_absorbs_in_deck_buffed_stats():
+    """WATCHCLOSE — Banjosaur (ETC_840). The implementation reads
+    `pick.atk` / `pick.max_health` — these are `int_property` getters
+    that aggregate in-deck buffs (auras / runtime enchants). Pin: pre-
+    buff a deck beast with +1/+1, trigger Banjosaur, assert the absorbed
+    stats reflect the buffed values (not the printed base)."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    # Strip all other beasts from deck so the seed is the only pick.
+    for c in list(p.deck):
+        if c.type == CardType.MINION and Race.BEAST in c.races:
+            c.discard()
+    # Seed one beast: Tundra Rhino (DS1_178, 2/5).
+    seeded = p.card("DS1_178")
+    seeded.zone = Zone.DECK
+    base_atk = seeded.atk
+    base_hp = seeded.max_health
+    assert (base_atk, base_hp) == (2, 5)
+    # Pre-buff the seeded beast in-deck with +1/+1 (ETC_350e = Party Hard).
+    from fireplace.actions import Buff
+    game.queue_actions(p.hero, [Buff(seeded, "ETC_350e")])
+    assert seeded.atk == base_atk + 1
+    assert seeded.max_health == base_hp + 1
+    # Trigger Banjosaur's attack.
+    banjo = p.summon("ETC_840")
+    pre_banjo_atk = banjo.atk
+    pre_banjo_hp = banjo.max_health
+    enemy = p.opponent.summon(WISP)
+    banjo.attack(enemy)
+    # Absorbed stats reflect the BUFFED beast, not base 2/5.
+    assert banjo.atk == pre_banjo_atk + (base_atk + 1)
+    assert banjo.max_health == pre_banjo_hp + (base_hp + 1)
+
+
+def test_watchclose_inzah_discount_applies_to_mid_turn_generated_overload():
+    """WATCHCLOSE — Inzah (ETC_371). The rest-of-game aura is stamped on
+    the CONTROLLER (not on Inzah's body) via Refresh(FRIENDLY_HAND +
+    OVERLOAD, COST: -1). Since Refresh re-evaluates each aura tick, any
+    Overload card that enters the hand mid-turn (drawn, generated, gifted)
+    should pick up the discount."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p = game.player1
+    inzah = p.give("ETC_371")
+    p.used_mana = 0
+    inzah.play()
+    # Generate an Overload spell mid-turn via .give (simulates a card
+    # generated by another effect — e.g. Sap, Mukla bananas, etc.).
+    lava = p.give("EX1_241")  # Lava Burst — 3-cost, Overload(2)
+    base_cost = lava.data.cost
+    assert base_cost == 3
+    # Inzah's -1 discount should be live on the freshly given card.
+    assert lava.cost == base_cost - 1
+
+
+def test_watchclose_starlight_groove_aura_persists_multi_turn_multi_pop():
+    """WATCHCLOSE — Starlight Groove (ETC_330). Soak the multi-turn
+    "rest of the game" behaviour: cast Starlight Groove → hero DS popped
+    → opp turn → own turn → cast Holy spell → DS refreshed → DS popped
+    again → opp turn → own turn → cast another Holy spell → DS refreshed
+    again. The aura on CONTROLLER must survive both turn cycles."""
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    sg = p.give("ETC_330")
+    p.used_mana = 0
+    sg.play()
+    assert bool(p.hero.divine_shield) is True
+    # Pop DS by hitting the hero.
+    from fireplace.actions import Hit
+    game.queue_actions(p.hero, [Hit(p.hero, 3)])
+    assert bool(p.hero.divine_shield) is False
+    # Cycle a full turn pair.
+    game.end_turn(); game.end_turn()
+    # Cast a Holy spell (Blessing of Wisdom, EX1_363).
+    holy = p.give("EX1_363")
+    p.used_mana = 0
+    target = p.summon(WISP)
+    holy.play(target=target)
+    assert bool(p.hero.divine_shield) is True
+    # Pop DS again.
+    game.queue_actions(p.hero, [Hit(p.hero, 3)])
+    assert bool(p.hero.divine_shield) is False
+    # Cycle another turn pair, cast Holy spell again, DS refreshes.
+    game.end_turn(); game.end_turn()
+    holy2 = p.give("EX1_363")
+    p.used_mana = 0
+    target2 = p.summon(WISP)
+    holy2.play(target=target2)
+    assert bool(p.hero.divine_shield) is True
+
+
+def test_watchclose_heartthrob_spawn_cost_equals_overheal_amount():
+    """WATCHCLOSE — Heartthrob (ETC_339). The implementation filters to
+    `collectible=True, type=MINION, cost=overheal`. The cost-match is
+    the load-bearing invariant. Pin overheal=3 → spawn cost == 3."""
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    htb = p.summon("ETC_339")
+    # max_health = 5, damage to 2 so overheal of 5 leaves overheal=2.
+    # Actually let's force a clean overheal=3: damage to 2, heal for 6
+    # → real heal=3 (clamped to missing hp), overheal=3.
+    htb.damage = 2
+    missing = htb.max_health - htb.health
+    assert missing == 2
+    from fireplace.actions import Heal
+    pre_field = len(p.field)
+    # Heal for 5 → real heal = missing = 2, overheal = 3.
+    game.queue_actions(p.hero, [Heal(htb, 5)])
+    assert len(p.field) == pre_field + 1
+    spawn = p.field[-1]
+    spawn_data = p.card(spawn.id)
+    assert spawn_data.cost == 3
+
+
+def test_watchclose_annoy_o_tron_jr_custom_card_blocked_on_data():
+    """WATCHCLOSE — Annoy-o-Troupe / Annoy-o-Tron Jr. (ETC_321t). Pin
+    that the data carddb does NOT contain an entry for the printed
+    'Annoy-o-Tron Jr.' name in this patch — the custom_card registration
+    is the only path. If a future patch ships ETC_321t in data this
+    test fails and the watch row should re-open."""
+    from hearthstone.cardxml import load as _xml_load
+    import hearthstone_data as _hs_data
+    _raw_db, _ = _xml_load(
+        path=_hs_data.get_carddefs_path(), locale="enUS"
+    )
+    # The fireplace CardDB always contains ETC_321t (it's registered via
+    # @custom_card). The check that matters is whether the *raw* CardXML
+    # ships an entry — if it does, we should drop @custom_card and use a
+    # plain class declaration.
+    assert "ETC_321t" not in _raw_db, (
+        "ETC_321t has appeared in raw CardXML — switch ETC_321t to a "
+        "plain class declaration (drop @custom_card) and re-open this row."
+    )
+    # And the registered custom card produces the printed stats.
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    for m in list(p.field):
+        m.destroy()
+    troupe = p.summon("ETC_321")
+    troupe.destroy()
+    spawns = [m for m in p.field if m.id == "ETC_321t"]
+    assert len(spawns) == 3
+    for s in spawns:
+        assert s.atk == 1
+        assert s.max_health == 2
+        assert bool(s.taunt) is True
+        assert bool(s.divine_shield) is True
+        assert Race.MECHANICAL in s.races

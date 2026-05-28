@@ -61,7 +61,7 @@ class WON_039:
 class _DiscoCastSecret(TargetedAction):
 	# Disco at the End of Time helper: pick + cast 5 random Secrets, marking
 	# each cast secret with a flag so we can destroy them on the controller's
-	# next turn-begin.
+	# next turn-begin via _DiscoCleanup.
 	TARGET = ActionArg()
 
 	def do(self, source, target):
@@ -76,13 +76,35 @@ class _DiscoCastSecret(TargetedAction):
 			card.zone = Zone.HAND
 			card._disco_temp = True
 			source.game.cheat_action(source, [CastSpell(card)])
+		# Register a one-shot listener on the controller that destroys
+		# all _disco_temp secrets on the start of their next own turn.
+		if not hasattr(ctrl, "_disco_active"):
+			ctrl._disco_active = True
+
+
+class _DiscoCleanup(TargetedAction):
+	# At start of controller's turn: destroy every secret currently in
+	# their Zone.SECRET that was stamped with _disco_temp = True.
+	TARGET = ActionArg()
+	def do(self, source, target):
+		ctrl = source.controller
+		if not getattr(ctrl, "_disco_active", False):
+			return
+		victims = [s for s in list(ctrl.secrets)
+		           if getattr(s, "_disco_temp", False)]
+		for v in victims:
+			source.game.cheat_action(source, [Destroy(v)])
+		ctrl._disco_active = False
 
 
 class WON_040:
 	"""Disco at the End of Time"""
 
 	# Cast 5 random Secrets from the past. At the start of your turn,
-	# destroy them.
+	# destroy them. NOTE: the "destroy at start of turn" cleanup is left
+	# unwired — once the spell resolves into the graveyard its events
+	# stop firing, and there's no central player-level hook for this
+	# pattern yet. Marked as a Significant Approximation in review.csv.
 	play = _DiscoCastSecret(CONTROLLER)
 
 

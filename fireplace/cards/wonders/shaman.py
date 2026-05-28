@@ -80,11 +80,11 @@ class WON_091:
 
 	# Summon all FIVE basic Totems. Overload: (1) is in data.
 	play = (
-		Summon(CONTROLLER, "CS2_050"),  # Healing Totem
-		Summon(CONTROLLER, "CS2_051"),  # Searing Totem
-		Summon(CONTROLLER, "CS2_052"),  # Stoneclaw Totem
-		Summon(CONTROLLER, "NEW1_009"),  # Mana Tide Totem (placeholder id)
-		Summon(CONTROLLER, "EX1_565"),  # Flametongue Totem (placeholder id)
+		Summon(CONTROLLER, "NEW1_009"),  # Healing Totem
+		Summon(CONTROLLER, "CS2_050"),  # Searing Totem
+		Summon(CONTROLLER, "CS2_051"),  # Stoneclaw Totem
+		Summon(CONTROLLER, "CS2_052"),  # Wrath of Air Totem
+		Summon(CONTROLLER, "CS2_058"),  # Strength Totem
 	)
 
 

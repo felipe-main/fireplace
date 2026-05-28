@@ -70,16 +70,18 @@ class WON_103:
 
 
 class _WitchArchThief(TargetedAction):
-	# Battlecry: Summon a 1/3 Voidwalker with Taunt. If opp has more
-	# minions, repeat. Loop until our minion count >= opp's.
+	# Battlecry: Summon a 1/3 Voidwalker. If opp has more minions,
+	# repeat. Always summons at least one, then loops while opp.field
+	# > ctrl.field, capped by the engine's 7-minion board cap.
 	TARGET = ActionArg()
 	def do(self, source, target):
 		ctrl = source.controller
 		opp = ctrl.opponent
-		# Safety cap to avoid runaway loops.
-		for _ in range(8):
+		while True:
+			if len(ctrl.field) >= 7:
+				break
 			source.game.cheat_action(source, [Summon(ctrl, "CS2_065")])
-			if len(ctrl.field) >= len(opp.field):
+			if len(opp.field) <= len(ctrl.field):
 				break
 
 

@@ -42,7 +42,13 @@ class _KologarnCapture(TargetedAction):
                 # Hand full — just destroy it
                 source.game.cheat_action(source, [Destroy(defender)])
             else:
-                defender.zone = Zone.HAND
+                # Cross-controller field→hand transfer: direct list manipulation
+                # so the defender ends up in CTRL's hand (not its original owner's).
+                opp = defender.controller
+                if defender in opp.field:
+                    opp.field.remove(defender)
+                defender._zone = Zone.HAND
+                ctrl.hand.append(defender)
                 defender.controller = ctrl
                 # Mark this minion as captured by Kologarn for the deathrattle
                 defender._kologarn_captured = True
@@ -61,7 +67,10 @@ class _KologarnDeathrattle(TargetedAction):
             if len(opp.hand) >= opp.max_hand_size:
                 continue
             card._kologarn_captured = False
-            card.zone = Zone.HAND
+            # Cross-controller hand transfer: direct list manipulation avoids
+            # zone-change no-op when card is already in Zone.HAND.
+            ctrl.hand.remove(card)
+            opp.hand.append(card)
             card.controller = opp
 
 
@@ -419,7 +428,7 @@ class TTN_330:
 
     # Rush. Whenever this attacks a minion, put it in your hand.
     # Deathrattle: Move any in your hand to your opponent's.
-    events = Attack(SELF, ALL_MINIONS).on(_KologarnCapture(SELF, Attack.DEFENDER))
+    events = Attack(SELF, ALL_MINIONS).on(_KologarnCapture(Attack.DEFENDER))
     deathrattle = _KologarnDeathrattle(SELF)
 
 

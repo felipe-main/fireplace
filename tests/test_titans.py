@@ -1174,3 +1174,316 @@ def test_melted_maker_gives_copy_after_forge():
     assert len(game.player1.hand) >= hand_before
     forge_ids = [c.id for c in game.player1.hand]
     assert "TTN_042t" in forge_ids, "Forged card should be in hand"
+
+
+# ===========================================================================
+# ONCE-OVER WATCHLIST — Titans expansion
+# ===========================================================================
+
+
+def test_once_over_argus_right_minion_gains_lifesteal():
+    """Argus passive: minions to the right of Argus gain Lifesteal on OWN_TURN_BEGIN."""
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.current_player  # whoever goes first
+    argus = p1.summon("TTN_862")  # position 0
+    right = p1.summon("CS2_231")  # Wisp — position 1 (right of Argus)
+    # Aura fires on OWN_TURN_BEGIN, so cycle a full turn to trigger it.
+    game.end_turn()   # opponent's turn
+    game.end_turn()   # back to p1 — OWN_TURN_BEGIN fires _ArgusUpdateAura
+    # The minion to the right of Argus should now have Lifesteal.
+    assert right.lifesteal, "Minion to the right of Argus should have Lifesteal"
+
+
+def test_once_over_argus_left_minion_gains_rush():
+    """Argus passive: minions to the left of Argus gain Rush on OWN_TURN_BEGIN."""
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.current_player
+    left = p1.summon("CS2_231")   # Wisp — position 0 (left of future Argus)
+    argus = p1.summon("TTN_862")  # position 1
+    game.end_turn()   # opponent's turn
+    game.end_turn()   # OWN_TURN_BEGIN fires
+    assert left.rush, "Minion to the left of Argus should have Rush"
+
+
+def test_once_over_frost_lotus_seedling_gains_armor_and_draws_card():
+    """Frost Lotus Seedling (TTN_930): draw 1 card and gain 4 Armor immediately."""
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    # Put a card in DECK zone so Draw works correctly.
+    p1.card("CS2_231", zone=Zone.DECK)
+    armor_before = p1.hero.armor
+    hand_before = len(p1.hand)  # measure BEFORE give
+    spell = p1.give("TTN_930")
+    spell.play()
+    # From hand_before (pre-give): give +1 spell, play −1, draw +1 → net +1 over hand_before.
+    assert p1.hero.armor == armor_before + 4, "Should gain 4 Armor"
+    assert len(p1.hand) == hand_before + 1, "Hand net: gave 1, played 1, drew 1 → +1 from before-give count"
+
+
+def test_once_over_frost_lotus_seedling_shuffles_blossom_into_deck():
+    """Frost Lotus Seedling (TTN_930): the Blossom (TTN_930t) is shuffled into the deck."""
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    # Add a card in DECK zone so Draw doesn't fatigue before we check the deck.
+    p1.card("CS2_231", zone=Zone.DECK)
+    spell = p1.give("TTN_930")
+    spell.play()
+    blossoms = [c for c in p1.deck if c.id == "TTN_930t"]
+    assert len(blossoms) == 1, "One Frost Lotus Blossom should be in the deck"
+
+
+def test_once_over_forest_seedlings_summons_two_saplings():
+    """Forest Seedlings (TTN_950): summon two 1/1 Saplings immediately."""
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    spell = p1.give("TTN_950")
+    spell.play()
+    saplings = [m for m in p1.field if m.id == "TTN_950t"]
+    assert len(saplings) == 2, "Forest Seedlings should summon exactly two 1/1 Saplings"
+
+
+def test_once_over_forest_seedlings_shuffles_blossom_into_deck():
+    """Forest Seedlings (TTN_950): shuffle Forest Blossoms (TTN_950t3) into the deck."""
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    spell = p1.give("TTN_950")
+    spell.play()
+    blossoms = [c for c in p1.deck if c.id == "TTN_950t3"]
+    assert len(blossoms) == 1, "One Forest Blossoms should be shuffled into the deck"
+
+
+def test_once_over_crystalline_statue_awakens_after_four_draws():
+    """Crystalline Statue (TTN_840): starts Dormant, awakens after controller draws 4 cards."""
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.current_player
+    for _ in range(10):
+        p1.card("CS2_231", zone=Zone.DECK)
+    statue = p1.summon("TTN_840")
+    assert statue.dormant, "Crystalline Statue should start Dormant"
+    for _ in range(4):
+        p1.draw()
+    assert not statue.dormant, "Statue should awaken after 4 draws"
+
+
+def test_once_over_frozen_over_both_players_draw_two():
+    """Frozen Over (TTN_744): both players draw 2 cards."""
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.current_player
+    opp = p1.opponent
+    # Use zone=Zone.DECK so draw properly removes cards from deck.
+    for _ in range(5):
+        p1.card("CS2_231", zone=Zone.DECK)
+    for _ in range(5):
+        opp.card("CS2_231", zone=Zone.DECK)
+    p1_hand_before = len(p1.hand)
+    opp_hand_before = len(opp.hand)
+    spell = p1.give("TTN_744")
+    spell.play()
+    # p1: gave spell (+1) then played it (-1) and drew 2 (+2) → net +2 from p1_hand_before
+    assert len(p1.hand) == p1_hand_before + 2, "Caster should net +2 cards (gave+played cancel, drew 2)"
+    # opponent: drew 2 → net +2
+    assert len(opp.hand) == opp_hand_before + 2, "Opponent should draw exactly 2 cards"
+
+
+def test_once_over_frozen_over_opponent_cannot_play_drawn_cards_next_turn():
+    """Frozen Over (TTN_744): the 2 cards drawn by the opponent are unplayable next turn."""
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.current_player
+    opp = p1.opponent
+    # Use zone=Zone.DECK so draws work correctly.
+    for _ in range(5):
+        opp.card("CS2_231", zone=Zone.DECK)
+    # Snapshot opponent's hand before the spell.
+    opp_hand_ids_before = set(id(c) for c in opp.hand)
+    spell = p1.give("TTN_744")
+    spell.play()
+    # The newly drawn opponent cards should be marked unplayable_next_turn = 1.
+    newly_drawn = [c for c in opp.hand if id(c) not in opp_hand_ids_before]
+    assert len(newly_drawn) == 2, "Opponent should have drawn exactly 2 new cards"
+    for card in newly_drawn:
+        assert getattr(card, "unplayable_next_turn", 0) == 1, (
+            f"Newly drawn card {card.id} should have unplayable_next_turn == 1"
+        )
+
+
+def test_once_over_frozen_over_cards_playable_after_one_turn():
+    """Frozen Over (TTN_744): the opponent's locked cards become playable after one turn tick."""
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.current_player
+    opp = p1.opponent
+    # Use zone=Zone.DECK so draws work correctly.
+    for _ in range(5):
+        opp.card("CS2_231", zone=Zone.DECK)
+    opp_hand_ids_before = set(id(c) for c in opp.hand)
+    spell = p1.give("TTN_744")
+    spell.play()
+    # End p1's turn → opponent's begin_turn ticks down unplayable_next_turn.
+    game.end_turn()  # opponent's turn begins
+    newly_drawn = [c for c in opp.hand if id(c) not in opp_hand_ids_before]
+    for card in newly_drawn:
+        assert getattr(card, "unplayable_next_turn", 0) == 0, (
+            f"Card {card.id} should be playable again after one turn tick"
+        )
+
+
+def test_once_over_hodir_sets_three_minions_to_8_8():
+    """Hodir (TTN_752): the next 3 minions played each get set to 8/8."""
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.current_player
+    hodir = p1.give("TTN_752")
+    hodir.play()
+    assert p1.hodir_charges == 3
+    for i in range(3):
+        wisp = p1.give("CS2_231")
+        wisp.play()
+        played = p1.field[-1]
+        assert played.atk == 8, f"Minion {i+1} should have 8 ATK"
+        assert played.health == 8, f"Minion {i+1} should have 8 Health"
+    assert p1.hodir_charges == 0, "All 3 Hodir charges should be consumed"
+
+
+def test_once_over_hodir_does_not_buff_fourth_minion():
+    """Hodir (TTN_752): the 4th minion played after Hodir is NOT set to 8/8."""
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.current_player
+    hodir = p1.give("TTN_752")
+    hodir.play()
+    for _ in range(3):
+        wisp = p1.give("CS2_231")
+        wisp.play()
+    assert p1.hodir_charges == 0
+    fourth = p1.give("CS2_231")
+    fourth.play()
+    played = p1.field[-1]
+    assert played.atk == 1, "4th minion should have its natural ATK (1 for Wisp)"
+    assert played.health == 1, "4th minion should have its natural Health (1 for Wisp)"
+
+
+def test_once_over_jotun_casts_first_spell_drawn_at_enemies():
+    """Jotun (TTN_842): the first spell drawn each turn is cast at enemies.
+
+    The auto-draw at turn-start counts as the draw — Moonfire is consumed there.
+    We verify that the auto-draw during the next turn-begin triggers the cast.
+    """
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.current_player
+    opp = p1.opponent
+    # Put Moonfire in p1's deck; it will be drawn at turn-begin automatically.
+    p1.card("CS2_008", zone=Zone.DECK)  # Moonfire
+    jotun = p1.give("TTN_842")
+    jotun.play()
+    # Record opp hp before the turn cycle.
+    opp_hp_before = opp.hero.health
+    game.end_turn()   # opponent's turn
+    # p1's next turn begins — auto-draw picks up Moonfire → Jotun fires → cast at enemy
+    game.end_turn()   # p1's turn (auto-draw triggers Jotun)
+    # Moonfire dealt 1 damage to enemy hero.
+    assert opp.hero.health == opp_hp_before - 1, (
+        "Jotun should cast the auto-drawn Moonfire at enemy hero during turn-begin draw"
+    )
+
+
+def test_once_over_jotun_latch_resets_each_turn():
+    """Jotun (TTN_842): only the FIRST spell drawn each turn is cast — second draw same turn is skipped."""
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.current_player
+    opp = p1.opponent
+    # Give two Moonfires directly to hand — we'll manually draw one then verify latch.
+    # Use give() so they're in hand already; then test the latch by drawing a spell from deck.
+    # Actually: put 2 Moonfires in deck. Turn-begin draws 1 (fires Jotun). Then we manually
+    # draw the second (should NOT fire Jotun again same turn).
+    for _ in range(2):
+        p1.card("CS2_008", zone=Zone.DECK)
+    jotun = p1.give("TTN_842")
+    jotun.play()
+    game.end_turn()
+    # p1's turn begins — auto-draw fires Jotun (first Moonfire drawn).
+    opp_hp_before = opp.hero.health
+    game.end_turn()  # p1's turn: auto-draw triggers Jotun → opp takes 1 dmg
+    assert opp.hero.health == opp_hp_before - 1, "Auto-draw should have triggered Jotun"
+    # Now manually draw the second Moonfire — latch is set, should NOT cast again.
+    opp_hp_before2 = opp.hero.health
+    p1.draw()  # second Moonfire
+    assert opp.hero.health == opp_hp_before2, "Second spell drawn same turn should NOT be cast"
+
+
+def test_once_over_kologarn_captures_defender_not_itself():
+    """Kologarn (TTN_330): captures the attacked minion (defender), not itself."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    opp = p1.opponent
+    kologarn = p1.summon("TTN_330")  # 9/9 Rush
+    target = opp.summon("CS2_231")   # Wisp 1/1
+    target.max_health = 50
+    target.damage = 0
+    game.queue_actions(p1, [Attack(kologarn, target)])
+    captured_ids = [c.id for c in p1.hand if getattr(c, "_kologarn_captured", False)]
+    assert "CS2_231" in captured_ids, "Wisp should be captured to Kologarn's hand"
+    assert "TTN_330" not in captured_ids, "Kologarn must not capture itself"
+
+
+def test_once_over_kologarn_deathrattle_sends_captured_cards_to_opponent():
+    """Kologarn (TTN_330) deathrattle: captured cards move from p1's hand to opp's."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    opp = p1.opponent
+    captured_wisp = p1.give("CS2_231")
+    captured_wisp._kologarn_captured = True
+    kologarn2 = p1.summon("TTN_330")
+    opp_hand_before = len(opp.hand)
+    p1_hand_before = len(p1.hand)
+    kologarn2.destroy()
+    assert len(opp.hand) == opp_hand_before + 1, "Captured Wisp should move to opp"
+    assert len(p1.hand) == p1_hand_before - 1, "Captured Wisp should leave p1"
+    assert captured_wisp.controller is opp
+    assert captured_wisp in opp.hand
+
+
+def test_once_over_lab_constructor_clones_at_end_of_turn():
+    """Lab Constructor (TTN_730): at the end of your turn, a second copy is summoned."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    p1.summon("TTN_730")
+    game.end_turn()  # p1's turn ends — OWN_TURN_END fires
+    labs = [m for m in p1.field if m.id == "TTN_730"]
+    assert len(labs) == 2, "There should be 2 Lab Constructors after end of turn"
+
+
+def test_once_over_lab_constructor_clone_also_clones():
+    """Lab Constructor (TTN_730): the summoned clone also fires its end-of-turn trigger."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    p1.summon("TTN_730")
+    game.end_turn()   # turn 1 ends → 2 labs on board
+    game.end_turn()   # opponent's turn ends → p1's turn begins
+    game.end_turn()   # p1's turn ends → both labs clone → 4 labs
+    labs = [m for m in p1.field if m.id == "TTN_730"]
+    # Both existing Labs each clone once → 2 new labs (capped by board size if needed)
+    # Board holds up to 7; we started with 2 so expect 4.
+    expected = min(4, 7)
+    assert len(labs) == expected, f"Expected {expected} Lab Constructors after second clone, got {len(labs)}"
+
+
+def test_once_over_odyn_hero_gains_attack_equal_to_armor_gained():
+    """Odyn (TTN_811): after hero gains Armor, hero gains that much Attack for the turn."""
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.current_player
+    odyn = p1.give("TTN_811")
+    odyn.play()
+    hero = p1.hero
+    atk_before = hero.atk
+    game.queue_actions(p1, [GainArmor(hero, 7)])
+    assert hero.atk == atk_before + 7, "Hero ATK should increase by the armor amount (7)"
+
+
+def test_once_over_odyn_attack_buff_clears_at_turn_end():
+    """Odyn (TTN_811): ATK buff is granted for the turn only — clears at end of turn."""
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.current_player
+    odyn = p1.give("TTN_811")
+    odyn.play()
+    hero = p1.hero
+    game.queue_actions(p1, [GainArmor(hero, 5)])
+    assert hero.atk == 5, "ATK should be 5 immediately after armor gain"
+    game.end_turn()   # OWN_TURN_END fires; TAG_ONE_TURN_EFFECT buffs are cleared
+    assert hero.atk == 0, "ATK buff should clear at end of turn"

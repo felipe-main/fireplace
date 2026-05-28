@@ -14,7 +14,7 @@ class TTN_840:
     dormant_turns = 99
     # progress_total = 4: AddProgress tracks draw count; awaken at 4.
     progress_total = 4
-    dormant_events = Draw(CONTROLLER).after(
+    dormant_events = Draw(CONTROLLER).on(
         AddProgress(SELF, Draw.CARD),
         (CURRENT_PROGRESS(SELF) >= 4) & Awaken(SELF),
     )

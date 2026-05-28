@@ -341,10 +341,11 @@ class TTN_803e:
 class TTN_811e:
 	# Odyn attack buff — temporary Attack equal to armor gained.
 	# atk is supplied at Buff() time (atk=amount kwarg).
+	# TAG_ONE_TURN_EFFECT: True causes end_turn_cleanup to remove this buff.
 	tags = {
 		GameTag.CARDNAME: "Odyn's Blessing",
 		GameTag.CARDTYPE: CardType.ENCHANTMENT,
-		enums.TEMPORARY: 1,
+		GameTag.TAG_ONE_TURN_EFFECT: True,
 	}
 
 

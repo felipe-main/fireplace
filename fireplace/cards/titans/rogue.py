@@ -229,7 +229,8 @@ class TTN_728:
     # Discover a Mech from your deck. Give it +2/+1.
     def play(self):
         ctrl = self.controller
-        deck_mechs = [c for c in ctrl.deck if Race.MECHANICAL in c.races]
+        deck_mechs = [c for c in ctrl.deck
+                      if c.type == CardType.MINION and Race.MECHANICAL in c.races]
         if not deck_mechs:
             return
         unique_ids = list({c.id for c in deck_mechs})

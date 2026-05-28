@@ -214,20 +214,21 @@ class TTN_727:
 class TTN_801:
 	"""Champion of Storms"""
 
-	# After you cast a Nature spell, summon a 4/2 Elemental.
-	# Forge: the Elemental gains Rush.
+	# After you cast a Nature spell, summon a 4/2 Storm Cyclone.
+	# Forge: the Cyclone gains Rush. Tokens TTN_801t1 (base) and TTN_801t2
+	# (Rush) live in CardXML; the previously-summoned TTN_801e / TTN_801et
+	# IDs were not real and crashed when triggered by random soak plays.
 	forge_card = "TTN_801t"
 	events = OWN_SPELL_PLAY.after(
-		Find(Play.CARD + NATURE_SPELL) & Summon(CONTROLLER, "TTN_801e")
+		Find(Play.CARD + NATURE_SPELL) & Summon(CONTROLLER, "TTN_801t1")
 	)
 
 
 class TTN_801t:
 	"""Champion of Storms"""
 
-	# Forged version — same listener but summons a Rushing Elemental token.
 	events = OWN_SPELL_PLAY.after(
-		Find(Play.CARD + NATURE_SPELL) & Summon(CONTROLLER, "TTN_801et")
+		Find(Play.CARD + NATURE_SPELL) & Summon(CONTROLLER, "TTN_801t2")
 	)
 
 
@@ -325,18 +326,6 @@ class TTN_722t:
 	# Rush is set in data.
 
 
-class TTN_801e:
-	"""Charged Elemental"""
-
-	# 4/2 Elemental token for Champion of Storms (base version).
-
-
-class TTN_801et:
-	"""Charged Elemental"""
-
-	# 4/2 Elemental token with Rush for Champion of Storms (Forged version).
-	# Rush set in data or via script below if absent.
-	play = GiveRush(SELF)
 
 
 class TTN_727t:

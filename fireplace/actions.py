@@ -718,12 +718,17 @@ class Play(GameAction):
 
         # TITANS — Aqua Archivist / Tram Operator: apply one-shot cost discounts
         # BEFORE the battlecry fires so the card cannot consume its own discount.
+        # Clamp the refund to the cost actually paid for this card so a card
+        # already reduced below the discount can't yield free mana.
         if card.type == CardType.MINION:
+            paid = max(0, card.cost)
             if Race.ELEMENTAL in card.races and player._next_elemental_discount > 0:
-                player.used_mana = max(0, player.used_mana - player._next_elemental_discount)
+                refund = min(paid, player._next_elemental_discount)
+                player.used_mana = max(0, player.used_mana - refund)
                 player._next_elemental_discount = 0
             if Race.MECHANICAL in card.races and player._next_mech_cost_reduction > 0:
-                player.used_mana = max(0, player.used_mana - player._next_mech_cost_reduction)
+                refund = min(paid, player._next_mech_cost_reduction)
+                player.used_mana = max(0, player.used_mana - refund)
                 player._next_mech_cost_reduction = 0
 
         # "Can't Play" (aka Counter) means triggers don't happen either
@@ -3117,6 +3122,10 @@ class ForgeCard(TargetedAction):
         ctrl.cards_forged_this_game += 1
         source.game.manager.targeted_action(self, source, target)
         # Broadcast AFTER event so Melted Maker can listen for Forge activations.
+        # Pass `forged` — after Morph runs, the forged instance is the card now
+        # living in the player's hand, so FRIENDLY_HAND listeners can match it.
+        # (The original `target` has been moved to SETASIDE by Morph and would
+        # not match any in-hand selector.)
         self.broadcast(source, EventListener.AFTER, forged)
 
 

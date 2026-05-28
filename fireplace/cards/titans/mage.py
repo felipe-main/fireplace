@@ -267,8 +267,12 @@ class TTN_075t2e:
 class TTN_075t2e2:
 	"""Ancient Knowledge Cost Increase"""
 
-	# Per-card cost increase stamped when the aura fires.
+	# Per-card cost increase stamped by Ancient Knowledge. The enchant's
+	# owner is the opponent (whose hand-card it sits on), so OWN_TURN_END
+	# fires at the end of the opponent's NEXT turn — exactly the "next turn"
+	# scope on the printed card.
 	tags = {GameTag.COST: 1}
+	events = OWN_TURN_END.on(Destroy(SELF))
 
 
 class TTN_075t3:

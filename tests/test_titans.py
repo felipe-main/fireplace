@@ -9,7 +9,7 @@ Covers:
 
 import pytest
 
-from hearthstone.enums import CardClass, CardType, GameTag, Race, Zone
+from hearthstone.enums import CardClass, CardType, GameTag, Race, SpellSchool, Zone
 
 from utils import *
 
@@ -102,6 +102,18 @@ def test_norgannon_can_attack_after_all_abilities():
     _use_all_titan_abilities(game, norg)
     assert norg._titan_ability_index == 3
     assert norg.can_attack()
+
+
+def test_titan_cannot_attack_mid_sequence():
+    """Titan with 1 of 3 and 2 of 3 abilities used still cannot attack."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    norg = game.player1.summon("TTN_075")
+    game.queue_actions(game.player1, [UseTitanAbility(norg, None)])
+    assert norg._titan_ability_index == 1
+    assert not norg.can_attack()
+    game.queue_actions(game.player1, [UseTitanAbility(norg, None)])
+    assert norg._titan_ability_index == 2
+    assert not norg.can_attack()
 
 
 # ===========================================================================
@@ -640,15 +652,15 @@ def test_storm_giant_forged_can_be_forged_again():
 
 def test_watcher_of_the_sun_base_gives_holy_spell():
     game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
-    hand_before = len(game.player1.hand)
     card = game.player1.give("TTN_039")
     card.play()
-    # Should have drawn a Holy spell (net hand size = hand_before + 1 - 1 played + 1 given)
     holy_spells = [
         c for c in game.player1.hand
         if c.type == CardType.SPELL
+        and c.data.spell_school is not None
+        and int(c.data.spell_school) == int(SpellSchool.HOLY)
     ]
-    assert len(holy_spells) >= 1
+    assert len(holy_spells) == 1
 
 
 def test_watcher_of_the_sun_forged_heals_hero():
@@ -726,18 +738,15 @@ def test_eulogizer_forged_gains_3_corpses():
 
 
 def test_embrace_of_nature_base_draws_choose_one_card():
-    # TTN_951 draws a Choose One card from deck.
-    # Use prepare_game (full deck) so there will be choose-one cards available.
-    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
-    deck_size_before = len(game.player1.deck)
+    # TTN_951 draws a Choose One card from deck. Plant a single known
+    # Choose-One card (Wrath, EX1_154) so the random pick is forced.
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    wrath = game.player1.card("EX1_154")
+    wrath.zone = Zone.DECK
     spell = game.player1.give("TTN_951")
-    hand_before = len(game.player1.hand)  # includes spell itself
     spell.play()
-    # Net: played 1 spell (-1), drew 0 or 1 choose-one cards.
-    # The deck should have lost 1 card (drawn) if any choose-one was in it.
-    deck_size_after = len(game.player1.deck)
-    # The spell was cast; deck should be <= deck_size_before
-    assert deck_size_after <= deck_size_before
+    assert wrath.zone == Zone.HAND
+    assert wrath not in game.player1.deck
 
 
 def test_lab_constructor_forge_is_magnetic():
@@ -1057,13 +1066,13 @@ def test_serenity_reduces_enemy_atk_and_destroys_zero_attack():
 def test_thorim_unlocks_overload_and_draws():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
     game.player1.overloaded = 3
-    hand_before = len(game.player1.hand)
     card = game.player1.give("TTN_835")
+    hand_before = len(game.player1.hand)
     card.play()
     assert game.player1.overloaded == 0
     assert game.player1.overload_locked == 0
-    # Should have drawn 3 cards
-    assert len(game.player1.hand) >= hand_before + 2  # +3 drawn - 1 played
+    # give: +1, play: -1, draws 3: +3 → net +2 relative to hand_before
+    assert len(game.player1.hand) == hand_before + 2
 
 
 def test_resistance_aura_makes_enemy_spells_cost_more():
@@ -1171,10 +1180,13 @@ def test_melted_maker_gives_copy_after_forge():
     card = game.player1.give("TTN_042")  # Cyclopian Crusher, has Forge
     hand_before = len(game.player1.hand)
     game.queue_actions(game.player1, [ForgeCard(card)])
-    # After forge: original morphed to TTN_042t, plus Melted Maker gives a copy
-    assert len(game.player1.hand) >= hand_before
+    # Forge alone preserves hand count (original morphs in place); Melted
+    # Maker adds exactly one copy → net +1. The forged-card id must appear
+    # at least once (the morphed original); without Maker firing this would
+    # be exactly once and the size assertion alone would catch the regression.
+    assert len(game.player1.hand) == hand_before + 1
     forge_ids = [c.id for c in game.player1.hand]
-    assert "TTN_042t" in forge_ids, "Forged card should be in hand"
+    assert "TTN_042t" in forge_ids
 
 
 # ===========================================================================
@@ -1610,23 +1622,25 @@ def test_tier4_jormungar_excess_damage_hits_enemy_hero():
 
 
 def test_tier4_prison_of_yogg_saron_targets_chosen_character():
-    """Prison of Yogg-Saron (TTN_090): casts spells preferring the chosen character.
-
-    This is a probabilistic check: at least 1 of 4 cast spells should target
-    the chosen character (the engine still falls back to random for spells
-    that don't accept the character as a target).
-    """
-    # Hard to test reliably with random spell pool; just smoke-test that the
-    # card plays without error and doesn't crash when picking targets.
+    """Prison of Yogg-Saron (TTN_090): casts 4 random spells, preferring the
+    chosen character as their target when legal."""
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     enemy = game.player2.summon("CS2_200")
     enemy.max_health = 100
     enemy.damage = 0
-    location = game.player1.summon("TTN_090")  # Location, durability 1
-    # Use the location targeting the enemy minion
+    spells_in_graveyard_before = sum(
+        1 for c in game.player1.graveyard if c.type == CardType.SPELL
+    )
+    location = game.player1.summon("TTN_090")
     location.use(target=enemy)
-    # No crash = pass
-    assert location.zone in (Zone.GRAVEYARD, Zone.PLAY)
+    # 4 spells cast; each one either lands in graveyard or fizzles when it
+    # has no legal target. A regression to "0 spells cast" would leave the
+    # graveyard untouched — so requiring at least 3 catches the dead-path bug
+    # without flaking on the engine's fizzle quirk.
+    spells_in_graveyard_after = sum(
+        1 for c in game.player1.graveyard if c.type == CardType.SPELL
+    )
+    assert spells_in_graveyard_after - spells_in_graveyard_before >= 3
 
 
 
@@ -1783,7 +1797,8 @@ def test_tier5_sif_cardtext_shows_spell_school_count():
     sif = p1.give("TTN_071")
     text = sif.description
     assert "@" not in text
-    assert "2" in text
+    assert text.count("2") == 1
+    assert "+2" in text or " 2 " in text or text.endswith("2")
 
 
 def test_tier5_chained_guardian_cardtext_shows_discount():

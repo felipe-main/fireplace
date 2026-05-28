@@ -412,12 +412,12 @@ class TTN_090:
     """Prison of Yogg-Saron"""
 
     # Choose a character. Cast 4 random spells (targeting it if possible).
-    # TODO: Full targeting behaviour (prefer chosen character) is only
-    # approximated. This just casts 4 random spells; targeting is random.
+    # _PrisonOfYoggCastSpells routes each spell at the chosen character when
+    # it's a legal target, else falls back to random.
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
     }
-    activate = CastSpell(RandomSpell()) * 4
+    activate = _PrisonOfYoggCastSpells(TARGET)
 
 
 class TTN_330:
@@ -576,8 +576,12 @@ class TTN_729:
     """Melted Maker"""
 
     # After you Forge a card, get a copy of it.
-    # ForgeCard.do broadcasts AFTER with the forged card as the event arg.
-    events = ForgeCard(FRIENDLY_HAND).after(Give(CONTROLLER, ForgeCard.TARGET))
+    # ForgeCard.do broadcasts AFTER with the forged-in-hand card as the event
+    # arg; ExactCopy produces a fresh instance so Give actually adds a card
+    # (Give on an already-in-hand instance no-ops via the zone-equality guard).
+    events = ForgeCard(FRIENDLY_HAND).after(
+        Give(CONTROLLER, ExactCopy(ForgeCard.TARGET))
+    )
 
 
 class TTN_731:

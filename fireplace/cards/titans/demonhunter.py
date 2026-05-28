@@ -140,11 +140,14 @@ class TTN_862:
     """Argus, the Emerald Star"""
 
     titan_ability_order = ["TTN_862t1", "TTN_862t2", "TTN_862t3"]
-    # Positional aura — applied at the start of each turn (approximation).
-    # Full continuous aura would need engine changes; approximate with event.
+    # Positional aura — recomputed on every event that can add/remove/move
+    # a friendly minion: turn begin, friendly play, friendly summon (covers
+    # deathrattle/spell summons), and friendly death (shifts positions).
     events = [
         OWN_TURN_BEGIN.on(_ArgusUpdateAura(SELF)),
         OWN_MINION_PLAY.on(_ArgusUpdateAura(SELF)),
+        Summon(CONTROLLER, MINION).after(_ArgusUpdateAura(SELF)),
+        Death(FRIENDLY + MINION).after(_ArgusUpdateAura(SELF)),
     ]
 
 

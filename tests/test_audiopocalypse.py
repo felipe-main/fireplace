@@ -20,21 +20,20 @@ from utils import *
 
 def test_remixed_dispenseobot_rotates_in_hand():
 	"""JAM_000 — at OWN_TURN_BEGIN, the Remixed card in hand picks a
-	(usually different) variant from its 4-card pool."""
+	new variant. Over enough turns, all 4 variants should appear."""
 	game = prepare_game(CardClass.MAGE, CardClass.MAGE)
 	card = game.player1.give("JAM_000")
-	# Initial variant may be unset before first rotate fires.
 	game.end_turn(); game.end_turn()
-	v1 = card._remix_variant_id
-	assert v1 in {"JAM_000t", "JAM_000t2", "JAM_000t3", "JAM_000t4"}
-	# Force enough rotates to see at least one change (random can repeat).
-	seen = {v1}
-	for _ in range(40):
+	all_variants = {"JAM_000t", "JAM_000t2", "JAM_000t3", "JAM_000t4"}
+	assert card._remix_variant_id in all_variants
+	seen = {card._remix_variant_id}
+	# 200 rotations is more than enough to hit all 4 with the engine RNG.
+	for _ in range(200):
 		game.end_turn(); game.end_turn()
 		seen.add(card._remix_variant_id)
-		if len(seen) > 1:
+		if seen == all_variants:
 			break
-	assert len(seen) > 1
+	assert seen == all_variants
 
 
 def test_remixed_dispenseobot_play_fires_variant_effect():
@@ -88,18 +87,19 @@ def test_star_power_cascade_deals_5_4_3_2_1():
 
 def test_hidden_meaning_summons_3cost_when_opp_uses_all_mana():
 	"""JAM_003 — Secret fires when opponent ends their turn with no
-	Mana left. Summons a random 3-cost minion."""
+	Mana left. Summons a random 3-cost minion on the secret-owner's side."""
 	game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
 	game.player1.give("JAM_003").play()  # plant Secret
 	assert any(s.id == "JAM_003" for s in game.player1.secrets)
 	game.end_turn()
-	# Player2's turn: spend all 10 mana via The Coin chain — simpler:
-	# directly drain used_mana to max_mana to simulate "no mana left".
 	game.player2.used_mana = game.player2.max_mana
-	pre_field = len(game.player2.field)
+	pre_field = len(game.player1.field)
 	game.end_turn()
-	# Secret consumed; player2 got a random 3-cost minion summoned.
 	assert not any(s.id == "JAM_003" for s in game.player1.secrets)
+	# A new minion appeared on the secret owner's side, base cost = 3.
+	assert len(game.player1.field) == pre_field + 1
+	new_minion = game.player1.field[-1]
+	assert new_minion.data.cost == 3
 
 
 def test_hollow_hound_damages_neighbours_of_attack_target():
@@ -168,13 +168,12 @@ def test_dead_air_destroys_and_resummons_undead():
 	# Cool Ghoul (JAM_007) IS Undead.
 	g1 = game.player1.summon("JAM_007")
 	g2 = game.player1.summon("JAM_007")
-	pre_ids = sorted(m.id for m in game.player1.field)
+	# JAM_007 has Reborn, so 2 destroyed → 2 Reborn copies even if the
+	# resummon loop does nothing. Test that the loop ALSO summons the
+	# original IDs back (= 4 copies total) by counting before/after.
 	game.player1.give("JAM_008").play()
 	post_ids = sorted(m.id for m in game.player1.field)
-	# Both ghouls die and resummon — but they reborn first, so each
-	# leaves a half-HP copy AND a fresh full-HP copy.
-	# At minimum the resummoned ones are present.
-	assert post_ids.count("JAM_007") >= 2
+	assert post_ids.count("JAM_007") == 4
 
 
 # ---------------------------------------------------------------------------
@@ -542,8 +541,25 @@ def test_funnel_cake_heals_3_to_minion_and_neighbours():
 	assert left.damage == 0
 	assert mid.damage == 0
 	assert right.damage == 0
-	# Mana used went from 4 to 5 (just the +1 spell cost), no refund.
-	assert game.player1.used_mana == 5
+
+
+def test_funnel_cake_overheal_refreshes_mana_crystal():
+	"""JAM_025 — each minion that's overhealed refreshes a Mana Crystal.
+	Setting all three to damage=1 means heal-3 overheals by 2 each → 3
+	mana crystals refreshed."""
+	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+	left = game.player1.summon("CS2_200")
+	mid = game.player1.summon("CS2_200")
+	right = game.player1.summon("CS2_200")
+	for m in (left, mid, right):
+		m.damage = 1  # heal 3 → overheal by 2
+	game.player1.max_mana = 10
+	game.player1.used_mana = 9  # 1 mana for Funnel Cake → 10 used post-cast
+	cake = game.player1.give("JAM_025")
+	cake.play(target=mid)
+	# All three overhealed → 3 mana crystals refunded. Funnel Cake itself
+	# costs 1; net used_mana = 10 (pre) - 3 (refunds) = 7.
+	assert game.player1.used_mana == 7
 
 
 def test_fanboy_choose_one_a_grants_atk_and_rush():
@@ -904,9 +920,8 @@ def test_elite_tauren_champion_finale_starts_rock_duel():
 	# At a minimum, the play_finale flag is True on ETC.
 	played = next(m for m in game.player1.field if m.id == "JAM_037")
 	assert played.play_finale
-	# End the controller's turn with leftover mana — they take 8.
-	# Refill the bar so used < max.
+	# End the controller's turn with leftover mana — they take exactly 8.
 	game.player1.used_mana = 0
 	pre_hp = game.player1.hero.health
 	game.end_turn()
-	assert game.player1.hero.health < pre_hp
+	assert game.player1.hero.health == pre_hp - 8

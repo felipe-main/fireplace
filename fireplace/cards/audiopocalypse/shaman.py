@@ -17,13 +17,11 @@ class _HornOfWindlordSetTarget(TargetedAction):
 			return
 		if defender.type != CardType.MINION:
 			return
-		# Apply a SET-style enchant that brings the minion to 3/3.
-		# Engine doesn't support SET() in tags; use a per-call enchant
-		# computed from the current atk / max_health.
-		# Stamp an enchant whose atk/max_health override land at 3/3:
-		# Buff(target, "JAM_011e", atk=DELTA, max_health=DELTA) only
-		# works if the enchant accepts kwargs and applies them at
-		# instantiation time. The buff() helper supports this.
+		# True SET-to-3/3: clear existing buffs first so no atk/health
+		# enchant survives, then apply a fresh enchant computed from the
+		# base stats. Mirrors Hearthstone "set stats" semantics where
+		# pre-existing buffs are wiped before the set takes effect.
+		defender.clear_buffs()
 		atk_delta = 3 - defender.atk
 		hp_delta = 3 - defender.max_health
 		source.game.cheat_action(

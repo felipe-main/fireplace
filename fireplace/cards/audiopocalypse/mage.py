@@ -20,9 +20,10 @@ class _StarPowerCascade(TargetedAction):
 
 
 class _CostumedSingerDrawSecret(TargetedAction):
-	"""Costumed Singer — at OWN_TURN_END, pull a random Secret from
-	the controller's deck into hand. Mirrors RLK_511 (Harbinger of
-	Winter): direct zone shift with hand-full guard."""
+	"""Costumed Singer — at OWN_TURN_END, draw a random Secret from
+	the controller's deck. Uses ForceDraw so OWN_CARD_DRAWN listeners
+	and the per-turn draw counter fire — the printed text says "draw",
+	not "add", so the verb matters."""
 
 	TARGET = ActionArg()
 
@@ -33,10 +34,7 @@ class _CostumedSingerDrawSecret(TargetedAction):
 		if not secrets:
 			return
 		pick = source.game.random.choice(secrets)
-		if len(target.hand) >= target.max_hand_size:
-			pick.discard()
-			return
-		pick.zone = Zone.HAND
+		source.game.cheat_action(source, [ForceDraw(pick)])
 
 
 ##

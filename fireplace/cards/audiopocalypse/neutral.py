@@ -53,12 +53,14 @@ class _MagathaDrawAndShare(TargetedAction):
 			if card.type != CardType.SPELL:
 				continue
 			# Move from controller's hand to opponent's hand. Cross-
-			# controller hand transfer requires direct list muniging:
+			# controller hand transfer requires direct list munging:
 			# the engine's zone setter only swaps within one player.
-			ctrl.hand.remove(card)
+			# Handle opp-hand-full BEFORE detaching from ctrl.hand so
+			# discard() runs through the normal HAND -> GRAVEYARD pipeline.
 			if len(opp.hand) >= opp.max_hand_size:
 				card.discard()
 				continue
+			ctrl.hand.remove(card)
 			card.controller = opp
 			opp.hand.append(card)
 

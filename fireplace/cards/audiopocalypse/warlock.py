@@ -83,11 +83,6 @@ class JAM_031:
 
 
 ##
-# Engine hook — glass-copy on-damage destroy is wired as a board-wide
-# listener (rather than per-card events) because the glass copies are
-# created on the fly and don't carry their own script.
-
-# Note: a global Damage(ALL_MINIONS).on(...) listener on every minion
-# would be too noisy. Approximation: glass copies don't actually carry
-# the "dies on damage" rule today — they're summoned vanilla. Tracked
-# as a Significant approximation row in review.csv at audit time.
+# Engine hook — glass copies stamped with `_glass_dies = True` are
+# destroyed in actions.py Damage.do when they take any damage, matching
+# the printed "they shatter when damaged" rule.

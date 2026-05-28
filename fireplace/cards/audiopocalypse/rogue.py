@@ -41,8 +41,13 @@ class JAM_021:
 @custom_card
 class JAM_019e:
 	# Rhythmdancer Risa — cost-set enchant. Risa prints 4 mana; apply
-	# COST: -3 to land at 1. Engine clamps the additive cost-mod path
-	# at 0, so we hard-code the offset rather than using SET().
+	# COST: -3 to land at 1. The engine's max(0, ret) clamp makes true
+	# SET-to-N (where N != 0) hard to express via the enchant system —
+	# this additive offset matches printed text in isolation, but if an
+	# unrelated cost-reduction aura also touches Risa, the final cost
+	# will be lower than 1. Accepted approximation; the only Rogue card
+	# in the standard pool that would compound is Preparation, which is
+	# spell-only, so no in-pool interaction triggers the divergence.
 	tags = {
 		GameTag.CARDNAME: "Rhythm",
 		GameTag.CARDTYPE: CardType.ENCHANTMENT,

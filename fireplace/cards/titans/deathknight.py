@@ -151,8 +151,25 @@ class TTN_457t:
 class TTN_459:
     """Chained Guardian"""
 
-    tags = {GameTag.RUSH: True, GameTag.REBORN: True}
     cost_mod = -Attr(CONTROLLER, "plagues_shuffled_into_enemy")
+
+    def custom_cardtext(self):
+        # Render the current discount in the printed text.
+        n = self.controller.plagues_shuffled_into_enemy
+        base = self.data.description
+        if n <= 0:
+            return base
+        return base + f"\n<i>(Currently -{n} mana)</i>"
+
+    def cardtext_entity_0(self):
+        return self.controller.plagues_shuffled_into_enemy
+
+    tags = {
+        GameTag.RUSH: True,
+        GameTag.REBORN: True,
+        enums.CUSTOM_CARDTEXT: custom_cardtext,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
 
 
 ##
@@ -184,29 +201,46 @@ class TTN_454:
 
 # Discover a spell from your deck. If it's a Frost spell, Freeze a random
 # enemy minion.
-class _NorthernNavigationDiscover(TargetedAction):
+class _NorthernNavigationFreezeIfFrost(TargetedAction):
+    """Callback fired after GenericChoice resolves: target is the chosen
+    spell. If it's a Frost spell, Freeze a random enemy minion."""
+
     TARGET = ActionArg()
 
     def do(self, source, target):
-        from hearthstone.enums import CardType, SpellSchool
+        from hearthstone.enums import SpellSchool
+        if target is None:
+            return
+        if isinstance(target, (list, tuple)):
+            target = target[0] if target else None
+        if target is None:
+            return
+        school = getattr(target.data, "spell_school", None)
+        if school == SpellSchool.FROST:
+            source.game.cheat_action(source, [Freeze(RANDOM_ENEMY_MINION)])
 
+
+class _NorthernNavigationDiscover(TargetedAction):
+    """Real 3-card Discover from deck (spells only). Opens a GenericChoice
+    on 3 pre-sampled spell IDs; on selection, the chosen card lands in hand
+    and the callback Freezes a random enemy if Frost."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from hearthstone.enums import CardType
         spells = [c for c in target.deck if c.type == CardType.SPELL]
         if not spells:
             return
-        # Simplified Discover: pull one spell from the deck at random and
-        # give it. Check for Frost school to Freeze.
         deck_spell_ids = list({c.id for c in spells})
-        chosen_id = source.game.random.choice(deck_spell_ids)
-        source.game.cheat_action(source, [Give(target, chosen_id)])
-        # Find the just-given copy to check its school.
-        given = [c for c in target.hand if c.id == chosen_id]
-        if given:
-            chosen = given[-1]
-            school = getattr(chosen.data, "spell_school", None)
-            if school == SpellSchool.FROST:
-                source.game.cheat_action(
-                    source, [Freeze(RANDOM_ENEMY_MINION)]
-                )
+        sample_count = min(3, len(deck_spell_ids))
+        picks = source.game.random.sample(deck_spell_ids, sample_count)
+        cards = [target.card(cid) for cid in picks]
+        source.game.queue_actions(source, [
+            GenericChoice(target, cards).then(
+                _NorthernNavigationFreezeIfFrost(GenericChoice.CARD)
+            )
+        ])
 
 
 class TTN_735:
@@ -351,14 +385,11 @@ class _RunesOfFrost(TargetedAction):
 
     def do(self, source, target):
         ctrl = source.controller
-        # Stamp the "Chill of Death" enchantment on the hero for -3 cost /
-        # +3 spell damage on the next spell. Engine-level approximation:
-        # we use a one-shot cost reduction on the player's next spell.
+        # "The next spell you cast costs (3) less and has Spell Damage +3"
         ctrl._next_spell_cost_reduction = max(
             getattr(ctrl, "_next_spell_cost_reduction", 0), 3
         )
-        # Full spell-damage bonus (TTN_737e) would require engine changes;
-        # leave as approximation for now.
+        ctrl.next_spell_spellpower = max(ctrl.next_spell_spellpower, 3)
         # Discover a Frost Rune DK card.
         picker = _rune_discover_picker_ttn(GameTag.COST_FROST)
         source.game.queue_actions(

@@ -180,28 +180,13 @@ class TTN_456:
 	play = Hit(RANDOM_ENEMY_MINION, 2)
 
 
-class _ImprisonedHorrorCostMod(LazyNum):
-	"""Imprisoned Horror — cost (1) less for each damage taken on your
-	turns this game.  The engine tracks damage_taken_on_opponents_turn
-	(reset each turn) but not damage taken on OWN turns.  We approximate
-	by reading total hero damage (hero.damage = total hp lost) and
-	subtracting the opponent-turn contribution (which resets per turn so
-	is lost).  A proper "damage taken on own turns" counter would require
-	a per-turn reset hook; for now, use total hero damage as a proxy."""
-
-	def evaluate(self, source):
-		ctrl = source.controller
-		hero = ctrl.hero
-		return -(hero.damage or 0)
-
-
 class TTN_462:
 	"""Imprisoned Horror"""
 
 	# Costs (1) less for each damage you've taken on your turns this game.
-	# Approximation: costs (1) less for each hero damage taken total.
-	# TODO: track "damage taken on own turns" separately for accuracy.
-	cost_mod = _ImprisonedHorrorCostMod()
+	# Reads player.damage_taken_on_own_turns_this_game (bumped in Damage.do
+	# whenever hero takes damage AND it's the controller's current turn).
+	cost_mod = -Attr(CONTROLLER, "damage_taken_on_own_turns_this_game")
 
 
 class TTN_465:

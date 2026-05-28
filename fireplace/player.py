@@ -205,6 +205,20 @@ class Player(Entity, TargetableByAuras):
         # TITANS — Tar Slick: while True, minions take double damage this turn.
         # Set by the spell's play; cleared at OWN_TURN_END.
         self.minion_damage_doubled_this_turn = False
+        # TITANS per-game minion-summon counters (bumped in Summon.do).
+        # Astral Automaton (TTN_401) self-scaling, Earthen scaling for
+        # Disciple of Amitus (TTN_856) + Stoneheart King (TTN_900),
+        # Treant cost reduction for Cultivation (TTN_954).
+        self.astral_automatons_summoned_this_game = 0
+        self.earthens_summoned_this_game = 0
+        self.treants_summoned_this_game = 0
+        # TITANS per-turn / per-game damage & armor accumulators.
+        # Imprisoned Horror (TTN_462) cost_mod reads damage_taken_on_own_turns_this_game.
+        # Stoneskin Armorer (TTN_469) battlecry reads armor_gained_this_turn.
+        self.damage_taken_on_own_turns_this_game = 0
+        self.armor_gained_this_turn = 0
+        # TITANS — The Primus Runes of Frost: next spell has Spell Damage +N.
+        self.next_spell_spellpower = 0
         # TITANS — Aqua Archivist / Tram Operator one-shot cost discounts.
         # Consumed in Play.do when the next Elemental/Mech is played.
         self._next_elemental_discount = 0
@@ -578,6 +592,8 @@ class Player(Entity, TargetableByAuras):
         if getattr(spell, "spell_school", SpellSchool.NONE) in spell_school_power_map:
             amount += spell_school_power_map[spell.spell_school]
         amount += self.spellpower
+        # TITANS — The Primus Runes of Frost: next spell has Spell Damage +N.
+        amount += self.next_spell_spellpower
         amount <<= self.controller.spellpower_double
         return amount
 

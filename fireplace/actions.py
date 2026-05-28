@@ -753,6 +753,9 @@ class Play(GameAction):
                 player.elemental_played_this_turn += 1
         elif card.type == CardType.SPELL:
             player.spells_played_this_game += 1
+            # TITANS — Primus Runes of Frost: consume one-shot Spell Damage
+            # boost. The spell already saw it via get_spell_damage; reset now.
+            player.next_spell_spellpower = 0
             # Per-school history (NONE bucket excluded — not a real school).
             school = card.spell_school
             if school and int(school) != 0:
@@ -1421,6 +1424,10 @@ class Damage(TargetedAction):
                 if not target.controller.current_player:
                     # Damage dealt to the hero while it's the opponent's turn.
                     target.controller.damage_taken_on_opponents_turn += amount
+                else:
+                    # TITANS — Imprisoned Horror: cost_mod reads total
+                    # hero damage taken on the controller's own turns.
+                    target.controller.damage_taken_on_own_turns_this_game += amount
             if source.type == CardType.HERO_POWER:
                 source.controller.hero_power_damage_this_game += amount
             self.broadcast(source, EventListener.AFTER, target, amount, source)
@@ -1848,6 +1855,8 @@ class GainArmor(TargetedAction):
         target.armor += amount
         if amount > 0 and hasattr(target, "controller"):
             target.controller.armor_gained_this_game += amount
+            # TITANS — Stoneskin Armorer reads per-turn armor gained.
+            target.controller.armor_gained_this_turn += amount
         source.game.manager.targeted_action(self, source, target, amount)
         self.broadcast(source, EventListener.ON, target, amount)
 
@@ -2366,6 +2375,15 @@ class Summon(TargetedAction):
                 card.zone = Zone.PLAY
             if card.type == CardType.MINION and Race.TOTEM in card.races:
                 card.controller.times_totem_summoned_this_game += 1
+            # TITANS per-game minion-id summon counters.
+            if card.type == CardType.MINION:
+                _cid = card.id
+                if _cid == "TTN_401":
+                    card.controller.astral_automatons_summoned_this_game += 1
+                elif _cid == "TTN_900t":
+                    card.controller.earthens_summoned_this_game += 1
+                elif _cid in ("TTN_926a", "TTN_950t2", "ETC_373t", "EX1_158t"):
+                    card.controller.treants_summoned_this_game += 1
             source.game.manager.targeted_action(self, source, target, card)
             self.queue_broadcast(self, (source, EventListener.ON, target, card))
             self.broadcast(source, EventListener.AFTER, target, card)

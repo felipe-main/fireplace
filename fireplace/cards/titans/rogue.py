@@ -237,6 +237,7 @@ class TTN_728:
     """Pit Stop"""
 
     # Discover a Mech from your deck. Give it +2/+1.
+    # Pre-sample 3 unique Mech IDs from deck for a real 3-card Discover.
     def play(self):
         ctrl = self.controller
         deck_mechs = [c for c in ctrl.deck
@@ -244,7 +245,10 @@ class TTN_728:
         if not deck_mechs:
             return
         unique_ids = list({c.id for c in deck_mechs})
-        yield GenericChoice(ctrl, RandomID(*unique_ids)).then(
+        sample_count = min(3, len(unique_ids))
+        picks = self.game.random.sample(unique_ids, sample_count)
+        cards = [ctrl.card(cid) for cid in picks]
+        yield GenericChoice(ctrl, cards).then(
             Buff(GenericChoice.CARD, "TTN_728e1")
         )
 

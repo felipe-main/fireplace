@@ -401,10 +401,11 @@ class TTN_087:
     """Absorbent Parasite"""
 
     # Magnetic, Rush. Can Magnetize to Mechs and Beasts.
-    # TODO: "Magnetize to Beasts" is not implemented — the current engine
-    # Magnetic mechanic (MAGNETIC helper) only works on Mechs. The Rush and
-    # standard Mech Magnetic behaviour are accurate.
-    magnetic = MAGNETIC("TTN_087e")
+    # Custom magnetize: find Mech OR Beast to the right of SELF, merge stats.
+    magnetic = Find(RIGHT_OF(SELF) + (MECH | BEAST)) & (
+        Buff(RIGHT_OF(SELF), "TTN_087e", atk=ATK(SELF), max_health=CURRENT_HEALTH(SELF)),
+        Remove(SELF),
+    )
 
 
 class TTN_090:

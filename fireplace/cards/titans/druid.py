@@ -242,8 +242,7 @@ class TTN_954:
 
     # Give your minions +2/+2. Costs (1) less for each Treant you've
     # summoned this game.
-    # TODO: player.treants_summoned_this_game counter is not yet tracked in the
-    # engine, so the cost reduction is not implemented. The +2/+2 effect works.
+    cost_mod = -Attr(CONTROLLER, "treants_summoned_this_game")
     play = Buff(FRIENDLY_MINIONS, "TTN_954e")
 
 

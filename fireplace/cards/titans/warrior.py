@@ -125,12 +125,9 @@ class TTN_469:
 	"""Stoneskin Armorer"""
 
 	# Battlecry: If your Armor changed this turn, draw 2 cards.
-	# Approximate: check if armor_gained_this_game > 0 as a proxy.
-	# A proper "armor gained this turn" counter would require a per-turn
-	# reset; we use armor_gained_this_game which is never reset but is
-	# a reasonable proxy for whether Warrior has used armor this game.
-	# TODO: add armor_gained_this_turn to player.py + game.py begin_turn.
-	play = (Attr(CONTROLLER, "armor_gained_this_game") >= 1) & (
+	# Reads player.armor_gained_this_turn (bumped in GainArmor.do, reset at
+	# OWN_TURN_BEGIN in game.py).
+	play = (Attr(CONTROLLER, "armor_gained_this_turn") >= 1) & (
 		Draw(CONTROLLER) * 2
 	)
 

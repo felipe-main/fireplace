@@ -167,17 +167,47 @@ class TTN_831:
 # Minions
 
 
+class _ThorignirSummonAndAttackFirst(TargetedAction):
+	"""Thorignir Drake — summon two 3/1 Whelps that attack the original
+	defender BEFORE Thorignir's own hit lands. Whelps don't have Rush in
+	data, so we bypass attack-eligibility checks and directly Hit the
+	defender for each Whelp's attack value. The Whelp itself also takes
+	the defender's retaliation damage (handled by the Hit pair).
+	"""
+
+	TARGET = ActionArg()
+	DEFENDER = ActionArg()
+
+	def do(self, source, target, defender):
+		if isinstance(defender, (list, tuple)):
+			defender = defender[0] if defender else None
+		if defender is None or defender.zone != Zone.PLAY:
+			return
+		ctrl = source.controller
+		for _ in range(2):
+			source.game.cheat_action(source, [Summon(ctrl, "TTN_727t")])
+			whelp = ctrl.field[-1] if ctrl.field else None
+			if whelp is None or whelp.id != "TTN_727t":
+				continue
+			if defender.zone != Zone.PLAY:
+				return
+			# Simulate the Whelp's attack: Whelp hits defender for its atk,
+			# defender hits Whelp back for its atk. Mirrors Attack.do damage
+			# exchange without needing the Whelp to clear summoning sickness.
+			whelp_atk = whelp.atk
+			defender_atk = defender.atk
+			source.game.cheat_action(whelp, [Hit(defender, whelp_atk)])
+			if whelp.zone == Zone.PLAY and defender.zone == Zone.PLAY:
+				source.game.cheat_action(defender, [Hit(whelp, defender_atk)])
+
+
 class TTN_727:
 	"""Thorignir Drake"""
 
 	# Rush (data). Whenever this attacks, summon two 3/1 Whelps to attack
 	# the target first.
-	# Approximate: on each attack by this minion summon two Whelps with Rush.
-	# The "attack the target first" sub-sequencing isn't modelled (engine
-	# doesn't expose pre-attack summon with forced-attack wiring); they just
-	# join the board with Rush so they can attack next turn.
 	events = Attack(SELF).on(
-		Summon(CONTROLLER, "TTN_727t") * 2
+		_ThorignirSummonAndAttackFirst(SELF, Attack.DEFENDER)
 	)
 
 

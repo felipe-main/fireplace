@@ -328,6 +328,28 @@ class ThreeSpellsProgressUtils:
     }
 
 
+class SpellSchoolCountCardtextMixin:
+    """TITANS — Sif (TTN_071) / Inquisitive Creation (TTN_478): card text
+    contains a single `@` token that renders as the number of distinct
+    spell schools the controller has cast this game.
+    """
+
+    def custom_cardtext(self):
+        text = self.data.description
+        if "@" not in text:
+            return text
+        count = len(getattr(self.controller, "spells_cast_by_school", {}))
+        return text.replace("@", str(count))
+
+    def cardtext_entity_0(self):
+        return len(getattr(self.controller, "spells_cast_by_school", {}))
+
+    tags = {
+        enums.CUSTOM_CARDTEXT: custom_cardtext,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
+
+
 class JadeGolemUtils:
     def custom_cardtext(self):
         return self.data.description.split("@")[0]

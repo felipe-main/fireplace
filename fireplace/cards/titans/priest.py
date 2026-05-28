@@ -35,6 +35,58 @@ class _StrikeFromHistoryBanish(TargetedAction):
         target.zone = Zone.SETASIDE
 
 
+class _StrikeFromHistoryChooseSecond(TargetedAction):
+    """Strike from History — after the first banish, open a board-pick
+    Choice for the second enemy minion. The player chooses among remaining
+    enemy minions; falls back to random if no Choice infrastructure is
+    consumed (e.g. only one enemy minion left or none).
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from hearthstone.enums import Zone
+        ctrl = source.controller
+        enemies = [m for m in ctrl.opponent.field if m.zone == Zone.PLAY]
+        if not enemies:
+            return
+        if len(enemies) == 1:
+            enemies[0].zone = Zone.SETASIDE
+            return
+        # Open a GenericChoice on remaining enemy minions. The auto-resolver
+        # in soak/tests picks cards[0]; a real player picks one. The chosen
+        # minion is then banished. We do NOT use GenericChoice (which moves
+        # the choice into hand); we use a bespoke Choice that just banishes.
+        choice = _BanishChoice(source, ctrl, enemies)
+        ctrl.choice = choice
+
+
+class _BanishChoice:
+    """Lightweight choice handle: when .choose(card) is called, banish that
+    card. Mirrors the Choice protocol that prepare_game and soak expect
+    (player.choice = obj with .cards and .choose method)."""
+
+    def __init__(self, source, player, cards):
+        self.source = source
+        self.player = player
+        self.cards = cards
+        self.min_count = 1
+        self.max_count = 1
+        self.callback = []
+        self._callback = []
+
+    def choose(self, card):
+        from hearthstone.enums import Zone
+        from fireplace.exceptions import InvalidAction
+        if card not in self.cards:
+            raise InvalidAction(
+                f"{card!r} is not a valid choice (one of {self.cards!r})"
+            )
+        self.player.choice = None
+        if card.zone == Zone.PLAY:
+            card.zone = Zone.SETASIDE
+
+
 class _StudentShuffleWithBuff(TargetedAction):
     """Student of the Stars (TTN_482) deathrattle — shuffle a fresh copy
     of TTN_482 into the controller's deck with a permanent +3/+3 already
@@ -160,14 +212,13 @@ class _RadenDeathrattle(TargetedAction):
 class TTN_401:
     """Astral Automaton"""
 
-    # Has +1/+1 for each other Astral Automaton you've summoned this game.
-    # Approximation: count other TTN_401 in field + graveyard (proxy for summoned).
-    # TODO: use a dedicated per-game counter to count total summons.
+    # Has +1/+1 for each OTHER Astral Automaton you've summoned this game.
+    # Counter is bumped at this minion's own summon so its value == final stats.
+    # (counter=1 -> 1/1, counter=2 -> 2/2, counter=3 -> 3/3.)
+    # Lambda return value replaces the stat (see AuraBuff._getattr).
     update = Refresh(SELF, {
-        GameTag.ATK: lambda self, i: 1 + sum(
-            1 for c in list(self.controller.field) + list(self.controller.graveyard)
-            if getattr(c, "id", None) == "TTN_401" and c is not self
-        ),
+        GameTag.ATK: lambda self, i: max(1, self.controller.astral_automatons_summoned_this_game),
+        GameTag.HEALTH: lambda self, i: max(1, self.controller.astral_automatons_summoned_this_game),
     })
 
 
@@ -217,13 +268,16 @@ class TTN_430:
     """Creation Protocol"""
 
     # Discover a copy of a minion in your deck. Forge: Get another copy.
+    # Pre-sample 3 unique minion IDs for a real 3-card Discover.
     def play(self):
         ctrl = self.controller
         deck_minions = [c for c in ctrl.deck if c.type == CardType.MINION]
         if not deck_minions:
             return
         unique_ids = list({c.id for c in deck_minions})
-        yield GenericChoice(ctrl, RandomID(*unique_ids)).then(
+        picks = self.game.random.sample(unique_ids, min(3, len(unique_ids)))
+        cards = [ctrl.card(cid) for cid in picks]
+        yield GenericChoice(ctrl, cards).then(
             Give(ctrl, Copy(GenericChoice.CARD))
         )
 
@@ -240,7 +294,9 @@ class TTN_430t:
         if not deck_minions:
             return
         unique_ids = list({c.id for c in deck_minions})
-        yield GenericChoice(ctrl, RandomID(*unique_ids)).then(
+        picks = self.game.random.sample(unique_ids, min(3, len(unique_ids)))
+        cards = [ctrl.card(cid) for cid in picks]
+        yield GenericChoice(ctrl, cards).then(
             Give(ctrl, Copy(GenericChoice.CARD)),
             Give(ctrl, Copy(GenericChoice.CARD)),
         )
@@ -304,7 +360,7 @@ class TTN_429t2:
     }
     play = (
         _StrikeFromHistoryBanish(TARGET),
-        _StrikeFromHistoryBanish(RANDOM_ENEMY_MINION),
+        _StrikeFromHistoryChooseSecond(SELF),
         DISCOVER(RandomLegendaryMinion()),
     )
 

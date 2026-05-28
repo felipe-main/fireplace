@@ -106,10 +106,8 @@ class _TyrTearsResurrect(TargetedAction):
 
 class _EarthenGolemBuff(TargetedAction):
 	"""Earthen Golem (TTN_900t) on-summon scaling: gain +2/+2 for each other
-	TTN_900t that has already been summoned this game (approximated by
-	counting TTN_900t entities in the controller's graveyard and on board,
-	excluding the newly-summoned one).
-	# TODO: add player.earthens_summoned_this_game counter to the engine."""
+	TTN_900t summoned this game. Reads player.earthens_summoned_this_game
+	(bumped in Summon.do); subtract 1 because counter includes this summon."""
 
 	TARGET = ActionArg()
 
@@ -117,10 +115,7 @@ class _EarthenGolemBuff(TargetedAction):
 		if target is None:
 			return
 		ctrl = source.controller
-		count = sum(1 for c in list(ctrl.graveyard) if c.id == "TTN_900t")
-		count += sum(
-			1 for c in ctrl.field if c.id == "TTN_900t" and c is not target
-		)
+		count = max(0, ctrl.earthens_summoned_this_game - 1)
 		if count <= 0:
 			return
 		buff_amount = count * 2

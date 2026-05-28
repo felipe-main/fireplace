@@ -67,22 +67,22 @@ def test_norgannon_ability1_deals_3_to_enemy_hero():
     assert game.player2.hero.health == hero_hp_before - 3
 
 
-def test_norgannon_ability2_stamps_enchant_on_opponent():
-    # The Ancient Knowledge ability (TTN_075t2) stamps enchantment TTN_075t2e
-    # on the opponent. Verify the enchant is present on the opponent controller.
+def test_norgannon_ability2_stamps_cost_up_on_opponent_hand_cards():
+    # The Ancient Knowledge ability (TTN_075t2) stamps TTN_075t2e2 (+1 cost)
+    # on each card in the opponent's hand. With doubling at idx=1, each card
+    # gets stamped twice (+2 total cost). Verify by giving opp a card first.
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    opp_card = game.player2.give("CS2_029")
+    base_cost = opp_card.cost
     norg = game.player1.summon("TTN_075")
-    # Use ability 1 first
     game.queue_actions(game.player1, [UseTitanAbility(norg, None)])
-    # Use ability 2 — Ancient Knowledge stamps enchant on opponent
     game.queue_actions(game.player1, [UseTitanAbility(norg, None)])
     assert norg._titan_ability_index == 2
-    # The opponent should have TTN_075t2e in their buffs
-    enchant_ids = [getattr(e, "id", None) for e in game.player2.buffs]
-    assert "TTN_075t2e" in enchant_ids
+    assert opp_card.cost == base_cost + 2
 
 
 def test_norgannon_ability3_casts_mage_secret():
+    """Ability 3 fires at 2^2 = 4x base, so it casts 4 Mage Secrets."""
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     norg = game.player1.summon("TTN_075")
     # Advance to ability 3
@@ -91,8 +91,9 @@ def test_norgannon_ability3_casts_mage_secret():
     secrets_before = len(game.player1.secrets)
     game.queue_actions(game.player1, [UseTitanAbility(norg, None)])
     assert norg._titan_ability_index == 3
-    # A Mage Secret should have been cast
-    assert len(game.player1.secrets) == secrets_before + 1
+    # Ability 3 fires at 2^2 = 4x: 4 Mage Secrets cast
+    # (Cap at max 5 secrets in play — but with empty board we expect 4.)
+    assert len(game.player1.secrets) == secrets_before + 4
 
 
 def test_norgannon_can_attack_after_all_abilities():
@@ -1626,3 +1627,199 @@ def test_tier4_prison_of_yogg_saron_targets_chosen_character():
     location.use(target=enemy)
     # No crash = pass
     assert location.zone in (Zone.GRAVEYARD, Zone.PLAY)
+
+
+
+# Tier-5 watch-row sweeps (approximations + cosmetic) ----------------------
+
+def test_tier5_astral_automaton_scales_with_summon_counter():
+    """Astral Automaton (TTN_401): +1/+1 for each OTHER one summoned this game."""
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.current_player
+    first = p.summon("TTN_401")
+    assert first.atk == 1
+    second = p.summon("TTN_401")
+    assert second.atk == 2
+    third = p.summon("TTN_401")
+    assert third.atk == 3
+
+
+def test_tier5_cultivation_costs_less_per_treant_summoned():
+    """Cultivation (TTN_954): -1 cost for each Treant summoned this game."""
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p = game.player1
+    cultivation = p.give("TTN_954")
+    base_cost = cultivation.cost
+    p.treants_summoned_this_game = 3
+    assert cultivation.cost == base_cost - 3
+
+
+def test_tier5_imprisoned_horror_costs_less_per_own_turn_damage():
+    """Imprisoned Horror (TTN_462): -1 cost per damage taken on own turns."""
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    horror = p.give("TTN_462")
+    base_cost = horror.cost
+    p.damage_taken_on_own_turns_this_game = 4
+    assert horror.cost == base_cost - 4
+
+
+def test_tier5_stoneskin_armorer_draws_if_armor_changed_this_turn():
+    """Stoneskin Armorer (TTN_469): if armor changed this turn, draw 2."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p = game.player1
+    from fireplace.actions import GainArmor
+    game.queue_actions(p, [GainArmor(p.hero, 3)])
+    assert p.armor_gained_this_turn == 3
+    hand_before = len(p.hand)
+    armorer = p.give("TTN_469")  # hand → +1
+    armorer.play()  # hand → -1, then battlecry draws 2 → +2
+    assert len(p.hand) == hand_before + 2
+
+
+def test_tier5_stoneskin_armorer_no_draw_without_armor():
+    """Stoneskin Armorer: no draw if armor did not change this turn."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p = game.player1
+    assert p.armor_gained_this_turn == 0
+    hand_before = len(p.hand)
+    armorer = p.give("TTN_469")
+    armorer.play()
+    assert len(p.hand) == hand_before
+
+
+def test_tier5_armor_gained_this_turn_resets():
+    """armor_gained_this_turn resets at OWN_TURN_BEGIN."""
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.player1
+    from fireplace.actions import GainArmor
+    game.queue_actions(p1, [GainArmor(p1.hero, 5)])
+    assert p1.armor_gained_this_turn == 5
+    game.end_turn()
+    game.end_turn()
+    assert p1.armor_gained_this_turn == 0
+
+
+def test_tier5_norgannon_ability_1_base_damage():
+    """Norgannon ability 1 (idx=0): 3 damage to all enemies."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    enemy = p1.opponent.summon("CS2_200")
+    enemy.max_health = 200
+    enemy.damage = 0
+    norg = p1.summon("TTN_075")
+    game.queue_actions(p1, [UseTitanAbility(norg, None)])
+    assert enemy.damage == 3
+
+
+def test_tier5_norgannon_ability_2_doubled_cost_up():
+    """Norgannon ability 2 (idx=1) fires at 2x -> opponent cards cost +2."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    opp = p1.opponent
+    spell = opp.give("CS2_029")
+    base_cost = spell.cost
+    norg = p1.summon("TTN_075")
+    game.queue_actions(p1, [UseTitanAbility(norg, None)])
+    game.queue_actions(p1, [UseTitanAbility(norg, None)])
+    assert spell.cost == base_cost + 2
+
+
+def test_tier5_primus_runes_of_frost_grants_spell_damage():
+    """The Primus Runes of Frost: next spell has Spell Damage +3."""
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.current_player
+    primus = p1.summon("TTN_737")
+    game.queue_actions(p1, [UseTitanAbility(primus, None)])
+    for player in (game.player1, game.player2):
+        while player.choice:
+            player.choice.choose(player.choice.cards[0])
+    game.queue_actions(p1, [UseTitanAbility(primus, None)])
+    for player in (game.player1, game.player2):
+        while player.choice:
+            player.choice.choose(player.choice.cards[0])
+    game.queue_actions(p1, [UseTitanAbility(primus, None)])
+    for player in (game.player1, game.player2):
+        while player.choice:
+            player.choice.choose(player.choice.cards[0])
+    assert p1.next_spell_spellpower == 3
+
+
+def test_tier5_primus_runes_of_frost_spell_damage_consumed():
+    """After casting one spell, next_spell_spellpower resets to 0."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.next_spell_spellpower = 3
+    enemy = p1.opponent.summon("CS2_200")
+    enemy.max_health = 200
+    enemy.damage = 0
+    fireball = p1.give("CS2_029")
+    fireball.play(target=enemy)
+    assert enemy.damage == 6 + 3
+    assert p1.next_spell_spellpower == 0
+
+
+def test_tier5_elemental_inspiration_summons_random_vortex_variants():
+    """Elemental Inspiration: summons N random Vortex variants."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    p1.spells_cast_by_school = {1: ["x"], 2: ["x"], 3: ["x"]}
+    spell = p1.give("TTN_480")
+    spell.play()
+    vortexes = [m for m in p1.field if m.id.startswith("TTN_480t")]
+    assert len(vortexes) == 3
+    for v in vortexes:
+        assert v.id in (
+            "TTN_480t", "TTN_480t1", "TTN_480t2", "TTN_480t3",
+            "TTN_480t4", "TTN_480t5", "TTN_480t6", "TTN_480t7",
+        )
+
+
+def test_tier5_sif_cardtext_shows_spell_school_count():
+    """Sif (TTN_071) renders the dynamic spell school count in card text."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.spells_cast_by_school = {1: ["x"], 2: ["x"]}
+    sif = p1.give("TTN_071")
+    text = sif.description
+    assert "@" not in text
+    assert "2" in text
+
+
+def test_tier5_chained_guardian_cardtext_shows_discount():
+    """Chained Guardian (TTN_459) cardtext shows current cost reduction."""
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.plagues_shuffled_into_enemy = 3
+    guardian = p1.give("TTN_459")
+    text = guardian.description
+    assert "3" in text
+
+
+def test_tier5_absorbent_parasite_magnetizes_to_beast():
+    """Absorbent Parasite (TTN_087): magnetizes to a Beast (not just Mech)."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    beast = p1.summon("CS2_169")
+    base_beast_atk = beast.atk
+    base_beast_hp = beast.max_health
+    parasite = p1.give("TTN_087")
+    parasite_atk = parasite.atk
+    parasite_hp = parasite.health
+    parasite.play(index=0)
+    assert beast.atk == base_beast_atk + parasite_atk
+    assert beast.max_health == base_beast_hp + parasite_hp
+
+
+def test_tier5_thorignir_whelps_attack_target_first():
+    """Thorignir Drake (TTN_727 6/6): 2 Whelps (3 atk) hit target first, then
+    Drake attacks. Total = 2*3 + 6 = 12 damage to target."""
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.current_player
+    opp = p1.opponent
+    drake = p1.summon("TTN_727")
+    target = opp.summon("CS2_200")
+    target.max_health = 50
+    target.damage = 0
+    drake.attack(target)
+    assert target.damage == 12

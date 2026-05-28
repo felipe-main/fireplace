@@ -488,6 +488,8 @@ class BaseGame(Entity):
         player.overheals_triggered_this_turn = 0
         # TITANS — Tar Slick: clear per-turn "minions take double damage" flag.
         player.minion_damage_doubled_this_turn = False
+        # TITANS — Stoneskin Armorer: clear per-turn armor-gained counter.
+        player.armor_gained_this_turn = 0
         # MotLK — Bonelord Frostwhisper: re-arm the "first card costs 0"
         # per-turn marker. Permanent flag stays set; only the consumed
         # latch resets.

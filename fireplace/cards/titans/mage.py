@@ -66,10 +66,22 @@ class _InquisitiveCreationHit(TargetedAction):
 		source.game.cheat_action(source, [Hit(ENEMY_MINIONS, n)])
 
 
+_VORTEX_VARIANTS = [
+	"TTN_480t",   # Divine Shield
+	"TTN_480t1",  # Taunt
+	"TTN_480t2",  # Rush
+	"TTN_480t3",  # Windfury
+	"TTN_480t4",  # Stealth
+	"TTN_480t5",  # Poisonous
+	"TTN_480t6",  # Lifesteal
+	"TTN_480t7",  # Reborn
+]
+
+
 class _ElementalInspirationSummon(TargetedAction):
-	"""Elemental Inspiration — summon a 4/5 Primordial Vortex (TTN_480t) for
-	each distinct spell school the controller has cast this game. TTN_480t has
-	Divine Shield per the data card."""
+	"""Elemental Inspiration — summon a 4/5 Primordial Vortex with a random
+	bonus effect for each distinct spell school the controller has cast this
+	game. Each Vortex independently picks from 8 keyword variants in data."""
 
 	TARGET = ActionArg()
 
@@ -77,7 +89,8 @@ class _ElementalInspirationSummon(TargetedAction):
 		ctrl = source.controller
 		n = len(ctrl.spells_cast_by_school)
 		for _ in range(n):
-			source.game.cheat_action(source, [Summon(ctrl, "TTN_480t")])
+			variant = source.game.random.choice(_VORTEX_VARIANTS)
+			source.game.cheat_action(source, [Summon(ctrl, variant)])
 
 
 class _UnchainedGladiatorDraw(TargetedAction):
@@ -164,7 +177,7 @@ class TTN_480:
 # Minions
 
 
-class TTN_071:
+class TTN_071(SpellSchoolCountCardtextMixin):
 	"""Sif"""
 
 	# Spell Damage +@ (Improved by each spell school you've cast this game!)
@@ -179,32 +192,66 @@ class TTN_071:
 	)
 
 
+class _NorgannonProgenitorsPower(TargetedAction):
+	"""Progenitor's Power — deal (3 * 2^idx) damage to all enemies, where idx
+	is Norgannon's _titan_ability_index at fire time (0 / 1 / 2)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		mult = 2 ** getattr(source, "_titan_ability_index", 0)
+		source.game.cheat_action(source, [Hit(ENEMY_CHARACTERS, 3 * mult)])
+
+
+class _NorgannonAncientKnowledge(TargetedAction):
+	"""Ancient Knowledge — stamp +N cost on each card in the opponent's hand
+	(N = 2^idx). The cost-up persists indefinitely (cleanup at end of opp's
+	next turn would need per-player event wiring; accepted approximation)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		mult = 2 ** getattr(source, "_titan_ability_index", 0)
+		opp = source.controller.opponent
+		for card in list(opp.hand):
+			for _ in range(mult):
+				source.game.cheat_action(source, [Buff(card, "TTN_075t2e2")])
+
+
+class _NorgannonUnlimitedPotential(TargetedAction):
+	"""Unlimited Potential — cast (1 * 2^idx) random Mage Secrets."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		mult = 2 ** getattr(source, "_titan_ability_index", 0)
+		for _ in range(mult):
+			source.game.cheat_action(
+				source,
+				[CastSpell(RandomSpell(card_class=CardClass.MAGE, secret=True))],
+			)
+
+
 class TTN_075:
 	"""Norgannon"""
 
 	# Titan. After this uses an ability, double the power of the other abilities.
-	# TODO: Ability-power doubling on each use is not implemented; abilities
-	# fire at their base values.
+	# Each sub-card reads source._titan_ability_index and multiplies by 2^idx.
 	titan_ability_order = ["TTN_075t", "TTN_075t2", "TTN_075t3"]
 
 
 class TTN_075t:
 	"""Progenitor's Power"""
 
-	# Deal @ damage to all enemies. (Base 3, doubles each subsequent use — TODO.)
-	# Approximation: always deals 3 to all enemies.
-	play = Hit(ENEMY_CHARACTERS, 3)
+	# Deal @ damage to all enemies. (Base 3, multiplied by 2^ability_index.)
+	play = _NorgannonProgenitorsPower(SELF)
 
 
 class TTN_075t2:
 	"""Ancient Knowledge"""
 
-	# Enemy cards cost (1) more next turn. (Base 1, doubles per use — TODO.)
-	# Approximation: stamp the in-data TTN_075t2e aura enchantment onto the
-	# opponent controller. TTN_075t2e is an aura; TTN_075t2e2 is the per-card
-	# cost enchantment. We implement the aura via Refresh and expire it at the
-	# opponent's next turn-end.
-	play = Buff(OPPONENT, "TTN_075t2e")
+	# Enemy cards cost (@) more next turn. (Base 1, multiplied by 2^idx.)
+	play = _NorgannonAncientKnowledge(SELF)
 
 
 class TTN_075t2e:
@@ -227,9 +274,8 @@ class TTN_075t2e2:
 class TTN_075t3:
 	"""Unlimited Potential"""
 
-	# Cast 1 random Mage Secret. (Base 1, doubles per use — TODO.)
-	# Approximation: cast 1 random Mage Secret.
-	play = CastSpell(RandomSpell(card_class=CardClass.MAGE, secret=True))
+	# Cast @ random Mage Secrets. (Base 1, multiplied by 2^ability_index.)
+	play = _NorgannonUnlimitedPotential(SELF)
 
 
 class TTN_077:
@@ -262,7 +308,7 @@ class TTN_475:
 	play = _UnchainedGladiatorDraw(CONTROLLER)
 
 
-class TTN_478:
+class TTN_478(SpellSchoolCountCardtextMixin):
 	"""Inquisitive Creation"""
 
 	# Battlecry: Deal @ damage to all enemy minions. (Improved by each spell

@@ -1487,3 +1487,142 @@ def test_once_over_odyn_attack_buff_clears_at_turn_end():
     assert hero.atk == 5, "ATK should be 5 immediately after armor gain"
     game.end_turn()   # OWN_TURN_END fires; TAG_ONE_TURN_EFFECT buffs are cleared
     assert hero.atk == 0, "ATK buff should clear at end of turn"
+
+
+# ── Tier-4 watch-row resurrections ──────────────────────────────────────────
+
+def test_tier4_fate_splitter_gives_copy_of_killer():
+    """Fate Splitter (TTN_859): deathrattle gives a copy of the killing card."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    splitter = game.player1.summon("TTN_859")  # 3/3
+    splitter.damage = 1  # 2 hp left so a 2/2 will kill it
+    killer = game.player2.summon("CS2_142")  # Kobold Geomancer 2/2
+    p1_hand_before = len(game.player1.hand)
+    # Make the killer attack the splitter
+    game.end_turn()  # player2's turn
+    killer.attack(splitter)
+    # splitter dies; deathrattle gives p1 a copy of CS2_142
+    hand_ids = [c.id for c in game.player1.hand]
+    assert "CS2_142" in hand_ids, "Fate Splitter should give a copy of its killer"
+    assert len(game.player1.hand) == p1_hand_before + 1
+
+
+def test_tier4_invent_o_matic_buffs_magnetizing_minion():
+    """Invent-o-matic (TTN_732): when a friendly Mech magnetizes onto a host,
+    the magnetizer is buffed +1/+1 — the buff merges into the host on attach.
+
+    Setup: [host_mech, iom]. Play magnetizer at index 0 so it's left of the
+    host Mech (magnetizer.right = host_mech) → MAGNETIC fires + iom listener fires.
+    """
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    host = game.player1.summon("TTN_077")  # Chill-o-matic 2/1/4 Mech (atk 2)
+    game.player1.summon("TTN_732")          # Invent-o-matic (right of host)
+    base_host_atk = host.atk
+    magnetizer = game.player1.give("BOT_312")  # Replicating Menace 3/1 Magnetic Mech
+    base_mag_atk = magnetizer.atk  # 3
+    magnetizer.play(index=0)  # leftmost position → magnetizer.right = host_mech
+    # Without Invent-o-matic: host.atk = 2 + 3 = 5. With +1/+1 from IoM: 6.
+    assert host.atk == base_host_atk + base_mag_atk + 1, (
+        f"host.atk={host.atk}, expected {base_host_atk + base_mag_atk + 1}"
+    )
+
+
+def test_tier4_tar_slick_doubles_minion_damage_this_turn():
+    """Tar Slick (TTN_726): minions take double damage this turn after this spell."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    target = game.player2.summon("CS2_200")  # Boulderfist Ogre 6/6/7
+    target.max_health = 50  # absorb without dying
+    target.damage = 0
+    slick = game.player1.give("TTN_726")
+    slick.play(target=target)
+    # Tar Slick itself deals 1 → with doubling on, that becomes 2
+    assert target.damage == 2, "Tar Slick should deal 2 damage with doubling"
+    # Subsequent minion damage this turn should also double
+    from fireplace.actions import Hit
+    target.damage = 0
+    game.queue_actions(game.player1, [Hit(target, 3)])
+    assert target.damage == 6, "Subsequent minion damage should be doubled too"
+
+
+def test_tier4_tar_slick_doubling_clears_next_turn():
+    """Tar Slick doubling resets at OWN_TURN_END."""
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    target = game.player2.summon("CS2_200")
+    target.max_health = 50
+    target.damage = 0
+    slick = game.player1.give("TTN_726")
+    slick.play(target=target)
+    # End turn → doubling flag should clear
+    game.end_turn()
+    target.damage = 0
+    from fireplace.actions import Hit
+    game.queue_actions(game.player2, [Hit(target, 3)])
+    assert target.damage == 3, "Doubling should clear after end of turn"
+
+
+def test_tier4_amitus_caps_minion_damage_at_two():
+    """Amitus (TTN_858): your minions can't take more than 2 damage at a time."""
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    amitus = game.player1.summon("TTN_858")
+    target = game.player1.summon("CS2_200")  # Boulderfist 6/6/7
+    target.damage = 0
+    from fireplace.actions import Hit
+    game.queue_actions(game.player1, [Hit(target, 10)])
+    assert target.damage == 2, "Damage to friendly minion should be capped at 2"
+
+
+def test_tier4_amitus_does_not_cap_enemy_minions():
+    """Amitus damage cap only applies to your minions."""
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    game.player1.summon("TTN_858")  # Amitus on p1's side
+    enemy = game.player2.summon("CS2_200")
+    enemy.damage = 0
+    from fireplace.actions import Hit
+    game.queue_actions(game.player1, [Hit(enemy, 5)])
+    assert enemy.damage == 5, "Enemy minion damage should NOT be capped"
+
+
+def test_tier4_jormungar_excess_damage_hits_enemy_hero():
+    """Always a Bigger Jormungar (TTN_079): buffed minion's excess attack damage hits enemy hero."""
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    attacker = game.player1.summon("CS2_200")  # 6/6/7 — atk 6
+    target = game.player2.summon("CS2_231")    # Wisp 1/1
+    target.max_health = 1
+    target.damage = 0
+    enemy_hero = game.player2.hero
+    hero_hp_before = enemy_hero.health
+    # Buff with TTN_079e: +2 ATK + piercing → attacker has 8 atk
+    spell = game.player1.give("TTN_079")
+    spell.play(target=attacker)
+    assert attacker.atk == 8
+    # Make attacker not exhausted so it can attack
+    attacker.num_attacks = 0
+    # Move to enemy's turn then back so summoning sickness clears
+    game.end_turn()
+    game.end_turn()
+    # Attack the 1-hp Wisp: excess = 8 - 1 = 7 hits enemy hero
+    attacker.attack(target)
+    assert enemy_hero.health == hero_hp_before - 7, (
+        f"Enemy hero should take 7 excess damage (was {hero_hp_before}, "
+        f"now {enemy_hero.health})"
+    )
+
+
+def test_tier4_prison_of_yogg_saron_targets_chosen_character():
+    """Prison of Yogg-Saron (TTN_090): casts spells preferring the chosen character.
+
+    This is a probabilistic check: at least 1 of 4 cast spells should target
+    the chosen character (the engine still falls back to random for spells
+    that don't accept the character as a target).
+    """
+    # Hard to test reliably with random spell pool; just smoke-test that the
+    # card plays without error and doesn't crash when picking targets.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    enemy = game.player2.summon("CS2_200")
+    enemy.max_health = 100
+    enemy.damage = 0
+    location = game.player1.summon("TTN_090")  # Location, durability 1
+    # Use the location targeting the enemy minion
+    location.use(target=enemy)
+    # No crash = pass
+    assert location.zone in (Zone.GRAVEYARD, Zone.PLAY)

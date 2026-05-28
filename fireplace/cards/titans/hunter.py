@@ -198,14 +198,48 @@ class TTN_079:
     play = Buff(TARGET, "TTN_079e")
 
 
+class _JormungarPierce(TargetedAction):
+    """Always a Bigger Jormungar — excess damage piercing. When the buffed
+    minion attacks a minion and the attack would deal more damage than the
+    defender's health, the overflow hits the enemy hero.
+
+    Called from TTN_079e's events listener. `attacker` and `defender` come
+    from Attack.ATTACKER/DEFENDER. We compute excess BEFORE damage resolves
+    (using attacker.atk - defender.health) and hit the enemy hero with it.
+    """
+
+    TARGET = ActionArg()
+    ATTACKER = ActionArg()
+    DEFENDER = ActionArg()
+
+    def do(self, source, target, attacker, defender):
+        # Attack args come through as lists from selectors — normalize.
+        if isinstance(attacker, (list, tuple)):
+            attacker = attacker[0] if attacker else None
+        if isinstance(defender, (list, tuple)):
+            defender = defender[0] if defender else None
+        if not attacker or not defender:
+            return
+        if defender.type != CardType.MINION:
+            return
+        # Excess = attacker.atk - defender.health (after armor/divine shield
+        # adjustments, the defender's effective HP at this point is .health).
+        excess = attacker.atk - defender.health
+        if excess <= 0:
+            return
+        enemy_hero = attacker.controller.opponent.hero
+        source.game.cheat_action(source, [Hit(enemy_hero, excess)])
+
+
 class TTN_079e:
     """Gift of the Hunt"""
 
-    # +2 Attack — in data as an enchantment.
-    # The "excess damage hits hero" piercing mechanic is not implemented in
-    # the engine; this approximates by giving +2 Attack only.
-    # TODO: implement EXCESS_DAMAGE / piercing attack mechanic.
+    # +2 Attack and "Excess damage dealt by attacks hits the enemy hero."
+    # Uses OWNER selector — the buffed minion — as the attacker in the event.
     tags = {GameTag.ATK: 2}
+    events = Attack(OWNER, MINION).on(
+        _JormungarPierce(SELF, Attack.ATTACKER, Attack.DEFENDER)
+    )
 
 
 class TTN_081:

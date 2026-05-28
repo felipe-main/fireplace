@@ -996,6 +996,7 @@ class LiveEntity(PlayableCard, Entity):
         "incoming_damage_multiplier_from_spell"
     )
     incoming_damage_divider = int_property("incoming_damage_divider")
+    incoming_damage_max = int_property("incoming_damage_max")
     max_health = int_property("max_health")
     poisonous = boolean_property("poisonous")
 

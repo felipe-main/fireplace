@@ -324,10 +324,9 @@ class TTN_858:
 	"""Amitus, the Peacekeeper"""
 
 	# Titan. Taunt. Your minions can't take more than 2 damage at a time.
-	# "Cap at 2 damage" is not supported by existing incoming_damage_divider
-	# (which divides, not caps). Taunt comes from data.
-	# TODO: add incoming_damage_cap engine attribute.
+	# Uses incoming_damage_max engine cap (Predamage.do reads it).
 	titan_ability_order = ["TTN_858t1", "TTN_858t2", "TTN_858t3"]
+	update = Refresh(FRIENDLY_MINIONS, {enums.INCOMING_DAMAGE_MAX: 2})
 
 
 class TTN_858t1:

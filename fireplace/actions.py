@@ -655,6 +655,16 @@ class Play(GameAction):
 
         actions = card.get_actions("magnetic")
         if actions:
+            # TITANS — Invent-o-matic: notify on-board listeners BEFORE the
+            # magnetic action fires so the magnetizer's stats (which merge
+            # into the host) include any buffs the listeners apply.
+            for listener in list(player.field):
+                if listener is card:
+                    continue
+                handler = getattr(getattr(listener.data, "scripts", None),
+                                  "on_friendly_magnetize", None)
+                if handler:
+                    source.game.cheat_action(listener, handler(listener, card))
             source.game.trigger(card, actions, event_args=None)
 
         for hand in player.hand[:]:
@@ -1244,6 +1254,10 @@ class Predamage(TargetedAction):
         amount <<= target.incoming_damage_multiplier
         if source.type == CardType.SPELL:
             amount <<= target.incoming_damage_multiplier_from_spell
+        # TITANS — Tar Slick: minions take double damage this turn.
+        if (target.type == CardType.MINION
+                and getattr(target.controller, "minion_damage_doubled_this_turn", False)):
+            amount *= 2
         if target.heavily_armored:
             amount = min(amount, 1)
         divider = target.incoming_damage_divider
@@ -1251,6 +1265,10 @@ class Predamage(TargetedAction):
             # Ceiling division — matches "half damage, rounded up" semantics
             # used by The Immovable Object.
             amount = -(-amount // divider)
+        # TITANS — Amitus: cap incoming damage at incoming_damage_max if > 0.
+        cap = target.incoming_damage_max
+        if cap > 0:
+            amount = min(amount, cap)
         target.predamage = amount
         if amount:
             self.broadcast(source, EventListener.ON, target, amount)
@@ -1324,6 +1342,10 @@ class Damage(TargetedAction):
             amount = target.predamage
         amount = target._hit(amount)
         target.predamage = 0
+        # TITANS — Fate Splitter: record the source of the killing blow so
+        # the target's deathrattle can identify the card that killed it.
+        if amount and getattr(target, "health", 1) <= 0:
+            target._last_damage_source_id = getattr(source, "id", None)
         if (
             source.type == CardType.MINION or source.type == CardType.HERO
         ) and source.stealthed:

@@ -210,17 +210,27 @@ class TTN_719:
             yield Give(ctrl, cid)
 
 
+class _TarSlickArm(TargetedAction):
+    """Tar Slick — arm the both-player per-turn double-damage flag for minions.
+    Must arm on both players so any source dealing minion damage this turn
+    sees the multiplier (Predamage reads target.controller.minion_damage_doubled).
+    """
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.minion_damage_doubled_this_turn = True
+        source.controller.opponent.minion_damage_doubled_this_turn = True
+
+
 class TTN_726:
     """Tar Slick"""
 
     # Minions take double damage this turn. Deal 1 damage.
-    # TODO: "Minions take double damage" requires an engine flag/hook not
-    # currently implemented. Only the 1-damage hit is scripted here.
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
-    play = Hit(TARGET, 1)
+    play = _TarSlickArm(CONTROLLER), Hit(TARGET, 1)
 
 
 class TTN_728:

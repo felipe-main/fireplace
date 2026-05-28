@@ -202,6 +202,9 @@ class Player(Entity, TargetableByAuras):
         self._plagues_are_unending = False
         # TITANS — Starstrung Bow cost_mod. Bumped when a Secret triggers.
         self.secrets_triggered_this_game = 0
+        # TITANS — Tar Slick: while True, minions take double damage this turn.
+        # Set by the spell's play; cleared at OWN_TURN_END.
+        self.minion_damage_doubled_this_turn = False
         # TITANS — Aqua Archivist / Tram Operator one-shot cost discounts.
         # Consumed in Play.do when the next Elemental/Mech is played.
         self._next_elemental_discount = 0

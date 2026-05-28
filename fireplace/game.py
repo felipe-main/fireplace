@@ -486,6 +486,8 @@ class BaseGame(Entity):
         player.spell_mana_spent_this_turn = 0
         # Audiopocalypse — Ambient Lightspawn counter resets per turn.
         player.overheals_triggered_this_turn = 0
+        # TITANS — Tar Slick: clear per-turn "minions take double damage" flag.
+        player.minion_damage_doubled_this_turn = False
         # MotLK — Bonelord Frostwhisper: re-arm the "first card costs 0"
         # per-turn marker. Permanent flag stays set; only the consumed
         # latch resets.

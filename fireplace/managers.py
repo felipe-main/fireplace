@@ -239,6 +239,7 @@ CARD_ATTRIBUTE_MAP = {
     GameTag.INCOMING_DAMAGE_ADJUSTMENT: "incoming_damage_adjustment",
     GameTag.INCOMING_DAMAGE_MULTIPLIER: "incoming_damage_multiplier",
     enums.INCOMING_DAMAGE_MULTIPLIER_FROM_SPELL: "incoming_damage_multiplier_from_spell",
+    enums.INCOMING_DAMAGE_MAX: "incoming_damage_max",
     GameTag.ImmuneToSpellpower: "immune_to_spellpower",
     GameTag.IMMUNE_WHILE_ATTACKING: "immune_while_attacking",
     GameTag.INSPIRE: "has_inspire",

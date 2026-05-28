@@ -76,8 +76,10 @@ class _KologarnDeathrattle(TargetedAction):
 
 class _PrisonOfYoggCastSpells(TargetedAction):
     """Prison of Yogg-Saron — cast 4 random spells, targeting the chosen
-    character if possible. Approximation: uses CastSpellTargetsSelfIfPossible
-    semantics where 'self' is the TARGET character."""
+    character if possible. Picks a spell, materializes a fresh instance,
+    and if the chosen character is a legal target for it, casts at the
+    chosen character; otherwise falls back to CastSpell's random target.
+    """
 
     TARGET = ActionArg()
 
@@ -90,23 +92,17 @@ class _PrisonOfYoggCastSpells(TargetedAction):
             if not cids:
                 continue
             cid = cids[0] if isinstance(cids, list) else cids
-            card = source.controller.card(cid)
-            if card is None:
-                continue
-            # Try to target the chosen character if it's a valid target
-            chosen_target = None
+            # Create the spell instance once so we can ask its .targets list
+            # whether the chosen character is a valid target for this spell.
             try:
-                if target_char in card.targets:
-                    chosen_target = target_char
-                elif card.targets:
-                    chosen_target = source.game.random.choice(card.targets)
+                candidate = source.controller.card(cid)
             except Exception:
-                if card.targets:
-                    chosen_target = source.game.random.choice(card.targets)
-            try:
+                candidate = None
+            if candidate is not None and target_char is not None \
+                    and target_char in getattr(candidate, "targets", []):
+                source.game.queue_actions(source, [CastSpell(cid, target_char)])
+            else:
                 source.game.queue_actions(source, [CastSpell(cid)])
-            except Exception:
-                pass
 
 
 class _MechagnomeGuideForgedDiscover(TargetedAction):
@@ -598,10 +594,24 @@ class TTN_732:
     """Invent-o-matic"""
 
     # Whenever you Magnetize a minion, give it +1/+1.
-    # TODO: The Magnetize action does not broadcast a distinct event.
-    # A full implementation would hook into the Magnetic action's post-buff
-    # phase. Approximation: no effect scripted.
-    pass
+    # Engine hook: when a friendly minion magnetizes, Play.do calls each
+    # field minion's `on_friendly_magnetize(self, magnetizing_card)` script
+    # and queues the returned actions.
+    @staticmethod
+    def on_friendly_magnetize(self, magnetizer):
+        # The magnetizer attached to a target Mech which is identified by
+        # being in the controller's field; buff that target +1/+1.
+        return [Buff(magnetizer, "TTN_732e")]
+
+
+@custom_card
+class TTN_732e:
+    tags = {
+        GameTag.CARDNAME: "Inventive",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 1,
+        GameTag.HEALTH: 1,
+    }
 
 
 class TTN_733:
@@ -701,13 +711,26 @@ class TTN_832:
     play = Hit(FRIENDLY_HERO, 4)
 
 
+class _FateSplitterDeathrattle(TargetedAction):
+    """Fate Splitter — give a copy of the card that killed this.
+    Reads target._last_damage_source_id stamped by Damage.do on lethal damage.
+    Falls back to a self-copy if the killing source wasn't recorded (e.g.
+    the killing came from a Destroy action that bypassed Damage.do).
+    """
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        killer_id = getattr(target, "_last_damage_source_id", None)
+        if not killer_id:
+            return
+        source.game.cheat_action(source, [Give(target.controller, killer_id)])
+
+
 class TTN_859:
     """Fate Splitter"""
 
     # Deathrattle: Get a copy of the card that killed this.
-    # TODO: Engine doesn't expose the killing-blow source at deathrattle time.
-    # Approximation: give a copy of this card itself instead.
-    deathrattle = Give(CONTROLLER, "TTN_859")
+    deathrattle = _FateSplitterDeathrattle(SELF)
 
 
 class TTN_860:

@@ -852,31 +852,114 @@ def test_odyn_prime_designate_grants_attack_when_armor_gained():
     assert hero.atk == atk_before + 5
 
 
-def test_ignis_battlecry_triggers_when_forged():
-    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
-    # First forge a card to set cards_forged_this_game > 0
-    game.player1.give("TTN_042")
-    game.queue_actions(game.player1, [ForgeCard(game.player1.hand[-1])])
-    assert game.player1.cards_forged_this_game == 1
-    ignis = game.player1.give("TTN_751")
+def _ignis_run_crafter(game, p, weapon_idx, kw_idx, eff_idx):
+    """Helper: pick weapon[weapon_idx], then keyword[kw_idx], then effect[eff_idx]."""
+    p.give("TTN_042")
+    game.queue_actions(p, [ForgeCard(p.hand[-1])])
+    ignis = p.give("TTN_751")
     ignis.play()
-    # Should get a Discover window for a weapon
-    while game.player1.choice:
-        game.player1.choice.choose(game.player1.choice.cards[0])
-    # A weapon card should be in hand now
-    weapons = [c for c in game.player1.hand if c.type == CardType.WEAPON]
-    assert len(weapons) >= 1
+    assert p.choice is not None and len(p.choice.cards) == 3, "step 1: 3 weapons"
+    p.choice.choose(p.choice.cards[weapon_idx])
+    assert p.choice is not None and len(p.choice.cards) == 5, "step 2: 5 keywords"
+    p.choice.choose(p.choice.cards[kw_idx])
+    assert p.choice is not None and len(p.choice.cards) == 5, "step 3: 5 effects"
+    p.choice.choose(p.choice.cards[eff_idx])
+    assert p.choice is None
 
 
-def test_ignis_battlecry_does_nothing_without_forge():
+def test_ignis_does_nothing_without_forge():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     assert game.player1.cards_forged_this_game == 0
     ignis = game.player1.give("TTN_751")
     ignis.play()
-    # No Forge → no weapon Discover
     assert game.player1.choice is None
-    weapons = [c for c in game.player1.hand if c.type == CardType.WEAPON]
-    assert len(weapons) == 0
+    assert game.player1.weapon is None
+
+
+def test_ignis_equips_shortsword_with_poisonous_and_armor():
+    """Step 1: Shortsword (cost 1, 2/2). Step 2: Deceit of Loken (Poisonous).
+    Step 3: Light of Tyr at tier-0 (+2 armor after hero attacks)."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    _ignis_run_crafter(game, p1, weapon_idx=0, kw_idx=0, eff_idx=1)
+    weapon = p1.weapon
+    assert weapon is not None
+    assert weapon.id == "TTN_060t"
+    assert weapon.atk == 2
+    assert weapon.durability == 2
+    assert weapon.poisonous is True
+    assert weapon._ignis_armor == 2
+
+
+def test_ignis_equips_greatmace_with_windfury_and_draw():
+    """Step 1: Greatmace (cost 10, 5/6). Step 2: Storm of Thorim (Windfury).
+    Step 3: Wisdom of Freya at tier-2 (draw 3 after hero attacks)."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    _ignis_run_crafter(game, p1, weapon_idx=2, kw_idx=2, eff_idx=4)
+    weapon = p1.weapon
+    assert weapon is not None
+    assert weapon.id == "TTN_060t2"
+    assert weapon.atk == 5
+    assert weapon.windfury is True
+    assert weapon._ignis_draw == 3
+
+
+def test_ignis_axe_lifesteal_chill_deathrattle_deals_2_to_enemies():
+    """Step 1: Axe (cost 5, 3/4). Step 2: Hope of Sif (Lifesteal).
+    Step 3: Chill of Hodir at tier-1 (Deathrattle: deal 2 to all enemies)."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    enemy = game.player2.summon("CS2_231")  # Wisp 1/1
+    enemy.max_health = 5
+    enemy.damage = 0
+    _ignis_run_crafter(game, p1, weapon_idx=1, kw_idx=1, eff_idx=0)
+    weapon = p1.weapon
+    assert weapon.id == "TTN_060t1"
+    assert weapon.lifesteal is True
+    assert weapon._ignis_chill == 2
+    # Trigger the deathrattle by destroying the weapon.
+    enemy_hp_before = game.player2.hero.health
+    weapon.destroy()
+    # Chill of Hodir t1 deals 2 damage to all enemies (hero + minion).
+    assert game.player2.hero.health == enemy_hp_before - 2
+    assert enemy.damage == 2
+
+
+def test_ignis_pain_of_jotun_fires_battlecry_on_equip():
+    """Step 3: Pain of Jotun is a battlecry — deals damage to enemy hero
+    immediately when the weapon is crafted."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    hero_hp_before = game.player2.hero.health
+    # Shortsword (tier 0) + Poisonous + Pain of Jotun (idx 3 → tier-0 = 2 damage)
+    _ignis_run_crafter(game, p1, weapon_idx=0, kw_idx=0, eff_idx=3)
+    assert game.player2.hero.health == hero_hp_before - 2
+
+
+def test_ignis_flame_of_odyn_cleaves_adjacent_on_hero_attack():
+    """Flame of Odyn (cleave) + Greatmace (5 attack): hero attacking the
+    middle enemy minion deals 5 to it AND 5 to its two neighbors."""
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p2 = game.player2
+    left = p2.summon("CS2_231")
+    target = p2.summon("CS2_231")
+    right = p2.summon("CS2_231")
+    for m in (left, target, right):
+        m.max_health = 20
+        m.damage = 0
+    # Greatmace + Flame of Odyn (kw idx 3) + Light of Tyr (eff idx 1) at tier 2
+    _ignis_run_crafter(game, p1, weapon_idx=2, kw_idx=3, eff_idx=1)
+    weapon = p1.weapon
+    assert weapon._ignis_cleave is True
+    game.end_turn()
+    game.end_turn()
+    p1.hero.attack(target=target)
+    # Attack hits target (5 dmg); cleave hits the two neighbors for 5 each.
+    assert target.damage == 5
+    assert left.damage == 5
+    assert right.damage == 5
 
 
 def test_crash_of_thunder_deals_3_to_all_enemies():

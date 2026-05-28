@@ -265,19 +265,180 @@ class _SharpEyedSeekerDraw(TargetedAction):
         source.game.cheat_action(source, [ForceDraw(pick)])
 
 
+_IGNIS_BASE_WEAPONS = ["TTN_060t", "TTN_060t1", "TTN_060t2"]  # 1/5/10 cost
+_IGNIS_KEYWORDS = ["TTN_060t3", "TTN_060t4", "TTN_060t5", "TTN_060t6", "TTN_060t9"]
+_IGNIS_EFFECTS_BY_TIER = [
+    ["TTN_060t7", "TTN_060t8", "TTN_060t10", "TTN_060t12", "TTN_060t13"],
+    ["TTN_060t7t", "TTN_060t8t", "TTN_060t10t", "TTN_060t12t", "TTN_060t13t"],
+    ["TTN_060t7t1", "TTN_060t8t1", "TTN_060t10t1", "TTN_060t12t1", "TTN_060t13t1"],
+]
+
+
+def _ignis_apply_keyword(weapon, kw_id):
+    """Stamp the chosen Step-2 keyword onto the equipped weapon."""
+    if kw_id == "TTN_060t3":     # Deceit of Loken
+        weapon.poisonous = True
+    elif kw_id == "TTN_060t4":   # Hope of Sif
+        weapon.lifesteal = True
+    elif kw_id == "TTN_060t5":   # Storm of Thorim
+        weapon.windfury = True
+    elif kw_id == "TTN_060t6":   # Flame of Odyn
+        weapon._ignis_cleave = True
+    elif kw_id == "TTN_060t9":   # Spark of Ra-den
+        weapon.immune_while_attacking = True
+
+
+def _ignis_apply_effect(source, weapon, eff_id):
+    """Stamp the chosen Step-3 effect on the weapon. Pain of Jotun is a
+    battlecry — fires immediately at equip."""
+    chill = {"TTN_060t7": 1, "TTN_060t7t": 2, "TTN_060t7t1": 4}.get(eff_id, 0)
+    armor = {"TTN_060t8": 2, "TTN_060t8t": 4, "TTN_060t8t1": 8}.get(eff_id, 0)
+    summon_cost = {"TTN_060t10": 2, "TTN_060t10t": 4, "TTN_060t10t1": 8}.get(eff_id, 0)
+    pain = {"TTN_060t12": 2, "TTN_060t12t": 4, "TTN_060t12t1": 6}.get(eff_id, 0)
+    draws = {"TTN_060t13": 1, "TTN_060t13t": 2, "TTN_060t13t1": 3}.get(eff_id, 0)
+    if chill:
+        weapon._ignis_chill = chill
+    if armor:
+        weapon._ignis_armor = armor
+    if summon_cost:
+        weapon._ignis_summon = summon_cost
+    if draws:
+        weapon._ignis_draw = draws
+    if pain:
+        # Battlecry-style: deal `pain` damage to enemy hero on equip.
+        source.game.cheat_action(
+            source, [Hit(source.controller.opponent.hero, pain)]
+        )
+
+
+class _IgnisChoice:
+    """Custom Choice that invokes on_pick(source, card) instead of moving
+    the picked card to hand. Mirrors the protocol that prepare_game / soak /
+    tests expect (player.choice with .cards and .choose)."""
+
+    def __init__(self, source, player, cards, on_pick):
+        self.source = source
+        self.player = player
+        self.cards = cards
+        self.on_pick = on_pick
+        self.min_count = 1
+        self.max_count = 1
+        self.callback = []
+        self._callback = []
+
+    def choose(self, card):
+        from fireplace.exceptions import InvalidAction
+        if card not in self.cards:
+            raise InvalidAction(
+                f"{card!r} is not a valid choice (one of {self.cards!r})"
+            )
+        self.player.choice = None
+        self.on_pick(self.source, card)
+
+
+def _ignis_pick_effect(source, effect_card, tier):
+    weapon = source.controller.weapon
+    if weapon is None:
+        return
+    _ignis_apply_effect(source, weapon, effect_card.id)
+
+
+def _ignis_pick_keyword(source, keyword_card, tier):
+    ctrl = source.controller
+    weapon = ctrl.weapon
+    if weapon is None:
+        return
+    _ignis_apply_keyword(weapon, keyword_card.id)
+    effect_cards = [ctrl.card(cid) for cid in _IGNIS_EFFECTS_BY_TIER[tier]]
+    ctrl.choice = _IgnisChoice(
+        source, ctrl, effect_cards,
+        on_pick=lambda src, eff: _ignis_pick_effect(src, eff, tier),
+    )
+
+
+def _ignis_pick_weapon(source, weapon_card):
+    ctrl = source.controller
+    tier = _IGNIS_BASE_WEAPONS.index(weapon_card.id)
+    weapon_card.zone = Zone.PLAY  # equips and replaces any current weapon
+    keyword_cards = [ctrl.card(cid) for cid in _IGNIS_KEYWORDS]
+    ctrl.choice = _IgnisChoice(
+        source, ctrl, keyword_cards,
+        on_pick=lambda src, kw: _ignis_pick_keyword(src, kw, tier),
+    )
+
+
 class _IgisForgeWeapon(TargetedAction):
     """Ignis, the Eternal Flame — if you've Forged a card this game, craft
-    a custom weapon. Approximated as Discovering from all collectible weapons."""
+    a custom weapon via the 3-step Hearthstone flow:
+      Step 1 — pick base weapon (Shortsword 1 / Axe 5 / Greatmace 10)
+      Step 2 — pick keyword (Poisonous / Lifesteal / Windfury / Cleave / Immune)
+      Step 3 — pick secondary effect at the matching power tier
+    """
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        if source.controller.cards_forged_this_game <= 0:
+        ctrl = source.controller
+        if ctrl.cards_forged_this_game <= 0:
             return
-        action = DISCOVER(RandomCollectible(type=CardType.WEAPON)).then(
-            Give(source.controller, Discover.CARD)
+        weapon_cards = [ctrl.card(cid) for cid in _IGNIS_BASE_WEAPONS]
+        ctrl.choice = _IgnisChoice(
+            source, ctrl, weapon_cards, on_pick=_ignis_pick_weapon
         )
-        source.game.queue_actions(source, [action])
+
+
+class _IgnisOnHeroAttack(TargetedAction):
+    """Dispatch the equipped Ignis-weapon's on-attack effects: Flame of Odyn
+    cleave, Light of Tyr armor, Genius of Mimiron summon, Wisdom of Freya draw."""
+
+    TARGET = ActionArg()
+    DEFENDER = ActionArg()
+
+    def do(self, source, target, defender):
+        if isinstance(defender, (list, tuple)):
+            defender = defender[0] if defender else None
+        ctrl = source.controller
+        if getattr(source, "_ignis_cleave", False) and defender is not None \
+                and defender.type == CardType.MINION:
+            field = defender.controller.field
+            try:
+                idx = field.index(defender)
+            except ValueError:
+                idx = -1
+            neighbors = []
+            if idx > 0:
+                neighbors.append(field[idx - 1])
+            if 0 <= idx < len(field) - 1:
+                neighbors.append(field[idx + 1])
+            for n in neighbors:
+                source.game.cheat_action(source, [Hit(n, source.atk)])
+        armor = getattr(source, "_ignis_armor", 0)
+        if armor:
+            source.game.cheat_action(source, [GainArmor(ctrl.hero, armor)])
+        summon_cost = getattr(source, "_ignis_summon", 0)
+        if summon_cost:
+            from fireplace.dsl.random_picker import RandomMinion
+            ids = RandomMinion(cost=summon_cost).evaluate(source)
+            if ids:
+                cid = source.game.random.choice(
+                    ids if isinstance(ids, list) else [ids]
+                )
+                source.game.cheat_action(source, [Summon(ctrl, cid)])
+        draws = getattr(source, "_ignis_draw", 0)
+        if draws:
+            for _ in range(draws):
+                source.game.cheat_action(source, [Draw(ctrl)])
+
+
+class _IgnisChillDeathrattle(TargetedAction):
+    """Chill of Hodir — Deathrattle: deal _ignis_chill damage to all enemies."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        chill = getattr(source, "_ignis_chill", 0)
+        if chill:
+            source.game.cheat_action(source, [Hit(ENEMY_CHARACTERS, chill)])
 
 
 class _CelestialProjectionistCopy(TargetedAction):
@@ -764,3 +925,47 @@ class TTN_931:
     # Taunt. Can't attack.
     # TAUNT and CANT_ATTACK are both set in data — no script needed.
     pass
+
+
+##
+# Ignis crafted-weapon classes (TTN_060t / TTN_060t1 / TTN_060t2 — Shortsword
+# 1 / Axe 5 / Greatmace 10). All three share the same dispatch — on-attack
+# events for cleave / armor / summon / draw, and a deathrattle for Chill of
+# Hodir. The actual keyword/effect chosen via Ignis crafting sets the per-
+# weapon _ignis_* marker attrs that these dispatchers read.
+
+
+class TTN_060t:
+    """Runic Shortsword"""
+
+    # Stamp DEATHRATTLE so the engine invokes our handler; it no-ops unless
+    # Chill of Hodir was the chosen Step-3 effect (which stamps _ignis_chill).
+    tags = {GameTag.DEATHRATTLE: True}
+    events = Attack(FRIENDLY_HERO).after(
+        _IgnisOnHeroAttack(SELF, Attack.DEFENDER)
+    )
+    deathrattle = _IgnisChillDeathrattle(SELF)
+
+
+class TTN_060t1:
+    """Runic Axe"""
+
+    # Stamp DEATHRATTLE so the engine invokes our handler; it no-ops unless
+    # Chill of Hodir was the chosen Step-3 effect (which stamps _ignis_chill).
+    tags = {GameTag.DEATHRATTLE: True}
+    events = Attack(FRIENDLY_HERO).after(
+        _IgnisOnHeroAttack(SELF, Attack.DEFENDER)
+    )
+    deathrattle = _IgnisChillDeathrattle(SELF)
+
+
+class TTN_060t2:
+    """Runic Greatmace"""
+
+    # Stamp DEATHRATTLE so the engine invokes our handler; it no-ops unless
+    # Chill of Hodir was the chosen Step-3 effect (which stamps _ignis_chill).
+    tags = {GameTag.DEATHRATTLE: True}
+    events = Attack(FRIENDLY_HERO).after(
+        _IgnisOnHeroAttack(SELF, Attack.DEFENDER)
+    )
+    deathrattle = _IgnisChillDeathrattle(SELF)

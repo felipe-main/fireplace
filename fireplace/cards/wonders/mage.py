@@ -76,65 +76,48 @@ class _DiscoCastSecret(TargetedAction):
 			card.zone = Zone.HAND
 			card._disco_temp = True
 			source.game.cheat_action(source, [CastSpell(card)])
-		# Register a one-shot listener on the controller that destroys
-		# all _disco_temp secrets on the start of their next own turn.
-		if not hasattr(ctrl, "_disco_active"):
-			ctrl._disco_active = True
-
-
-class _DiscoCleanup(TargetedAction):
-	# At start of controller's turn: destroy every secret currently in
-	# their Zone.SECRET that was stamped with _disco_temp = True.
-	TARGET = ActionArg()
-	def do(self, source, target):
-		ctrl = source.controller
-		if not getattr(ctrl, "_disco_active", False):
-			return
-		victims = [s for s in list(ctrl.secrets)
-		           if getattr(s, "_disco_temp", False)]
-		for v in victims:
-			source.game.cheat_action(source, [Destroy(v)])
-		ctrl._disco_active = False
+		# Arm the cleanup: game._begin_turn destroys every _disco_temp
+		# secret still in play at the start of the caster's next turn.
+		ctrl._disco_active = True
 
 
 class WON_040:
 	"""Disco at the End of Time"""
 
 	# Cast 5 random Secrets from the past. At the start of your turn,
-	# destroy them. NOTE: the "destroy at start of turn" cleanup is left
-	# unwired — once the spell resolves into the graveyard its events
-	# stop firing, and there's no central player-level hook for this
-	# pattern yet. Marked as a Significant Approximation in review.csv.
+	# destroy them. The cleanup is wired in game._begin_turn (keyed off
+	# player._disco_active / secret._disco_temp).
 	play = _DiscoCastSecret(CONTROLLER)
 
 
-# Chromie's Historical Epoch tokens are WON_041t .. WON_041t4 — discover
-# 1 of 4, shuffle the other 3 into the deck.
-class _ChromieDiscover(TargetedAction):
+# Chromie's Historical Epoch tokens are WON_041t .. WON_041t4 — visit
+# (choose) 1 of 4, shuffle the other 3 into the deck.
+class _ChromieChoice(Choice):
+	# Like a Discover over the 4 Epochs, but the UNCHOSEN ones are
+	# shuffled into the deck rather than discarded.
+	def choose(self, card):
+		super().choose(card)
+		for _card in self.cards:
+			if _card == card:
+				if len(self.player.hand) < self.player.max_hand_size:
+					_card.zone = Zone.HAND
+				else:
+					_card.discard()
+			else:
+				_card.shuffle_into_deck()
+
+
+class _ChromieVisit(TargetedAction):
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		ctrl = source.controller
 		epochs = ["WON_041t", "WON_041t2", "WON_041t3", "WON_041t4"]
-		# Use a Discover with these as entourage; on pick, the unchosen go to deck.
-		picker = epochs[:]
-		# Simplification: random-pick one and shuffle the rest. The actual card
-		# lets the player choose; this approximation keeps the soak path simple
-		# until we wire a custom Choice variant.
-		import random
-		chosen = random.choice(picker)
-		picker.remove(chosen)
-		card = ctrl.card(chosen)
-		card.zone = Zone.HAND
-		for other in picker:
-			oc = ctrl.card(other)
-			oc.shuffle_into_deck()
+		offered = [target.card(cid, source=source) for cid in epochs]
+		source.game.queue_actions(source, [_ChromieChoice(target, offered)])
 
 
 class WON_041:
 	"""Chromie, Timehopper"""
 
 	# Battlecry: Visit a Historical Epoch. Shuffle the others into your deck.
-	# Approximation: random-pick + shuffle (no UI choice). Audit row will
-	# flag this as a significant approximation for tier-N upgrade.
-	play = _ChromieDiscover(CONTROLLER)
+	play = _ChromieVisit(CONTROLLER)

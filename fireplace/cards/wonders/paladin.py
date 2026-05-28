@@ -77,13 +77,15 @@ class _RuniDiscover(TargetedAction):
 	TARGET = ActionArg()
 
 	def do(self, source, target):
-		# Approximation: random-give one Future location instead of a
-		# Discover UI. The audit row marks this for tier-N upgrade.
-		import random
+		# Real Discover: offer 3 of the 7 Future locations and let the
+		# player pick one (GenericChoice puts the pick in hand, discards
+		# the other two — matching Discover semantics).
 		entourage = ["WON_053t", "WON_053t2", "WON_053t3", "WON_053t4",
 		             "WON_053t5", "WON_053t6", "WON_053t7"]
-		cid = random.choice(entourage)
-		source.game.cheat_action(source, [Give(source.controller, cid)])
+		n = min(3, len(entourage))
+		picks = source.game.random.sample(entourage, n)
+		offered = [target.card(cid, source=source) for cid in picks]
+		source.game.queue_actions(source, [GenericChoice(target, offered)])
 
 
 class WON_053:

@@ -7,7 +7,7 @@ from .actions import Concede, Draw, Fatigue, Give, Hit, SpendMana, Steal, Summon
 from .aura import TargetableByAuras
 from .card import Card
 from .deck import Deck
-from .entity import Entity, slot_property
+from .entity import Entity, slot_property, slot_buff_property
 from .managers import PlayerManager
 from .utils import CardList
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class Player(Entity, TargetableByAuras):
     Manager = PlayerManager
     all_targets_random = slot_property("all_targets_random")
-    cant_overload = slot_property("cant_overload")
+    cant_overload = slot_buff_property("cant_overload")
     choose_both = slot_property("choose_both")
     extra_battlecries = slot_property("extra_battlecries")
     extra_trigger_secret = slot_property("extra_trigger_secret")

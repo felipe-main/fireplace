@@ -48,9 +48,13 @@ class WON_064:
 
 	# Tradeable. Destroy a 4-Attack minion. Corrupt: Destroy ALL 4-Attack
 	# minions.
+	# REQ_TARGET_MIN_ATTACK + MAX_ATTACK both 4 == "exactly 4 Attack"
+	# (the engine has no EXACT_ATTACK handler, but supports min/max).
 	requirements = {
 		PlayReq.REQ_TARGET_TO_PLAY: 0,
 		PlayReq.REQ_MINION_TARGET: 0,
+		PlayReq.REQ_TARGET_MIN_ATTACK: 4,
+		PlayReq.REQ_TARGET_MAX_ATTACK: 4,
 	}
 	play = Destroy(TARGET)
 	corrupt_card = "WON_064ts"
@@ -74,17 +78,14 @@ WON_065e = buff(health=1)
 
 
 class _MurozondAOE(TargetedAction):
-	# After Discover resolves, deal damage equal to the picked Dragon's
-	# cost to all other minions. We approximate by reading the most
-	# recently added hand card's cost.
+	# Deal damage equal to the Discovered Dragon's cost to all other
+	# minions. The chosen Dragon arrives via Discover.CARD — never read
+	# hand[-1], which is an unrelated card.
 	TARGET = ActionArg()
+	CARD = CardArg()
 
-	def do(self, source, target):
-		ctrl = source.controller
-		if not ctrl.hand:
-			return
-		picked = ctrl.hand[-1]
-		dmg = picked.cost or 0
+	def do(self, source, target, card):
+		dmg = (card.cost or 0) if card else 0
 		if dmg > 0:
 			source.game.cheat_action(
 				source, [Hit(ALL_MINIONS - SELF, dmg)]
@@ -99,6 +100,7 @@ class WON_066:
 	powered_up = -FindDuplicates(FRIENDLY_DECK)
 	play = powered_up & (
 		Discover(CONTROLLER, RandomMinion(race=Race.DRAGON)).then(
-			_MurozondAOE(CONTROLLER)
+			Give(CONTROLLER, Discover.CARD),
+			_MurozondAOE(CONTROLLER, Discover.CARD),
 		)
 	)

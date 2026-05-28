@@ -505,6 +505,15 @@ class BaseGame(Entity):
         # Castle Nathria — tick the Location's cooldown down each turn.
         if player.location and player.location.cooldown > 0:
             player.location.cooldown -= 1
+        # Caverns of Time — Disco at the End of Time: the Secrets it cast
+        # are temporary ("At the start of your turn, destroy them"). They
+        # persist through the opponent's turn (and may trigger), then are
+        # destroyed at the start of the caster's next turn.
+        if getattr(player, "_disco_active", False):
+            for secret in list(player.secrets):
+                if getattr(secret, "_disco_temp", False):
+                    self.queue_actions(player.hero, [Destroy(secret)])
+            player._disco_active = False
         # Maw and Disorder — Dew Process: while active on either player,
         # draw one extra card at the start of each turn (rest of game).
         if getattr(player, "dew_process_active", False):

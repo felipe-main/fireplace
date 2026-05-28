@@ -59,18 +59,18 @@ class WON_090:
 	"""Pebbly Page"""
 
 	# Battlecry: Draw an Overload card. You can't be Overloaded this turn.
-	# The cant_overload flag is a slot_property — applied via the WON_090e
-	# enchant which sets the tag and self-destructs at turn end.
+	# cant_overload is passed as a Buff kwarg so it lands on the enchant
+	# instance; Player.cant_overload (slot_buff_property) ORs over buffs.
 	play = (
 		_PebblyPageDraw(CONTROLLER),
-		Buff(CONTROLLER, "WON_090e"),
+		Buff(CONTROLLER, "WON_090e", cant_overload=True),
 	)
 
 
 class WON_090e:
 	"""Pebbled"""
-	# Grafts cant_overload onto the data-defined enchant.
-	cant_overload = True
+	# cant_overload is supplied as a Buff kwarg (a bare class attr never
+	# reaches the buff instance). Self-destruct at turn end.
 	events = OWN_TURN_END.on(Destroy(SELF))
 
 

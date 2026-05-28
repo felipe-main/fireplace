@@ -142,22 +142,37 @@ class _MenagerieBuff(TargetedAction):
 	TARGET = ActionArg()
 	def do(self, source, target):
 		ctrl = source.controller
-		buff_id = getattr(source, "_menagerie_buff", "WON_141e")
+		# _menagerie_* live on the card script class (source.data.scripts),
+		# not the instance — reading off `source` silently returns the Mug
+		# defaults, which is why Jug was buffing +1/+1 via WON_141e.
+		scripts = source.data.scripts
+		buff_id = getattr(scripts, "_menagerie_buff", "WON_141e")
+		atk = getattr(scripts, "_menagerie_atk", 1)
+		hp = getattr(scripts, "_menagerie_hp", 1)
 		import random
 		minions = [m for m in ctrl.field if m is not source]
 		random.shuffle(minions)
 		picked = []
-		races_seen = set()
+		used = set()            # race buckets already represented
+		typeless_used = False   # typeless minions share one bucket
 		for m in minions:
-			race = next(iter(m.races), None) if m.races else None
-			key = race if race else "no-race"
-			if key not in races_seen:
-				races_seen.add(key)
+			races = [r for r in (m.races or []) if r != Race.INVALID]
+			if not races:
+				if typeless_used:
+					continue
+				typeless_used = True
 				picked.append(m)
-				if len(picked) == 3:
-					break
-		atk = getattr(source, "_menagerie_atk", 1)
-		hp = getattr(source, "_menagerie_hp", 1)
+			else:
+				# Greedily assign a multi-type minion to any of its types
+				# that isn't already represented (fixes the first-race-only
+				# collision).
+				avail = [r for r in races if r not in used]
+				if not avail:
+					continue
+				used.add(avail[0])
+				picked.append(m)
+			if len(picked) == 3:
+				break
 		for m in picked:
 			source.game.cheat_action(
 				source, [Buff(m, buff_id, atk=atk, max_health=hp)]
@@ -211,23 +226,24 @@ class WON_143:
 
 
 class _EyestalkMirror(TargetedAction):
-	# Whenever your C'Thun gains Attack or Health, this does too. Find
-	# C'Thun (in deck/hand/play) and mirror its buffs. Approximation: on
-	# any friendly Buff event we check if the target was C'Thun and apply
-	# the same buff to us if so.
-	TARGET = ActionArg()
-	BUFF = ActionArg()
-	def do(self, source, target, buff):
-		# Mirror only if the buffed entity is a C'Thun (canonical OG_280)
-		if getattr(target, "id", None) not in ("OG_280", "WON_135"):
+	# Whenever your C'Thun gains Attack or Health, this does too. On any
+	# friendly Buff event, if the BUFFED entity is a C'Thun, mirror the
+	# stat gain onto Eyestalk.
+	TARGET = ActionArg()    # SELF (Eyestalk)
+	BUFFED = CardArg()      # the entity that was buffed (Buff.TARGET)
+	BUFF = CardArg()        # the applied enchant (Buff.BUFF)
+	def do(self, source, target, buffed, buff):
+		if getattr(buffed, "id", None) not in ("OG_280", "WON_135"):
 			return
 		# Build a same-stat buff onto self via a transient enchant.
+		# Health buffs may be declared as max_health= or health=; mirror
+		# whichever is larger so both styles are caught.
 		atk = getattr(buff, "atk", 0) or 0
-		hp = getattr(buff, "max_health", 0) or 0
+		hp = max(getattr(buff, "max_health", 0) or 0, getattr(buff, "health", 0) or 0)
 		if atk or hp:
 			source.game.cheat_action(
 				source,
-				[Buff(source, "WON_144e", atk=atk, max_health=hp)],
+				[Buff(target, "WON_144e", atk=atk, max_health=hp)],
 			)
 
 
@@ -244,20 +260,17 @@ class WON_144:
 
 	# Taunt, Lifesteal (data). Whenever your C'Thun gains Attack or
 	# Health, this does too (wherever it is).
-	events = Buff(FRIENDLY).after(_EyestalkMirror(SELF, Buff.BUFF))
+	events = Buff(FRIENDLY).after(_EyestalkMirror(SELF, Buff.TARGET, Buff.BUFF))
 
 
 class WON_146:
 	"""Soridormi"""
 
 	# Dormant for 2 turns. When this awakens, reduce the Cost of all
-	# Dragons in your hand by (3) and give them +3/+3 (per wiki text).
+	# Dragons in your hand by (4).
 	play = Dormant(SELF, 2)
 	dormant_events = []
-	awaken = (
-		Buff(FRIENDLY_HAND + DRAGON, "WON_146cost"),
-		Buff(FRIENDLY_HAND + DRAGON, "WON_146e", atk=3, max_health=3),
-	)
+	awaken = Buff(FRIENDLY_HAND + DRAGON, "WON_146cost")
 
 
 @custom_card
@@ -265,7 +278,7 @@ class WON_146cost:
 	tags = {
 		GameTag.CARDNAME: "Time Compression",
 		GameTag.CARDTYPE: CardType.ENCHANTMENT,
-		GameTag.COST: -3,
+		GameTag.COST: -4,
 	}
 
 

@@ -53,20 +53,32 @@ class _ImposterRotate(TargetedAction):
 	def do(self, source, target):
 		if target.zone != Zone.HAND:
 			return
-		cost = getattr(target, "_imposter_cost", 3)
-		keyword = getattr(target, "_imposter_keyword", None)
+		# _imposter_cost / _imposter_keyword are declared on the card
+		# script class, which lives at target.data.scripts — they are NOT
+		# copied onto the card instance, so read them from there (reading
+		# off `target` silently falls back to the defaults).
+		scripts = target.data.scripts
+		cost = getattr(scripts, "_imposter_cost", 3)
+		keyword = getattr(scripts, "_imposter_keyword", None)
 		picker = RandomMinion(cost=cost)
 		pick = picker.evaluate(source)
 		cid = pick[0] if isinstance(pick, list) else pick
 		if not cid:
 			return
 		source.game.cheat_action(source, [Morph(target, cid)])
+		# Morph replaces the in-hand card with a new minion (stored as
+		# target.morphed and now occupying the hand slot); target itself
+		# has gone to SETASIDE. The keyword must land on the morph result
+		# so it survives the eventual play into the board.
+		new = getattr(target, "morphed", None)
+		if new is None:
+			return
 		if keyword == "POISONOUS":
-			target.poisonous = True
+			new.poisonous = True
 		elif keyword == "STEALTH":
-			target.stealth = True
+			new.stealthed = True
 		elif keyword == "SPELLPOWER":
-			target.spellpower += 1
+			new.spellpower += 1
 
 
 class WON_026:

@@ -140,19 +140,38 @@ def test_won_028_trial_of_jormungars_summons_two_low_cost_beasts():
 	assert len(game.player1.field) == pre + 2
 
 
-def test_won_039_black_morass_imposter_morphs_on_turn_begin():
-	"""Imposter: each turn this is in your hand, morph into random 2-cost
-	with Spell Damage +1."""
-	game = prepare_game(CardClass.MAGE, CardClass.MAGE)
-	game.player1.discard_hand()
-	imp = game.player1.give("WON_039")
-	original_id = imp.id
+def test_won_026_durnholde_imposter_morph_gains_poisonous():
+	"""Imposter: morph into a random 3-cost minion that gains Poisonous.
+	The keyword must land on the morph RESULT (the card now in hand),
+	not the pre-morph card that Morph sent to SETASIDE."""
+	game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+	imp = game.player1.give("WON_026")
 	game.end_turn(); game.end_turn()
-	# After own turn-begin, the in-hand card has morphed.
-	new_id = game.player1.hand[0].id if game.player1.hand else None
-	# Either morphed away from WON_039, or stayed put if no 2-cost minion
-	# was available — the more likely outcome is morph.
-	assert new_id is not None
+	# Morph stores the result on the (now set-aside) original card.
+	morphed = imp.morphed
+	assert morphed is not None
+	assert morphed.id != "WON_026"
+	assert morphed.type == CardType.MINION
+	assert morphed.zone == Zone.HAND
+	assert morphed.cost == 3
+	# Gained Poisonous (False in the old buggy version).
+	assert morphed.poisonous
+
+
+def test_won_039_black_morass_imposter_morph_gains_spellpower():
+	"""Imposter: morph into a random 2-cost minion with Spell Damage +1."""
+	game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+	imp = game.player1.give("WON_039")
+	game.end_turn(); game.end_turn()
+	morphed = imp.morphed
+	assert morphed is not None
+	assert morphed.id != "WON_039"
+	assert morphed.type == CardType.MINION
+	assert morphed.zone == Zone.HAND
+	assert morphed.cost == 2
+	# Gained Spell Damage +1 (>= 1 because a few 2-drops carry base
+	# spellpower, e.g. Kobold Geomancer; the floor of 1 is the grant).
+	assert morphed.spellpower >= 1
 
 
 def test_won_051_timeless_blessing_buffs_four_hand_minions():
@@ -190,29 +209,91 @@ def test_won_052_bronze_dragonknight_summons_copy_if_5plus_atk():
 	assert len(game.player1.field) == pre + 1
 
 
-def test_won_053_runi_time_explorer_gives_a_location():
-	"""Battlecry: Discover a location from the FUTURE."""
+def test_won_053_runi_discovers_a_future_location():
+	"""Battlecry: Discover a location from the FUTURE — a real pick of 1 of 3."""
 	game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
 	game.player1.discard_hand()
-	runi = game.player1.give("WON_053")
-	runi.play()
-	# Approximation: random-give one of 7 location tokens; assert one was
-	# added to hand.
 	loc_ids = {"WON_053t", "WON_053t2", "WON_053t3", "WON_053t4",
 	           "WON_053t5", "WON_053t6", "WON_053t7"}
-	hand_ids = {c.id for c in game.player1.hand}
-	assert hand_ids & loc_ids
+	runi = game.player1.give("WON_053")
+	runi.play()
+	choice = game.player1.choice
+	assert choice is not None
+	# Three distinct options, all from the 7-location pool.
+	assert len(choice.cards) == 3
+	assert all(c.id in loc_ids for c in choice.cards)
+	picked = choice.cards[0]
+	choice.choose(picked)
+	assert game.player1.choice is None
+	# Only the chosen location ends up in hand (the other two are gone).
+	hand_locs = [c for c in game.player1.hand if c.id in loc_ids]
+	assert hand_locs == [picked]
 
 
-def test_won_064_shadow_word_forbid_destroys_4atk():
-	"""Tradeable: Destroy a 4-Attack minion."""
+def test_won_041_chromie_visits_epoch_and_shuffles_the_rest():
+	"""Battlecry: Visit (choose) 1 of 4 Epochs; shuffle the other 3 to deck."""
+	game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+	epoch_ids = {"WON_041t", "WON_041t2", "WON_041t3", "WON_041t4"}
+	chromie = game.player1.give("WON_041")
+	chromie.play()
+	choice = game.player1.choice
+	assert choice is not None
+	# All four Epochs are offered.
+	assert {c.id for c in choice.cards} == epoch_ids
+	picked = choice.cards[0]
+	picked_id = picked.id
+	choice.choose(picked)
+	# Chosen Epoch goes to hand...
+	assert picked in game.player1.hand
+	assert [c for c in game.player1.hand if c.id in epoch_ids] == [picked]
+	# ...the other three are shuffled into the (otherwise empty) deck.
+	deck_epochs = sorted(c.id for c in game.player1.deck if c.id in epoch_ids)
+	assert deck_epochs == sorted(epoch_ids - {picked_id})
+
+
+def test_won_040_disco_secrets_destroyed_at_start_of_next_turn():
+	"""Cast 5 random Secrets; destroy them at the start of your next turn."""
+	game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+	disco = game.player1.give("WON_040")
+	disco.play()
+	cast = list(game.player1.secrets)
+	# Secrets are capped at 5 and de-duplicated, so 1..5 land.
+	assert 1 <= len(cast) <= 5
+	assert all(getattr(s, "_disco_temp", False) for s in cast)
+	# They survive the opponent's turn (and could trigger off opp actions)...
+	game.end_turn()
+	assert len(game.player1.secrets) == len(cast)
+	# ...and are destroyed at the start of the caster's next turn.
+	game.end_turn()
+	assert len(game.player1.secrets) == 0
+	assert all(s.zone == Zone.GRAVEYARD for s in cast)
+
+
+def test_won_064_shadow_word_forbid_only_targets_4atk():
+	"""Tradeable: Destroy a 4-Attack minion — and ONLY a 4-Attack minion."""
 	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
-	# Summon a 4-attack target (Chillwind Yeti is 4/5).
-	yeti = game.player2.summon("CS2_182")
-	assert yeti.atk == 4
+	yeti = game.player2.summon("CS2_182")    # Chillwind Yeti, 4 atk
+	rager = game.player2.summon("CS2_118")   # Magma Rager, 5 atk
+	assert yeti.atk == 4 and rager.atk == 5
 	swf = game.player1.give("WON_064")
+	# Targeting is restricted to exactly-4-Attack minions.
+	assert yeti in swf.targets
+	assert rager not in swf.targets
 	swf.play(target=yeti)
 	assert yeti.dead
+	assert not rager.dead
+
+
+def test_won_064ts_shadow_word_forbid_corrupted_destroys_all_4atk():
+	"""Corrupted: Destroy ALL 4-Attack minions (no target)."""
+	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+	y1 = game.player1.summon("CS2_182")   # 4 atk (friendly)
+	y2 = game.player2.summon("CS2_182")   # 4 atk (enemy)
+	rager = game.player2.summon("CS2_118")  # 5 atk — spared
+	corrupted = game.player1.give("WON_064ts")
+	corrupted.play()
+	assert y1.dead and y2.dead
+	assert not rager.dead
 
 
 def test_won_065_ships_chirurgeon_heals_summons():
@@ -226,40 +307,72 @@ def test_won_065_ships_chirurgeon_heals_summons():
 	assert wisp.max_health == 2
 
 
-def test_won_066_murozond_highlander_discovers_dragon():
-	"""If your deck has no duplicates, Discover a Dragon + AOE = its cost."""
+def test_won_066_murozond_discovers_dragon_and_aoes_by_cost():
+	"""Highlander: Discover a Dragon (added to hand) and deal damage equal
+	to ITS cost to all other minions. Damage must read the discovered
+	Dragon's cost — not hand[-1]."""
 	game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
-	# Empty deck = no duplicates → highlander.
+	# High-HP bystanders so they survive any dragon cost and we can read
+	# the exact damage dealt.
+	friendly = game.player1.summon(WISP)
+	friendly.max_health = 80; friendly.damage = 0
+	enemy = game.player2.summon(WISP)
+	enemy.max_health = 80; enemy.damage = 0
 	mur = game.player1.give("WON_066")
 	mur.play()
-	# Discover popped.
-	assert game.player1.choice is not None
+	choice = game.player1.choice
+	assert choice is not None
+	dragon = choice.cards[0]
+	cost = dragon.cost
+	assert cost >= 1
+	choice.choose(dragon)
+	# Discovered Dragon was actually added to hand...
+	assert dragon in game.player1.hand
+	# ...and the AOE dealt exactly its cost to every OTHER minion.
+	assert friendly.damage == cost
+	assert enemy.damage == cost
+	assert mur.damage == 0   # SELF is excluded
 
 
-def test_won_077_mount_hyjal_imposter_morphs():
-	"""Imposter for 4-cost minions with Stealth."""
+def test_won_077_mount_hyjal_imposter_morph_gains_stealth():
+	"""Imposter for 4-cost minions with Stealth (gained on the morph
+	result, using the correct `stealthed` attribute)."""
 	game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
-	game.player1.discard_hand()
 	imp = game.player1.give("WON_077")
 	game.end_turn(); game.end_turn()
-	# Card should have morphed in hand.
-	assert game.player1.hand
+	morphed = imp.morphed
+	assert morphed is not None
+	assert morphed.id != "WON_077"
+	assert morphed.type == CardType.MINION
+	assert morphed.zone == Zone.HAND
+	assert morphed.cost == 4
+	assert morphed.stealthed
 
 
-def test_won_078_jade_telegram_summons_jade():
-	"""Shuffles 1 from opp hand, summons a Jade Golem."""
-	game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
-	# Give opponent some hand cards
-	game.end_turn()
-	game.player2.give(WISP)
-	game.end_turn()
-	pre = game.player1.jade_golem
-	pre_field = len(game.player1.field)
+def test_won_078_jade_telegram_shuffles_chosen_opp_card_and_summons_golem():
+	"""Look at 3 opp-hand cards, shuffle the chosen one into their deck,
+	then summon a Jade Golem. The unchosen opponent cards stay in hand."""
+	game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+	opp = game.player2
+	# Two known cards in the opponent's (otherwise empty) hand and deck.
+	opp.give(WISP)
+	opp.give("CS2_182")
+	opp_hand_before = set(opp.hand)
+	pre_golem = game.player1.jade_golem
 	tel = game.player1.give("WON_078")
 	tel.play()
-	# Jade counter bumps + golem on board.
-	assert game.player1.jade_golem == pre + 1
-	assert len(game.player1.field) == pre_field + 1
+	choice = game.player1.choice
+	assert choice is not None
+	# Offered cards are the opponent's *real* hand cards.
+	assert set(choice.cards) <= opp_hand_before
+	picked = choice.cards[0]
+	choice.choose(picked)
+	# Chosen card left the opponent's hand for their deck; the rest stayed.
+	assert picked not in opp.hand
+	assert picked in opp.deck
+	assert (opp_hand_before - {picked}) <= set(opp.hand)
+	# Jade Golem summoned for the caster.
+	assert game.player1.jade_golem == pre_golem + 1
 
 
 def test_won_079_scarab_lord_summons_gong():
@@ -274,18 +387,23 @@ def test_won_079_scarab_lord_summons_gong():
 
 
 def test_won_090_pebbly_page_no_overload_this_turn():
-	"""Battlecry: Draw an Overload card. No overload this turn."""
+	"""Battlecry: Draw an Overload card. You can't be Overloaded this turn —
+	and the prevention actually fires (and lifts next turn)."""
 	game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
-	# Seed deck with Lightning Bolt EX1_238 (Overload (1)).
+	# Seed deck with Lightning Bolt EX1_238 (Deal 3, Overload (1)).
 	game.player1.give("EX1_238").shuffle_into_deck()
 	page = game.player1.give("WON_090")
 	page.play()
-	# Pebbly Page drew the overload card.
+	# Pebbly Page drew the overload card and applied the prevention flag.
 	assert any(c.id == "EX1_238" for c in game.player1.hand)
-	# Pebbled enchant attached to the player. (Engine-level cant_overload
-	# slot-property wiring is a watch-item; the visible side-effect is
-	# the enchant landing on the player.)
-	assert any(b.id == "WON_090e" for b in game.player1.buffs)
+	assert game.player1.cant_overload is True
+	# Casting the Overload card does NOT lock a crystal this turn.
+	bolt = next(c for c in game.player1.hand if c.id == "EX1_238")
+	bolt.play(target=game.player2.hero)
+	assert game.player1.overloaded == 0
+	# The Pebbled enchant self-destructs at end of turn, lifting the flag.
+	game.end_turn()
+	assert game.player1.cant_overload is False
 
 
 def test_won_091_totally_totems_summons_five():
@@ -298,15 +416,23 @@ def test_won_091_totally_totems_summons_five():
 	assert len(game.player1.field) >= pre + 4
 
 
-def test_won_103_chamber_of_viscidus_draws_two():
-	"""Location: discard one, draw two."""
+def test_won_103_chamber_discards_chosen_card_and_draws_two():
+	"""Location: look at 3 hand cards, discard the chosen one, draw two."""
 	game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
 	chamber = game.player1.give("WON_103")
 	chamber.play()
 	game.end_turn(); game.end_turn()
 	pre_hand = len(game.player1.hand)
 	chamber.use()
-	# Net hand: -1 discard + 2 draw = +1.
+	choice = game.player1.choice
+	assert choice is not None
+	assert 1 <= len(choice.cards) <= 3
+	victim = choice.cards[0]
+	choice.choose(victim)
+	# The chosen card is discarded (out of hand)...
+	assert victim not in game.player1.hand
+	assert victim.zone == Zone.REMOVEDFROMGAME
+	# ...and net hand = -1 discard + 2 draw = +1.
 	assert len(game.player1.hand) == pre_hand + 1
 
 
@@ -335,18 +461,26 @@ def test_won_115_blast_from_the_past_shuffles_bomb():
 	assert any(c.id == "BOT_511t" for c in game.player2.deck)
 
 
-def test_won_116_ivory_rook_gains_armor():
-	"""Discover a Taunt; gain armor equal to its cost."""
+def test_won_116_ivory_rook_gains_armor_equal_to_discovered_cost():
+	"""Discover a Taunt minion (added to hand); gain armor equal to ITS
+	cost — read from the discovered card, not hand[-1]."""
 	game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+	game.player1.discard_hand()
+	# Distractor: a 0-cost card so the old hand[-1] read would give 0
+	# armor — proving the new code reads the discovered minion instead.
+	game.player1.give(WISP)
 	rook = game.player1.give("WON_116")
 	pre_armor = game.player1.hero.armor
 	rook.play()
-	# Discover popped; resolve and verify armor matches the
-	# just-added hand card's cost (which is what the script reads).
-	assert game.player1.choice is not None
-	game.player1.choice.choose(game.player1.choice.cards[0])
-	# The picked Taunt minion now sits at hand[-1]; assert armor matches.
-	assert game.player1.hero.armor == pre_armor + game.player1.hand[-1].cost
+	choice = game.player1.choice
+	assert choice is not None
+	# Pick the costliest option so the armor gain is unambiguous (>0).
+	picked = max(choice.cards, key=lambda c: c.cost)
+	cost = picked.cost
+	assert cost >= 1
+	choice.choose(picked)
+	assert picked in game.player1.hand
+	assert game.player1.hero.armor == pre_armor + cost
 
 
 def test_won_138_shark_puncher_deathrattle_buffs_pirate():
@@ -398,12 +532,27 @@ def test_won_140_future_emissary_buffs_dragons_in_hand():
 
 
 def test_won_146_soridormi_dormant_two_turns():
-	"""Dormant for 2 turns; on awaken, buff Dragons in hand."""
+	"""Dormant for 2 turns; on awaken, reduce Dragon costs in hand by (4)."""
 	game = prepare_game()
+	# A Dragon in hand to receive the cost reduction (Coldarra Drake, 6 mana).
+	dragon = game.player1.give("AT_008")
+	pre_cost = dragon.cost
+	pre_atk, pre_health = dragon.atk, dragon.max_health
 	sori = game.player1.give("WON_146")
 	sori.play()
-	# Dormant — can't attack and stays put 2 turns.
+	# Dormant for 2 turns — no awaken effect yet.
 	assert sori.dormant
+	assert sori.dormant_turns == 2
+	assert dragon.cost == pre_cost
+	game.skip_turn()
+	assert sori.dormant
+	assert sori.dormant_turns == 1
+	game.skip_turn()
+	# Awakened — Dragon cost reduced by exactly 4, stats untouched.
+	assert not sori.dormant
+	assert dragon.cost == pre_cost - 4
+	assert dragon.atk == pre_atk
+	assert dragon.max_health == pre_health
 
 
 def test_won_345_valstann_summons_taunt_from_deck():
@@ -422,12 +571,42 @@ def test_won_345_valstann_summons_taunt_from_deck():
 def test_won_141_menagerie_mug_buffs_three_different_types():
 	"""Battlecry: Give 3 random friendly minions of different types +1/+1."""
 	game = prepare_game()
-	# Summon three friendly minions of different races.
-	beast = game.player1.summon("CS2_171")  # Stonetusk Boar (Beast)
-	pirate = game.player1.summon("CS2_146")  # Bloodsail Corsair (Pirate)
-	merc = game.player1.summon(GOLDSHIRE_FOOTMAN)  # no race
+	# Three minions of distinct type-buckets (Beast / Pirate / typeless).
+	beast = game.player1.summon("CS2_171")   # Stonetusk Boar (Beast) 1/1
+	pirate = game.player1.summon("CS2_146")  # Bloodsail Corsair (Pirate) 2/1
+	merc = game.player1.summon(GOLDSHIRE_FOOTMAN)  # typeless 1/2
 	mug = game.player1.give("WON_141")
 	mug.play()
-	buffed = sum(1 for m in (beast, pirate, merc) if m.atk > 1)
-	# All three should have +1/+1.
-	assert buffed == 3
+	# Exactly +1/+1 on each (distinct buckets → all three are eligible).
+	assert (beast.atk, beast.max_health) == (2, 2)
+	assert (pirate.atk, pirate.max_health) == (3, 2)
+	assert (merc.atk, merc.max_health) == (2, 3)
+
+
+def test_won_142_menagerie_jug_buffs_three_different_types_plus_two():
+	"""Battlecry: Give 3 different-type friendly minions +2/+2 (regression:
+	Jug previously buffed +1/+1 via the wrong enchant)."""
+	game = prepare_game()
+	beast = game.player1.summon("CS2_171")   # 1/1
+	pirate = game.player1.summon("CS2_146")  # 2/1
+	merc = game.player1.summon(GOLDSHIRE_FOOTMAN)  # 1/2
+	jug = game.player1.give("WON_142")
+	jug.play()
+	assert (beast.atk, beast.max_health) == (3, 3)
+	assert (pirate.atk, pirate.max_health) == (4, 3)
+	assert (merc.atk, merc.max_health) == (3, 4)
+
+
+def test_won_144_eyestalk_mirrors_cthun_health_buff():
+	"""Whenever C'Thun gains Attack or Health, Eyestalk does too — including
+	a health=-style buff (the case the old mirror missed)."""
+	from fireplace.actions import Buff
+	game = prepare_game()
+	cthun = game.player1.summon("OG_280")
+	eye = game.player1.summon("WON_144")
+	pre_atk, pre_hp = eye.atk, eye.max_health
+	# health= kwarg lands on the buff instance with max_health left at 0 —
+	# old code read only max_health and mirrored nothing.
+	game.queue_actions(game.player1.hero, [Buff(cthun, "WON_144e", health=4)])
+	assert eye.max_health == pre_hp + 4
+	assert eye.atk == pre_atk

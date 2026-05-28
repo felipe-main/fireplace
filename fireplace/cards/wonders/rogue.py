@@ -58,23 +58,32 @@ class WON_077:
 		events = OWN_TURN_BEGIN.on(_ImposterRotate(SELF))
 
 
+class _JadeTelegramChoice(Choice):
+	# The caster looks at 3 of the opponent's real hand cards and picks
+	# one to shuffle into the opponent's deck. The other two are the
+	# opponent's actual cards — leave them in hand.
+	def choose(self, card):
+		super().choose(card)
+		card.shuffle_into_deck()   # card.controller is the opponent
+
+
 class _JadeTelegram(TargetedAction):
-	# Look at 3 cards in opp hand and shuffle one back. Approximation:
-	# pick 1 random opp-hand card and shuffle to deck, then summon a
-	# Jade Golem.
+	# Look at 3 cards in opp hand, shuffle the chosen one into their deck,
+	# then summon a Jade Golem.
 	TARGET = ActionArg()
 
 	def do(self, source, target):
 		ctrl = source.controller
 		opp = ctrl.opponent
-		if opp.hand:
-			import random
-			idx = random.randrange(len(opp.hand))
-			card = opp.hand[idx]
-			# Shuffle back to deck via the engine helper which handles zone.
-			source.game.cheat_action(source, [Shuffle(opp, card)])
-		# Summon a Jade Golem via the existing engine helper.
+		# Summon the Jade Golem first: queuing the choice below sets
+		# ctrl.choice, which would otherwise defer the summon until the
+		# choice resolves.
 		source.game.cheat_action(source, [SummonJadeGolem(ctrl)])
+		if opp.hand:
+			n = min(3, len(opp.hand))
+			offered = source.game.random.sample(list(opp.hand), n)
+			# player = the caster (the choice is theirs); cards = opp's.
+			source.game.queue_actions(source, [_JadeTelegramChoice(ctrl, offered)])
 
 
 class WON_078:

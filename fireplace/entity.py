@@ -153,6 +153,24 @@ def slot_property(attr, f=any):
     return func
 
 
+def slot_buff_property(attr, f=any):
+    """Like slot_property, but also reads non-aura buffs.
+
+    Aura effects live in ``self.slots``; one-turn player enchantments
+    (applied via ``Buff``) live in ``self.buffs``. A flag granted by such
+    an enchantment must be visible through both — otherwise the buff is
+    dead code (e.g. Pebbly Page's "can't be Overloaded this turn").
+    """
+
+    @property
+    def func(self):
+        return f(
+            getattr(x, attr, False) for x in (*self.slots, *self.buffs)
+        )
+
+    return func
+
+
 def boolean_property(attr):
     @property
     def func(self):

@@ -48,17 +48,28 @@ class WON_324(CFM_750):
 ##
 # Novel cards
 
+class _ChamberChoice(Choice):
+	# Look at 3 of your own hand cards and discard the chosen one. The
+	# other offered cards stay in hand.
+	def choose(self, card):
+		super().choose(card)
+		card.discard()
+
+
 class _ChamberDiscardDraw(TargetedAction):
-	# Look at 3 cards in your hand and choose one to discard. Draw two
-	# cards. Approximation: discard a random card from hand, then draw 2.
+	# Look at 3 cards in your hand, choose one to discard, then draw 2.
 	TARGET = ActionArg()
 	def do(self, source, target):
 		ctrl = source.controller
-		import random
-		if ctrl.hand:
-			pick = random.choice(list(ctrl.hand))
-			source.game.cheat_action(source, [Discard(pick)])
+		# Snapshot the "look at 3" candidates from the pre-draw hand, then
+		# draw first: queuing the choice sets ctrl.choice, which would
+		# otherwise defer (and drop) the draws until the choice resolves.
+		hand = list(ctrl.hand)
 		source.game.cheat_action(source, [Draw(ctrl) * 2])
+		if hand:
+			n = min(3, len(hand))
+			offered = source.game.random.sample(hand, n)
+			source.game.queue_actions(source, [_ChamberChoice(ctrl, offered)])
 
 
 class WON_103:

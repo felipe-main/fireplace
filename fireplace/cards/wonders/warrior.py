@@ -70,13 +70,14 @@ class WON_115:
 
 
 class _IvoryRookArmor(TargetedAction):
-	# After Discover picks a Taunt minion, gain armor equal to its cost.
+	# Gain armor equal to the Discovered Taunt minion's cost. The chosen
+	# card is passed via Discover.CARD — never read hand[-1], which is a
+	# different card (and the Discover doesn't add to hand until Give runs).
 	TARGET = ActionArg()
-	def do(self, source, target):
-		ctrl = source.controller
-		if ctrl.hand:
-			picked = ctrl.hand[-1]
-			cost = picked.cost or 0
+	CARD = CardArg()
+	def do(self, source, target, card):
+		cost = (card.cost or 0) if card else 0
+		if cost > 0:
 			source.game.cheat_action(
 				source, [GainArmor(FRIENDLY_HERO, cost)]
 			)
@@ -86,4 +87,7 @@ class WON_116:
 	"""Ivory Rook"""
 
 	# Battlecry: Discover a Taunt minion. Gain Armor equal to its Cost.
-	play = Discover(CONTROLLER, RandomMinion(taunt=True)).then(_IvoryRookArmor(CONTROLLER))
+	play = Discover(CONTROLLER, RandomMinion(taunt=True)).then(
+		Give(CONTROLLER, Discover.CARD),
+		_IvoryRookArmor(CONTROLLER, Discover.CARD),
+	)

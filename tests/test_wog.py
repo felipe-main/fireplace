@@ -23,7 +23,9 @@ def test_addled_grizzly():
     grizzly = game.player1.give("OG_313")
     game.player1.give("OG_313").play()
     grizzly.play()
-    assert grizzly.atk == grizzly.health == 3
+    # OG_313 is 2/3 in current data (patch 27.4 rebalance, was 2/2). After
+    # the played grizzly buffs the second on summon: 3/4.
+    assert grizzly.atk == 3 and grizzly.health == 4
     wisp.play()
     assert wisp.atk == wisp.health == 3
 
@@ -134,18 +136,19 @@ def test_chogall():
     assert not game.player1.spells_cost_health
     chogall = game.player1.give("OG_121")
     chogall.play()
-    assert game.player1.mana == 10 - 7
+    # OG_121 is 8 mana in current data (patch 27.4 rebalance, was 7).
+    assert game.player1.mana == 10 - 8
     assert game.player1.hero.health == 30
     assert game.player1.spells_cost_health
     assert not game.player2.spells_cost_health
     footman.play()
-    assert game.player1.mana == 10 - 7 - 1
+    assert game.player1.mana == 10 - 8 - 1
     assert game.player1.hero.health == 30
     assert fireball.cost == 4
     assert fireball.is_playable()
     fireball.play(target=game.player2.hero)
     assert not game.player1.spells_cost_health
-    assert game.player1.mana == 10 - 7 - 1
+    assert game.player1.mana == 10 - 8 - 1
     assert game.player1.hero.health == 30 - 4
     assert not fireball2.is_playable()
 
@@ -156,7 +159,8 @@ def test_chogall_free_spell():
     chogall = game.player1.give("OG_121")
     chogall.play()
     moonfire.play(target=game.player2.hero)
-    assert game.player1.mana == 10 - 7
+    # OG_121 is 8 mana in current data (patch 27.4 rebalance, was 7).
+    assert game.player1.mana == 10 - 8
     assert game.player1.hero.health == 30
 
 
@@ -297,12 +301,17 @@ def test_hallazeal_the_ascended():
 
     moonfire = game.player1.give(MOONFIRE)
     moonfire.play(target=game.player2.hero)
-    assert game.player1.hero.health == 1 + 1
-    assert game.player2.hero.health == 30 - 1
+    # OG_209 was reworked in patch 27.4: now "Spell Damage +1, your spells
+    # have Lifesteal" (was "restore to hero = damage dealt"). Moonfire deals
+    # 1+1=2 with Hallazeal in play, and lifesteal heals 2.
+    assert game.player1.hero.health == 1 + 2
+    assert game.player2.hero.health == 30 - 2
     game.player1.give(KOBOLD_GEOMANCER).play()
     fireball = game.player1.give("CS2_029")
     fireball.play(target=hallazeal)
-    assert game.player1.hero.health == 1 + 1 + 7
+    # Fireball cast while both Hallazeal (+1) and Geomancer (+1) are up:
+    # 6 + 2 = 8 damage, lifesteal heals 8. Hallazeal then dies to the spell.
+    assert game.player1.hero.health == 1 + 2 + 8
     assert hallazeal.dead
 
 
@@ -556,8 +565,13 @@ def test_undercity_huckster():
     game = prepare_empty_game()
     undercity_huckster = game.player1.give("OG_330")
     undercity_huckster.play()
+    # OG_330 is 2/3 in current data (patch 27.4 rebalance, was 2/2).
+    # Arcane Shot only deals 2, so add a Moonfire to finish the kill.
     arcane_shot = game.player1.give("DS1_185")
+    moonfire = game.player1.give(MOONFIRE)
     arcane_shot.play(target=undercity_huckster)
+    moonfire.play(target=undercity_huckster)
+    assert undercity_huckster.dead
     assert game.player2.hero.card_class in game.player1.hand[0].classes
 
 

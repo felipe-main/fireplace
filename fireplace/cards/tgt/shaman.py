@@ -22,6 +22,9 @@ AT_047e = buff(+1, +1)
 class AT_049:
     """Thunder Bluff Valiant"""
 
+    # Patch 27.4: now also has a Battlecry that gives Totems +2 Attack
+    # (was Inspire-only).
+    play = Buff(FRIENDLY_MINIONS + TOTEM, "AT_049e")
     inspire = Buff(FRIENDLY_MINIONS + TOTEM, "AT_049e")
 
 

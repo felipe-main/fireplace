@@ -602,8 +602,10 @@ def test_tooth_of_nefarian_damage_and_hk_discovery():
     an off-class spell."""
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     game.end_turn()
-    # Acolyte of Pain (EX1_007) is a 1/3 — 3 HP exactly so HK fires.
-    target = game.player2.summon("EX1_007")
+    # Bloodfen Raptor (CS2_172) is a 3/2 — pre-damage by nothing, has 2 hp
+    # but we need a 3-hp target for an exact-kill HK trigger. Use River
+    # Crocolisk (CS2_120, 2/3) instead: 3 dmg kills exactly.
+    target = game.player2.summon("CS2_120")
     game.end_turn()
     spell = game.player1.give("ONY_032")
     spell.play(target=target)

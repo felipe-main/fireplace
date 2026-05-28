@@ -3463,8 +3463,9 @@ def test_thornmantle_bonus_consumed_by_next_beast_only():
     # Non-Beast first: Wisp (no race) — must NOT consume the bonus.
     p.summon(WISP)
     assert p.next_beast_summon_bonus == 1
-    # Beast: Stonetusk Boar (DS1_175).
-    boar = p.summon("DS1_175")
+    # Beast: Stonetusk Boar (CS2_171, 1/1). (Note: DS1_175 is Timber Wolf,
+    # not Stonetusk Boar — the original comment in this test was wrong.)
+    boar = p.summon("CS2_171")
     assert Race.BEAST in boar.races
     assert p.next_beast_summon_bonus == 0
     assert boar.atk == 1 + 1

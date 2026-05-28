@@ -17,6 +17,17 @@ class GVG_004:
     play = powered_up & Hit(RANDOM_ENEMY_CHARACTER, 1) * 4
 
 
+class GVG_123:
+    """Soot Spewer"""
+
+    # Patch 27.4 rework: now "Spell Damage +1. Battlecry: If you control
+    # another Mech, get a random Fire spell." Spell damage handled by data.
+    play = (
+        Find(FRIENDLY_MINIONS - SELF + MECH)
+        & Give(CONTROLLER, RandomSpell(spell_school=SpellSchool.FIRE))
+    )
+
+
 class GVG_007:
     """Flame Leviathan"""
 

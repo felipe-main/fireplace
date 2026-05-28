@@ -16,6 +16,9 @@ AT_011e = buff(atk=2)
 class AT_012:
     """Spawn of Shadows"""
 
+    # Patch 27.4: now also has a Battlecry that hits both heroes for 4
+    # (the old card was Inspire-only).
+    play = Hit(ALL_HEROES, 4)
     inspire = Hit(ALL_HEROES, 4)
 
 
@@ -33,6 +36,9 @@ class AT_014e:
 class AT_018:
     """Confessor Paletress"""
 
+    # Patch 27.4: now also has a Battlecry that summons a random Legendary
+    # (was Inspire-only).
+    play = Summon(CONTROLLER, RandomMinion(rarity=Rarity.LEGENDARY))
     inspire = Summon(CONTROLLER, RandomMinion(rarity=Rarity.LEGENDARY))
 
 

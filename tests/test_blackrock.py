@@ -319,11 +319,20 @@ def test_quick_shot():
 
 def test_quick_shot_acolyte():
     game = prepare_game()
+    acolyte = game.player1.give("EX1_007")
+    acolyte.play()
+    # EX1_007 is 1/4 in current data (patch 27.4 rebalance, was 1/3). Pre-
+    # damage acolyte to 1 HP so Quick Shot's 3 damage still kills it; the
+    # test point is that Quick Shot's "if hand empty, draw" check sees the
+    # hand at 1 (after acolyte's own on-damage draw) and skips the extra
+    # draw, leaving the final hand at 1.
+    game.player1.give(MOONFIRE).play(target=acolyte)
+    game.player1.give(MOONFIRE).play(target=acolyte)
+    game.player1.give(MOONFIRE).play(target=acolyte)
+    assert acolyte.health == 1
     game.player1.discard_hand()
     assert len(game.player1.hand) == 0
     quickshot = game.player1.give("BRM_013")
-    acolyte = game.player1.give("EX1_007")
-    acolyte.play()
     assert len(game.player1.hand) == 1
     quickshot.play(target=acolyte)
     assert len(game.player1.hand) == 1

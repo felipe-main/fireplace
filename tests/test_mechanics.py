@@ -57,10 +57,13 @@ def test_auras():
     assert timberwolf.atk == 3
     assert timberwolf2.atk == 3
     assert webspinner.atk == 4
-    game.current_player.give(MOONFIRE).play(target=timberwolf)
+    # DS1_175 Timber Wolf is 1/2 in current data (patch 27.4 rebalance,
+    # was 1/1) — one Moonfire (1 damage) no longer kills it, so use
+    # destroy() to drop each wolf and watch the aura unwind.
+    timberwolf.destroy()
     assert timberwolf2.atk == 2
     assert webspinner.atk == 3
-    game.current_player.give(MOONFIRE).play(target=timberwolf2)
+    timberwolf2.destroy()
     assert webspinner.atk == 2
 
 

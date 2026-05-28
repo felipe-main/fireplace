@@ -541,14 +541,15 @@ def test_unstable_ghoul():
     game.player2.discard_hand()
     assert not wisp.dead
     assert not acolyte.dead
-    assert acolyte.health == 3
+    # EX1_007 is 1/4 in current data (patch 27.4 rebalance, was 1/3).
+    assert acolyte.health == 4
     assert len(game.player2.hand) == 0
     assert game.player1.hero.health == 30
     assert game.player2.hero.health == 30
     ghoul.destroy()
     assert wisp.dead
     assert not acolyte.dead
-    assert acolyte.health == 3 - 1
+    assert acolyte.health == 4 - 1
     assert len(game.player2.hand) == 1
     assert game.player1.hero.health == game.player2.hero.health == 30
 

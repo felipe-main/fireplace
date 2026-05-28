@@ -37,7 +37,10 @@ GVG_055e = buff(+2, +2)
 class GVG_056:
     """Iron Juggernaut"""
 
+    # Patch 27.4 rework: now has Battlecry AND Deathrattle, both shuffle a
+    # Burrowing Mine into the opponent's deck.
     play = Shuffle(OPPONENT, "GVG_056t")
+    deathrattle = Shuffle(OPPONENT, "GVG_056t")
 
 
 class GVG_056t:

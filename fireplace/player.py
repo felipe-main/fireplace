@@ -131,6 +131,10 @@ class Player(Entity, TargetableByAuras):
         # One-shot Choose One discount + last-Choose-One tracking.
         self.next_choose_one_discount = 0
         self.next_choose_one_combined = 0
+        # Defensive default for RLK_527 Timewarden — its aura reads
+        # _timewarden_turns_left via an Attr selector at each Dragon summon
+        # event, which crashes on Players that never had Timewarden played.
+        self._timewarden_turns_left = 0
         self.last_choose_one_parent_id = None
         self.last_choose_one_chosen_id = None
         # Per-school spell-cast history (SpellSchool → list of card-ids cast

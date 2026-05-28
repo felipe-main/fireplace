@@ -26,6 +26,12 @@ def test_acolyte_of_pain():
     # extra damages can trigger only once
     game.player1.give(MOONFIRE).play(target=acolyte)
     assert len(game.player1.hand) == 2
+    # EX1_007 is 1/4 in current data (patch 27.4 rebalance, was 1/3).
+    # Moonfire + Thalnos-boosted Moonfire = 1 + 2 = 3 damage, leaving 1 hp.
+    # Finish with one more Moonfire so the death assertion still holds and
+    # the on-damage draw count grows to 3.
+    game.player1.give(MOONFIRE).play(target=acolyte)
+    assert len(game.player1.hand) == 3
     assert acolyte.dead
 
 
@@ -427,10 +433,14 @@ def test_bestial_wrath():
     assert wisp1 not in bestial.targets
     assert wisp2 not in bestial.targets
     bestial.play(target=wolf)
+    # EX1_549 Bestial Wrath gives +2 Attack in current data (patch 27.4
+    # rebalance, was +1). DS1_175 Timber Wolf is now 1/2 base, +0/+0 from
+    # own aura on self → 1 atk + 2 buff = 3 atk.
     assert wolf.atk == 3
     assert wolf.immune
     wolf.attack(target=wisp2)
-    assert wolf.health == 1
+    # Wolf is 1/2 base, attacks 0/1 wisp → wisp dies, wolf takes 0 back.
+    assert wolf.health == 2
     assert wolf.zone == Zone.PLAY
     assert wisp2.dead
     game.end_turn()

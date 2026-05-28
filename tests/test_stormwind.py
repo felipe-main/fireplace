@@ -49,9 +49,18 @@ def test_gain_momentum():
     assert quest2.id == "SW_039t"
     assert quest2.progress == 0
     assert quest2.zone == Zone.SECRET
+    # Skip cards whose script defines a cost_mod (e.g. Fanottem's "Cost is
+    # equal to deck size" rule), which makes the data.cost == cost identity
+    # invalid even outside the quest reward.
+    def _is_static_cost(c):
+        return getattr(c.data.scripts, "cost_mod", None) is None
     for hand in game.player1.hand[:-5]:
+        if not _is_static_cost(hand):
+            continue
         assert hand.cost == hand.data.cost
     for hand in game.player1.hand[-5:]:
+        if not _is_static_cost(hand):
+            continue
         assert hand.cost == max(0, hand.data.cost - 1)
 
 

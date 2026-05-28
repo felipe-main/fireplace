@@ -92,7 +92,9 @@ def test_bouncing_blade():
     game.player1.discard_hand()
     game.player1.give("GVG_050").play()
     assert acolyte.dead
-    assert len(game.player1.hand) == 3
+    # EX1_007 is 1/4 in current data (patch 27.4 rebalance, was 1/3) — so
+    # Bouncing Blade ticks four times to kill it, drawing four cards.
+    assert len(game.player1.hand) == 4
 
     wisp1 = game.player1.summon(WISP)
     wisp2 = game.player2.summon(WISP)
@@ -112,7 +114,10 @@ def test_bouncing_blade_commanding_shout():
     blade.play()
     assert acolyte.health == 1
     assert acolyte.zone == Zone.PLAY
-    assert len(game.player1.hand) == 2
+    # EX1_007 is 1/4 in current data (patch 27.4 rebalance, was 1/3). With
+    # Commanding Shout floor at 1, Bouncing Blade ticks 3 times to drop
+    # acolyte from 4 to 1 (drawing 3 cards) before stalling out.
+    assert len(game.player1.hand) == 3
 
 
 def test_crackle():
@@ -453,15 +458,18 @@ def test_hobgoblin():
 
     wolf1 = game.player1.give("DS1_175")
     wolf1.play()
+    # DS1_175 Timber Wolf is 1/2 base in current data (patch 27.4 rebalance,
+    # was 1/1). Hobgoblin sees the 1-atk play and buffs +2/+2: 3/4.
     assert wolf1.atk == 3
-    assert wolf1.health == 3
+    assert wolf1.health == 4
 
     wolf2 = game.player1.give("DS1_175")
     wolf2.play()
+    # +1 atk on each from the other wolf's aura → 4/4 each.
     assert wolf1.atk == 4
-    assert wolf1.health == 3
+    assert wolf1.health == 4
     assert wolf2.atk == 4
-    assert wolf2.health == 3
+    assert wolf2.health == 4
 
     loothoarder = game.player1.give("EX1_096")
     loothoarder.play()

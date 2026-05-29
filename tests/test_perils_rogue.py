@@ -422,3 +422,14 @@ def test_puzzle_box_transforms_to_cost_plus_three():
     # The (now morphed) minion costs 2 + 3 = 5.
     assert len(p.field) == 1
     assert p.field[0].data.cost == 5
+
+
+# VAC_464t25 Annoy-o Horn (treasure): fill your board with random "annoying
+# minions" from the card's pool (per the wiki).
+def test_annoy_o_horn_fills_board_from_pool():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.player1
+    pool = {"ETC_109", "GVG_085", "BOT_911", "OG_145", "ETC_321"}
+    p.give("VAC_464t25").play()
+    assert len(p.field) == game.MAX_MINIONS_ON_FIELD
+    assert all(m.id in pool for m in p.field)

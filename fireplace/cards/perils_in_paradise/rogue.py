@@ -110,15 +110,19 @@ class _AncientReflections(TargetedAction):
 
 
 class _FillAnnoying(TargetedAction):
-    """Annoy-o Horn — fill the board with annoying minions (1/2 Annoy-o-Tron
-    copies stand in for the 'annoying minions' pool)."""
+    """Annoy-o Horn — fill the board with random "annoying minions" from the
+    card's pool (per the wiki): Annoying Fan, Annoy-o-Tron, Annoy-o-Module,
+    Psych-o-Tron, Annoy-o-Troupe."""
 
     TARGET = ActionArg()
+
+    POOL = ["ETC_109", "GVG_085", "BOT_911", "OG_145", "ETC_321"]
 
     def do(self, source, target):
         controller = source.controller
         while len(controller.field) < source.game.MAX_MINIONS_ON_FIELD:
-            source.game.cheat_action(source, [Summon(controller, "GVG_085")])
+            pick = source.game.random.choice(self.POOL)
+            source.game.cheat_action(source, [Summon(controller, pick)])
             source.game.manager.targeted_action(self, source, target)
 
 

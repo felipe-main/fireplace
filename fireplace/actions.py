@@ -3279,19 +3279,25 @@ class Trade(GameAction):
 # WILD_WEST cards). Each Excavate digs one tier deeper; the controller's
 # class decides whether tier 4 (a class Legendary) is reachable.
 EXCAVATE_TIERS = {
-    1: ["WW_001t", "WW_001t18", "WW_001t2", "WW_001t3", "WW_001t4"],
-    2: ["WW_001t16", "WW_001t5", "WW_001t7", "WW_001t8", "WW_001t9"],
-    3: ["WW_001t11", "WW_001t12", "WW_001t13", "WW_001t14", "WW_001t17"],
+    # DEEP_999t1/t2/t3 (Heartblossom / Deepholm Geode / World Pillar Fragment)
+    # are the three neutral treasures the Delve into Deepholm mini-set added to
+    # the shared tier pools (rarity Common/Rare/Epic -> tiers 1/2/3).
+    1: ["WW_001t", "WW_001t18", "WW_001t2", "WW_001t3", "WW_001t4", "DEEP_999t1"],
+    2: ["WW_001t16", "WW_001t5", "WW_001t7", "WW_001t8", "WW_001t9", "DEEP_999t2"],
+    3: ["WW_001t11", "WW_001t12", "WW_001t13", "WW_001t14", "WW_001t17", "DEEP_999t3"],
 }
-# Tier-4 class Legendary treasures. Only five Excavate classes shipped in
-# Patch 28.0 (Paladin and Shaman gain theirs in the Delve into Deepholm
-# mini-set). A class absent from this map tops out at tier 3.
+# Tier-4 class Legendary treasures. Five Excavate classes shipped in Patch
+# 28.0; Paladin and Shaman gained theirs in the Delve into Deepholm mini-set
+# (DEEP_999t4 The Azerite Dragon / DEEP_999t5 The Azerite Murloc). A class
+# absent from this map tops out at tier 3.
 EXCAVATE_LEGENDARY = {
     CardClass.ROGUE: "WW_001t23",
     CardClass.MAGE: "WW_001t24",
     CardClass.WARLOCK: "WW_001t25",
     CardClass.DEATHKNIGHT: "WW_001t26",
     CardClass.WARRIOR: "WW_001t27",
+    CardClass.PALADIN: "DEEP_999t4",
+    CardClass.SHAMAN: "DEEP_999t5",
 }
 
 

@@ -29,7 +29,8 @@ class UNG_027t2:
 class UNG_846:
     """Shimmering Tempest"""
 
-    deathrattle = Give(CONTROLLER, RandomSpell(card_class=CardClass.MAGE))
+    # Patch 28.0 reworked this from a Deathrattle to a Battlecry.
+    play = Give(CONTROLLER, RandomSpell(card_class=CardClass.MAGE))
 
 
 ##

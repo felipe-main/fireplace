@@ -247,6 +247,12 @@ def test_combo():
 
 def test_deathrattle_simple():
     game = prepare_game()
+    # Stack the deck with vanilla minions so Loot Hoarder's Deathrattle draw
+    # is deterministic — random-draft decks can contain cast-when-drawn cards
+    # that perturb the exact hand count.
+    game.current_player.deck.clear()
+    for _ in range(5):
+        game.current_player.card(WISP, zone=Zone.DECK)
     loothoarder = game.current_player.give("EX1_096")
     loothoarder.play()
     cardcount = len(game.current_player.hand)

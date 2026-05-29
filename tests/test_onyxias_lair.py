@@ -574,9 +574,15 @@ def test_smokescreen_draws_five():
     """ONY_031 Smokescreen: draws 5 cards."""
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     game.player1.discard_hand()
+    # Stack the deck with vanilla minions so the draw count is exact —
+    # random-draft decks can contain cards like Kingsbane that shuffle
+    # themselves back when drawn, perturbing the final hand size.
+    game.player1.deck.clear()
+    for _ in range(10):
+        game.player1.card(WISP, zone=Zone.DECK)
     spell = game.player1.give("ONY_031")
     spell.play()
-    assert len(game.player1.hand) >= 5
+    assert len(game.player1.hand) == 5
 
 
 def test_smokescreen_triggers_drawn_deathrattles():

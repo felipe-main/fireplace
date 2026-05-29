@@ -10,7 +10,8 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 27.4.0.183876](https://hearthstone.wiki.gg/wiki/Patch_27.4.0.183876)
+Now updated to [Patch 28.0.0.189017](https://hearthstone.wiki.gg/wiki/Patch_28.0.0.189384)
+* **100%** Showdown in the Badlands (145 of 145 cards) — adds Excavate + Quickdraw
 * **100%** Caverns of Time (147 of 147 cards) — Wild/Twist-only special set
 * **100%** TITANS (147 of 147 cards) — adds Titan + Forge mechanics
 * **100%** Classic (245 of 245 cards)

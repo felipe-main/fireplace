@@ -51,6 +51,12 @@ def test_battlecry_scripts():
             # deferred — out of scope for the Festival of Legends pass.
             if card.id.startswith("NX2_"):
                 continue
+            # TITANS mini-set "Fall of Ulduar" (YOG_*) is deferred — these
+            # cards became collectible in the Patch 28.0 data but the mini-set
+            # was skipped in the roadmap (out of scope for Showdown in the
+            # Badlands).
+            if card.id.startswith("YOG_"):
+                continue
             assert card.scripts.play
 
 
@@ -70,6 +76,10 @@ def test_deathrattle_scripts():
             # MotLK mini-set "Return of the Lich King" (NX2_*) is
             # deferred — out of scope for the Festival of Legends pass.
             if card.id.startswith("NX2_"):
+                continue
+            # TITANS mini-set "Fall of Ulduar" (YOG_*) is deferred — became
+            # collectible in Patch 28.0 data but is out of scope.
+            if card.id.startswith("YOG_"):
                 continue
             assert card.scripts.deathrattle
 

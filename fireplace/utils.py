@@ -130,6 +130,11 @@ def random_draft(
     collection = []
     # hero = card_class.default_hero
 
+    # Whizbang's Workshop — Zilliax Deluxe 3000 assembly. Like the DK rune
+    # setup, the two functional modules are chosen once per draft and then
+    # fixed; the base TOY_330 is substituted with the resulting assembled card.
+    zilliax_setup = None
+
     # DK rune setup — pick once per draft so the whole deck shares it.
     if card_class == CardClass.DEATHKNIGHT:
         if rune_setup is None:
@@ -158,12 +163,17 @@ def random_draft(
         collection.append(cls)
 
     while len(deck) < Deck.MAX_CARDS:
-        if game:
-            card = game.random.choice(collection)
+        rng = game.random if game else random
+        card = rng.choice(collection)
+        if card.id == "TOY_330":
+            from .cards.whizbangs_workshop.zilliax import pick_zilliax_combo
+            if zilliax_setup is None:
+                zilliax_setup = pick_zilliax_combo(rng)
+            target_id = zilliax_setup
         else:
-            card = random.choice(collection)
-        if deck.count(card.id) < card.max_count_in_deck:
-            deck.append(card.id)
+            target_id = card.id
+        if deck.count(target_id) < card.max_count_in_deck:
+            deck.append(target_id)
 
     return deck
 

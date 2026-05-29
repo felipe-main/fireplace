@@ -95,23 +95,35 @@ class TOY_372:
                 yield CastSpell(RandomSpell())
 
 
+class _SpotTheDifference(TargetedAction):
+    """Spot the Difference — Discover a 3-Cost minion to summon, then if the
+    deck has no minions, repeat the whole thing. Re-entrant (re-queues itself
+    inside the Discover's .then) rather than a fixed number of nested
+    Discovers: flat tuples of Discovers all set player.choice at once and only
+    the last survives, so the repeat must be sequenced. Summoning a 3-Cost
+    minion never adds a minion to the deck, so a genuinely minion-less deck
+    repeats until the board is full (7) — the known board-filling combo."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        if len(ctrl.field) >= 7:
+            return
+        action = Discover(ctrl, RandomMinion(cost=3)).then(
+            Summon(ctrl, Discover.CARD).then(
+                (-Find(FRIENDLY_DECK + MINION)) & _SpotTheDifference(source)
+            )
+        )
+        source.game.queue_actions(source, [action])
+
+
 class TOY_374:
     """Spot the Difference"""
 
     # <b>Discover</b> a 3-Cost minion to summon. If your deck has no
     # minions, repeat this.
-    # The second Discover is nested inside the first's .then() callback —
-    # flat tuples of Discovers all set player.choice at once and only the
-    # last survives, so the repeat must be sequenced (gated on the deck
-    # still having no minions at that point).
-    play = Discover(CONTROLLER, RandomMinion(cost=3)).then(
-        Summon(CONTROLLER, Discover.CARD).then(
-            (-Find(FRIENDLY_DECK + MINION))
-            & Discover(CONTROLLER, RandomMinion(cost=3)).then(
-                Summon(CONTROLLER, Discover.CARD)
-            )
-        )
-    )
+    play = _SpotTheDifference(SELF)
 
 
 class TOY_377:

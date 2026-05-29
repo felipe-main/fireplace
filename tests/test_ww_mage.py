@@ -236,12 +236,15 @@ def test_spot_the_difference_with_minions():
     assert len(p.field) == pre_board + 1
 
 
-def test_spot_the_difference_no_minions_repeats():
+def test_spot_the_difference_no_minions_fills_board():
+    # "If your deck has no minions, repeat this." Summoning a 3-Cost minion
+    # never adds a minion to the deck, so a spell-only deck repeats until the
+    # board is full (7) — the known board-filling combo.
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     p = game.player1
     _empty_deck(p)
-    _stock_deck(p, "CS2_029", 3)  # spells only -> repeat once
-    pre_board = len(p.field)
+    _stock_deck(p, "CS2_029", 3)  # spells only -> repeat until board full
+    assert len(p.field) == 0
     card = p.give("TOY_374")
     card.play()
     discovers = 0
@@ -250,9 +253,9 @@ def test_spot_the_difference_no_minions_repeats():
         opt = p.choice.cards[0]
         assert opt.cost == 3 and opt.type == CardType.MINION
         p.choice.choose(opt)
-    # Two discovers (initial + one repeat), two minions summoned.
-    assert discovers == 2
-    assert len(p.field) == pre_board + 2
+    # Board filled exactly to the 7-minion cap; one Discover per summon.
+    assert len(p.field) == 7
+    assert discovers == 7
 
 
 # ---------------------------------------------------------------------------

@@ -73,6 +73,22 @@ def _summon_colossal_limbs(source, target, parent):
         source.game.manager.targeted_action(Summon, source, parent.controller, limb_card)
 
 
+def _resolve_mini_id(card):
+    """Whizbang's Workshop — resolve the 1-Cost 1/1 "Mini" token paired with
+    a MINIATURIZE minion. The pairing lives in the data's
+    COLLECTION_RELATED_CARD_DATABASE_ID tag (dbf of the Mini); fall back to
+    the "<id>t" naming convention for the few cards that omit it."""
+    from .cards import db
+
+    rel = card.data.tags.get(GameTag.COLLECTION_RELATED_CARD_DATABASE_ID, 0)
+    if rel and rel in db.dbf:
+        return db.dbf[rel]
+    candidate = card.id + "t"
+    if candidate in db:
+        return candidate
+    return None
+
+
 def _eval_card(source, card):
     """
     Return a Card instance from \a card
@@ -736,6 +752,17 @@ class Play(GameAction):
                 refund = min(paid, player._next_mech_cost_reduction)
                 player.used_mana = max(0, player.used_mana - refund)
                 player._next_mech_cost_reduction = 0
+
+        # Whizbang's Workshop — Miniaturize: when a minion with the
+        # MINIATURIZE keyword is played, add its paired 1-Cost 1/1 "Mini"
+        # token to hand. Fires on play BEFORE the battlecry (matches the
+        # printed timing), and only for the real play (not summons).
+        if card.type == CardType.MINION and card.data.tags.get(
+            GameTag.MINIATURIZE, 0
+        ):
+            mini_id = _resolve_mini_id(card)
+            if mini_id:
+                source.game.queue_actions(player, [Give(player, mini_id)])
 
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:

@@ -208,7 +208,8 @@ def test_woodland_wonders_summons_two_taunt_beetles():
     beetles = [m for m in p.field if m.id == "TOY_804t"]
     assert len(beetles) == 2
     for b in beetles:
-        assert b.atk == 1 and b.health == 5
+        # Patch 30.0 restatted Grove Beetle 1/5 -> 2/5.
+        assert b.atk == 2 and b.health == 5
         assert b.taunt
 
 

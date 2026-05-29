@@ -4,19 +4,21 @@ from ..utils import *
 ##
 # Whizbang's Workshop — "Aura" support
 #
-# In data, "Aura" cards carry GameTag 3374 (no enum name in this hearthstone
-# build). They read as ordinary SPELLs whose play applies a controller-attached
-# enchantment that ticks down `_aura_turns_left` on OWN_TURN_END and destroys
-# itself at zero (mirrors the Titans / Showdown aura pattern).
+# In data, "Aura" cards carry an Aura marker tag. Patch 29.0 used raw GameTag
+# 3374 (no enum name); Patch 30.0 re-tagged them as PALADIN_AURA (3429) and made
+# them OBJECTIVE-type. Accept either so detection survives the data bump. They
+# read as ordinary SPELLs whose play applies a controller-attached enchantment
+# that ticks down `_aura_turns_left` on OWN_TURN_END and destroys itself at zero
+# (mirrors the Titans / Showdown aura pattern).
 
-_AURA_TAG = 3374
+_AURA_TAGS = (3374, 3429)
 
 
 def _is_aura_card(entity):
     data = getattr(entity, "data", None)
     if data is None:
         return False
-    return bool(data.tags.get(_AURA_TAG, 0))
+    return any(data.tags.get(tag, 0) for tag in _AURA_TAGS)
 
 
 # Selector matching Aura cards (used by Trinket Artist's draw).

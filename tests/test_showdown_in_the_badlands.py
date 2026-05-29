@@ -759,12 +759,13 @@ def test_druid_splish_splash_whelp_holding_dragon():
 	# Drop below max so an extra (empty) crystal is observable.
 	p1.max_mana = 5
 	p1.used_mana = 0
-	whelp = p1.give("WW_819")  # costs 2
+	whelp = p1.give("WW_819")  # Patch 30.0: costs 3 (was 2)
+	cost = whelp.cost
 	whelp.play()
-	# Whelp costs 2 (used 0 -> 2), then gain an EMPTY crystal: max 5 -> 6
-	# and the new crystal arrives spent (used 2 -> 3).
+	# Whelp costs `cost` (used 0 -> cost), then gain an EMPTY crystal: max 5 -> 6
+	# and the new crystal arrives spent (used cost -> cost + 1).
 	assert p1.max_mana == 6
-	assert p1.used_mana == 3
+	assert p1.used_mana == cost + 1
 
 
 def test_druid_splish_splash_whelp_no_dragon():
@@ -3422,24 +3423,26 @@ def test_priest_benevolent_banker_quickdraw_discovers_from_enemy_deck():
 
 
 def test_priest_thirsty_drifter_cost_reduction():
-	"""WW_387 — base cost 6; costs (1) less per 1-Cost card played this
-	game. Play two 1-cost minions (Stonetusk Boar), then Drifter costs
-	4."""
+	"""WW_387 — costs (1) less per 1-Cost card played this game. Play two
+	1-cost minions (Stonetusk Boar), then Drifter costs base - 2. (Patch
+	30.0 re-costed the base 6 -> 7.)"""
 	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
 	drifter = game.player1.give("WW_387")
-	assert drifter.cost == 6
+	base = drifter.data.cost
+	assert drifter.cost == base
 	game.player1.give(BOAR).play()  # 1-cost
 	game.player1.give(BOAR).play()  # 1-cost
-	assert drifter.cost == 4
+	assert drifter.cost == base - 2
 
 
 def test_priest_thirsty_drifter_no_reduction_without_one_cost():
-	"""WW_387 — with no 1-cost cards played, cost stays 6."""
+	"""WW_387 — with no 1-cost cards played, cost stays at its base."""
 	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
 	drifter = game.player1.give("WW_387")
+	base = drifter.data.cost
 	# Play a 2-cost minion; should not reduce.
 	game.player1.give(RAPTOR).play()
-	assert drifter.cost == 6
+	assert drifter.cost == base
 
 
 def test_priest_pip_the_potent_copies_one_cost_cards():

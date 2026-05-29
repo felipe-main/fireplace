@@ -1853,7 +1853,14 @@ class Draw(TargetedAction):
             if source.game.step > Step.BEGIN_MULLIGAN:
                 # Proc the draw script, but only if we are past mulligan
                 actions = card.get_actions("draw")
-                if card.casts_when_drawn:
+                if card.casts_when_drawn and card.type == CardType.SPELL:
+                    # "Cast When Drawn" SPELLS: cast for free, then draw a
+                    # replacement. MINIONS with CASTS_WHEN_DRAWN are
+                    # "Summoned When Drawn" — they rely on their own `draw`
+                    # script (Summon SELF), never the spell cast path (which
+                    # would Destroy+Draw+Battlecry and, with the Summon script,
+                    # recurse). Modern data tags such minions with
+                    # CASTS_WHEN_DRAWN (e.g. Frost Tyrant, VAC Parachutes).
                     actions += (Destroy(SELF), Draw(CONTROLLER), Battlecry(SELF, None))
                 source.game.cheat_action(card, actions)
 

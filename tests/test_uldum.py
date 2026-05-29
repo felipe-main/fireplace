@@ -24,15 +24,17 @@ def test_vulpera_scoundrel():
 
 
 def test_dwarven_archaeologist():
+    # Reworked: Battlecry: Discover a card. Reduce its Cost by (1).
     game = prepare_empty_game()
     game.player1.give("ULD_309").play()
-    game.player1.give("DAL_741").play()
     choice = game.player1.choice
+    assert choice is not None
     card = choice.cards[0]
     origin_cost = card.cost
     choice.choose(card)
-    assert card.zone == Zone.HAND
-    assert card.cost == max(origin_cost - 1, 0)
+    held = game.player1.hand[-1]
+    assert held.zone == Zone.HAND
+    assert held.cost == max(origin_cost - 1, 0)
 
 
 def test_evil_recruiter():

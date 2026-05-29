@@ -47,9 +47,15 @@ ULD_290e = buff(+1, +1)
 class ULD_309:
     """Dwarven Archaeologist"""
 
-    # After you <b>Discover</b> a card, reduce its cost by (1).
-    events = Give(CONTROLLER, source=FRIENDLY + HAS_DISCOVER).after(
-        Buff(Give.CARD, "ULD_309e")
+    # Battlecry: Discover a card. Reduce its Cost by (1).
+    # Reworked in a later patch from the original passive "After you Discover
+    # a card, reduce its cost by (1)" into a Battlecry that runs its own
+    # Discover and discounts the chosen card. The data now carries BATTLECRY.
+    # `.then` replaces a callback, so the Buff must be nested inside the Give's
+    # own callback (mirrors REV_313 Planted Evidence) rather than chained onto
+    # the DISCOVER macro, which would drop the Give.
+    play = Discover(CONTROLLER, RandomCollectible()).then(
+        Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "ULD_309e"))
     )
 
 

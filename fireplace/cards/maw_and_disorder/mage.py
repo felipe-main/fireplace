@@ -36,4 +36,7 @@ class MAW_101:
     """Contract Conjurer"""
 
     # Costs (3) less for each Secret you control.
-    cost_mod = -(Count(FRIENDLY + SECRET) * 3)
+    # FRIENDLY_SECRETS (= IN_SECRET + SECRET + FRIENDLY) counts only Secrets
+    # active in the Secret zone. A bare `FRIENDLY + SECRET` also matches Secret
+    # cards sitting in the deck/hand, which over-discounts the card.
+    cost_mod = -(Count(FRIENDLY_SECRETS) * 3)

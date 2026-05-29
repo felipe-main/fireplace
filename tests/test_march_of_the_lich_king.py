@@ -897,6 +897,11 @@ def test_amorphous_slime_silence_doesnt_wipe_discarded_id():
     if game.current_player is not p:
         game.end_turn()
     p.max_mana = 10
+    # Clear the opening hand so the only Undead present is the one we add —
+    # the battlecry discards a *random* Undead, so a stray Undead drawn into
+    # the starting hand would make the discarded id non-deterministic.
+    while p.hand:
+        p.discard_hand()
     # Give an Undead in hand to be discarded.
     undead_in_hand = p.give("RLK_008t")  # Risen Ghoul UNDEAD
     slime = p.give("RLK_540")

@@ -4162,7 +4162,8 @@ def test_treasure_escaping_trogg():
 	game = prepare_game()
 	trogg = game.player1.summon("WW_001t4")
 	assert trogg.rush
-	assert trogg.atk == 2 and trogg.max_health == 2
+	# Patch 28.4 buffed Escaping Trogg from 2/2 to 2/3.
+	assert trogg.atk == 2 and trogg.max_health == 3
 
 
 def test_treasure_living_stone():
@@ -4255,7 +4256,8 @@ def test_treasure_steelhide_mole():
 	assert mole.taunt
 	assert mole.has_inspire is False
 	assert mole.tags.get(GameTag.REBORN)
-	assert mole.atk == 2 and mole.max_health == 7
+	# Patch 28.4 buffed Steelhide Mole from 2/7 to 3/7.
+	assert mole.atk == 3 and mole.max_health == 7
 
 
 def test_treasure_azerite_gem():
@@ -5220,43 +5222,39 @@ def _velarok_remaining_text(card):
 
 
 def test_fix_rogue_velarok_progress_text_counts_down():
-    """The in-hand progress text renders the remaining foreign-class plays:
-    3 left at 0 plays, 2 left after 1, 1 left after 2."""
+    """Velarok's in-hand counter advances on each foreign-class play and
+    reveals (morphs to WW_364t) on the third.
+
+    Note: Patch 28.4 simplified Velarok's card text in data and dropped the
+    `@`-delimited "({0} left!)" progress template, so there is no rendered
+    countdown to assert anymore. The meaningful invariant is the underlying
+    `_velarok_count` and the reveal at 3 — that is what we lock down here."""
     game, rogue, opp = _rogue_game_2()
     velarok = rogue.give("WW_364")
 
-    # 0 foreign plays so far -> "3 left!"
+    # No progress template in 28.4 data -> description is the plain flavor text.
     assert getattr(velarok, "_velarok_count", 0) == 0
-    text0 = velarok.description
-    assert "3 left!" in text0
-    assert "2 left!" not in text0
-    assert "Ready!" not in text0
+    assert "@" not in velarok.data.description
+    assert "true form" in velarok.description
 
-    # 1 foreign play -> "2 left!"
-    rogue.give(MANA_WYRM).play()
+    rogue.give(MANA_WYRM).play()  # foreign class -> +1
     assert velarok._velarok_count == 1
-    text1 = velarok.description
-    assert "2 left!" in text1
-    assert "3 left!" not in text1
-    assert "Ready!" not in text1
-
-    # 2 foreign plays -> "1 left!"
-    rogue.give(MANA_WYRM).play()
+    rogue.give(MANA_WYRM).play()  # foreign class -> +2 (still in hand, not revealed)
     assert velarok._velarok_count == 2
-    text2 = velarok.description
-    assert "1 left!" in text2
-    assert "2 left!" not in text2
-    assert "Ready!" not in text2
+    assert velarok.morphed is None
+
+    rogue.give(MANA_WYRM).play()  # third foreign play -> reveal
+    assert velarok.morphed is not None and velarok.morphed.id == "WW_364t"
 
 
 def test_fix_rogue_velarok_progress_text_ignores_neutral_and_own_class():
-    """Neutral / own-class plays do not advance the rendered counter."""
+    """Neutral / own-class plays do not advance Velarok's counter."""
     game, rogue, opp = _rogue_game_2()
     velarok = rogue.give("WW_364")
     for _ in range(3):
         rogue.give(WISP).play()  # Neutral -> no progress
     assert getattr(velarok, "_velarok_count", 0) == 0
-    assert "3 left!" in velarok.description
+    assert velarok.id == "WW_364" and velarok.zone == Zone.HAND
 
 
 # === merged from test_fix_shaman.py (audit fix regression) ===

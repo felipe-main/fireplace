@@ -257,10 +257,10 @@ def test_toy_645t1_greater_opal_draws_three():
     assert len(game.player1.hand) == pre + 2
 
 
-def test_toy_645_upgrades_after_two_hero_attacks():
-    # BUG (approximation): printed text says "Attack with your hero 4 times to
-    # upgrade", but the implementation sets progress_total = 2, so the spellstone
-    # upgrades after only TWO hero attacks. This test pins the CURRENT behaviour.
+def test_toy_645_upgrades_after_four_hero_attacks():
+    # Printed text: "Attack with your hero 4 times to upgrade." AddProgress ticks
+    # +1 per hero attack and progress_total = 4, so the spellstone upgrades on
+    # the 4th attack — not before.
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     spell = game.player1.give("TOY_645")
     weapon = game.player1.give("CS2_106")  # Fiery War Axe 3/2
@@ -271,14 +271,15 @@ def test_toy_645_upgrades_after_two_hero_attacks():
     enemy.max_health = 80
     enemy.damage = 0
 
-    game.player1.hero.attack(enemy)
-    # Not yet upgraded after 1 attack.
-    assert any(c.id == "TOY_645" for c in game.player1.hand)
-    assert not any(c.id == "TOY_645t" for c in game.player1.hand)
-    # Re-arm the hero for a second attack this game.
+    # First 3 attacks: still Lesser, no upgrade.
+    for _ in range(3):
+        game.player1.hero.num_attacks = 0
+        game.player1.hero.attack(enemy)
+        assert any(c.id == "TOY_645" for c in game.player1.hand)
+        assert not any(c.id == "TOY_645t" for c in game.player1.hand)
+    # 4th attack upgrades to TOY_645t (Opal Spellstone).
     game.player1.hero.num_attacks = 0
     game.player1.hero.attack(enemy)
-    # After 2 hero attacks the spellstone upgrades to TOY_645t (Opal Spellstone).
     assert any(c.id == "TOY_645t" for c in game.player1.hand)
     assert not any(c.id == "TOY_645" for c in game.player1.hand)
 

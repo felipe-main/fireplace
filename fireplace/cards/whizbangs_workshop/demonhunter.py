@@ -191,11 +191,10 @@ class TOY_645:
     """Lesser Opal Spellstone"""
 
     # Draw 1 card. (Attack with your hero 4 times to upgrade.)
-    # TAG_SCRIPT_DATA_NUM_1 = 2 per attack-step; 2 hero attacks per upgrade tick
-    # in this engine's progress accounting (mirrors the in-hand spellstone
-    # pattern: AddProgress on each hero attack, upgrade at progress_total).
+    # AddProgress(SELF, SELF) ticks +1 per FRIENDLY_HERO attack, so the upgrade
+    # threshold is the printed 4 hero attacks.
     play = Draw(CONTROLLER)
-    progress_total = 2
+    progress_total = 4
     reward = Morph(SELF, "TOY_645t")
 
     class Hand:
@@ -207,7 +206,7 @@ class TOY_645t:
 
     # Draw 2 cards. (Attack with your hero 4 times to upgrade.)
     play = Draw(CONTROLLER) * 2
-    progress_total = 2
+    progress_total = 4
     reward = Morph(SELF, "TOY_645t1")
 
     class Hand:

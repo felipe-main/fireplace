@@ -131,6 +131,12 @@ class Player(Entity, TargetableByAuras):
         # "Costs (2) less if you cast a spell last turn" discount.
         self.spells_played_this_turn = 0
         self.spells_played_last_turn = 0
+        # Whizbang's Workshop — Shudderblock: extra times the NEXT battlecry
+        # triggers (2 = fires 3 times total). Persists until consumed. The
+        # boosted battlecry also can't damage the enemy hero, gated by the
+        # transient flag below (set only while the boosted battlecry resolves).
+        self.next_battlecry_extra = 0
+        self._shudder_no_enemy_hero_dmg = False
         # Showdown in the Badlands — number of times this player has Excavated
         # this game. Drives the escalating treasure tier (Common -> Rare ->
         # Epic -> class Legendary for excavate classes, then cycles) and is

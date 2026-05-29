@@ -1382,6 +1382,16 @@ class Damage(TargetedAction):
     def do(self, source, target, amount=None):
         if not amount:
             amount = target.predamage
+        # Whizbang's Workshop — Shudderblock: a boosted battlecry can't damage
+        # the enemy hero. The enemy hero's controller's opponent is the player
+        # whose battlecry is resolving; if that player has the flag set, drop
+        # the damage to the hero to 0.
+        if amount and target.type == CardType.HERO:
+            bc_player = getattr(target.controller, "opponent", None)
+            if bc_player is not None and getattr(
+                bc_player, "_shudder_no_enemy_hero_dmg", False
+            ):
+                amount = 0
         amount = target._hit(amount)
         target.predamage = 0
         # TITANS — Fate Splitter: record the source of the killing blow so
@@ -1558,12 +1568,29 @@ class Battlecry(TargetedAction):
             log.info("%r requires a target for its battlecry. Will not trigger.")
             return
 
+        # Whizbang's Workshop — Shudderblock: the NEXT battlecry triggers N
+        # extra times and can't damage the enemy hero while it resolves.
+        # Captured before main_power so a Shudderblock that sets the counter
+        # in its own battlecry does not boost itself.
+        extra = getattr(player, "next_battlecry_extra", 0)
+        if extra and card.has_battlecry:
+            player.next_battlecry_extra = 0
+            player._shudder_no_enemy_hero_dmg = True
+        else:
+            extra = 0
+
         source.game.manager.targeted_action(self, source, card, target)
         source.target = target
         source.game.main_power(source, actions, target)
 
         if self.has_extra_battlecries(player, card):
             source.game.main_power(source, actions, target)
+
+        for _ in range(extra):
+            source.game.main_power(source, actions, target)
+
+        if extra:
+            player._shudder_no_enemy_hero_dmg = False
 
         if card.overload:
             source.game.queue_actions(card, [Overload(player, card.overload)])

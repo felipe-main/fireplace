@@ -10,7 +10,8 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 29.0.0.195635](https://hearthstone.wiki.gg/wiki/Patch_29.0.0.195635)
+Now updated to [Patch 30.0.0.203120](https://hearthstone.wiki.gg/wiki/Patch_30.0.0.203120)
+* **100%** Perils in Paradise (145 of 145 cards) — adds Tourist (cross-class deckbuilding), Drinks, and reopening Locations
 * **100%** Whizbang's Workshop (145 of 145 cards) — adds Miniaturize + Zilliax Deluxe 3000 modular assembly
 * **100%** Delve into Deepholm mini-set (38 of 38 cards) — completes the Showdown block; Paladin + Shaman Excavate
 * **100%** Showdown in the Badlands (145 of 145 cards) — adds Excavate + Quickdraw

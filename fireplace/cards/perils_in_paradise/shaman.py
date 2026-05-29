@@ -220,6 +220,15 @@ class VAC_301:
 	# spell school you've cast this game.
 	play = _RazzleDazzlerSummon(CONTROLLER)
 
+	def custom_cardtext(self):
+		# Fill the "@" placeholders with the number of distinct spell schools
+		# cast this game (the number of extra repeats).
+		player = getattr(self, "controller", None)
+		n = len(getattr(player, "spells_cast_by_school", {})) if player else 0
+		return self.data.description.replace("@", str(n))
+
+	tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
+
 
 class VAC_328:
 	"""Meltemental"""

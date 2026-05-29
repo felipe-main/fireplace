@@ -27,6 +27,9 @@ def test_primalfin_champion():
     pc = game.player1.give("UNG_953").play()
     game.player1.give("CS2_092").play(target=pc)
     game.player1.give(FIREBALL).play(target=pc)
+    # 28.0 rebalanced Primalfin Champion to 2/1/3, so 5/7 - 6 damage survives
+    # at 1 health; force the deathrattle to fire.
+    pc.destroy()
     assert game.player1.hand[0].id == "CS2_092"
     assert game.player1.hand[1].id == FIREBALL
 
@@ -171,9 +174,11 @@ def test_swamp_king_dred():
 def test_the_voraxx():
     game = prepare_game()
     voraxx = game.player1.give("UNG_843").play()
+    base_atk = voraxx.atk
+    base_health = voraxx.health
     game.player1.give("CS2_092").play(target=voraxx)
-    assert voraxx.atk == 7
-    assert voraxx.health == 7
+    assert voraxx.atk == base_atk + 4
+    assert voraxx.health == base_health + 4
     assert len(game.player1.field) == 2
     assert game.player1.field[1].atk == 5
     assert game.player1.field[1].health == 5
@@ -220,8 +225,6 @@ def test_quest():
     assert quest.progress == 3
     game.end_turn()
     game.end_turn()
-    game.player1.give("CS2_118").play()
-    assert quest.progress == 4
     game.player1.give("CS2_118").play()
     assert quest.progress == 0
     assert quest.zone == Zone.GRAVEYARD

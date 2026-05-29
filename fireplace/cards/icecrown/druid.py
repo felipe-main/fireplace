@@ -12,14 +12,17 @@ class ICC_047:
 
 
 class ICC_047a:
+    # Patch 28.0 dropped the DEATHRATTLE tag from the ICC_047t data card, so
+    # set it alongside SECRET_DEATHRATTLE — Card.deathrattles gates on
+    # has_deathrattle, which reads the DEATHRATTLE tag.
     play = Morph(SELF, "ICC_047t").then(
-        SetTags(Morph.CARD, {GameTag.SECRET_DEATHRATTLE: 1})
+        SetTags(Morph.CARD, {GameTag.DEATHRATTLE: 1, GameTag.SECRET_DEATHRATTLE: 1})
     )
 
 
 class ICC_047b:
     play = Morph(SELF, "ICC_047t").then(
-        SetTags(Morph.CARD, {GameTag.SECRET_DEATHRATTLE: 2})
+        SetTags(Morph.CARD, {GameTag.DEATHRATTLE: 1, GameTag.SECRET_DEATHRATTLE: 2})
     )
 
 

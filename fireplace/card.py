@@ -1463,10 +1463,6 @@ class Minion(Character):
         self.has_spellburst = False
         self.has_frenzy = False
         self.honorably_killed = False
-        # Perils — King Tide (VAC_524) reads this in its `update` aura; default
-        # so the aura evaluates safely even when the minion enters play without
-        # its battlecry (summoned/copied).
-        self._king_tide_turns_left = 0
         super().__init__(data)
 
     def dump(self):

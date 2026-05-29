@@ -70,9 +70,20 @@ class _FortunePlayTopCard(TargetedAction):
 		top = ctrl.deck[-1]
 		copy = ExactCopy(top).copy(source, top)
 		copy.controller = ctrl
-		# Replay the copy for free: spells are cast (engine picks a legal
-		# target), minions / weapons / heroes are summoned.
-		source.game.cheat_action(source, [Replay(copy)])
+		# Play the copy fully for free. Spells are cast (engine picks a legal
+		# target). Minions are summoned AND their battlecry fired (Replay's
+		# Summon path skips battlecries). Weapons/heroes use Replay.
+		if copy.type == CardType.SPELL:
+			copy.zone = Zone.HAND
+			source.game.cheat_action(source, [CastSpell(copy)])
+		elif copy.type == CardType.MINION:
+			if len(ctrl.field) >= 7:
+				return
+			source.game.cheat_action(source, [Summon(ctrl, copy)])
+			if copy.zone == Zone.PLAY and getattr(copy, "has_battlecry", False):
+				source.game.cheat_action(source, [Battlecry(copy, None)])
+		else:
+			source.game.cheat_action(source, [Replay(copy)])
 
 
 def _voljin_swap_resolve(source, a, b):
@@ -249,10 +260,9 @@ class VAC_457:
 class VAC_418:
 	"""Sauna Regular"""
 
-	# Taunt. Costs (1) less for each time your hero has taken damage on
-	# your turn. The engine tracks total hero damage taken on own turns
-	# (`damage_taken_on_own_turns_this_game`); we discount by that total.
-	cost_mod = -Attr(CONTROLLER, "damage_taken_on_own_turns_this_game")
+	# Taunt. Costs (1) less for each TIME your hero has taken damage on your
+	# turn (per damage event, not per point of damage).
+	cost_mod = -Attr(CONTROLLER, "hero_damage_events_on_own_turn_this_game")
 
 
 class VAC_420:

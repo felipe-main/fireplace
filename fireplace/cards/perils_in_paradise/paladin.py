@@ -244,9 +244,9 @@ class VAC_558:
     """Sea Shanty"""
 
     # Summon three 5/5 Pirates. Costs (1) less for each spell you've cast on
-    # characters this game.
+    # a character this game.
     play = Summon(CONTROLLER, "VAC_558t") * 3
-    cost_mod = -Count(CARDS_PLAYED_THIS_GAME + SPELL)
+    cost_mod = -Attr(CONTROLLER, "spells_cast_on_characters_this_game")
 
 
 class VAC_558t:

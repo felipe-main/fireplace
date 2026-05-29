@@ -498,12 +498,29 @@ class VAC_464t11e2:
 
 
 # Transform all minions into random ones that cost (3) more.
-# Cost-bucketed Morph crashes on empty cost buckets, so per the codebase
-# convention we morph into any random minion (the "+3 cost" is approximated).
+class _PuzzleBoxMorph(TargetedAction):
+    """Puzzle Box — transform ALL minions into random ones that cost (3) more,
+    each picked independently from its own current cost. If a cost bucket is
+    empty, that minion is left unchanged."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        minions = [m for p in source.game.players for m in list(p.field)]
+        for minion in minions:
+            pick = RandomMinion(cost=(minion.cost or 0) + 3).evaluate(source)
+            if isinstance(pick, list):
+                pick = pick[0] if pick else None
+            if not pick:
+                continue
+            new_card = source.controller.card(pick.id, source=source)
+            source.game.cheat_action(source, [Morph(minion, new_card)])
+
+
 class VAC_464t12:
     """Puzzle Box"""
 
-    play = Morph(ALL_MINIONS, RandomMinion())
+    play = _PuzzleBoxMorph(SELF)
 
 
 # Hyperblaster — 3/1/4 weapon. Poisonous. Your hero is Immune while attacking.

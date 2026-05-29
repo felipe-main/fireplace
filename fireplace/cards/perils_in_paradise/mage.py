@@ -61,24 +61,32 @@ class _RisingWaves(TargetedAction):
 
 
 class _KingTideStartAura(TargetedAction):
-    """King Tide — arm the "spells cost (5)" aura. Lasts until the end of
-    your next turn = survives two of the controller's OWN_TURN_END ticks
-    (end of this turn + end of your next turn)."""
+    """King Tide — arm the "both players' spells cost (5)" window on the
+    CONTROLLER (so it persists even if King Tide leaves play) and attach the
+    persistent aura enchant. Lasts until the end of your next turn = two of the
+    controller's OWN_TURN_END ticks (end of this turn + end of your next)."""
 
     TARGET = ActionArg()
 
     def do(self, source, player):
-        source._king_tide_turns_left = 2
+        ctrl = source.controller
+        ctrl._king_tide_turns_left = 2
+        source.game.cheat_action(source, [Buff(ctrl, "VAC_524e3")])
 
 
 class _KingTideTick(TargetedAction):
-    """King Tide — decrement the aura's remaining lifetime at each
-    OWN_TURN_END."""
+    """King Tide — decrement the window at each OWN_TURN_END (carried by the
+    controller aura enchant so it ticks regardless of King Tide's presence)."""
 
     TARGET = ActionArg()
 
     def do(self, source, player):
-        source._king_tide_turns_left = getattr(source, "_king_tide_turns_left", 0) - 1
+        ctrl = source.controller
+        ctrl._king_tide_turns_left = getattr(ctrl, "_king_tide_turns_left", 0) - 1
+        # `source` is the controller aura enchant; retire it when the window
+        # closes so its SET(5) refresh stops (spells revert to normal cost).
+        if ctrl._king_tide_turns_left <= 0 and source.type == CardType.ENCHANTMENT:
+            source.game.cheat_action(source, [Destroy(source)])
 
 
 ##
@@ -249,17 +257,27 @@ class VAC_524e2:
     cost = SET(5)
 
 
-class VAC_524:
-    """King Tide"""
-
-    # Battlecry: Both players' spells cost (5) until the end of your next
-    # turn. Implemented as a self-aura on King Tide (the standard fireplace
-    # pattern for "until end of your next turn" — there is no separate
-    # aura-entity primitive). Ticks down at each OWN_TURN_END; refreshes
-    # SET(5) on every spell in both players' hands while active.
-    play = _KingTideStartAura(SELF)
-    update = (Attr(SELF, "_king_tide_turns_left") > 0) & (
+@custom_card
+class VAC_524e3:
+    # Persistent CONTROLLER aura for King Tide: while the controller's
+    # _king_tide_turns_left > 0, both players' hand spells are SET to cost 5.
+    # Ticks down at each OWN_TURN_END and destroys itself when the window ends.
+    # Lives on the player, so the effect persists even if King Tide dies.
+    tags = {
+        GameTag.CARDNAME: "King Tide",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    update = (Attr(CONTROLLER, "_king_tide_turns_left") > 0) & (
         Refresh(FRIENDLY_HAND + SPELL, buff="VAC_524e"),
         Refresh(ENEMY_HAND + SPELL, buff="VAC_524e2"),
     )
-    events = OWN_TURN_END.on(_KingTideTick(SELF))
+    events = OWN_TURN_END.on(_KingTideTick(CONTROLLER))
+
+
+class VAC_524:
+    """King Tide"""
+
+    # Battlecry: Both players' spells cost (5) until the end of your next turn.
+    # A persistent CONTROLLER enchant (VAC_524e3) carries the window so it
+    # survives King Tide leaving play.
+    play = _KingTideStartAura(SELF)

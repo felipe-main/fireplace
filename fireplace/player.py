@@ -249,6 +249,14 @@ class Player(Entity, TargetableByAuras):
         # Imprisoned Horror (TTN_462) cost_mod reads damage_taken_on_own_turns_this_game.
         # Stoneskin Armorer (TTN_469) battlecry reads armor_gained_this_turn.
         self.damage_taken_on_own_turns_this_game = 0
+        # Perils — Sauna Regular (VAC_418): count of distinct damage EVENTS the
+        # hero took on the controller's own turns this game (not total points).
+        self.hero_damage_events_on_own_turn_this_game = 0
+        # Perils — Sea Shanty (VAC_558): count of spells cast on a character.
+        self.spells_cast_on_characters_this_game = 0
+        # Perils — King Tide (VAC_524): turns left on the "both players' spells
+        # cost (5)" window. On the player so it persists if King Tide dies.
+        self._king_tide_turns_left = 0
         self.armor_gained_this_turn = 0
         # TITANS — The Primus Runes of Frost: next spell has Spell Damage +N.
         self.next_spell_spellpower = 0

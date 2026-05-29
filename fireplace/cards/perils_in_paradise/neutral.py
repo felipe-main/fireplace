@@ -298,10 +298,16 @@ class _AmuletTrackingGet(TargetedAction):
         ctrl = source.controller
         for _ in range(3):
             before = set(ctrl.hand)
-            source.game.cheat_action(source, [Give(ctrl, RandomLegendaryMinion())])
+            # "Legendary cards" = all collectible legendaries, any card type.
+            source.game.cheat_action(
+                source, [Give(ctrl, RandomCollectible(rarity=Rarity.LEGENDARY))]
+            )
             new = [c for c in ctrl.hand if c not in before]
             for c in new:
-                common = RandomMinion(rarity=Rarity.COMMON).evaluate(source)
+                # Downgrade to a random Common of the same card type.
+                common = RandomCollectible(
+                    rarity=Rarity.COMMON, type=c.type
+                ).evaluate(source)
                 if common:
                     cid = common[0] if isinstance(common, list) else common
                     source.game.cheat_action(source, [Morph(c, cid)])
@@ -984,8 +990,8 @@ class VAC_959t05:
 class VAC_959t05t:
     """Amulet of Tracking"""
 
-    # Real version: Get 3 random Legendary cards.
-    play = Give(CONTROLLER, RandomLegendaryMinion()) * 3
+    # Real version: Get 3 random Legendary cards (any type).
+    play = Give(CONTROLLER, RandomCollectible(rarity=Rarity.LEGENDARY)) * 3
 
 
 class VAC_959t06:

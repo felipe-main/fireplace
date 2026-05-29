@@ -668,6 +668,12 @@ class Play(GameAction):
             if target.type == CardType.MINION:
                 card.cast_on_friendly_minions = True
 
+        # Perils — Sea Shanty: count spells cast on a character (any side).
+        if card.type == CardType.SPELL and target and target.type in (
+            CardType.MINION, CardType.HERO
+        ):
+            source.spells_cast_on_characters_this_game += 1
+
         source.game.manager.game_action(self, source, card, target, index, choose)
         # NOTE: A Play is not a summon! But it sure looks like one.
         # We need to fake a Summon broadcast.
@@ -1486,6 +1492,8 @@ class Damage(TargetedAction):
                     # TITANS — Imprisoned Horror: cost_mod reads total
                     # hero damage taken on the controller's own turns.
                     target.controller.damage_taken_on_own_turns_this_game += amount
+                    # Perils — Sauna Regular: count of distinct damage events.
+                    target.controller.hero_damage_events_on_own_turn_this_game += 1
             if source.type == CardType.HERO_POWER:
                 source.controller.hero_power_damage_this_game += amount
             self.broadcast(source, EventListener.AFTER, target, amount, source)

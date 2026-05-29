@@ -225,8 +225,11 @@ class VAC_328:
 	"""Meltemental"""
 
 	# [x]<b>Taunt</b> This is permanently <b>Frozen</b>.
-	# (Taunt is a data tag. The engine clears FROZEN at the owner's
-	# turn-begin; re-apply it on every turn-begin so it never thaws.)
+	# FROZEN isn't in VAC_328's data, so declare it here to be Frozen the
+	# instant it enters play (Taunt is a data tag). The engine thaws FROZEN at
+	# the owner's turn-begin, so re-apply it on every turn-begin so it never
+	# stays thawed.
+	tags = {GameTag.FROZEN: True}
 	events = TURN_BEGIN.on(SetTag(SELF, GameTag.FROZEN))
 
 

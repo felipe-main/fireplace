@@ -47,9 +47,11 @@ class _LamplighterDamage(LazyNum):
 
     def evaluate(self, source):
         player = source.controller
-        streak = player.azerite_elemental_streak
-        if player.elemental_played_this_turn > 0:
-            streak += 1
+        # azerite_elemental_streak counts prior completed consecutive turns;
+        # Lamplighter being played IS this turn's Elemental (the counter is
+        # bumped only after the battlecry), so always add 1 for the current
+        # turn.
+        streak = player.azerite_elemental_streak + 1
         return self.num(max(streak, 1))
 
 
@@ -62,15 +64,12 @@ class _PackageDealerDraw(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        if getattr(source, "_package_dealing", False):
-            return
+        # 50% to draw another. The extra Draw re-broadcasts ON and re-triggers
+        # this listener, so the cascade continues naturally (bounded by the
+        # coinflip and an empty deck, which draws nothing and stops).
         if source.game.random.randint(0, 1) != 1:
             return
-        source._package_dealing = True
-        try:
-            source.game.cheat_action(source, [Draw(source.controller)])
-        finally:
-            source._package_dealing = False
+        source.game.cheat_action(source, [Draw(source.controller)])
 
 
 class _BayfinDestroyToken(TargetedAction):
@@ -78,14 +77,17 @@ class _BayfinDestroyToken(TargetedAction):
     during your turn, Silence and destroy it."""
 
     TARGET = ActionArg()
+    CARD = ActionArg()
 
-    def do(self, source, target):
-        if isinstance(target, list):
-            target = target[0] if target else None
-        if target is None:
+    def do(self, source, target, card):
+        # `card` is the opponent's just-summoned minion (Summon.CARD); `target`
+        # is Bayfin itself.
+        if isinstance(card, list):
+            card = card[0] if card else None
+        if card is None:
             return
         if source.controller.current_player:
-            source.game.cheat_action(source, [Silence(target), Destroy(target)])
+            source.game.cheat_action(source, [Silence(card), Destroy(card)])
 
 
 class _LocationUseCounter(TargetedAction):
@@ -385,7 +387,10 @@ class _TidepoolDiscover(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ids = list(getattr(source, "spells_history_while_holding", []))
+        # spells_history_while_holding stores (id, cost) tuples; Discover needs
+        # the bare ids.
+        history = list(getattr(source, "spells_history_while_holding", []))
+        ids = [h[0] if isinstance(h, (tuple, list)) else h for h in history]
         if not ids:
             return
         source.game.cheat_action(
@@ -506,8 +511,10 @@ class VAC_327e:
 class VAC_406:
     """Sleepy Resident"""
 
-    # Taunt Deathrattle: ALL other minions fall asleep.
-    deathrattle = Buff(ALL_MINIONS - SELF, "VAC_406e")
+    # Taunt Deathrattle: ALL other minions fall asleep (= Freeze). A buff
+    # carrying GameTag.FROZEN does not set the `frozen` state (which reads the
+    # _frozen attr), so use the Freeze action.
+    deathrattle = Freeze(ALL_MINIONS - SELF)
 
 
 class VAC_406e:
@@ -578,8 +585,9 @@ class VAC_440:
 class VAC_441:
     """Package Dealer"""
 
-    # After you draw a card, 50% chance to draw another.
-    events = Draw(CONTROLLER).after(_PackageDealerDraw(SELF))
+    # After you draw a card, 50% chance to draw another. (Draw broadcasts ON,
+    # not AFTER, so listen on ON.)
+    events = Draw(CONTROLLER).on(_PackageDealerDraw(SELF))
 
 
 class VAC_442:
@@ -594,10 +602,9 @@ class VAC_442:
         player = getattr(self, "controller", None)
         n = 1
         if player is not None:
-            n = player.azerite_elemental_streak
-            if player.elemental_played_this_turn > 0:
-                n += 1
-            n = max(n, 1)
+            # Playing Lamplighter counts this turn's Elemental, so preview
+            # streak + 1 (matches the damage it would deal).
+            n = max(player.azerite_elemental_streak + 1, 1)
         return self.data.description.replace("@", str(n))
 
     def cardtext_entity_0(self):
@@ -717,9 +724,10 @@ class VAC_702:
 class VAC_702t:
     """Zarog's Crown"""
 
-    # Discover a Legendary minion. Summon two copies of it.
+    # Discover a Legendary minion. Summon two copies of it. (ExactCopy per
+    # summon — re-summoning Discover.CARD directly would no-op the second.)
     play = Discover(CONTROLLER, RandomLegendaryMinion()).then(
-        Summon(CONTROLLER, Discover.CARD) * 2
+        Summon(CONTROLLER, ExactCopy(Discover.CARD)) * 2
     )
 
 

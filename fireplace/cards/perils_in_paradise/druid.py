@@ -80,7 +80,12 @@ class _MistahVistahTick(TargetedAction):
         ctrl._mistah_vistah_active = False
         ctrl._mistah_vistah_spells = []
         for sid in spells:
-            source.game.cheat_action(source, [CastSpell(sid)])
+            # Instantiate into hand first so CastSpell can compute the spell's
+            # legal targets and auto-pick one (a raw id casts from limbo with
+            # no targets and silently fizzles for targeted spells).
+            copy = ctrl.card(sid, source=source)
+            copy.zone = Zone.HAND
+            source.game.cheat_action(source, [CastSpell(copy)])
 
 
 ##
@@ -101,6 +106,10 @@ class VAC_506:
 class VAC_511:
     """Dozing Dragon"""
 
+    # VAC_511's data omits the DORMANT tag, so declare it here — otherwise
+    # card.py _set_zone never sets self.dormant and the minion enters play
+    # awake (dormant_events never fire, no Restless Whelp summoned).
+    tags = {GameTag.DORMANT: True}
     dormant_turns = 2
     dormant_events = OWN_TURN_END.on(Summon(CONTROLLER, "VAC_511t"))
 
@@ -245,4 +254,5 @@ class VAC_517:
     activate = DISCOVER(
         RandomMinion(custom_filter=lambda c: bool(c.tags.get(GameTag.TAUNT)))
     )
-    events = GainArmor(FRIENDLY_HERO).after(ReopenLocation(SELF))
+    # GainArmor broadcasts ON (not AFTER), so listen on ON.
+    events = GainArmor(FRIENDLY_HERO).on(ReopenLocation(SELF))

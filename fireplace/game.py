@@ -303,7 +303,7 @@ class BaseGame(Entity):
                     # deathrattle returning a single item instead of a
                     # tuple). Skip rather than crash so the rest of the
                     # action queue still resolves.
-                    log.info("Skipping non-Action %r in queue", action)
+                    self.log("Skipping non-Action %r in queue", action)
                     continue
                 ret.append(action.trigger(source))
         return ret

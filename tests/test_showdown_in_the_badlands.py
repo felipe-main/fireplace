@@ -5383,3 +5383,37 @@ def test_fix_treasure_snake_steal_capped_by_health():
 	# Health actually removed was 6 (capped), so friendly heals exactly 6:
 	# 10 damage - 6 healed == 4 remaining. The flat-heal bug heals 10 -> 0.
 	assert friendly.damage == 4
+
+
+# ---------------------------------------------------------------------------
+# Tier-1b regression: Devourer of Souls (RLK_538) copies a dying friendly
+# minion's deathrattle. Cards with a CALLABLE/generator deathrattle script
+# (Gigafin, Najak Hexxen, Ozumat, ...) crashed the copy with
+# "'function'/'generator' object is not iterable" and then a NameError in
+# game.trigger_actions. Surfaced as a 1/1000 soak crash. The copy must now
+# resolve via get_actions and fire without raising.
+# ---------------------------------------------------------------------------
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("victim", [
+    "AV_331",    # Najak Hexxen (Alterac)
+    "TSC_653",   # Bottomfeeder
+    "TSC_962",   # Gigafin
+    "TSC_660t",  # Nellie's Pirate Ship
+    "TID_707",   # Submerged Spacerock
+    "TID_711",   # Ozumat
+])
+def test_devourer_copies_callable_deathrattle_without_crashing(victim):
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.player1
+    devourer = p.summon("RLK_538")
+    v = p.summon(victim)
+    # Devourer copies v's (callable) deathrattle when v dies — must not raise.
+    v.destroy()
+    game.process_deaths()
+    # Firing the copied deathrattle (when Devourer itself dies) must not raise.
+    devourer.destroy()
+    game.process_deaths()
+    assert devourer.dead

@@ -82,11 +82,15 @@ class _DevourerGainDeathrattle(TargetedAction):
 			entity = entity[0]
 		if entity is source:
 			return
-		drs = list(entity.data.scripts.deathrattle or ())
+		# Resolve via get_actions so a *callable*/generator deathrattle script
+		# (Gigafin, Najak Hexxen, Bottomfeeder, Ozumat, ...) is invoked and
+		# materialised into a flat action list rather than crashing list() on
+		# a bare function or storing an un-iterated generator.
+		drs = list(entity.get_actions("deathrattle") or ())
 		if not drs:
 			return
-		# additional_deathrattles is a list of action-iterables; each entry
-		# must itself be a tuple/list so Deathrattle can queue_actions on it.
+		# additional_deathrattles entries must be iterables of Actions so
+		# Deathrattle can queue_actions on them.
 		source.additional_deathrattles.append(tuple(drs))
 		source.has_deathrattle = True
 

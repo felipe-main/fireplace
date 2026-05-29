@@ -82,12 +82,16 @@ class _NathanosTriggerOnPick(TargetedAction):
             if not picked:
                 return
             picked = picked[0]
-        deathrattle = list(picked.data.scripts.deathrattle)
+        # Resolve via get_actions so a *callable*/generator deathrattle script
+        # (Gigafin, Ozumat, ...) is invoked and materialised into a flat
+        # action list rather than crashing list() on a bare function.
+        deathrattle = list(picked.get_actions("deathrattle") or ())
         if not deathrattle:
             return
+        deathrattle = tuple(deathrattle)
         nathanos = source
         source.game.cheat_action(nathanos, deathrattle)
-        nathanos.additional_deathrattles.append(tuple(deathrattle))
+        nathanos.additional_deathrattles.append(deathrattle)
         nathanos.has_deathrattle = True
 
 

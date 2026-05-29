@@ -408,6 +408,8 @@ class _OverplannerDiscover(TargetedAction):
 
     def do(self, source, target, remaining=None):
         ctrl = source.controller
+        if isinstance(remaining, (list, tuple)):
+            remaining = remaining[0] if remaining else None
         n = 3 if remaining is None else remaining
         if n <= 0:
             return
@@ -435,11 +437,13 @@ class _OverplannerPutOnTop(TargetedAction):
     def do(self, source, target, card, remaining):
         if isinstance(card, list):
             card = card[0] if card else None
+        if isinstance(remaining, (list, tuple)):
+            remaining = remaining[0] if remaining else 0
         ctrl = source.controller
         if card is not None:
             real = next((c for c in ctrl.deck if c.id == card.id), None)
             if real is not None:
-                source.game.cheat_action(source, [PutOnTop(real)])
+                source.game.cheat_action(source, [PutOnTop(ctrl, real)])
         source.game.cheat_action(source, [_OverplannerDiscover(SELF, remaining - 1)])
 
 
@@ -830,7 +834,7 @@ class VAC_946:
     """Terrible Chef"""
 
     # Battlecry: Summon a 0/2 Nerubian Egg. Deathrattle: Destroy it.
-    play = Summon(CONTROLLER, "FP_001t").then(_ChefRemember(SELF, Summon.CARD))
+    play = Summon(CONTROLLER, "FP1_007").then(_ChefRemember(SELF, Summon.CARD))
     deathrattle = _ChefDestroyEgg(SELF)
 
 

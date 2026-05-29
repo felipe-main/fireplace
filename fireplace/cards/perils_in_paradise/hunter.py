@@ -14,12 +14,21 @@ def _replay_card(source, card):
         copy = ctrl.card(card.id, source=source)
         copy.zone = Zone.HAND
         source.game.cheat_action(source, [CastSpell(copy)])
-    else:
-        if card.type == CardType.MINION and len(ctrl.field) >= 7:
+    elif card.type == CardType.MINION:
+        if len(ctrl.field) >= 7:
             return
+        # Free replay: summon the minion, then fire its battlecry (mirrors the
+        # engine's casts_when_drawn Battlecry(SELF, None) path) so "Repeat"
+        # reproduces the on-play effect without paying mana.
+        copy = ctrl.card(card.id, source=source)
+        source.game.cheat_action(source, [Summon(ctrl, copy)])
+        if copy.zone == Zone.PLAY and getattr(copy, "has_battlecry", False):
+            source.game.cheat_action(source, [Battlecry(copy, None)])
+    else:
+        # Weapons / heroes: use the engine replay primitive (equips/summons).
         copy = ctrl.card(card.id, source=source)
         copy.zone = Zone.HAND
-        source.game.cheat_action(source, [Play(copy)])
+        source.game.cheat_action(source, [Replay(copy)])
 
 
 class _RepeatLastSpellAtEnemy(TargetedAction):
@@ -88,7 +97,7 @@ class _BirdwatchingBuffAllCopies(TargetedAction):
     TARGET = ActionArg()
     CARD = ActionArg()
 
-    def do(self, source, picked):
+    def do(self, source, target, picked):
         if isinstance(picked, list):
             if not picked:
                 return

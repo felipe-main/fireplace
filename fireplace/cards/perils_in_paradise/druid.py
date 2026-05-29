@@ -162,8 +162,10 @@ class VAC_519t3:
 class VAC_950:
     """Bouldering Buddy"""
 
-    # Rush + Taunt live in data; the conditional cost set-to-1 is the script.
-    cost_mod = (Attr(CONTROLLER, "max_mana") >= 10) & SET(1)
+    # Rush + Taunt live in data; "Costs (1) ..." is an additive cost_mod delta
+    # (base 7 -> 1) gated on having 10+ Mana Crystals, matching the engine's
+    # additive cost_mod convention (cf. Snow Shredder).
+    cost_mod = (Attr(CONTROLLER, "max_mana") >= 10) & -6
 
 
 ##

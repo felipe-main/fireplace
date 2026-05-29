@@ -43,7 +43,9 @@ class _DivineBrew(TargetedAction):
             target = target[0] if target else None
         if target is None:
             return
-        if target.divine_shield:
+        # "Give a character Divine Shield" — heroes can be targeted but have no
+        # divine_shield attribute, so read it defensively.
+        if getattr(target, "divine_shield", False):
             source.game.cheat_action(source, [Buff(target, "VAC_916e")])
         else:
             source.game.cheat_action(source, [GiveDivineShield(target)])

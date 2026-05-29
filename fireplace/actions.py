@@ -2290,7 +2290,11 @@ class Retarget(TargetedAction):
             new_target = new_target[0]
         if target.type in (CardType.HERO, CardType.MINION) and target.attacking:
             log.info("Retargeting %r's attack to %r", target, new_target)
-            source.game.proposed_defender.defending = False
+            # proposed_defender can be None if the original defender already
+            # left the proposed-attack state (rare board interactions); guard
+            # the deref before clearing it.
+            if source.game.proposed_defender is not None:
+                source.game.proposed_defender.defending = False
             source.game.proposed_defender = new_target
         else:
             log.info("Retargeting %r from %r to %r", target, target.target, new_target)

@@ -171,6 +171,26 @@ class TOY_385:
     class Hand:
         events = Summon(CONTROLLER, DRAGON).after(_ZarimiBumpDragons(SELF))
 
+    # Cosmetic: the text ends "...extra turn.@ ({0} left!)@ (Ready!)" — render
+    # the countdown tail (dragons remaining) while below the 5-Dragon threshold,
+    # and the "(Ready!)" tail once it's met. Mirrors ThreeSpellsProgressUtils.
+    def custom_cardtext(self):
+        segments = self.data.description.split("@")
+        if len(segments) < 3:
+            return self.data.description
+        count = getattr(self, "_dragons_summoned", 0)
+        if count >= 5:
+            return segments[0] + segments[2]
+        return segments[0] + segments[1]
+
+    def cardtext_entity_0(self):
+        return max(0, 5 - getattr(self, "_dragons_summoned", 0))
+
+    tags = {
+        enums.CUSTOM_CARDTEXT: custom_cardtext,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
+
 
 class TOY_388:
     """Chalk Artist"""

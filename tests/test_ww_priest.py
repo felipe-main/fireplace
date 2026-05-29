@@ -241,3 +241,19 @@ def test_repackaged_box_returns_minions_to_owner_hand():
     hand_ids = [c.id for c in p2.hand]
     assert GOLDSHIRE_FOOTMAN in hand_ids
     assert WISP in hand_ids
+
+
+# ---------------------------------------------------------------------------
+# TOY_385 Timewinder Zarimi — cosmetic countdown placeholder
+# ---------------------------------------------------------------------------
+def test_timewinder_zarimi_renders_countdown_and_ready():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    z = game.player1.give("TOY_385")
+    # Below threshold: render the "({0} left!)" tail with the remaining count.
+    assert "@" not in z.description
+    assert "5 left" in z.description
+    assert "Ready" not in z.description
+    # At/above threshold: render the "(Ready!)" tail instead.
+    z._dragons_summoned = 5
+    assert "Ready!" in z.description
+    assert "left" not in z.description

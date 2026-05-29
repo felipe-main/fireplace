@@ -266,3 +266,25 @@ def test_trinket_artist_draws_ds_minion_and_aura():
     drawn_ids = [c.id for c in p1.hand]
     assert "GVG_085" in drawn_ids
     assert "TOY_808" in drawn_ids
+
+
+# ---------------------------------------------------------------------------
+# Cosmetic placeholder rendering
+# ---------------------------------------------------------------------------
+def test_crafters_aura_renders_duration():
+    # "Lasts @ turns" -> the @ resolves to the fixed 3-turn duration.
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    aura = game.player1.give("TOY_808")
+    assert "@" not in aura.description
+    assert "3 turns" in aura.description
+
+
+def test_wind_up_enforcer_renders_copy_count():
+    # "Summon @ |4(copy, copies)" -> @ is the copy count, plural picked off it.
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    w = game.player1.give("TOY_880")
+    assert "@" not in w.description
+    assert "Summon 1" in w.description and "copy of this minion" in w.description
+    assert "copies" not in w.description
+    w._windup_copies = 2
+    assert "Summon 2" in w.description and "copies of this minion" in w.description

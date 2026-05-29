@@ -164,6 +164,12 @@ class TOY_808:
     # At the end of your turn, summon a random 6-Cost minion. Lasts @ turns.
     play = Buff(CONTROLLER, "TOY_808e")
 
+    # Cosmetic: the printed "@" is the fixed 3-turn duration.
+    def custom_cardtext(self):
+        return self.data.description.replace("@", "3")
+
+    tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
+
 
 @custom_card
 class TOY_808e:
@@ -291,6 +297,22 @@ class TOY_880:
     # Tradeable. Battlecry: Summon @ copies of this minion. (Trade to upgrade!)
     play = _WindUpSummon(SELF)
     trade = _WindUpUpgrade(SELF)
+
+    # Cosmetic: "@" is the current copy count (1 base, +1 per Trade), and the
+    # "|4(copy, copies)" directive picks singular vs plural off that count.
+    def custom_cardtext(self):
+        import re
+
+        count = getattr(self, "_windup_copies", 1)
+        text = self.data.description.replace("@", str(count))
+        text = re.sub(
+            r"\|\d+\(([^,]*),\s*([^)]*)\)",
+            lambda m: m.group(1) if count == 1 else m.group(2),
+            text,
+        )
+        return text
+
+    tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
 
 
 class TOY_882:

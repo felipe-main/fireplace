@@ -1,35 +1,23 @@
 from ..utils import *
 
-
-##
-# The eight "random bonus effect" enchants (shared Deepholm/Showdown pool).
-# Each grants +3/+3 and one keyword. Reused from the Showdown Chameleon
-# pool (WW_810t1e1..WW_810t8e1). Iridescent Gyreworm hands a random one of
-# these to each friendly minion on death.
-_neutral_BONUS_EFFECTS = (
-    "WW_810t1e1",  # +3/+3, Divine Shield
-    "WW_810t2e1",  # +3/+3, Taunt
-    "WW_810t3e1",  # +3/+3, Rush
-    "WW_810t4e1",  # +3/+3, Windfury
-    "WW_810t5e1",  # +3/+3, Stealth
-    "WW_810t6e1",  # +3/+3, Poisonous
-    "WW_810t7e1",  # +3/+3, Lifesteal
-    "WW_810t8e1",  # +3/+3, Reborn
-)
+from ._bonus import roll_bonus_effects
 
 
 class _GyrewormBonusEffects(TargetedAction):
     """Iridescent Gyreworm deathrattle helper. Gives EACH friendly minion an
-    independently-rolled random bonus effect (one of the eight enchants). A
-    single Buff(FRIENDLY_MINIONS, RandomID(...)) would roll one enchant and
-    stamp the same one on everybody, so we iterate and roll per minion."""
+    independently-rolled random bonus effect from the keyword-only pool
+    (Taunt, Windfury, Divine Shield, Poisonous, Elusive, Rush, Lifesteal,
+    Reborn) — no stat change. SetTags per minion so each rolls independently.
+
+    (The Showdown "Chameleon" enchants WW_810t*e1 are NOT reused: they add
+    +3/+3 AND a spurious "Deathrattle: Summon a Chameleon".)"""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         for minion in list(target.field):
-            enchant = source.game.random.choice(_neutral_BONUS_EFFECTS)
-            source.game.cheat_action(source, [Buff(minion, enchant)])
+            tags = roll_bonus_effects(source.game.random, 1)
+            source.game.cheat_action(source, [SetTags(minion, tags)])
 
 
 class _TherazaneDoubleElementals(TargetedAction):

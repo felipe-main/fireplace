@@ -1,5 +1,55 @@
 from ..utils import *
 
+from hearthstone.enums import CardType, Zone
+
+
+class _PendantDiscover(TargetedAction):
+	"""Pendant of Earth — a faithful "Discover from your deck": offer up to 3
+	DISTINCT deck minions (as preview copies), then move the chosen card's
+	real deck copy to hand while the unchosen candidates stay in the deck (a
+	real Discover removes nothing it did not pick). The prior GenericChoice
+	approach discarded the unchosen deck cards and could offer < 3 distinct
+	minions."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ctrl = source.controller
+		seen = set()
+		distinct = []
+		for c in ctrl.deck:
+			if c.type == CardType.MINION and c.id not in seen:
+				seen.add(c.id)
+				distinct.append(c)
+		if not distinct:
+			return
+		n = min(3, len(distinct))
+		picks = source.game.random.sample(distinct, n)
+		offered = [ctrl.card(c.id, source=source) for c in picks]
+		choice = Choice(ctrl, offered).then(
+			_PendantPick(Choice.PLAYER, Choice.CARDS, Choice.CARD)
+		)
+		source.game.queue_actions(source, [choice])
+
+
+class _PendantPick(TargetedAction):
+	"""Choose-callback: move a real deck card matching the picked id to hand
+	(others stay in the deck), then gain Armor equal to its Cost."""
+
+	PLAYER = ActionArg()
+	CARDS = ActionArg()
+	CARD = ActionArg()
+
+	def do(self, source, player, cards, picked):
+		if isinstance(picked, list):
+			picked = picked[0] if picked else None
+		if picked is None:
+			return
+		real = next((c for c in player.deck if c.id == picked.id), None)
+		if real is not None:
+			real.zone = Zone.HAND
+		source.game.cheat_action(source, [GainArmor(player.hero, picked.cost)])
+
 
 ##
 # Spells
@@ -39,12 +89,9 @@ class DEEP_026:
 	"""Pendant of Earth"""
 
 	# Discover a minion from your deck. Gain Armor equal to its Cost.
-	# Discover-from-deck follows the engine convention (core priest
-	# CS3_028): a GenericChoice over up-to-3 distinct deck minions; the
-	# chosen one moves to hand. Armor gained reads the chosen card's Cost.
-	play = GenericChoice(
-		CONTROLLER, DeDuplicate(RANDOM(FRIENDLY_DECK + MINION, 3))
-	).then(GainArmor(FRIENDLY_HERO, COST(GenericChoice.CARD)))
+	# Offers up to 3 distinct deck minions; the chosen card moves to hand and
+	# the unchosen candidates remain in the deck. Armor = the chosen Cost.
+	play = _PendantDiscover(CONTROLLER)
 
 
 ##

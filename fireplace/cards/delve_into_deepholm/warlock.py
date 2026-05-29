@@ -55,6 +55,33 @@ class DEEP_031:
     )
 
 
+class _Soulfreeze(TargetedAction):
+    """Freeze the target minion and its board neighbors, then deal damage to
+    the controller's hero equal to the number ACTUALLY Frozen. Immune minions
+    cannot be Frozen, so they are neither frozen nor counted (the self-damage
+    must equal the number Frozen, not the size of the selection)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        field = list(target.controller.field)
+        if target not in field:
+            return
+        idx = field.index(target)
+        group = [target]
+        if idx > 0:
+            group.append(field[idx - 1])
+        if idx < len(field) - 1:
+            group.append(field[idx + 1])
+        frozen = [m for m in group if not getattr(m, "immune", False)]
+        for m in frozen:
+            source.game.cheat_action(source, [Freeze(m)])
+        if frozen:
+            source.game.cheat_action(
+                source, [Hit(source.controller.hero, len(frozen))]
+            )
+
+
 class DEEP_032:
     """Soulfreeze"""
 
@@ -64,7 +91,4 @@ class DEEP_032:
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
-    play = (
-        Freeze(TARGET | TARGET_ADJACENT),
-        Hit(FRIENDLY_HERO, Count(TARGET | TARGET_ADJACENT)),
-    )
+    play = _Soulfreeze(TARGET)

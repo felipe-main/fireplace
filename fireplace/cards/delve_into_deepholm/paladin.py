@@ -1,5 +1,7 @@
 from ..utils import *
 
+from ._bonus import roll_bonus_effects
+
 
 ##
 # Custom actions / helpers
@@ -8,38 +10,18 @@ from ..utils import *
 class _KaleidosaurBonusEffects(TargetedAction):
     """Fossilized Kaleidosaur — gain two random *distinct* bonus effects.
 
-    The eight bonus effects are the standard keyword pool: Divine Shield,
-    Taunt, Rush, Windfury, Stealth, Poisonous, Lifesteal, Reborn. We pick
-    two distinct keywords and stamp them on this minion.
-
-    These keywords must be applied with SetTags, not a tag-only Buff
-    enchant: DIVINE_SHIELD / REBORN / STEALTH are stored as direct
-    instance attributes on Minion (not aggregated from enchant tags), so a
-    Buff enchant carrying GameTag.DIVINE_SHIELD never flips card.divine_shield
-    nor absorbs damage. SetTags writes the tags directly and is how the
-    engine grants these keywords elsewhere (cf. Darkmoon Faire paladin).
+    Bonus effects are the eight-keyword pool (Taunt, Windfury, Divine Shield,
+    Poisonous, Elusive, Rush, Lifesteal, Reborn) shared with Iridescent
+    Gyreworm — keyword-only, no stat change. Applied via SetTags because
+    DIVINE_SHIELD / REBORN / the CANT_BE_TARGETED ("Elusive") tags are direct
+    instance state, not aggregated from enchant tags.
     """
 
     TARGET = ActionArg()
 
-    _BONUS_KEYWORDS = (
-        GameTag.DIVINE_SHIELD,
-        GameTag.TAUNT,
-        GameTag.RUSH,
-        GameTag.WINDFURY,
-        GameTag.STEALTH,
-        GameTag.POISONOUS,
-        GameTag.LIFESTEAL,
-        GameTag.REBORN,
-    )
-
     def do(self, source, target):
-        import random
-
-        chosen = random.sample(self._BONUS_KEYWORDS, 2)
-        source.game.cheat_action(
-            source, [SetTags(target, {kw: True for kw in chosen})]
-        )
+        tags = roll_bonus_effects(source.game.random, 2)
+        source.game.cheat_action(source, [SetTags(target, tags)])
 
 
 ##

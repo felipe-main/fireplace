@@ -84,10 +84,15 @@ class _AzeriteMurlocTransform(TargetedAction):
 
     def do(self, source, target):
         ctrl = source.controller
+        # Exclude DORMANT minions, mirroring The Azerite Dragon's selector
+        # (FRIENDLY + ... + MINION - DORMANT); dormant minions are inert and
+        # both Azerite Legendaries leave them alone for consistency.
         targets = [
             c
             for c in (list(ctrl.field) + list(ctrl.hand) + list(ctrl.deck))
-            if c is not source and c.type == CardType.MINION
+            if c is not source
+            and c.type == CardType.MINION
+            and not getattr(c, "dormant", False)
         ]
         from fireplace import cards as _cards
 

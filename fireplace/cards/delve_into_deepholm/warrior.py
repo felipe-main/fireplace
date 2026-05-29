@@ -1,6 +1,17 @@
 from ..utils import *
 
 
+class _FullHealthExactCopy(ExactCopy):
+    """ExactCopy (buffs/enchantments/tags preserved) but the copy spawns at
+    FULL health — "Summon a copy" does not transfer the original's current
+    damage. ExactCopy carries ret.damage = entity.damage; we clear it."""
+
+    def copy(self, source, entity):
+        ret = super().copy(source, entity)
+        ret.damage = 0
+        return ret
+
+
 ##
 # Spells
 
@@ -44,7 +55,9 @@ class DEEP_019:
         PlayReq.REQ_DAMAGED_TARGET: 0,
         PlayReq.REQ_TARGET_TO_PLAY: 0,
     }
-    activate = Summon(CONTROLLER, ExactCopy(TARGET)).then(Dormant(Summon.CARD, 1))
+    activate = Summon(CONTROLLER, _FullHealthExactCopy(TARGET)).then(
+        Dormant(Summon.CARD, 1)
+    )
 
 
 class DEEP_019e:

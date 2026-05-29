@@ -108,10 +108,14 @@ class DEEP_003:
     """Shimmer Shot"""
 
     # Deal $1 damage. Summon a random minion of that Cost.
+    # "That Cost" is the damage actually dealt, which scales with Spell Damage
+    # (Hit on a spell source adds spellpower). SPELL_DAMAGE(1) resolves to the
+    # same spell-damage-adjusted value, so the summoned minion's Cost matches
+    # the damage (e.g. Spell Damage +1 -> deal 2, summon a 2-cost minion).
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
     }
-    play = Hit(TARGET, 1), Summon(CONTROLLER, RandomMinion(cost=1))
+    play = Hit(TARGET, 1), Summon(CONTROLLER, RandomMinion(cost=SPELL_DAMAGE(1)))
 
 
 ##

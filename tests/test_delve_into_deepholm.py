@@ -580,15 +580,18 @@ def _paladin_clear_hand(player):
 
 
 def _paladin_keyword_flags(m):
+    # The eight Deepholm "bonus effects" are keyword-only: Taunt, Windfury,
+    # Divine Shield, Poisonous, Elusive (can't be targeted), Rush, Lifesteal,
+    # Reborn. (Elusive, NOT Stealth.)
     return {
-        "ds": m.divine_shield,
-        "taunt": m.taunt,
-        "rush": m.rush,
-        "wf": m.windfury,
-        "stealth": m.stealthed,
-        "pois": m.poisonous,
-        "ls": m.lifesteal,
-        "reborn": m.reborn,
+        "ds": bool(m.divine_shield),
+        "taunt": bool(m.taunt),
+        "rush": bool(m.rush),
+        "wf": bool(m.windfury),
+        "elusive": bool(m.tags.get(GameTag.CANT_BE_TARGETED_BY_SPELLS)),
+        "pois": bool(m.poisonous),
+        "ls": bool(m.lifesteal),
+        "reborn": bool(m.reborn),
     }
 
 
@@ -672,45 +675,79 @@ def test_deep_paladin_shroomscavate_divine_shield_absorbs_damage():
     assert target.damage == 3
 
 
+def _deep_play_kaleido(game, p):
+    """Clear p's board+hand, refill mana, then play a fresh Kaleidosaur and
+    return it. Re-seed game.random beforehand to control the bonus roll."""
+    for c in p.hand[:]:
+        c.discard()
+    for m in p.field[:]:
+        m.destroy()
+    game.process_deaths()
+    p.used_mana = 0
+    kaleido = p.give("DEEP_033")
+    kaleido.play()
+    return kaleido
+
+
 def test_deep_paladin_fossilized_kaleidosaur_gains_two_distinct_bonus_effects():
     # Battlecry: Gain two random bonus effects. Excavate a treasure.
-    # Drive RNG across many seeds; each play must grant EXACTLY two distinct
-    # keywords from the eight-keyword pool, and excavate exactly once.
+    # Bonus effects are keyword-only (no stat change). Drive the game RNG
+    # across seeds; each play must grant EXACTLY two distinct keywords and
+    # leave the printed 3/4 stats untouched.
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.current_player
     seen_pairs = set()
-    for seed in range(50):
-        random.seed(seed)
-        game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
-        excav_before = game.player1.excavates_this_game
-        hand_before = len(game.player1.hand)
-        kaleido = game.player1.give("DEEP_033")
-        kaleido.play()
+    for s in range(50):
+        game.random.seed(s)
+        excav_before = p.excavates_this_game
+        kaleido = _deep_play_kaleido(game, p)
         flags = _paladin_keyword_flags(kaleido)
         active = sorted(k for k, v in flags.items() if v)
-        assert len(active) == 2, (seed, flags)
+        assert len(active) == 2, (s, flags)
+        # Keyword-only: the printed 3/4 body is unchanged (no +3/+3).
+        assert kaleido.atk == 3 and kaleido.max_health == 4
+        # Excavated exactly once; the treasure is in hand.
+        assert p.excavates_this_game == excav_before + 1
+        assert len(p.hand) == 1
         seen_pairs.add(tuple(active))
-        assert game.player1.excavates_this_game == excav_before + 1
-        assert len(game.player1.hand) == hand_before + 1
-    # Over 50 seeds the RNG should explore more than one distinct pair,
-    # confirming the picker is genuinely random (not a fixed pair).
+    # The RNG explores more than one distinct pair (genuinely random).
     assert len(seen_pairs) > 1
 
 
 def test_deep_paladin_fossilized_kaleidosaur_divine_shield_bonus_is_real():
     # When the Divine Shield bonus is rolled, it must absorb damage (proves
-    # SetTags, not an inert enchant). Force a seed that yields Divine Shield.
-    chosen_seed = None
-    for seed in range(50):
-        random.seed(seed)
-        game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
-        kaleido = game.player1.give("DEEP_033")
-        kaleido.play()
-        if kaleido.divine_shield:
-            chosen_seed = seed
+    # SetTags, not an inert enchant). Find a game.random seed yielding it.
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.current_player
+    kaleido = None
+    for s in range(50):
+        game.random.seed(s)
+        k = _deep_play_kaleido(game, p)
+        if k.divine_shield:
+            kaleido = k
             break
-    assert chosen_seed is not None, "no seed produced a Divine Shield roll"
-    game.queue_actions(game.player1.hero, [Hit(kaleido, 1)])
+    assert kaleido is not None, "no seed produced a Divine Shield roll"
+    game.queue_actions(p.hero, [Hit(kaleido, 1)])
     assert kaleido.damage == 0
     assert kaleido.divine_shield is False
+
+
+def test_deep_bonus_effects_pool_is_keyword_only_with_elusive():
+    # The shared bonus-effect pool is keyword-only (no ATK/HEALTH) and uses
+    # Elusive (can't be targeted), not Stealth, and not the Chameleon enchants.
+    from fireplace.cards.delve_into_deepholm._bonus import (
+        BONUS_EFFECTS, roll_bonus_effects,
+    )
+    import random as _random
+    assert len(BONUS_EFFECTS) == 8
+    flat = [k for spec in BONUS_EFFECTS for k in spec]
+    assert GameTag.ATK not in flat and GameTag.HEALTH not in flat
+    assert GameTag.CANT_BE_TARGETED_BY_SPELLS in flat
+    assert GameTag.CANT_BE_TARGETED_BY_HERO_POWERS in flat
+    assert GameTag.STEALTH not in flat
+    rng = _random.Random(0)
+    pairs = {frozenset(roll_bonus_effects(rng, 2).items()) for _ in range(50)}
+    assert len(pairs) > 1
 
 
 # ===================== priest =====================
@@ -1163,11 +1200,13 @@ def test_deep_warrior_burning_heart_kills_no_buff():
 
 
 def test_deep_warrior_crimson_expanse_dormant_copy():
-    # Choose a damaged minion. Summon an exact copy of it that goes Dormant
-    # for one turn.
+    # Choose a damaged minion. Summon a copy of it that goes Dormant for one
+    # turn. "Summon a copy" enters at FULL health — the original's current
+    # damage is NOT transferred.
     game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1 = game.player1
-    victim = p1.summon("CS2_182"); victim.max_health = 8; victim.damage = 2
+    victim = p1.summon("CS2_182")  # Chillwind Yeti 4/5
+    victim.damage = 2  # damaged 4/5 (now at 3 health) -> valid target
     loc = p1.give("DEEP_019")
     loc.play()
     assert p1.location is not None
@@ -1181,10 +1220,10 @@ def test_deep_warrior_crimson_expanse_dormant_copy():
     copy = copies[0]
     assert copy.dormant
     assert copy.dormant_turns == 1
-    # Exact copy: stats + current damage preserved.
+    # Full-health copy: base stats preserved, original's 2 damage NOT copied.
     assert copy.atk == 4
     assert copy.max_health == 5
-    assert copy.damage == 2
+    assert copy.damage == 0
 
 
 def test_deep_warrior_deepminer_brann_highlander_grants_double():
@@ -1241,10 +1280,17 @@ import pytest
 from hearthstone.enums import CardClass, GameTag, Race, CardType, Zone
 
 
-_neutral_BONUS = {
-    "WW_810t1e1", "WW_810t2e1", "WW_810t3e1", "WW_810t4e1",
-    "WW_810t5e1", "WW_810t6e1", "WW_810t7e1", "WW_810t8e1",
-}
+# The eight keyword-only bonus effects (Elusive = two CANT_BE_TARGETED tags).
+_DEEP_BONUS_EFFECT_SETS = [
+    {GameTag.TAUNT},
+    {GameTag.WINDFURY},
+    {GameTag.DIVINE_SHIELD},
+    {GameTag.POISONOUS},
+    {GameTag.CANT_BE_TARGETED_BY_SPELLS, GameTag.CANT_BE_TARGETED_BY_HERO_POWERS},
+    {GameTag.RUSH},
+    {GameTag.LIFESTEAL},
+    {GameTag.REBORN},
+]
 
 
 def test_deep_neutral_stone_drake_untargetable():
@@ -1293,6 +1339,9 @@ def test_deep_neutral_shale_spider_no_draw_without_elemental():
 
 def test_deep_neutral_gyreworm_gives_each_minion_a_bonus_effect():
     # DEEP_035: Deathrattle: Give each of your minions a random bonus effect.
+    # Bonus effects are keyword-only: each friendly minion gains exactly ONE
+    # of the eight keywords, with NO stat change and NO attached enchant (the
+    # old impl reused the Showdown Chameleon +3/+3 "summon a Chameleon" pool).
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     p = game.player1
     m1 = p.summon("CS2_182")  # Chillwind Yeti 4/5
@@ -1301,12 +1350,15 @@ def test_deep_neutral_gyreworm_gives_each_minion_a_bonus_effect():
     gw.destroy()
     game.process_deaths()
     for m in (m1, m2):
-        ench_ids = [b.id for b in m.buffs]
-        assert len(ench_ids) == 1
-        assert ench_ids[0] in _neutral_BONUS
-        # Every bonus enchant is exactly +3/+3.
-        assert m.atk == 7
-        assert m.health == 8
+        # Keyword-only: stats unchanged, no enchant stamped on the minion.
+        assert m.atk == 4 and m.max_health == 5
+        assert m.buffs == []
+        # Exactly one of the eight bonus-effect keyword sets is present.
+        present = [
+            s for s in _DEEP_BONUS_EFFECT_SETS
+            if all(m.tags.get(t) for t in s)
+        ]
+        assert len(present) == 1, [t.name for s in present for t in s]
 
 
 def test_deep_neutral_therazane_doubles_hand_and_deck_elementals():
@@ -1486,3 +1538,95 @@ def test_deep_excavate_DEEP_999t5_azerite_murloc():
         assert transformed.cost == 1
     # The Azerite Murloc itself (5/5 base) is untouched.
     assert (murloc.atk, murloc.health) == (5, 5)
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix regression tests (Tier-1)
+# ---------------------------------------------------------------------------
+
+def test_deep_hunter_shimmer_shot_summon_cost_scales_with_spell_damage():
+    # "Deal $1 damage. Summon a random minion of that Cost." The summoned
+    # minion's Cost must equal the spell-damage-scaled damage dealt, not a
+    # hardcoded 1. With Spell Damage +2: deal 3, summon a 3-cost minion.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.current_player
+    p.summon("CS2_142")  # Kobold Geomancer, Spell Damage +1
+    p.summon("CS2_142")  # +1 more -> +2 total
+    target = p.opponent.summon("CS2_186")  # War Golem 7/7
+    target.max_health = 20
+    target.damage = 0
+    before = {id(m) for m in p.field}
+    p.give("DEEP_003").play(target=target)
+    assert target.damage == 3  # 1 + 2 spell damage
+    summoned = [m for m in p.field if id(m) not in before]
+    assert len(summoned) == 1
+    assert summoned[0].data.cost == 3  # cost matches the damage dealt
+
+
+def test_deep_priest_pendant_of_earth_leaves_unchosen_in_deck():
+    # "Discover a minion from your deck. Gain Armor equal to its Cost."
+    # Offers up to 3 distinct deck minions; only the chosen one moves to hand,
+    # the others STAY in the deck. Armor = the chosen card's Cost.
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.current_player
+    for c in list(p.deck):
+        c.discard()
+    deck_ids = ["CS2_182", "CS2_186", "CS2_222"]  # 3 distinct minions
+    for cid in deck_ids:
+        cc = p.card(cid)
+        cc.controller = p
+        cc.zone = Zone.DECK
+    armor0 = p.hero.armor
+    p.give("DEEP_026").play()
+    assert p.choice is not None
+    offered = list(p.choice.cards)
+    assert len(offered) == 3  # three DISTINCT deck minions offered
+    assert len({c.id for c in offered}) == 3
+    chosen = offered[0]
+    chosen_cost = chosen.cost
+    p.choice.choose(chosen)
+    # Chosen moved to hand; exactly one card left the deck; others remain.
+    assert chosen.id in [c.id for c in p.hand]
+    assert len(p.deck) == 2
+    remaining = sorted(c.id for c in p.deck)
+    assert remaining == sorted(i for i in deck_ids if i != chosen.id)
+    assert p.hero.armor == armor0 + chosen_cost
+
+
+def test_deep_warlock_soulfreeze_immune_neighbor_not_counted():
+    # "Freeze a minion and its neighbors. Deal damage to your hero equal to
+    # the number Frozen." An Immune neighbor cannot be Frozen, so it is
+    # neither frozen nor counted.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p = game.current_player
+    left = p.opponent.summon("CS2_182")
+    mid = p.opponent.summon("CS2_182")
+    right = p.opponent.summon("CS2_182")
+    left.tags[GameTag.IMMUNE] = True
+    assert left.immune
+    hp0 = p.hero.health
+    p.give("DEEP_032").play(target=mid)
+    assert mid.frozen and right.frozen
+    assert not left.frozen          # Immune -> not frozen
+    assert p.hero.health == hp0 - 2  # only 2 actually frozen
+
+
+def test_deep_demonhunter_shadestone_skulker_returns_weapon_destroying_second():
+    # Once-over guard: if a different weapon is equipped when the Skulker dies,
+    # the borrowed weapon returns and the equipped one is destroyed — faithful
+    # to Hearthstone's one-weapon rule.
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p = game.current_player
+    war_axe = p.give("CS2_106")  # Fiery War Axe 3/2
+    war_axe.play()
+    skulker = p.give("DEEP_012")
+    skulker.play()
+    assert p.weapon is None and skulker.atk == 4  # took the war axe
+    reaper = p.give("CS2_112")  # Arcanite Reaper 5/2
+    reaper.play()
+    assert p.weapon is reaper
+    skulker.destroy()
+    game.process_deaths()
+    # Borrowed war axe returns; the equipped reaper is destroyed (one-weapon).
+    assert p.weapon is war_axe
+    assert reaper.zone == Zone.GRAVEYARD

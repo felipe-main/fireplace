@@ -249,6 +249,11 @@ def test_caricature_artist_draws_costly_minion():
     assert drawn.cost >= 5 and drawn.type == CardType.MINION
     # Caricature leaves hand (-1) and draws the War Golem (+1) -> net unchanged.
     assert len(game.player1.hand) == pre_hand
+    # "Give it a funny mustache!" is purely cosmetic in HS: the TOY_391e
+    # enchant attaches but carries no stats, so the drawn minion keeps its
+    # natural 7/7/7 (and its cost).
+    assert any(b.id == "TOY_391e" for b in drawn.buffs)
+    assert drawn.atk == 7 and drawn.max_health == 7 and drawn.cost == 7
 
 
 # TOY_509 Wind-Up Musician — 5/5 Tradeable; Battlecry: Deal @ damage (starts

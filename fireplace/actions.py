@@ -764,6 +764,7 @@ class Play(GameAction):
                 player.elemental_played_this_turn += 1
         elif card.type == CardType.SPELL:
             player.spells_played_this_game += 1
+            player.spells_played_this_turn += 1
             # TITANS — Primus Runes of Frost: consume one-shot Spell Damage
             # boost. The spell already saw it via get_spell_damage; reset now.
             player.next_spell_spellpower = 0

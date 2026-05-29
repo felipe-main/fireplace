@@ -486,6 +486,8 @@ class BaseGame(Entity):
             player.azerite_elemental_streak = 0
         player.elemental_played_last_turn = player.elemental_played_this_turn
         player.elemental_played_this_turn = 0
+        player.spells_played_last_turn = player.spells_played_this_turn
+        player.spells_played_this_turn = 0
         player.hero_health_changed_this_turn = 0
         # Reset accumulated opponent-turn-damage counter at start of own turn.
         player.damage_taken_on_opponents_turn = 0

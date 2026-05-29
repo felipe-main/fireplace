@@ -4501,9 +4501,11 @@ def test_warrior_reinforced_plating():
     card.play()
     assert game.player1.hero.armor == 6
     assert game.player1.excavates_this_game == 1
-    # The excavated tier-1 treasure is now the only card in hand.
+    # The excavated tier-1 treasure is now the only card in hand. (The tier-1
+    # pool gained DEEP_999t1 with the Delve into Deepholm mini-set, so assert
+    # membership in the actual tier-1 pool rather than a WW_001t prefix.)
     assert len(game.player1.hand) == 1
-    assert game.player1.hand[0].id.startswith("WW_001t")
+    assert game.player1.hand[0].id in EXCAVATE_TIERS[1]
 
 
 def test_warrior_misfire_random():

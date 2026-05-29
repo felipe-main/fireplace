@@ -126,6 +126,11 @@ class Player(Entity, TargetableByAuras):
         self.cthun = None
         self.invoke_counter = 0
         self.spells_played_this_game = 0
+        # Per-turn spell counts (mirrors elemental_played_*). last_turn rolls
+        # over in game.begin_turn; used by Aftershocks (DEEP_010) for its
+        # "Costs (2) less if you cast a spell last turn" discount.
+        self.spells_played_this_turn = 0
+        self.spells_played_last_turn = 0
         # Showdown in the Badlands — number of times this player has Excavated
         # this game. Drives the escalating treasure tier (Common -> Rare ->
         # Epic -> class Legendary for excavate classes, then cycles) and is

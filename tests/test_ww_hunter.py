@@ -311,6 +311,12 @@ def test_jungle_gym_one_plus_per_beast():
 
     gym = game.player1.give("TOY_359")
     gym.play()
+    # Location: playing it deals NO damage; the effect fires only on use().
+    assert game.player2.hero.damage == 0
+
+    gym.turn_played = -5
+    gym.cooldown = 0
+    gym.use()
 
     # Printed: 1 base + one per friendly Beast on the BOARD = 3.
     assert game.player2.hero.damage == 3
@@ -324,27 +330,33 @@ def test_jungle_gym_no_beasts_one_hit():
 
     gym = game.player1.give("TOY_359")
     gym.play()
+    assert game.player2.hero.damage == 0  # nothing on play
+
+    gym.turn_played = -5
+    gym.cooldown = 0
+    gym.use()
 
     assert game.player2.hero.damage == 1
 
 
-def test_jungle_gym_counts_beasts_in_hand_and_deck_BUG():
-    # BUG (real_bug): Jungle Gym's "for each friendly Beast" counts beasts in
-    # HAND and DECK, not just on the battlefield. Printed text means beasts
-    # in play only. Here: 0 board beasts but 1 beast in hand + 1 in deck =>
-    # impl deals 1 (base) + 2 (hand/deck beasts) = 3 instead of the correct 1.
-    # Also BUG: the effect fires on PLAY as a battlecry; the printed card is a
-    # Location whose effect should fire on USE/activate. The data `activate`
-    # script is empty, so using the location does nothing.
+def test_jungle_gym_counts_beasts_in_play_only():
+    # Beasts in HAND and DECK must NOT count toward "for each friendly Beast";
+    # only beasts on the battlefield do. Here: 0 board beasts but 1 beast in
+    # hand + 1 in deck => the effect deals exactly 1 (base only).
     game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
-    beast_hand = game.player1.give("NEW1_034")  # Beast in hand
+    game.player1.give("NEW1_034")          # Beast in hand
     beast_deck = game.player1.give("TOY_356")
-    beast_deck.zone = Zone.DECK                  # Beast in deck
+    beast_deck.zone = Zone.DECK            # Beast in deck
     game.player2.hero.max_health = 80
     game.player2.hero.damage = 0
 
     gym = game.player1.give("TOY_359")
     gym.play()
+    assert game.player2.hero.damage == 0  # play does nothing
 
-    # Current (buggy) behaviour: counts the hand + deck beasts.
-    assert game.player2.hero.damage == 3
+    gym.turn_played = -5
+    gym.cooldown = 0
+    gym.use()
+
+    # Beasts in hand/deck are ignored: base hit only.
+    assert game.player2.hero.damage == 1

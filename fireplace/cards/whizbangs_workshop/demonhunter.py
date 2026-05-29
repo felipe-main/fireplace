@@ -132,9 +132,19 @@ class TOY_913:
     """Ci'Cigi"""
 
     # Deathrattle: Get 3 random first-edition Demon Hunter cards (in mint
-    # condition). "first-edition" is flavour — mechanically 3 random Demon
-    # Hunter collectible cards.
-    deathrattle = Give(CONTROLLER, RandomCard(card_class=CardClass.DEMONHUNTER)) * 3
+    # condition). "first-edition" is the load-bearing restriction: the original
+    # Demon Hunter pool — Ashes of Outland (BLACK_TEMPLE) + Demon Hunter
+    # Initiate. "in mint condition" is flavour. is_standard=False so the wild
+    # first-edition sets aren't filtered out in Standard games.
+    deathrattle = Give(
+        CONTROLLER,
+        RandomCard(
+            collectible=True,
+            card_class=CardClass.DEMONHUNTER,
+            card_set=[CardSet.BLACK_TEMPLE, CardSet.DEMON_HUNTER_INITIATE],
+            is_standard=False,
+        ),
+    ) * 3
 
 
 ##

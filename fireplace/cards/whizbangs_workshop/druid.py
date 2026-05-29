@@ -141,9 +141,17 @@ class TOY_800e1:
     # In-data "Sparkling" — your next card this turn costs (X) less, where X is
     # the damage Sparkling Phial dealt (stored as `cost_amount` on apply).
     # Consumed when the next card is played; also a one-turn effect.
+    #
+    # Consume on the NEXT card's ON-play broadcast — the same pattern as
+    # Sandbox Scoundrel (TOY_521e1). `.on()` (not `.after()`) matters: the
+    # ON-play broadcast for Sparkling Phial itself fires BEFORE the phial's
+    # battlecry applies this enchant (actions.py Play.do), so the enchant
+    # cannot catch its own source's play and self-destruct prematurely. The
+    # next card the player plays this turn triggers ON-play with the enchant
+    # already present, so it is consumed after exactly one discounted card.
     tags = {GameTag.TAG_ONE_TURN_EFFECT: True}
     update = Refresh(FRIENDLY_HAND, {GameTag.COST: -Attr(SELF, "cost_amount")})
-    events = Play(CONTROLLER).after(Destroy(SELF))
+    events = Play(CONTROLLER).on(Destroy(SELF))
 
 
 # Reduce the Cost and Attack of minions in your deck by (1).

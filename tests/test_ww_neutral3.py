@@ -82,12 +82,10 @@ def test_workshop_janitor_with_location_draws_2():
     pre = len(game.player1.hand)
     janitor = game.player1.give("TOY_891")
     janitor.play()
-    # BUG: printed text draws 2 cards when you control a location, but the
-    # Count(IN_PLAY + FRIENDLY + LOCATION_CARD) selector never sees the
-    # location because Player.entities (player.py:483) does not yield
-    # self.location -> the battlecry condition is always False and no cards
-    # are drawn. Correct behaviour: hand == pre + 2.
-    assert len(game.player1.hand) == pre  # current (buggy) behaviour
+    # Controlling a location, the battlecry draws 2 cards. Player.entities now
+    # yields self.location, so Count(IN_PLAY + FRIENDLY + LOCATION_CARD) sees
+    # the played location and the condition fires.
+    assert len(game.player1.hand) == pre + 2
 
 
 def test_workshop_janitor_no_location_no_draw():

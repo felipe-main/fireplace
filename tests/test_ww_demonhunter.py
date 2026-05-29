@@ -1,6 +1,12 @@
 from utils import *
 
-from hearthstone.enums import CardClass, CardType, Race, Zone, GameTag
+from hearthstone.enums import CardClass, CardSet, CardType, Race, Zone, GameTag
+
+import fireplace.cards as cards_module
+
+# First-edition Demon Hunter pool = Ashes of Outland (BLACK_TEMPLE) +
+# Demon Hunter Initiate.
+FIRST_EDITION_DH_SETS = {CardSet.BLACK_TEMPLE, CardSet.DEMON_HUNTER_INITIATE}
 
 
 # ---------------------------------------------------------------------------
@@ -352,7 +358,13 @@ def test_toy_913_cicigi_deathrattle_three_dh_cards():
     cici = game.player1.summon("TOY_913")
     pre = len(game.player1.hand)
     cici.destroy()
+    # Exactly 3 cards added.
     assert len(game.player1.hand) == pre + 3
     new = game.player1.hand[-3:]
+    valid_sets = {int(s) for s in FIRST_EDITION_DH_SETS}
     for c in new:
-        assert c.card_class == CardClass.DEMONHUNTER
+        # Each card is a Demon Hunter card...
+        assert CardClass.DEMONHUNTER in c.data.classes
+        # ...and comes from the first-edition pool (Ashes of Outland /
+        # Demon Hunter Initiate), not any modern DH set.
+        assert int(cards_module.db[c.id].card_set) in valid_sets

@@ -91,7 +91,7 @@ class TOY_828:
     """Amateur Puppeteer"""
 
     tags = {GameTag.TAUNT: True}
-    deathrattle = Buff(FRIENDLY_HAND + UNDEAD, "TOY_828e4", atk=2, health=2)
+    deathrattle = Buff(FRIENDLY_HAND + UNDEAD, "TOY_828e4", atk=2, max_health=2)
 
 
 # Mini, Taunt. Deathrattle: Give Undead in your hand +2/+2.
@@ -99,11 +99,12 @@ class TOY_828t:
     """Amateur Puppeteer"""
 
     tags = {GameTag.TAUNT: True}
-    deathrattle = Buff(FRIENDLY_HAND + UNDEAD, "TOY_828e4", atk=2, health=2)
+    deathrattle = Buff(FRIENDLY_HAND + UNDEAD, "TOY_828e4", atk=2, max_health=2)
 
 
 # Battlecry: Discover a 5, 3, and 1-Cost minion to stitch to this.
-# Deathrattle: Summon the 5-Cost minion.
+# Deathrattle: Summon the 5-Cost minion (which summons the 3-Cost, which
+# summons the 1-Cost — the full stitch chain).
 class _StitchensewStore(TargetedAction):
     """Record one stitched minion id and re-queue the next Discover in the
     descending-cost sequence (5 → 3 → 1). The 5-Cost pick (first) is also
@@ -158,13 +159,22 @@ class _StitchensewDiscover(TargetedAction):
 
 
 class _StitchensewSummon(TargetedAction):
+    """Deathrattle: summon the stitched 5-Cost minion, which in turn summons
+    the 3-Cost, which in turn summons the 1-Cost (the in-game stitch chain).
+    We materialise the whole chain here in descending-cost order so the final
+    board state matches live Hearthstone."""
+
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        five = getattr(source, "_stitched_five", None)
-        if five:
-            source.game.cheat_action(source, [Summon(ctrl, five)])
+        stitched = list(getattr(source, "_stitched", []))
+        if not stitched:
+            five = getattr(source, "_stitched_five", None)
+            stitched = [five] if five else []
+        for cid in stitched:
+            if cid:
+                source.game.cheat_action(source, [Summon(ctrl, cid)])
 
 
 class TOY_830:
@@ -253,7 +263,7 @@ class TOY_825:
     """Lesser Spinel Spellstone"""
 
     progress_total = 4
-    play = Buff(FRIENDLY_HAND + UNDEAD, "TOY_825e", atk=1, health=1)
+    play = Buff(FRIENDLY_HAND + UNDEAD, "TOY_825e", atk=1, max_health=1)
     reward = Morph(SELF, "TOY_825t")
     progress = _spellstone_progress
     clear_progress = _spellstone_clear
@@ -264,7 +274,7 @@ class TOY_825t:
     """Spinel Spellstone"""
 
     progress_total = 4
-    play = Buff(FRIENDLY_HAND + UNDEAD, "TOY_825e2", atk=2, health=2)
+    play = Buff(FRIENDLY_HAND + UNDEAD, "TOY_825e2", atk=2, max_health=2)
     reward = Morph(SELF, "TOY_825t2")
     progress = _spellstone_progress
     clear_progress = _spellstone_clear
@@ -274,7 +284,7 @@ class TOY_825t:
 class TOY_825t2:
     """Greater Spinel Spellstone"""
 
-    play = Buff(FRIENDLY_HAND + UNDEAD, "TOY_825e3", atk=3, health=3)
+    play = Buff(FRIENDLY_HAND + UNDEAD, "TOY_825e3", atk=3, max_health=3)
 
 
 # Give all minions "Deathrattle: Deal 1 damage to all minions."

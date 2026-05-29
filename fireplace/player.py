@@ -119,6 +119,13 @@ class Player(Entity, TargetableByAuras):
         self.cards_drawn_this_turn = 0
         self.cards_played_this_turn = 0
         self.cards_played_this_game = CardList()
+        # Every spell this player has CAST this game — both played from hand
+        # AND cast by other effects (Yogg in the Box, random/triggered casts,
+        # another Orb, …). cards_played_this_game only records hand-plays, so
+        # effect-cast spells need this separate ledger. Appended in Play.do
+        # (spell branch) and in CastSpell.do. Used by The Galactic Projection
+        # Orb (TOY_378) to recast a spell of each Cost you've cast.
+        self.spells_cast_this_game = CardList()
         self.hero_power_damage_this_game = 0
         self.spent_mana_on_spells_this_game = 0
         self.healed_this_game = 0

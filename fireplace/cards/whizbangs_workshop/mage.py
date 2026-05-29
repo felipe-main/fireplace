@@ -33,7 +33,11 @@ class _GalacticOrbRecast(TargetedAction):
     def do(self, source, target):
         ctrl = target
         by_cost = {}
-        for c in list(ctrl.cards_played_this_game):
+        # Snapshot the cast ledger BEFORE recasting — each CastSpell below
+        # appends to spells_cast_this_game, and we must not feed the Orb's
+        # own recasts back into its cost buckets. The Orb itself is not yet
+        # in the ledger (Play.do appends spells AFTER queuing the battlecry).
+        for c in list(ctrl.spells_cast_this_game):
             if c.type != CardType.SPELL:
                 continue
             by_cost.setdefault(c.cost or 0, []).append(c.id)

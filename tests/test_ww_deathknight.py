@@ -94,12 +94,12 @@ def test_amateur_puppeteer_deathrattle_buffs_undead_in_hand():
     puppeteer = game.player1.summon("TOY_828")
     puppeteer.destroy()
     game.process_deaths()
+    # Printed text gives the Undead in hand +2/+2 (Buff uses max_health=2 so
+    # GameTag.HEALTH -> the `max_health` attribute is applied correctly).
     assert undead.atk == pre_atk + 2
-    # BUG (real_bug): printed text gives +2/+2, but the impl passes health=2
-    # to Buff() instead of max_health=2. GameTag.HEALTH maps to the
-    # `max_health` attribute, so the health half of the buff is silently
-    # dropped — the Undead only gains +2/+0. Correct behaviour: +2/+2.
-    assert undead.health == pre_health + 0
+    assert undead.health == pre_health + 2
+    # Non-Undead card in hand is unaffected.
+    assert "TOY_828e4" not in [e.id for e in nonundead.buffs]
 
 
 # ---------------------------------------------------------------------------
@@ -175,10 +175,9 @@ def test_lesser_spellstone_buffs_only_undead_in_hand():
     stone = game.player1.give("TOY_825")
     stone.play()
     assert undead.atk == u_atk + 1
-    # BUG (real_bug): printed text is +1/+1, but Buff() is called with
-    # health=1 instead of max_health=1, so the health half is dropped.
-    # Correct behaviour: undead.health == u_health + 1.
-    assert undead.health == u_health + 0
+    # Printed text is +1/+1; Buff() uses max_health=1 so GameTag.HEALTH maps to
+    # the `max_health` attribute and the health half applies correctly.
+    assert undead.health == u_health + 1
     assert nonundead.atk == n_atk
     assert nonundead.health == n_health
 
@@ -190,9 +189,8 @@ def test_greater_spellstone_buffs_undead_plus3():
     stone = game.player1.give("TOY_825t2")
     stone.play()
     assert undead.atk == u_atk + 3
-    # BUG (real_bug): printed +3/+3, but Buff(health=3) drops the health half
-    # (should be max_health=3). Correct behaviour: undead.health == u_health + 3.
-    assert undead.health == u_health + 0
+    # Printed +3/+3; Buff(max_health=3) applies the health half correctly.
+    assert undead.health == u_health + 3
 
 
 # ---------------------------------------------------------------------------
@@ -259,9 +257,10 @@ def test_rainbow_seamstress_unholy_gives_rush_only():
 
 # ---------------------------------------------------------------------------
 # TOY_830 Dr. Stitchensew — Battlecry: Discover a 5, 3, and 1-Cost minion to
-# stitch. Deathrattle: Summon the 5-Cost minion.
+# stitch. Deathrattle: Summon the 5-Cost minion (which summons the 3-Cost,
+# which summons the 1-Cost — the full stitch chain).
 # ---------------------------------------------------------------------------
-def test_dr_stitchensew_discovers_three_and_deathrattle_summons_five():
+def test_dr_stitchensew_discovers_three_and_deathrattle_summons_chain():
     game = prepare_game(CardClass.DEATHKNIGHT, CardClass.MAGE)
     doc = game.player1.give("TOY_830")
     doc.play()
@@ -275,13 +274,16 @@ def test_dr_stitchensew_discovers_three_and_deathrattle_summons_five():
     assert picks[0].cost == 5
     assert picks[1].cost == 3
     assert picks[2].cost == 1
-    five_id = picks[0].id
-    pre = len(game.player1.field)
+    five_id, three_id, one_id = picks[0].id, picks[1].id, picks[2].id
+    # Board: only the doc is in play before the deathrattle.
+    assert len(game.player1.field) == 1
     doc.destroy()
     game.process_deaths()
-    # Deathrattle summons the 5-cost minion.
-    assert len(game.player1.field) == pre - 1 + 1  # doc gone, five summoned
-    assert any(m.id == five_id for m in game.player1.field)
+    # Deathrattle summons the full 5 -> 3 -> 1 stitch chain: doc gone, three
+    # stitched minions on board.
+    assert len(game.player1.field) == 3
+    field_ids = sorted(m.id for m in game.player1.field)
+    assert field_ids == sorted([five_id, three_id, one_id])
 
 
 # ---------------------------------------------------------------------------

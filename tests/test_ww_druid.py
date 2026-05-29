@@ -44,12 +44,43 @@ def test_sparkling_phial_next_card_discount():
     fb = game.player1.give(FIREBALL)  # cost 4, in hand before the phial
     phial = game.player1.give("TOY_800")
     phial.play(target=target)
-    # BUG: The "Sparkling" enchant uses Play(CONTROLLER).after(Destroy(SELF)),
-    # which fires on the phial's OWN after-play broadcast (the enchant exists by
-    # then because it is applied in the spell's battlecry). It self-destructs
-    # before the player can play another card, so the discount never applies.
-    # Printed card: the next card this turn should cost 2 less (Fireball -> 2).
-    assert fb.cost == 4  # BUG: should be 2
+    # Printed card: the next card this turn costs 2 less. The enchant uses
+    # Play(CONTROLLER).on(Destroy(SELF)) (like Sandbox Scoundrel), so it does
+    # NOT self-destruct on the phial's own play and the discount applies.
+    assert fb.cost == 2
+
+
+def test_sparkling_phial_discount_consumed_after_one_card():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    target = game.player2.summon(CHILLWIND_YETI)
+    target.max_health = 80
+    target.damage = 0
+    # Two Fireballs in hand; only the first played should be discounted.
+    fb1 = game.player1.give(FIREBALL)  # cost 4
+    fb2 = game.player1.give(FIREBALL)  # cost 4
+    phial = game.player1.give("TOY_800")
+    phial.play(target=target)
+    # Both discounted while the enchant is live.
+    assert fb1.cost == 2
+    assert fb2.cost == 2
+    # Play one card: the enchant is consumed on that play, so the other card
+    # returns to full cost.
+    fb1.play(target=game.player2.hero)
+    assert fb2.cost == 4
+
+
+def test_sparkling_phial_discount_scales_with_spell_damage():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    game.player1.summon(KOBOLD_GEOMANCER)  # Spell Damage +1
+    target = game.player2.summon(CHILLWIND_YETI)
+    target.max_health = 80
+    target.damage = 0
+    fb = game.player1.give(FIREBALL)  # cost 4
+    phial = game.player1.give("TOY_800")
+    phial.play(target=target)
+    # Dealt 3 damage (2 + Spell Damage), so the next card costs 3 less.
+    assert target.damage == 3
+    assert fb.cost == 1
 
 
 # ---------------------------------------------------------------------------
@@ -240,11 +271,10 @@ def test_owlonius_doubles_spell_damage_bonus():
     target.damage = 0
     fb = p.give(FIREBALL)  # base 6 damage
     fb.play(target=target)
-    # BUG: Owlonius is implemented with the engine SPELLPOWER_DOUBLE tag, which
-    # doubles the ENTIRE spell-damage result: (6 base + 1 SP) << 1 = 14.
-    # The printed card only doubles the *bonus from Spell Damage*: the +1 bonus
-    # becomes +2, so a 6-damage Fireball should deal 6 + 2 = 8.
-    assert target.damage == 14  # BUG: should be 8
+    # Owlonius doubles only the *bonus from Spell Damage* (engine
+    # SPELLPOWER_BONUS_DOUBLE): the +1 Spell Damage bonus becomes +2, so a
+    # 6-damage Fireball deals 6 + 2 = 8.
+    assert target.damage == 8
 
 
 # ---------------------------------------------------------------------------

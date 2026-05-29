@@ -72,26 +72,31 @@ def test_card_grader_after_spell_discovers_from_deck():
 # temporary Frost spells.
 def test_sweetened_snowflurry():
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    # Seed RNG so the two random Frost spells are vanilla (don't auto-generate
+    # extra cards on arrival), keeping the hand state exactly predictable.
+    game.random.seed(0)
     for c in list(game.player1.hand):
         c.discard()
     card = game.player1.give("TOY_307")
     card.play()
     # Miniaturize adds the paired 1/1 Mini token (TOY_307t) to hand on play,
-    # plus the battlecry grants 2 frost spells -> 3 cards total.
-    assert len(game.player1.hand) == 3
+    # plus the battlecry grants exactly 2 temporary Frost spells.
     mini = [c for c in game.player1.hand if c.id == "TOY_307t"]
     assert len(mini) == 1
-    spells = [c for c in game.player1.hand if c.type == CardType.SPELL]
-    assert len(spells) == 2
-    for c in spells:
+    assert not mini[0].temporary
+    temp_spells = [c for c in game.player1.hand if c.temporary]
+    assert len(temp_spells) == 2
+    for c in temp_spells:
         assert c.spell_school == SpellSchool.FROST
-        # Both spells are correctly flagged temporary (the card's own job).
-        assert c.temporary
-    # NOTE: the engine's end-of-turn discard loop (actions.py EndTurn.do) iterates
-    # `player.hand` while calling card.discard(), which mutates the list — so when
-    # two temporary cards are adjacent one can be skipped and survive a turn. That
-    # is a pre-existing engine bug (not in TOY_307's script). The card itself
-    # correctly marks both spells temporary, asserted above.
+    # End of turn: BOTH temporary Frost spells are discarded (one-turn cards).
+    # The non-temporary Mini token (TOY_307t) survives.
+    game.end_turn()
+    assert temp_spells[0] not in game.player1.hand
+    assert temp_spells[1] not in game.player1.hand
+    assert [c for c in game.player1.hand if c.temporary] == []
+    assert len([c for c in game.player1.hand if c.id == "TOY_307t"]) == 1
+    # The non-temporary Mini token survives.
+    assert len([c for c in game.player1.hand if c.id == "TOY_307t"]) == 1
 
 
 # TOY_312 Nostalgic Gnome — 4/4 Rush; After this deals exact lethal damage on

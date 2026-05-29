@@ -213,9 +213,10 @@ class TOY_359:
     """Jungle Gym"""
 
     # Deal 1 damage to a random enemy. Repeat for each friendly Beast.
-    # One base hit plus one per friendly Beast on board.
-    play = Hit(RANDOM_ENEMY_CHARACTER, 1) * (
-        Count(FRIENDLY + BEAST + MINION) + 1
+    # Location: the effect fires on USE (activate), never on play. One base
+    # hit plus one per friendly Beast ON THE BATTLEFIELD (in-play only).
+    activate = Hit(RANDOM_ENEMY_CHARACTER, 1) * (
+        Count(FRIENDLY + BEAST + MINION + IN_PLAY) + 1
     )
 
 

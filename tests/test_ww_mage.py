@@ -357,13 +357,16 @@ def test_cross_stitch_survives_no_summon():
 # TOY_378 The Galactic Projection Orb — Recast a random spell of each Cost
 # you've cast this game (targets enemies if possible).
 # ---------------------------------------------------------------------------
+def _both_heroes_tanky(p1, p2):
+    for hero in (p1.hero, p2.hero):
+        hero.max_health = 200
+        hero.damage = 0
+
+
 def test_galactic_orb_recasts_per_cost():
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     p1, p2 = game.player1, game.player2
-    p2.hero.max_health = 200
-    p2.hero.damage = 0
-    p1.hero.max_health = 200
-    p1.hero.damage = 0
+    _both_heroes_tanky(p1, p2)
     # Cast two distinct-cost damage spells at the enemy hero.
     fb = p1.give("CS2_029")  # Fireball, cost 4, 6 dmg
     fb.play(target=p2.hero)
@@ -378,3 +381,67 @@ def test_galactic_orb_recasts_per_cost():
     # Recast Fireball (6) + Frostbolt (3) at enemy hero = +9 more.
     total = 200 - p2.hero.health
     assert total == dmg_before_orb + 9
+
+
+def test_galactic_orb_includes_effect_cast_spells():
+    # Faithful behaviour: the recast pool is every spell you've CAST this
+    # game — including spells cast by other effects, not only the ones
+    # played from hand. Here Fireball (cost 4) is played from hand, while
+    # Frostbolt (cost 2) is cast by an EFFECT (CastSpell), so it never
+    # enters cards_played_this_game. The Orb must still recast a cost-2
+    # spell because spells_cast_this_game records the effect cast.
+    from fireplace.actions import CastSpell
+
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    _both_heroes_tanky(p1, p2)
+
+    def hero_dmg():
+        return (200 - p1.hero.health) + (200 - p2.hero.health)
+
+    fb = p1.give("CS2_029")  # Fireball, cost 4, 6 dmg
+    fb.play(target=p2.hero)
+
+    # Effect-cast a Frostbolt (cost 2, 3 dmg): bypasses Play.do entirely.
+    # CastSpell picks a random target; both heroes are tanky and we count
+    # their combined damage, so the target choice can't skew the totals.
+    fbolt = p1.card("CS2_024")
+    fbolt.zone = Zone.HAND
+    game.queue_actions(p1.hero, [CastSpell(fbolt)])
+
+    # Sanity: the effect cast is NOT recorded as a hand-play, but IS in the
+    # cast ledger that the Orb reads.
+    assert fbolt not in p1.cards_played_this_game
+    cast_costs = sorted({c.cost or 0 for c in p1.spells_cast_this_game})
+    assert cast_costs == [2, 4]
+
+    dmg_before_orb = hero_dmg()
+    assert dmg_before_orb == 9  # Fireball 6 + effect Frostbolt 3
+
+    p1.used_mana = 0
+    orb = p1.give("TOY_378")
+    orb.play()
+    # Orb recasts one cost-4 (Fireball, 6) + one cost-2 (Frostbolt, 3) = +9.
+    # Under the OLD hand-only pool this would be only +6 (no cost-2 bucket).
+    total = hero_dmg()
+    assert total == dmg_before_orb + 9
+
+
+def test_galactic_orb_does_not_recast_itself():
+    # The Orb is itself a 10-Cost spell. It must never feed itself into the
+    # cost-10 bucket (it is appended to the cast ledger only after its own
+    # battlecry has resolved). With no prior spells cast, playing the Orb
+    # recasts nothing.
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    _both_heroes_tanky(p1, p2)
+    assert len(p1.spells_cast_this_game) == 0
+
+    p1.used_mana = 0
+    orb = p1.give("TOY_378")
+    orb.play()
+    # No cost-10 self-recast — both heroes untouched.
+    assert p2.hero.health == 200
+    assert p1.hero.health == 200
+    # After resolution the Orb itself is now logged as a cast spell.
+    assert orb in p1.spells_cast_this_game

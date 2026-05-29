@@ -109,7 +109,8 @@ class TOY_507:
 	"""Fairy Tale Forest"""
 
 	# [x]Draw a <b>Battlecry</b> minion. It costs (1) less.
-	play = Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION + BATTLECRY)).then(
+	# Location: the effect fires only on USE (activate), never on play.
+	activate = Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION + BATTLECRY)).then(
 		Buff(Draw.CARD, "TOY_507e")
 	)
 
@@ -175,6 +176,24 @@ class TOY_504t:
 
 	# <b>Battlecry:</b> Cast {0}.
 	play = _FairyTaleSlimeCast(SELF)
+
+	# Cosmetic: render the {0} placeholder as the remembered spell's name.
+	def custom_cardtext(self):
+		return self.data.description
+
+	def cardtext_entity_0(self):
+		spell_id = getattr(self, "_fairy_tale_spell", None)
+		if not spell_id:
+			return ""
+		from .. import db as _db
+
+		card = _db.get(spell_id)
+		return card.name if card is not None else ""
+
+	tags = {
+		enums.CUSTOM_CARDTEXT: custom_cardtext,
+		GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+	}
 
 
 class TOY_513:

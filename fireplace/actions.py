@@ -796,6 +796,11 @@ class Play(GameAction):
         elif card.type == CardType.SPELL:
             player.spells_played_this_game += 1
             player.spells_played_this_turn += 1
+            # Ledger of every spell cast this game (hand-plays here, effect
+            # casts in CastSpell.do). Appended here — AFTER the battlecry was
+            # queued above — so a spell whose own effect reads this ledger
+            # (e.g. The Galactic Projection Orb) does not see itself.
+            player.spells_cast_this_game.append(card)
             # TITANS — Primus Runes of Frost: consume one-shot Spell Damage
             # boost. The spell already saw it via get_spell_damage; reset now.
             player.next_spell_spellpower = 0
@@ -2726,6 +2731,13 @@ class CastSpell(TargetedAction):
             card.target = target
             card.zone = Zone.PLAY
             log.info("%s cast spell %s target %s", source, card, target)
+            # Record this effect-driven cast in the controller's cast ledger
+            # (hand-plays are recorded in Play.do). CastSpell.do sets the
+            # zone directly and bypasses Play.do's append, so without this an
+            # effect-cast spell (Yogg in the Box, random casts, another Orb)
+            # would never count toward "spells you've cast this game".
+            if card.type == CardType.SPELL:
+                player.spells_cast_this_game.append(card)
             source.game.manager.targeted_action(self, source, card, target)
             source.game.queue_actions(card, [Battlecry(card, card.target)])
             while player.choice:

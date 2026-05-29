@@ -134,30 +134,39 @@ def test_wish_upon_a_star():
 # 3 charges; the effect should fire only when the Location is USED, not when
 # it is played.
 #
-# BUG (real_bug): the impl scripts the effect as `play =` instead of
-# `activate =`. UseLocation falls back to running `play` when no `activate`
-# exists, so the draw fires BOTH on play and on each use. Net result: the
-# Location grants one extra draw (the play-time trigger) that the printed
-# card does not. This test documents the CURRENT (buggy) behaviour: a draw
-# happens immediately on play.
+# Scripted via `activate =`, so the draw fires only on USE, never on play.
 def test_fairy_tale_forest_draws_with_cost_reduction():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
-    # Make the deck contain only a known battlecry minion so the random draw
-    # is deterministic.
+    # Make the deck contain only known battlecry minions so the random draw
+    # is deterministic (all draws yield TOY_503).
     for c in list(game.player1.deck):
         c.zone = Zone.SETASIDE
-    bc = game.player1.give("TOY_503")  # Shining Sentinel (battlecry minion)
-    bc.zone = Zone.DECK
-    base_cost = bc.cost  # 7
+    base_cost = None
+    for _ in range(3):
+        bc = game.player1.give("TOY_503")  # Shining Sentinel (battlecry minion)
+        bc.zone = Zone.DECK
+        base_cost = bc.cost  # 7
 
     loc = game.player1.give("TOY_507")
     loc.play()
 
-    # BUG: drawn at PLAY time (printed card draws only on USE).
+    # Nothing is drawn at play time (printed Location does nothing on play).
+    assert [c for c in game.player1.hand if c.id == "TOY_503"] == []
+
+    # First USE draws exactly one Battlecry minion, costing (1) less.
+    loc.turn_played = -5
+    loc.cooldown = 0
+    loc.use()
     drawn = [c for c in game.player1.hand if c.id == "TOY_503"]
     assert len(drawn) == 1
-    # cost reduced by 1
     assert drawn[0].cost == base_cost - 1
+
+    # Second USE draws a second one (the effect is per-use, not one-shot).
+    loc.cooldown = 0
+    loc.use()
+    drawn = [c for c in game.player1.hand if c.id == "TOY_503"]
+    assert len(drawn) == 2
+    assert all(d.cost == base_cost - 1 for d in drawn)
 
 
 # TOY_503 — Shining Sentinel
@@ -277,3 +286,18 @@ def test_fairy_tale_slime_casts_spell():
     game.player2.hero.damage = 0
     slime.play()
     assert game.player2.hero.damage == 5
+
+
+# TOY_504t — Fairy Tale Slime: cosmetic text rendering.
+# Printed text is "Battlecry: Cast {0}." where {0} is the remembered spell's
+# name. custom_cardtext + cardtext_entity_0 substitute the stored spell name.
+def test_fairy_tale_slime_cardtext_renders_spell_name():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    slime = game.player1.give("TOY_504t")
+    # No spell remembered yet -> {0} renders empty (no leftover placeholder).
+    assert "{0}" not in slime.description
+    # Once a spell is stored, its name fills the {0} slot exactly.
+    slime._fairy_tale_spell = "DS1_233"  # Mind Blast
+    assert slime.description == "<b>Battlecry:</b> Cast Mind Blast."
+    slime._fairy_tale_spell = PYROBLAST  # cost-10 spell
+    assert slime.description == "<b>Battlecry:</b> Cast Pyroblast."

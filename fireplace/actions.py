@@ -3116,6 +3116,20 @@ class Dormant(TargetedAction):
         source.game.manager.targeted_action(self, source, target, amount)
 
 
+class ReopenLocation(TargetedAction):
+    """Perils in Paradise — "reopen" a Location: clear its cooldown so it can
+    be used again immediately (this turn), keeping its remaining durability.
+    No-op if the location has left play (e.g. it ran out of charges)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None or target.zone != Zone.PLAY:
+            return
+        target.cooldown = 0
+        source.game.manager.targeted_action(self, source, target)
+
+
 class SwapDecks(GameAction):
     """
     Swap decks between two players

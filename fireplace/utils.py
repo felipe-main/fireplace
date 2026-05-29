@@ -95,6 +95,19 @@ def rune_cost(card_data) -> tuple[int, int, int]:
     )
 
 
+def tourist_class_of(card_data):
+    """Perils in Paradise — the class a Tourist card unlocks in deckbuilding,
+    or None. Stored in the TOURIST tag as the unlocked class's CardClass value
+    (e.g. Maestra carries TOURIST=9 = WARLOCK)."""
+    val = card_data.tags.get(GameTag.TOURIST, 0)
+    if not val:
+        return None
+    try:
+        return CardClass(val)
+    except ValueError:
+        return None
+
+
 def valid_rune_setups() -> list[tuple[int, int, int]]:
     """Enumerate every legal Death Knight rune setup: triples
     (B, F, U) with B + F + U == 3 and each component in [0, 3]."""
@@ -111,7 +124,8 @@ def fits_setup(card_cost, setup) -> bool:
 
 
 def random_draft(
-    card_class: CardClass, exclude=[], include=[], game=None, rune_setup=None
+    card_class: CardClass, exclude=[], include=[], game=None, rune_setup=None,
+    tourist=None,
 ):
     """
     Return a deck of 30 random cards for the \a card_class.
@@ -121,6 +135,12 @@ def random_draft(
     a random valid setup. Every non-neutral DK card chosen is
     guaranteed to fit under the setup so the resulting deck is
     rune-legal.
+
+    Perils in Paradise — \a tourist: a CardClass unlocked by a Tourist
+    card. When set, the draft also admits that class's cards and
+    force-includes a matching Tourist card so the deck is legal (mirrors
+    how a Tourist unlocks a second class at deckbuilding time). When None,
+    the deck is the usual single class + neutrals.
     """
     import random
     from . import cards
@@ -128,6 +148,17 @@ def random_draft(
 
     deck = list(include)
     collection = []
+
+    # Perils — if a Tourist class is unlocked, force a matching Tourist card
+    # (a `card_class` card whose TOURIST tag unlocks `tourist`) into the deck
+    # so the off-class cards below are legal.
+    if tourist is not None:
+        for cid in cards.db.keys():
+            data = cards.db[cid]
+            if (data.collectible and data.card_class == card_class
+                    and tourist_class_of(data) == tourist):
+                deck.append(cid)
+                break
     # hero = card_class.default_hero
 
     # Whizbang's Workshop — Zilliax Deluxe 3000 assembly. Like the DK rune
@@ -152,7 +183,11 @@ def random_draft(
         if cls.type == CardType.HERO:
             # Heroes are collectible...
             continue
-        if cls.card_class and cls.card_class not in [card_class, CardClass.NEUTRAL]:
+        allowed_classes = [card_class, CardClass.NEUTRAL]
+        if tourist is not None:
+            # Perils — a Tourist unlocks a second class's cards in the deck.
+            allowed_classes.append(tourist)
+        if cls.card_class and cls.card_class not in allowed_classes:
             # Play with more possibilities
             continue
         # Rune-cost filter: only DK class cards have non-zero rune cost

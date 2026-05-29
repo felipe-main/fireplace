@@ -26,6 +26,20 @@ from fireplace.actions import (
 )
 
 
+def test_string_tagged_attrvalue_repr_does_not_crash():
+    """Regression: AttrValue.__repr__ used int(self.tag), which crashed on
+    string-tagged AttrValues (CURRENT_HEALTH, "mana", "durability", ...).
+    A soak game using a lowest-Health selector then died when logging tried
+    to repr the listener. repr must be crash-free for string tags."""
+    from fireplace.dsl.selector import (
+        AttrValue, CURRENT_HEALTH, CURRENT_DURABILITY, CURRENT_MANA,
+    )
+    assert repr(CURRENT_HEALTH) == "<health>"
+    assert repr(CURRENT_DURABILITY) == "<durability>"
+    assert repr(CURRENT_MANA) == "<mana>"
+    assert repr(AttrValue("num_attacks")) == "<num_attacks>"
+
+
 # ---------------------------------------------------------------------------
 # Engine primitive: Excavate
 # ---------------------------------------------------------------------------
@@ -1170,7 +1184,7 @@ def test_hunter_theldurin_with_duplicates():
 
 
 # === merged from test_swib_lock.py ===
-def _resolve_choices(player):
+def _resolve_choices_2(player):
     while player.choice:
         player.choice.choose(player.choice.cards[0])
 
@@ -2684,45 +2698,6 @@ def test_nleg_handcannon_swaps_to_a_bullet_at_turn_start():
 """Showdown in the Badlands — Neutral Rare card tests (WW_* RARE neutrals)."""
 
 
-
-# NOTE: sibling card files in this expansion package are being authored by
-# parallel agents and may be syntactically incomplete while this file is
-# verified in isolation. Pre-stub any sibling module that fails to import so
-# the package star-import does not abort the whole card DB. Our own file
-# (neutral_rare) is always loaded for real. This block is a no-op once every
-# sibling file is valid.
-import sys as _sys
-import types as _types
-
-_PKG = "fireplace.cards.showdown_in_the_badlands"
-_SIBLINGS = [
-    "demonhunter", "druid", "hunter", "mage", "paladin", "priest", "rogue",
-    "shaman", "warlock", "warrior", "neutral", "neutral_common",
-    "neutral_epic", "neutral_legendary",
-]
-# Iteratively stub whichever WIP sibling fails to import, then retry. Our own
-# file (neutral_rare) is never stubbed, so it always loads for real. Once all
-# siblings are valid this loop succeeds on the first pass and stubs nothing.
-_stubbed = set()
-for _ in range(len(_SIBLINGS) + 1):
-    try:
-        __import__(_PKG)
-        break
-    except Exception as _exc:
-        _tb = _exc.__traceback__
-        _bad = None
-        while _tb is not None:
-            _mod = _tb.tb_frame.f_globals.get("__name__", "")
-            if _mod.startswith(_PKG + ".") and not _mod.endswith(".neutral_rare"):
-                _bad = _mod
-            _tb = _tb.tb_next
-        if not _bad or _bad in _stubbed:
-            raise
-        _stubbed.add(_bad)
-        _sys.modules[_bad] = _types.ModuleType(_bad)
-        _sys.modules.pop(_PKG, None)
-
-
 from fireplace.actions import EXCAVATE_TIERS
 
 
@@ -3198,7 +3173,7 @@ def _clear_deck(player):
 	player.cant_fatigue = True
 
 
-def _add_to_deck(player, card_id):
+def _add_to_deck_2(player, card_id):
 	"""Create a card and place it in the deck zone (so deck selectors see
 	it; a bare list .append leaves it in SETASIDE)."""
 	card = player.card(card_id)
@@ -3408,7 +3383,7 @@ def test_priest_benevolent_banker_discovers_from_own_deck():
 	it moves that spell to hand."""
 	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
 	_clear_deck(game.player1)
-	_add_to_deck(game.player1, MOONFIRE)  # a spell
+	_add_to_deck_2(game.player1, MOONFIRE)  # a spell
 	banker = game.player1.give("WW_384")
 	# A freshly-given card IS quickdraw-active (entered hand this turn).
 	# To exercise the no-Quickdraw branch deterministically, backdate the
@@ -3432,7 +3407,7 @@ def test_priest_benevolent_banker_quickdraw_discovers_from_enemy_deck():
 	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
 	_clear_deck(game.player1)
 	_clear_deck(game.player2)
-	_add_to_deck(game.player2, FIREBALL)  # enemy spell
+	_add_to_deck_2(game.player2, FIREBALL)  # enemy spell
 	banker = game.player1.give("WW_384")
 	# Freshly given → quickdraw_active is set; play this turn → quickdraw.
 	assert banker.quickdraw_active is True
@@ -3497,7 +3472,7 @@ def test_priest_elise_summons_4_4_copies_with_no_duplicates():
 	_clear_deck(game.player1)
 	unique_minions = [YETI, OGRE, RAGER, RAPTOR, BOAR]
 	for cid in unique_minions:
-		_add_to_deck(game.player1, cid)
+		_add_to_deck_2(game.player1, cid)
 	elise = game.player1.give("WW_392")
 	elise.play()
 	# Elise herself + 4 summoned copies.
@@ -3516,7 +3491,7 @@ def test_priest_elise_does_nothing_with_duplicates():
 	game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
 	_clear_deck(game.player1)
 	for cid in [YETI, YETI, OGRE]:  # duplicate Yeti
-		_add_to_deck(game.player1, cid)
+		_add_to_deck_2(game.player1, cid)
 	elise = game.player1.give("WW_392")
 	elise.play()
 	field = game.player1.field
@@ -3531,7 +3506,7 @@ THE_COIN = "GAME_005"
 MANA_WYRM = "NEW1_012"  # 1-mana Mage minion (foreign class for a Rogue)
 
 
-def _resolve_choices(player):
+def _resolve_choices_3(player):
     while player.choice:
         player.choice.choose(player.choice.cards[0])
 
@@ -3684,7 +3659,7 @@ def test_rogue_velarok_deceiver_discount_enchant():
     game, rogue, opp = _rogue_game()
     deceiver = rogue.summon("WW_364t")  # has Charge -> can attack immediately
     deceiver.attack(opp.hero)
-    _resolve_choices(rogue)
+    _resolve_choices_3(rogue)
     discovered = rogue.hand[-1]
     base = _cards.db[discovered.id].cost or 0
     assert discovered.cost == max(0, base - 3)
@@ -4133,7 +4108,7 @@ def test_shaman_walking_mountain_has_mega_windfury():
 
 
 # === merged from test_swib_treasure.py ===
-def _resolve_choices(player):
+def _resolve_choices_4(player):
 	while player.choice:
 		player.choice.choose(player.choice.cards[0])
 
@@ -4312,7 +4287,7 @@ def test_treasure_azerite_scorpion_no_excavate():
 	pre = len(game.player1.hand)
 	card = game.player1.give("WW_001t23")
 	card.play()
-	_resolve_choices(game.player1)
+	_resolve_choices_4(game.player1)
 	spells = [c for c in game.player1.hand if c.type == CardType.SPELL]
 	# pre -> give Scorpion (+1) -> play it (-1) -> 4 spells gained (+4) = pre+4.
 	assert len(game.player1.hand) == pre + 4
@@ -4330,7 +4305,7 @@ def test_treasure_azerite_scorpion_excavated_8():
 		c.discard()
 	card = game.player1.give("WW_001t23")
 	card.play()
-	_resolve_choices(game.player1)
+	_resolve_choices_4(game.player1)
 	spells = [c for c in game.player1.hand if c.type == CardType.SPELL]
 	assert len(spells) == 4
 	assert all(c.cost == 0 for c in spells)
@@ -4386,7 +4361,7 @@ def test_treasure_azerite_ox():
 	pre_field = len(game.player1.field)
 	card = game.player1.give("WW_001t27")
 	card.play()
-	_resolve_choices(game.player1)
+	_resolve_choices_4(game.player1)
 	# Ox itself enters the field (+1) plus two 8-Cost minions summoned (+2).
 	assert len(game.player1.field) == pre_field + 3
 	for m in game.player1.field[-2:]:
@@ -4590,3 +4565,821 @@ def test_warrior_battlepickaxe():
     # Play a non-Taunt minion -> unchanged.
     game.player1.give(WISP).play()
     assert game.player1.weapon.durability == 2
+
+
+# ---------------------------------------------------------------------------
+# Audit fix regression tests (Tier-1)
+# ---------------------------------------------------------------------------
+
+# === merged from test_fix_azerite_giant.py (audit fix regression) ===
+"""Regression: Azerite Giant (WW_025) cost discount.
+
+Bug: the "turns in a row you've played an Elemental" streak was only
+advanced by the card's own Hand.events (while it sat in hand), so a streak
+built before the Giant entered hand was ignored. Fixed by tracking the
+streak globally in game._begin_turn (player.azerite_elemental_streak).
+"""
+
+
+
+FIRE_FLY = "UNG_809"  # 1/1/2 Elemental (battlecry adds a 1/2 Elemental token)
+AZERITE_GIANT = "WW_025"  # base cost 8
+
+
+def _end_full_turn_cycle(game):
+    """Advance back to the same player's next turn."""
+    game.end_turn()
+    game.end_turn()
+
+
+def test_fix_azerite_giant_streak_tracked_while_in_deck():
+    """A streak built up BEFORE the Giant is in hand must still discount it."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p = game.player1
+    # Make sure player1 is the active player.
+    if game.current_player is not p:
+        game.end_turn()
+    assert game.current_player is p
+
+    # Turn A: play an Elemental (Giant is NOT yet in hand).
+    game.player1.give(FIRE_FLY).play()
+    _end_full_turn_cycle(game)
+    # After one completed elemental turn, streak == 1.
+    assert p.azerite_elemental_streak == 1
+
+    # Turn B: play another Elemental.
+    game.player1.give(FIRE_FLY).play()
+    _end_full_turn_cycle(game)
+    # Two consecutive completed elemental turns.
+    assert p.azerite_elemental_streak == 2
+
+    # NOW draw the Giant — it should already cost 8 - 2 = 6.
+    giant = game.player1.give(AZERITE_GIANT)
+    assert giant.cost == 6
+
+
+def test_fix_azerite_giant_current_turn_counts_after_playing_elemental():
+    """Playing an Elemental on the same turn the Giant is in hand counts too."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+
+    # Build a 2-turn streak first.
+    game.player1.give(FIRE_FLY).play()
+    _end_full_turn_cycle(game)
+    game.player1.give(FIRE_FLY).play()
+    _end_full_turn_cycle(game)
+    assert p.azerite_elemental_streak == 2
+
+    giant = game.player1.give(AZERITE_GIANT)
+    assert giant.cost == 6  # before playing this turn's elemental
+
+    # Play an Elemental THIS turn — current turn now counts: discount 3 -> cost 5.
+    game.player1.give(FIRE_FLY).play()
+    assert giant.cost == 5
+
+
+def test_fix_azerite_giant_streak_breaks_on_elementless_turn():
+    """A turn with no Elemental resets the streak to zero."""
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p = game.player1
+    if game.current_player is not p:
+        game.end_turn()
+
+    game.player1.give(FIRE_FLY).play()
+    _end_full_turn_cycle(game)
+    assert p.azerite_elemental_streak == 1
+
+    # A turn with NO elemental played.
+    _end_full_turn_cycle(game)
+    assert p.azerite_elemental_streak == 0
+
+    giant = game.player1.give(AZERITE_GIANT)
+    assert giant.cost == 8  # no discount
+
+
+# === merged from test_fix_dh.py (audit fix regression) ===
+def test_fix_dh_snake_eyes_discovers_only_collectible():
+	"""Snake Eyes (WW_400) rolls two dice and Discovers a card of each rolled
+	Cost. The Discover pool must be collectible-only — the old bug used bare
+	RandomCard(cost=...) which leaked non-collectible tokens (Azerite Gem,
+	Spectral Flyer, Misha, etc.) into the offered choices.
+
+	Force a non-doubles roll (3, 5) so we get exactly two Discovers and we know
+	the rolled Costs. Assert every offered card in every Discover is collectible
+	AND matches the rolled Cost exactly."""
+	game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+	player = game.player1
+
+	# Deterministic dice: first two randint calls -> 3 then 5 (no doubles).
+	rolls = iter([3, 5])
+	orig_randint = game.random.randint
+
+	def fake_randint(a, b):
+		if (a, b) == (1, 6):
+			return next(rolls)
+		return orig_randint(a, b)
+
+	game.random.randint = fake_randint
+
+	snake = player.give("WW_400")
+	# Hand size after Snake Eyes leaves hand (it's a Minion going to PLAY),
+	# but before the two Discovers add their picks.
+	hand_before_discovers = len(player.hand) - 1
+	snake.play()
+
+	expected_costs = [3, 5]
+	seen_choice_count = 0
+	while player.choice:
+		choice = player.choice
+		offered = list(choice.cards)
+		# A Discover always offers candidates.
+		assert len(offered) > 0
+		# Every offered card must be collectible — this is the regression guard.
+		for card in offered:
+			assert card.data.collectible is True, (
+				f"non-collectible card {card.id} offered by Snake Eyes Discover"
+			)
+		# Every offered card must match the Cost rolled for this Discover.
+		expected = expected_costs[seen_choice_count]
+		for card in offered:
+			assert card.cost == expected, (
+				f"card {card.id} cost {card.cost} != rolled cost {expected}"
+			)
+		seen_choice_count += 1
+		choice.choose(offered[0])
+
+	# Exactly two Discovers (3 and 5, no doubles bonus).
+	assert seen_choice_count == 2
+	# Both discovered cards were given to hand (Snake Eyes itself went to PLAY).
+	assert len(player.hand) == hand_before_discovers + 2
+
+
+# === merged from test_fix_howdyfin.py (audit fix regression) ===
+"""Regression: Howdyfin (WW_333).
+
+Bug: only triggered on PLAY and gave a single Murloc. Printed card fires
+whenever the hand drops below 3 by ANY means (play OR discard) and refills
+UP TO 3 cards with random Murlocs. Fixed via _HowdyfinRefill looping to 3,
+wired to Play (.after) and Discard (.on) events.
+
+Setup note: clear the hand BEFORE summoning Howdyfin, so the setup discards
+don't themselves trigger the refill (Give does not trigger it; only a card
+leaving hand via play/discard does).
+"""
+
+
+
+WISP = "CS2_231"
+
+
+def _murlocs(p):
+    return [c for c in p.hand if Race.MURLOC in c.races]
+
+
+def _setup(p, n_wisps):
+    """Clear hand (no Howdyfin yet), summon Howdyfin, then Give n wisps
+    (Give does not trigger the refill)."""
+    for c in list(p.hand):
+        c.discard()
+    p.summon("WW_333")
+    for _ in range(n_wisps):
+        p.give(WISP)
+
+
+def test_fix_howdyfin_refills_to_three_on_play():
+    game = prepare_game()
+    p = game.player1
+    _setup(p, 3)
+    assert len(p.hand) == 3
+    assert len(_murlocs(p)) == 0
+    # Play one Wisp -> hand drops to 2 -> Howdyfin refills with one Murloc.
+    p.hand[0].play()
+    assert len(p.hand) == 3
+    assert len(_murlocs(p)) == 1
+
+
+def test_fix_howdyfin_refills_multiple_on_discard():
+    game = prepare_game()
+    p = game.player1
+    _setup(p, 1)
+    assert len(p.hand) == 1
+    # Discard the only card -> hand hits 0 -> refill all the way to 3 Murlocs.
+    p.hand[0].discard()
+    assert len(p.hand) == 3
+    assert len(_murlocs(p)) == 3
+
+
+def test_fix_howdyfin_does_nothing_when_hand_at_three_or_more():
+    game = prepare_game()
+    p = game.player1
+    _setup(p, 4)
+    assert len(p.hand) == 4
+    # Play one Wisp -> hand drops to 3, which is NOT below 3 -> no Murloc.
+    p.hand[0].play()
+    assert len(p.hand) == 3
+    assert len(_murlocs(p)) == 0
+
+
+# === merged from test_fix_nleg.py (audit fix regression) ===
+RENO = "WW_0700"
+WISP = "CS2_231"  # 0/1/1 vanilla minion, no battlecry
+
+
+def _clear_no_dupes(player):
+    """Empty the deck so Reno's 'no duplicates' gate (powered_up) is on."""
+    for card in list(player.deck):
+        player.deck.remove(card)
+
+
+def test_fix_nleg_reno_limits_enemy_to_one_minion():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    reno_player = game.current_player
+    enemy = reno_player.opponent
+
+    _clear_no_dupes(reno_player)
+
+    # Enemy already has a board before Reno is cast.
+    for _ in range(3):
+        enemy.summon(WISP)
+    assert len(enemy.field) == 3
+
+    reno = reno_player.give(RENO)
+    reno.play()
+    while reno_player.choice:
+        reno_player.choice.choose(reno_player.choice.cards[0])
+
+    # Battlecry empties the enemy board.
+    assert len(enemy.field) == 0
+
+    # Pass to the enemy's turn; the cap must still be live.
+    game.end_turn()
+    assert game.current_player is enemy
+
+    # First summon sticks.
+    first = enemy.summon(WISP)
+    assert first.zone == Zone.PLAY
+    assert len(enemy.field) == 1
+
+    # Second summon is destroyed instantly (limit = 1).
+    second = enemy.summon(WISP)
+    assert second.zone == Zone.GRAVEYARD
+    assert len(enemy.field) == 1
+    assert enemy.field[0] is first
+
+    # Third also suppressed.
+    third = enemy.summon(WISP)
+    assert third.zone == Zone.GRAVEYARD
+    assert len(enemy.field) == 1
+
+
+def test_fix_nleg_reno_cap_expires_after_enemy_turn():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    reno_player = game.current_player
+    enemy = reno_player.opponent
+
+    _clear_no_dupes(reno_player)
+
+    reno = reno_player.give(RENO)
+    reno.play()
+    while reno_player.choice:
+        reno_player.choice.choose(reno_player.choice.cards[0])
+
+    # Enemy turn under the cap: only one minion holds.
+    game.end_turn()
+    assert game.current_player is enemy
+    enemy.summon(WISP)
+    capped = enemy.summon(WISP)
+    assert capped.zone == Zone.GRAVEYARD
+    assert len(enemy.field) == 1
+
+    # End the enemy's turn -> the marker self-clears.
+    game.end_turn()  # back to reno_player
+    game.end_turn()  # back to enemy, cap gone
+    assert game.current_player is enemy
+
+    a = enemy.summon(WISP)
+    b = enemy.summon(WISP)
+    c = enemy.summon(WISP)
+    # All three stick now that the cap expired (started this turn with 1).
+    assert a.zone == Zone.PLAY
+    assert b.zone == Zone.PLAY
+    assert c.zone == Zone.PLAY
+    assert len(enemy.field) == 4
+
+
+def test_fix_nleg_reno_does_not_cap_own_side():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    reno_player = game.current_player
+
+    _clear_no_dupes(reno_player)
+
+    reno = reno_player.give(RENO)
+    reno.play()
+    while reno_player.choice:
+        reno_player.choice.choose(reno_player.choice.cards[0])
+
+    # Reno's own controller is unaffected: Reno minion (the summoned bullet
+    # hero is separate) — summon several on the friendly side freely.
+    base = len(reno_player.field)
+    reno_player.summon(WISP)
+    reno_player.summon(WISP)
+    reno_player.summon(WISP)
+    assert len(reno_player.field) == base + 3
+
+
+# === merged from test_fix_pal.py (audit fix regression) ===
+WISP = "CS2_231"
+IMP = "EX1_598"
+MIRAGE = "WW_337t"
+
+
+def _advance_one_controller_turn(game):
+    """End both players' turns so the original controller reaches a fresh
+    start-of-turn (OWN_TURN_BEGIN fires once per call)."""
+    game.end_turn()
+    game.end_turn()
+
+
+def _mirage_form(player):
+    """Return the single hand card currently wearing the persistent WW_337e
+    re-transform enchant (i.e. the Mirage in its current morphed shape)."""
+    matches = [
+        c for c in player.hand if any(e.id == "WW_337e" for e in c.buffs)
+    ]
+    assert len(matches) == 1, matches
+    return matches[0]
+
+
+def test_fix_pal_mirage_retransforms_every_turn():
+    # Deck holds two distinct, known minions so every legal morph target is
+    # one of {WISP, IMP}. Stack many copies so the per-turn draw never
+    # depletes the pool. Mirage token starts alone in hand.
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+
+    # Clear any auto-dealt cards from player1's hand.
+    for card in list(game.player1.hand):
+        card.discard()
+    assert game.player1.hand == []
+
+    for _ in range(15):
+        game.player1.give(WISP).shuffle_into_deck()
+        game.player1.give(IMP).shuffle_into_deck()
+    deck_ids = {c.id for c in game.player1.deck}
+    assert deck_ids == {WISP, IMP}
+
+    mirage = game.player1.give(MIRAGE)
+    assert game.player1.hand == [mirage]
+    assert mirage.id == MIRAGE
+
+    seen_ids = set()
+    prev_card = mirage
+
+    # Advance several of player1's turns. The morph fires at the start of
+    # EACH turn — the Mirage's identity must be re-evaluated every turn,
+    # producing a NEW object whose id is always a current deck minion. With
+    # the OLD (one-shot) behaviour the token morphed once and then never
+    # changed: the same object would persist and only one id would be seen.
+    for _ in range(10):
+        _advance_one_controller_turn(game)
+
+        cur = _mirage_form(game.player1)
+
+        # Every transform yields a fresh card object (morph re-fired).
+        assert cur is not prev_card
+        # The morphed card is always a valid copy of a deck minion, never
+        # stuck on the Mirage token itself.
+        assert cur.id in deck_ids
+        assert cur.id != MIRAGE
+
+        seen_ids.add(cur.id)
+        prev_card = cur
+
+    # Over enough turns BOTH deck-minion identities must appear — proof the
+    # re-transform re-rolls every turn rather than locking after the first.
+    assert seen_ids == {WISP, IMP}
+
+
+def test_fix_pal_mirage_retransform_trigger_persists():
+    # Robust, RNG-independent check: after the first morph, the freshly
+    # morphed card must still carry the persistent WW_337e re-transform
+    # enchant (Zerus-style), so it will transform again next turn.
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+
+    for card in list(game.player1.hand):
+        card.discard()
+    assert game.player1.hand == []
+
+    game.player1.give(WISP).shuffle_into_deck()
+    game.player1.give(IMP).shuffle_into_deck()
+
+    game.player1.give(MIRAGE)
+
+    # First transform.
+    _advance_one_controller_turn(game)
+    morphed = game.player1.hand[0]
+    assert morphed.id in {WISP, IMP}
+
+    enchant_ids = {e.id for e in morphed.buffs}
+    assert "WW_337e" in enchant_ids
+
+
+# === merged from test_fix_priest.py (audit fix regression) ===
+# Benevolent Banker (WW_384) — non-Quickdraw battlecry:
+# "Discover a spell from your deck."
+# Distinct Priest spells we stack in the deck:
+HOLY_NOVA = "CS1_112"
+HOLY_SMITE = "CS1_130"
+POWER_WORD_SHIELD = "CS2_004"
+DECK_SPELLS = {HOLY_NOVA, HOLY_SMITE, POWER_WORD_SHIELD}
+NORTHSHIRE_CLERIC = "CS2_235"  # a minion in the deck (must NOT be offered)
+
+
+def _stack_friendly_deck(game):
+    """Reset the friendly deck to exactly 3 known spells + 2 minions."""
+    p1 = game.player1
+    for card in list(p1.deck):
+        card.zone = Zone.SETASIDE
+    p1.deck.clear()
+    for cid in (HOLY_NOVA, HOLY_SMITE, POWER_WORD_SHIELD,
+                NORTHSHIRE_CLERIC, NORTHSHIRE_CLERIC):
+        p1.give(cid).shuffle_into_deck()
+    return p1
+
+
+def test_fix_priest_benevolent_banker_discovers_spell_from_own_deck():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = _stack_friendly_deck(game)
+    # Clear the hand so the only newly added card is the discovered spell.
+    for card in list(p1.hand):
+        card.discard()
+    deck_before = sorted(c.id for c in p1.deck)
+    assert deck_before == sorted(
+        [HOLY_NOVA, HOLY_SMITE, POWER_WORD_SHIELD,
+         NORTHSHIRE_CLERIC, NORTHSHIRE_CLERIC]
+    )
+
+    banker = p1.give("WW_384")
+    # Force the NON-Quickdraw branch: pretend the card has been in hand
+    # since before this turn so quickdraw_active is False.
+    banker._turn_entered_hand = -1
+    assert not banker.quickdraw_active
+    banker.play()  # non-Quickdraw branch -> Discover from OWN deck
+
+    # A Discover choice must be open with exactly 3 cards, all spells that
+    # live in the deck. The deck has exactly 3 distinct spells, so the
+    # discover offers all three.
+    assert p1.choice is not None
+    offered = p1.choice.cards
+    assert len(offered) == 3
+    assert all(c.type == CardType.SPELL for c in offered)
+    assert sorted(c.id for c in offered) == sorted(DECK_SPELLS)
+    # The minion in the deck must never be offered.
+    assert NORTHSHIRE_CLERIC not in {c.id for c in offered}
+
+    chosen = offered[0]
+    chosen_id = chosen.id
+    p1.choice.choose(chosen)
+    assert p1.choice is None
+
+    # The chosen copy is now in hand (exactly one card was added).
+    hand_ids = [c.id for c in p1.hand]
+    assert hand_ids == [chosen_id]
+    assert p1.hand[0].type == CardType.SPELL
+
+    # Discover COPIES — the deck is unchanged (all 3 spells still present).
+    deck_after = sorted(c.id for c in p1.deck)
+    assert deck_after == deck_before
+    assert {chosen_id} <= {c.id for c in p1.deck}
+
+
+# === merged from test_fix_rogue.py (audit fix regression) ===
+"""Regression tests for showdown_in_the_badlands rogue fixes.
+
+(1) WW_006 Dart Throw — darts must be thrown one at a time. The second
+    dart re-picks a LIVE enemy minion after the first resolves, and the
+    Coin is granted only when a single minion absorbs BOTH darts. A first
+    dart that kills its target must never leave a "same target" Coin and
+    must never waste the second dart on a corpse.
+
+(2) WW_364 Velarok Windblade — in-hand progress text "({0} left!)" must
+    render the remaining foreign-class plays (3 -> 2 -> 1).
+"""
+
+
+
+# GOLDSHIRE_FOOTMAN, WISP, THE_COIN come from `from utils import *`
+# (CS1_042 1/2 Taunt, CS2_231 Wisp, GAME_005). Do NOT redefine them here —
+# a module-level redefinition shadows the import for the whole file.
+MANA_WYRM = "NEW1_012"         # Mage minion (foreign class for a Rogue)
+
+
+def _rogue_game_2():
+    game = prepare_game(CardClass.ROGUE, CardClass.MAGE)
+    if game.current_player.hero.card_class != CardClass.ROGUE:
+        game.end_turn()
+    rogue = game.current_player
+    assert rogue.hero.card_class == CardClass.ROGUE
+    return game, rogue, rogue.opponent
+
+
+class _ScriptedChoice:
+    """Replaces game.random.choice with a scripted sequence of return
+    values so the two dart picks are fully deterministic."""
+
+    def __init__(self, real, sequence):
+        self._real = real
+        self._sequence = list(sequence)
+        self.calls = 0
+
+    def __call__(self, seq):
+        if self.calls < len(self._sequence):
+            picked = self._sequence[self.calls]
+            self.calls += 1
+            return picked
+        return self._real(seq)
+
+
+class _PreferChoice:
+    """Replaces game.random.choice. Always returns `preferred` if it is
+    among the candidates offered, otherwise the first candidate. This is a
+    faithful "random pick" — `preferred` is simply the one the RNG happens
+    to land on — but it is deterministic. Crucially it returns whatever it
+    is *given*, so it works regardless of HOW MANY times the engine samples
+    or against WHICH live board, which is what distinguishes the old
+    pre-sampled implementation from the corrected one-dart-at-a-time logic."""
+
+    def __init__(self, preferred):
+        self.preferred = preferred
+        self.calls = 0
+
+    def __call__(self, seq):
+        self.calls += 1
+        seq = list(seq)
+        if self.preferred in seq:
+            return self.preferred
+        return seq[0]
+
+
+# ---------------------------------------------------------------------------
+# WW_006 — Dart Throw
+# ---------------------------------------------------------------------------
+
+def test_fix_rogue_dart_throw_same_minion_grants_coin():
+    """Single tanky enemy minion: both darts MUST land on it (no other
+    legal target), dealing exactly 4 damage, and a Coin is granted."""
+    game, rogue, opp = _rogue_game_2()
+    target = opp.summon(GOLDSHIRE_FOOTMAN)
+    target.max_health = 80
+    target.damage = 0
+    # Clear hand so the only hand change we can observe is the dart leaving
+    # and (possibly) the Coin arriving.
+    for held in rogue.hand[:]:
+        held.discard()
+    rogue.give("WW_006").play()
+    # Both darts hit the one minion.
+    assert target.damage == 4
+    # Exactly one Coin minted (dart played from empty hand -> net +1 Coin).
+    assert len(rogue.hand) == 1
+    assert rogue.hand[0].id == THE_COIN
+
+
+def test_fix_rogue_dart_throw_first_dart_kills_no_coin_no_wasted_dart():
+    """First dart kills a 1-health minion; the second dart must re-pick a
+    LIVE minion (the big one), and NO Coin is granted because no single
+    minion absorbed both darts.
+
+    The old implementation pre-sampled both targets up front: scripting
+    both picks to the fragile minion made it (a) grant a Coin anyway and
+    (b) waste the second dart on the corpse. This test pins the correct
+    behaviour."""
+    game, rogue, opp = _rogue_game_2()
+    small = opp.summon(GOLDSHIRE_FOOTMAN)   # will die to one 2-dmg dart
+    small.max_health = 1
+    small.damage = 0
+    big = opp.summon(GOLDSHIRE_FOOTMAN)
+    big.max_health = 80
+    big.damage = 0
+
+    for held in rogue.hand[:]:
+        held.discard()
+
+    # The RNG always lands on the small minion WHILE IT IS ALIVE. The first
+    # dart therefore kills it. The OLD pre-sampling code would have picked
+    # `small` for BOTH darts up front (same object), granted a bogus Coin,
+    # and wasted the second dart on the corpse (big takes 0). The FIXED code
+    # re-samples the second dart from the now-live board (only `big` left),
+    # so big takes the second dart and no Coin is granted.
+    stub = _PreferChoice(small)
+    game.random.choice = stub
+
+    rogue.give("WW_006").play()
+
+    # Small died from the first dart (1 health, took 2).
+    assert small.dead
+    assert small.zone == Zone.GRAVEYARD
+    # The second dart hit the still-LIVE big minion — not the corpse.
+    assert big.damage == 2
+    # No single minion absorbed both darts -> NO Coin.
+    assert all(c.id != THE_COIN for c in rogue.hand)
+    assert len(rogue.hand) == 0
+
+
+def test_fix_rogue_dart_throw_same_live_minion_twice_grants_coin():
+    """Two tanky minions; both darts scripted onto the SAME (surviving)
+    minion -> it takes 4, the other takes 0, and a Coin is granted."""
+    game, rogue, opp = _rogue_game_2()
+    a = opp.summon(GOLDSHIRE_FOOTMAN)
+    b = opp.summon(GOLDSHIRE_FOOTMAN)
+    for m in (a, b):
+        m.max_health = 80
+        m.damage = 0
+
+    for held in rogue.hand[:]:
+        held.discard()
+
+    stub = _PreferChoice(a)
+    game.random.choice = stub
+
+    rogue.give("WW_006").play()
+
+    assert a.damage == 4
+    assert b.damage == 0
+    assert len(rogue.hand) == 1
+    assert rogue.hand[0].id == THE_COIN
+
+
+# ---------------------------------------------------------------------------
+# WW_364 — Velarok Windblade (cosmetic progress text)
+# ---------------------------------------------------------------------------
+
+def _velarok_remaining_text(card):
+    """Render the card and return its description for assertion."""
+    return card.description
+
+
+def test_fix_rogue_velarok_progress_text_counts_down():
+    """The in-hand progress text renders the remaining foreign-class plays:
+    3 left at 0 plays, 2 left after 1, 1 left after 2."""
+    game, rogue, opp = _rogue_game_2()
+    velarok = rogue.give("WW_364")
+
+    # 0 foreign plays so far -> "3 left!"
+    assert getattr(velarok, "_velarok_count", 0) == 0
+    text0 = velarok.description
+    assert "3 left!" in text0
+    assert "2 left!" not in text0
+    assert "Ready!" not in text0
+
+    # 1 foreign play -> "2 left!"
+    rogue.give(MANA_WYRM).play()
+    assert velarok._velarok_count == 1
+    text1 = velarok.description
+    assert "2 left!" in text1
+    assert "3 left!" not in text1
+    assert "Ready!" not in text1
+
+    # 2 foreign plays -> "1 left!"
+    rogue.give(MANA_WYRM).play()
+    assert velarok._velarok_count == 2
+    text2 = velarok.description
+    assert "1 left!" in text2
+    assert "2 left!" not in text2
+    assert "Ready!" not in text2
+
+
+def test_fix_rogue_velarok_progress_text_ignores_neutral_and_own_class():
+    """Neutral / own-class plays do not advance the rendered counter."""
+    game, rogue, opp = _rogue_game_2()
+    velarok = rogue.give("WW_364")
+    for _ in range(3):
+        rogue.give(WISP).play()  # Neutral -> no progress
+    assert getattr(velarok, "_velarok_count", 0) == 0
+    assert "3 left!" in velarok.description
+
+
+# === merged from test_fix_shaman.py (audit fix regression) ===
+FLAME_ELEMENTAL = "UNG_809t1"  # 1-cost vanilla Elemental token, no battlecry
+SKARR = "WW_026"               # 7/7/7 Elemental, Skarr the Catastrophe
+
+
+def _beef_hero(hero):
+    """Make a hero able to absorb a big hit so we can read exact damage."""
+    hero.max_health = 80
+    hero.damage = 0
+
+
+def test_fix_shaman_skarr_fresh_board_deals_one():
+    # Fresh board: the controller has played no Elemental on any prior turn,
+    # but Skarr itself is an Elemental being played THIS turn -> streak == 1.
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    me = game.current_player
+    opp = me.opponent
+    _beef_hero(opp.hero)
+
+    assert me.azerite_elemental_streak == 0
+    assert me.elemental_played_last_turn == 0
+
+    skarr = me.give(SKARR)
+    skarr.play()
+
+    while me.choice:
+        me.choice.choose(me.choice.cards[0])
+
+    # Skarr alone on a fresh board MUST deal exactly 1 (never 0 — the bug).
+    assert opp.hero.damage == 1
+
+
+def test_fix_shaman_skarr_two_turn_streak_deals_two():
+    # Play an Elemental this turn, cycle a full round, then play Skarr on the
+    # controller's next turn. Two consecutive Elemental turns -> streak == 2.
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    me = game.current_player
+
+    # This turn: play a non-Skarr Elemental so this becomes an Elemental turn.
+    fire = me.give(FLAME_ELEMENTAL)
+    fire.play()
+    assert Race.ELEMENTAL in fire.races
+    assert me.elemental_played_this_turn == 1
+
+    # Advance back to the same player's next turn (full round).
+    game.end_turn()
+    game.end_turn()
+    assert game.current_player is me
+
+    # The engine rolled last turn's Elemental into the consecutive streak.
+    assert me.elemental_played_last_turn == 1
+    assert me.azerite_elemental_streak == 1
+
+    opp = me.opponent
+    _beef_hero(opp.hero)
+
+    skarr = me.give(SKARR)
+    skarr.play()
+
+    while me.choice:
+        me.choice.choose(me.choice.cards[0])
+
+    # Elemental last turn + Skarr this turn -> exactly 2 damage to enemies.
+    assert opp.hero.damage == 2
+
+
+# === merged from test_fix_treasure.py (audit fix regression) ===
+from fireplace.exceptions import GameOver
+
+
+def test_fix_treasure_snake_steal_full_amount():
+	# Enemy hero 30 Health, no armor; friendly damaged 10 -> steal full 10.
+	game = prepare_game()
+	enemy = game.player2.hero
+	friendly = game.player1.hero
+	enemy.armor = 0
+	enemy.damage = 0  # 30 health
+	friendly.damage = 10
+	pre_enemy_health = enemy.health
+	card = game.player1.give("WW_001t25")
+	card.play()
+	# Enemy lost exactly 10 health, friendly healed exactly 10.
+	assert enemy.health == pre_enemy_health - 10
+	assert friendly.damage == 0
+
+
+def test_fix_treasure_snake_steal_all_armor():
+	# Enemy hero 3 Health + 10 Armor; armor soaks all 10 -> steal 0.
+	game = prepare_game()
+	enemy = game.player2.hero
+	friendly = game.player1.hero
+	enemy.damage = 27  # 3 health (30 - 27)
+	enemy.armor = 10
+	friendly.damage = 10
+	pre_enemy_health = enemy.health  # 3
+	card = game.player1.give("WW_001t25")
+	card.play()
+	# 10 damage fully soaked by armor -> enemy health unchanged, no steal.
+	assert enemy.health == pre_enemy_health  # still 3
+	assert enemy.armor == 0
+	assert friendly.damage == 10  # NOT healed -- this fails under flat-heal bug
+
+
+def test_fix_treasure_snake_steal_capped_by_health():
+	# Enemy hero 6 Health, no armor; friendly damaged 10 -> steal exactly 6.
+	game = prepare_game()
+	enemy = game.player2.hero
+	friendly = game.player1.hero
+	enemy.armor = 0
+	enemy.damage = 24  # 6 health (30 - 24)
+	friendly.damage = 10
+	enemy_health_before = enemy.health  # 6
+	card = game.player1.give("WW_001t25")
+	# Steal of only 6 means the enemy hero is reduced to 0 Health -> lethal,
+	# so the play ends the game. The friendly heal is applied inside the
+	# action (before GameOver propagates), so its effect is observable.
+	try:
+		card.play()
+	except GameOver:
+		pass
+	assert enemy_health_before == 6
+	# Health actually removed was 6 (capped), so friendly heals exactly 6:
+	# 10 damage - 6 healed == 4 remaining. The flat-heal bug heals 10 -> 0.
+	assert friendly.damage == 4

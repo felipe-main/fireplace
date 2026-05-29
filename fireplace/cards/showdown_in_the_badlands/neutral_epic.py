@@ -5,7 +5,11 @@ from ..utils import *
 
 class _AzeriteStreak(LazyNum):
 	"""Lazily read the controller's "turns in a row you've played an
-	Elemental" streak, defaulting to 0 when it has never been set."""
+	Elemental" streak. The base streak (azerite_elemental_streak) counts
+	completed consecutive turns and is maintained globally in
+	game._begin_turn; if the controller has already played an Elemental on
+	the current turn, that turn counts too — so the discount grows the
+	moment you play this turn's Elemental."""
 
 	def __init__(self, selector):
 		super().__init__()
@@ -13,26 +17,10 @@ class _AzeriteStreak(LazyNum):
 
 	def evaluate(self, source):
 		player = self.selector.eval(source.game, source)[0]
-		return self.num(getattr(player, "azerite_elemental_streak", 0))
-
-
-class _AzeriteGiantStreak(TargetedAction):
-	"""Azerite Giant — at the end of each turn (while Azerite Giant is in
-	hand) update the controller's "turns in a row you've played an
-	Elemental" streak. If an Elemental was played this turn, bump the
-	streak by one; otherwise reset it to zero. The streak drives the
-	card's cost reduction (one less per turn in a row)."""
-
-	TARGET = ActionArg()
-
-	def do(self, source, target):
-		ctrl = target
-		if ctrl.elemental_played_this_turn > 0:
-			ctrl.azerite_elemental_streak = (
-				getattr(ctrl, "azerite_elemental_streak", 0) + 1
-			)
-		else:
-			ctrl.azerite_elemental_streak = 0
+		streak = player.azerite_elemental_streak
+		if player.elemental_played_this_turn > 0:
+			streak += 1
+		return self.num(streak)
 
 
 class _GattlesnakeLoad(TargetedAction):
@@ -59,6 +47,50 @@ class _GattlesnakeFire(TargetedAction):
 			source.game.cheat_action(target, [Hit(RANDOM(ENEMY_CHARACTERS), 1)])
 
 
+def _howdyfin_fill(source, ctrl, exclude=None):
+	"""Refill ctrl's hand up to 3 cards with random Murlocs. The printed
+	card "keeps filling the player's hand until they have 3 cards every
+	time the hand size gets lower than 3", so this loops (giving more than
+	one Murloc when the hand dropped by more than one) and stops the instant
+	the hand reaches 3 (or fills). `exclude` holds card(s) in hand right now
+	but about to leave (the in-flight Discard target), so they are not
+	counted toward the 3. The DSL passes selector results as a list, so
+	normalise to a set of entities."""
+	if exclude is None:
+		excluded = set()
+	elif hasattr(exclude, "__iter__"):
+		excluded = set(exclude)
+	else:
+		excluded = {exclude}
+	for _ in range(ctrl.max_hand_size):
+		held = [c for c in ctrl.hand if c not in excluded]
+		if len(held) >= 3:
+			break
+		source.game.cheat_action(source, [Give(ctrl, RandomMurloc())])
+
+
+class _HowdyfinRefillOnPlay(TargetedAction):
+	"""Howdyfin refill triggered by a card the controller PLAYED (which has
+	already left hand by the AFTER broadcast, so nothing to exclude)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		_howdyfin_fill(source, target)
+
+
+class _HowdyfinRefillOnDiscard(TargetedAction):
+	"""Howdyfin refill triggered by a DISCARD. Discard broadcasts ON before
+	the card's zone changes, so the discarded card (CARD) is still in hand
+	and must be excluded from the count."""
+
+	TARGET = ActionArg()
+	CARD = ActionArg()
+
+	def do(self, source, target, card):
+		_howdyfin_fill(source, target, exclude=card)
+
+
 ##
 # Minions
 
@@ -69,16 +101,19 @@ class WW_025:
 	# [x]Costs (1) less for each turn in a row you've played an Elemental.
 	cost_mod = -_AzeriteStreak(CONTROLLER)
 
-	class Hand:
-		events = OWN_TURN_END.on(_AzeriteGiantStreak(CONTROLLER))
-
 
 class WW_333:
 	"""Howdyfin"""
 
 	# [x]Whenever your hand has less than 3 cards in it, get a random Murloc.
-	events = Play(CONTROLLER).after(
-		(Count(FRIENDLY_HAND) < 3) & Give(CONTROLLER, RandomMurloc())
+	# Triggers on any action that drops the controller's hand below 3 — both
+	# playing and discarding a card — and refills back up to 3 Murlocs.
+	# Play filters on the acting player and fires AFTER the card has left
+	# hand. Discard broadcasts the discarded card (ON, before zone change),
+	# so it filters on a FRIENDLY card and excludes that in-flight card.
+	events = (
+		Play(CONTROLLER).after(_HowdyfinRefillOnPlay(CONTROLLER)),
+		Discard(FRIENDLY).on(_HowdyfinRefillOnDiscard(CONTROLLER, Discard.TARGET)),
 	)
 
 

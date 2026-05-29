@@ -7,6 +7,11 @@ from ..utils import *
 # Custom actions
 
 
+# Velarok Windblade reveals on the third foreign-class card played while
+# it is in hand. Shared by the progress action and the in-hand cardtext.
+_VELAROK_TARGET = 3
+
+
 class _DartThrow(TargetedAction):
     """Dart Throw (WW_006): throw two 2-damage darts at random enemy
     minions, picked independently. If BOTH darts land on the SAME minion,
@@ -18,23 +23,27 @@ class _DartThrow(TargetedAction):
 
     def do(self, source, target):
         player = target
-        enemy_minions = player.opponent.field
-        if not enemy_minions:
+        # First dart: pick a random LIVE enemy minion and hit it.
+        live = list(player.opponent.field)
+        if not live:
             return []
-        # Sample each dart independently (with replacement) from the
-        # current enemy board, matching "at random enemy minions".
-        first = source.game.random.choice(list(enemy_minions))
-        second = source.game.random.choice(list(enemy_minions))
+        first = source.game.random.choice(live)
         source.game.queue_actions(source, [Hit(first, 2)])
-        # Re-sample the second target from whatever is still alive — the
-        # first dart may have killed its target.
-        if first.dead and len(enemy_minions) == 0:
-            same = False
-        else:
-            same = first is second
-        if not second.dead or same:
-            source.game.queue_actions(source, [Hit(second, 2)])
-        if same:
+        # The first dart may have killed its target — flush deaths so the
+        # board reflects only minions that are still alive before the
+        # second dart re-picks.
+        source.game.process_deaths()
+        # Second dart: re-sample from whatever is still alive. A dead first
+        # target is no longer in the field, so it cannot be picked again.
+        live = list(player.opponent.field)
+        if not live:
+            return []
+        second = source.game.random.choice(live)
+        source.game.queue_actions(source, [Hit(second, 2)])
+        # Coin only if a single minion absorbed BOTH darts. This is only
+        # possible when the first dart did not kill its target and the
+        # second dart re-picked that same (still-live) minion.
+        if second is first:
             source.game.queue_actions(source, [Give(player, THE_COIN)])
         return []
 
@@ -50,7 +59,7 @@ class _VelarokProgress(TargetedAction):
         if target.zone != Zone.HAND:
             return []
         target._velarok_count = getattr(target, "_velarok_count", 0) + 1
-        if target._velarok_count >= 3:
+        if target._velarok_count >= _VELAROK_TARGET:
             source.game.cheat_action(source, [Morph(target, "WW_364t")])
         return []
 
@@ -180,6 +189,29 @@ class WW_364:
 
     # [x]While this is in your hand, play three cards from other classes
     # to reveal Velarok's true form!
+    #
+    # Printed text ships as 3 `@`-delimited segments: base text,
+    # " ({0} left!)" template (rendered while still counting down), and
+    # " (Ready!)" template (rendered when the third card has been played).
+    # {0} renders the remaining count = 3 - foreign-class plays so far.
+    def custom_cardtext(self):
+        segments = self.data.description.split("@")
+        if len(segments) < 3:
+            return self.data.description
+        count = getattr(self, "_velarok_count", 0)
+        if count >= _VELAROK_TARGET:
+            return segments[0] + segments[2]
+        return segments[0] + segments[1]
+
+    def cardtext_entity_0(self):
+        count = getattr(self, "_velarok_count", 0)
+        return max(0, _VELAROK_TARGET - count)
+
+    tags = {
+        enums.CUSTOM_CARDTEXT: custom_cardtext,
+        GameTag.CARDTEXT_ENTITY_0: cardtext_entity_0,
+    }
+
     class Hand:
         events = Play(CONTROLLER, OTHER_CLASS - SELF).after(_VelarokProgress(SELF))
 

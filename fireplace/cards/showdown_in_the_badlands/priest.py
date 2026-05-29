@@ -177,6 +177,23 @@ class _PipCopyOneCost(TargetedAction):
 			source.game.cheat_action(source, [Give(target, copy)])
 
 
+class _BankerFriendlyDiscover(TargetedAction):
+	"""Benevolent Banker (WW_384) non-Quickdraw branch — Discover a spell
+	from your OWN deck. Scope a RandomID picker to the spell-ids currently
+	in the controller's deck and feed it through the standard deck-Discover
+	mechanism (DISCOVER copies the chosen card to hand; the deck keeps its
+	originals). Mirrors Flowrider (ETC_359)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ctrl = source.controller
+		ids = [c.id for c in ctrl.deck if c.type == CardType.SPELL]
+		if not ids:
+			return
+		source.game.cheat_action(source, [DISCOVER(RandomID(*ids))])
+
+
 class _BankerEnemyDiscover(TargetedAction):
 	"""Benevolent Banker (WW_384) Quickdraw branch — Discover a spell from
 	the OPPONENT's deck. Discovering from an enemy deck yields a copy you
@@ -309,7 +326,7 @@ class WW_384:
 	play = (
 		QUICKDRAW
 		& _BankerEnemyDiscover(CONTROLLER)
-		| GenericChoice(CONTROLLER, DeDuplicate(RANDOM(FRIENDLY_DECK + SPELL, 3)))
+		| _BankerFriendlyDiscover(CONTROLLER)
 	)
 
 

@@ -127,7 +127,11 @@ class AttrValue(SelectorEntityValue):
         return Attr(selector, self.tag)
 
     def __repr__(self):
-        return "<%s>" % (getattr(self.tag, "name", int(self.tag)))
+        # self.tag is usually a GameTag (has .name), but several AttrValues
+        # wrap a plain string attribute ("health", "mana", "durability",
+        # "num_attacks", ...). int(self.tag) would crash on those, breaking
+        # any log line that reprs a listener containing such a selector.
+        return "<%s>" % (getattr(self.tag, "name", None) or self.tag)
 
 
 ARMOR = AttrValue(GameTag.ARMOR)

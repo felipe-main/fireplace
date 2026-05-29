@@ -86,12 +86,35 @@ class WW_337t:
     """Mirage"""
 
     # At the start of your turn, transform into a copy of a minion in your
-    # deck. (This stays in your hand.)
+    # deck. (This stays in your hand.) This is PERMANENT: each turn it is in
+    # hand it re-transforms. We mirror Shifter Zerus (OG_123): the re-transform
+    # trigger is carried by the WW_337e enchant, which is re-applied to the
+    # freshly-morphed card so the trigger persists across every transform.
     class Hand:
         events = OWN_TURN_BEGIN.on(
             Find(FRIENDLY_DECK + MINION)
-            & Morph(SELF, RANDOM(FRIENDLY_DECK + MINION))
+            & Morph(SELF, RANDOM(FRIENDLY_DECK + MINION)).then(
+                Buff(Morph.CARD, "WW_337e")
+            )
         )
+
+
+class WW_337e:
+    """Mirage"""
+
+    # Persistent re-transform marker (Zerus-style). While the morphed card is
+    # in hand, at the start of each turn it transforms into another copy of a
+    # random minion in the deck, re-applying this same enchant so the effect
+    # never stops.
+    class Hand:
+        events = OWN_TURN_BEGIN.on(
+            Find(FRIENDLY_DECK + MINION)
+            & Morph(OWNER, RANDOM(FRIENDLY_DECK + MINION)).then(
+                Buff(Morph.CARD, "WW_337e")
+            )
+        )
+
+    events = REMOVED_IN_PLAY
 
 
 class WW_342:

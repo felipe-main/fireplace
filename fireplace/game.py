@@ -476,6 +476,14 @@ class BaseGame(Entity):
         player.used_mana = 0
         player.overload_locked = player.overloaded
         player.overloaded = 0
+        # Showdown in the Badlands — Azerite Giant streak. elemental_played_
+        # this_turn still holds the count from this player's previous turn
+        # (reset just below), so update the consecutive-turns streak here,
+        # globally, regardless of where Azerite Giant currently sits.
+        if player.elemental_played_this_turn > 0:
+            player.azerite_elemental_streak += 1
+        else:
+            player.azerite_elemental_streak = 0
         player.elemental_played_last_turn = player.elemental_played_this_turn
         player.elemental_played_this_turn = 0
         player.hero_health_changed_this_turn = 0

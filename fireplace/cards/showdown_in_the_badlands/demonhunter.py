@@ -40,7 +40,7 @@ class _SnakeEyesDiscover(TargetedAction):
 		source.game.cheat_action(
 			source,
 			[
-				Discover(target, RandomCard(cost=cost)).then(
+				Discover(target, RandomCollectible(cost=cost)).then(
 					Give(target, Discover.CARD),
 					_SnakeEyesDiscover(target),
 				)

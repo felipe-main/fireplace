@@ -273,11 +273,33 @@ class WW_001t24e:
 	cost = SET(1)
 
 
+# Battlecry: Your hero steals 10 Health from the enemy hero. A "steal"
+# heals YOU by the Health *actually* removed from the enemy: capped by
+# their remaining Health and NOT counting damage soaked by Armor. We
+# record the enemy hero's Health before the hit, deal 10, then heal the
+# friendly hero by (health_before - health_after).
+class _AzeriteSnakeSteal(TargetedAction):
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		enemy_hero = source.controller.opponent.hero
+		friendly_hero = source.controller.hero
+		health_before = enemy_hero.health
+		source.game.cheat_action(source, [Hit(enemy_hero, 10)])
+		# Health can overshoot into negative (max_health - damage); the
+		# steal is capped at the Health that was actually present, so clamp
+		# the post-hit Health at 0 before measuring what was removed.
+		health_after = max(0, enemy_hero.health)
+		stolen = health_before - health_after
+		if stolen > 0:
+			source.game.cheat_action(source, [Heal(friendly_hero, stolen)])
+
+
 class WW_001t25:
 	"""The Azerite Snake"""
 
 	# Battlecry: Your hero steals 10 Health from the enemy hero.
-	play = Hit(ENEMY_HERO, 10), Heal(FRIENDLY_HERO, 10)
+	play = _AzeriteSnakeSteal(CONTROLLER)
 
 
 class WW_001t26:

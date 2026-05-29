@@ -24,6 +24,32 @@ class _RenoEmptyEnemyBoard(TargetedAction):
             source.game.cheat_action(source, [Destroy(minion)])
 
 
+class _RenoSuppressExtraSummon(TargetedAction):
+    """Reno, Lone Ranger — "limit them to 1 minion for a turn". The
+    WW_0700e1 enchant sits on the enemy player and listens for that
+    player summoning a minion. If they already control at least one other
+    minion, the just-summoned one is destroyed instantly, so the enemy can
+    never field more than a single minion while the marker is live. The
+    target is the minion that was just summoned (Summon.CARD)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None or target.type != CardType.MINION:
+            return
+        # Buff hands the enchant Reno's controller (Buff copies the source's
+        # controller onto the buff), so "the enemy" is that opponent.
+        enemy = source.controller.opponent
+        # Only police the enemy's own board.
+        if target.controller is not enemy:
+            return
+        # Count minions the enemy already controls, excluding the one that
+        # just entered play (Summon broadcasts after zone == PLAY).
+        others = [m for m in enemy.field if m is not target]
+        if len(others) >= 1:
+            source.game.cheat_action(source, [Destroy(target)])
+
+
 class _KingpinResurrectOgreGang(TargetedAction):
     """Kingpin Pud — resurrect every friendly minion that died this game
     whose printed name starts with "Ogre-Gang" (Outlaw / Rider / Ace),
@@ -149,9 +175,20 @@ class WW_0700:
 class WW_0700e1:
     """Alone Ranger"""
 
-    # Your board size is 1 for a turn. (Engine has no per-player board-size
-    # cap primitive; this marker is a one-turn effect placeholder.)
-    tags = {GameTag.TAG_ONE_TURN_EFFECT: True}
+    # "Limit them to 1 minion for a turn." Carrier enchant applied to the
+    # ENEMY player. Buff copies Reno's controller onto the enchant, so from
+    # the enchant's point of view CONTROLLER is Reno's side and OPPONENT is
+    # the enemy. While live, any minion the enemy summons beyond the first
+    # is destroyed immediately (_RenoSuppressExtraSummon). The marker is NOT
+    # a TAG_ONE_TURN_EFFECT: those are torn down at the end of the CURRENT
+    # (Reno's) turn — before the enemy ever takes a turn — which would void
+    # the cap. Instead it self-destructs at the end of the enemy's next turn
+    # (EndTurn(OPPONENT)), matching "for a turn" in Hearthstone.
+    tags = {GameTag.TAG_ONE_TURN_EFFECT: False}
+    events = (
+        Summon(OPPONENT).after(_RenoSuppressExtraSummon(Summon.CARD)),
+        EndTurn(OPPONENT).on(Destroy(SELF)),
+    )
 
 
 # The installed hero power (Reno's Handcannon) swaps into a random bullet

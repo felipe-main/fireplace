@@ -109,6 +109,11 @@ class Player(Entity, TargetableByAuras):
         self.jade_golem = 1
         self.times_totem_summoned_this_game = 0
         self.elemental_played_this_turn = 0
+        # Showdown in the Badlands — Azerite Giant: number of consecutive
+        # *completed* turns on which this player has played an Elemental.
+        # Maintained globally in game._begin_turn so it is correct even while
+        # Azerite Giant is still in the deck (not yet in hand).
+        self.azerite_elemental_streak = 0
         self.elemental_played_last_turn = 0
         self.cards_drawn_this_turn = 0
         self.cards_played_this_turn = 0

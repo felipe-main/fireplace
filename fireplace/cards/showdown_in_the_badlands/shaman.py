@@ -9,39 +9,25 @@ from ..utils import *
 
 class _SkarrElementalStreak(TargetedAction):
     """Skarr, the Catastrophe — deal damage to all enemies equal to the
-    number of consecutive own-turns (ending with the current turn) on
-    which the controller played an Elemental.
+    number of turns in a row you've played an Elemental, where the current
+    turn (on which Skarr itself — an Elemental — is being played) always
+    counts.
 
-    The engine tracks only a one-turn lookback (`elemental_played_this/
-    last_turn`), so the streak is reconstructed from card history at
-    battlecry time: each card stamps `turn_played` with the global
-    `game.turn` (which increments once per player-turn, so the
-    controller's own turns are spaced two apart). Walk back in steps of
-    two from the current turn; the streak is the count of contiguous own
-    turns that contain at least one Elemental the controller played.
+    The engine maintains the global `azerite_elemental_streak` counter:
+    the number of *completed* consecutive own-turns ending with the
+    controller's last turn on which an Elemental was played (reset to 0 in
+    `game._begin_turn` whenever a turn passed with no Elemental). Skarr
+    being played guarantees the current turn is an Elemental turn, so the
+    full streak is always `azerite_elemental_streak + 1` — fresh board
+    yields 1 (Skarr alone), an Elemental last turn + Skarr yields 2, etc.
+    Skarr therefore never deals 0.
     """
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        game_turn = source.game.turn
-        elemental_turns = set()
-        for card in ctrl.cards_played_this_game:
-            if card is source:
-                continue
-            races = getattr(card, "races", [])
-            if Race.ELEMENTAL in races or Race.ALL in races:
-                tp = getattr(card, "turn_played", -1)
-                if tp >= 0:
-                    elemental_turns.add(tp)
-        streak = 0
-        turn = game_turn
-        while turn in elemental_turns:
-            streak += 1
-            turn -= 2
-        if streak <= 0:
-            return
+        streak = ctrl.azerite_elemental_streak + 1
         source.game.cheat_action(source, [Hit(ENEMY_CHARACTERS, streak)])
 
 

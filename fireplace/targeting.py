@@ -2,7 +2,7 @@
 Targeting logic
 """
 
-from hearthstone.enums import CardType, Rarity
+from hearthstone.enums import CardType, GameTag, Rarity
 
 from .enums import PlayReq
 
@@ -56,9 +56,18 @@ def is_valid_target(self, target, requirements=None):
             return False
         if target.immune and self.controller != target.controller:
             return False
-        if self.type == CardType.SPELL and target.cant_be_targeted_by_abilities:
+        # ELUSIVE (GameTag 1211) is the modern consolidated tag that means
+        # "can't be targeted by spells OR hero powers". Build 29.0 migrated
+        # cards like Faerie Dragon (and Whizbang's Virus Module) onto it, so
+        # honor it in addition to the legacy split flags.
+        elusive = target.data.tags.get(GameTag.ELUSIVE)
+        if self.type == CardType.SPELL and (
+            target.cant_be_targeted_by_abilities or elusive
+        ):
             return False
-        if self.type == CardType.HERO_POWER and target.cant_be_targeted_by_hero_powers:
+        if self.type == CardType.HERO_POWER and (
+            target.cant_be_targeted_by_hero_powers or elusive
+        ):
             return False
 
     if target.cant_be_targeted_by_opponents and self.controller != target.controller:

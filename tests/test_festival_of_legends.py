@@ -321,8 +321,8 @@ def test_boogie_down_finale_grants_taunt():
     for _ in range(4):
         c = p.card("CS2_171")  # Stonetusk Boar (1/1, 1 cost)
         c.shuffle_into_deck()
-    p.used_mana = 10 - 3  # exact cost; Finale fires
     boogie = p.give("ETC_318")
+    p.used_mana = 10 - boogie.cost  # exact cost; Finale fires (base cost 4 @ build 195635)
     boogie.play()
     one_costs = [m for m in p.field if m.cost == 1]
     assert len(one_costs) == 2
@@ -869,11 +869,16 @@ def test_pack_the_house_summons_four_minions():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
     for m in list(game.player1.field):
         m.destroy()
+    pre = set(game.player1.field)
     pth = game.player1.give("ETC_370")
     pth.play()
-    assert len(game.player1.field) == 4
-    costs = sorted(m.cost for m in game.player1.field)
-    assert costs == [3, 4, 5, 6]
+    new = [m for m in game.player1.field if m not in pre]
+    # Summons one minion each of base cost 6/5/4/3. A rolled minion may bring
+    # its own tokens (Colossal limbs, summon side-effects), so assert the four
+    # target costs are each present rather than an exact field size.
+    new_costs = sorted(m.data.cost for m in new)
+    assert {3, 4, 5, 6}.issubset(set(new_costs))
+    assert sum(1 for c in new_costs if c in (3, 4, 5, 6)) >= 4
 
 
 # ===========================================================================

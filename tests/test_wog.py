@@ -55,7 +55,7 @@ def test_blackwater_pirate():
     mc = game.player1.give(MIND_CONTROL)
     assert reaper.cost == 3
     assert kobold.cost == 2
-    assert mc.cost == 10
+    assert mc.cost == 9  # Mind Control base cost (build 195635); pirate only cuts weapons
     reaper.play()
     assert reaper.cost == 5
 

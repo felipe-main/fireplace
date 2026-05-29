@@ -227,21 +227,21 @@ def test_ethereal_peddler():
     game.current_player.discard_hand()
     mc = game.current_player.give(MIND_CONTROL)
     evis = game.current_player.give("EX1_124")  # Eviscerate
-    assert mc.cost == 10
+    assert mc.cost == 9  # Mind Control base cost (build 195635)
     assert evis.cost == 2
     game.current_player.give("KAR_070").play()
-    assert mc.cost == 10
+    assert mc.cost == 9
     assert evis.cost == 0
     game.end_turn()
 
     game.current_player.discard_hand()
     mc2 = game.current_player.give(MIND_CONTROL)
     evis2 = game.current_player.give("EX1_124")  # Eviscerate
-    assert mc2.cost == 10
+    assert mc2.cost == 9  # Mind Control base cost (build 195635)
     assert evis2.cost == 2
     game.current_player.give("KAR_070").play()
     assert game.current_player.hero.card_class
-    assert mc2.cost == 8
+    assert mc2.cost == 7  # 9 base - 2 from Ethereal Peddler
     assert evis2.cost == 2
 
 

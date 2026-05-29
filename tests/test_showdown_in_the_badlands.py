@@ -1256,12 +1256,13 @@ def test_lock_sludge_on_wheels():
     # Rush. Whenever this takes damage, get a Barrel of Sludge AND add one
     # to the bottom of your deck.
     game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
-    wheels = game.player1.summon("WW_043")  # 1/5
+    wheels = game.player1.summon("WW_043")  # 2/4 @ build 195635
     assert wheels.rush
     pre_hand = len(game.player1.hand)
     pre_deck = len(game.player1.deck)
+    pre_health = wheels.health
     game.queue_actions(game.player1, [Hit(wheels, 2)])
-    assert wheels.health == 3
+    assert wheels.health == pre_health - 2
     # One Barrel added to hand, one to bottom of deck.
     assert len(game.player1.hand) == pre_hand + 1
     assert game.player1.hand[-1].id == "WW_044t"

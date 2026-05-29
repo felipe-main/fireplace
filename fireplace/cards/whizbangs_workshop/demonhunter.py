@@ -48,13 +48,23 @@ class _WindowShopperSetStats(TargetedAction):
             card = card[0] if card else None
         if card is None:
             return
-        atk = source.atk
-        health = source.health
-        cost = source.cost
-        source.game.cheat_action(
-            source,
-            [Buff(card, "TOY_652e", atk=SET(atk), health=SET(health), cost=SET(cost))],
-        )
+        # SET (not add) the picked card's stats to Window Shopper's snapshot.
+        # Stash the values on the enchant instance and read them via lambdas
+        # (the Buff kwarg form ADDS and can't take a callable).
+        buff = source.controller.card("TOY_652e", source=source)
+        buff.source = source
+        buff._xatk = source.atk
+        buff._xhealth = source.health
+        buff._xcost = source.cost
+        buff.apply(card)
+
+
+class TOY_652e:
+    # "Literally Me" — set the discovered card's Attack/Health/Cost to Window
+    # Shopper's snapshotted values.
+    atk = lambda self, _: self._xatk
+    max_health = lambda self, _: self._xhealth
+    cost = lambda self, _: self._xcost
 
 
 ##

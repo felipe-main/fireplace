@@ -70,7 +70,9 @@ class _RepackageStuff(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        minions = list(target)
+        # target is the controller (single); gather every board minion at once
+        # (the action batches them onto one box, so it can't run per-minion).
+        minions = list(ALL_MINIONS.eval(source.game, source))
         box = source.controller.opponent.card("TOY_879t", source=source)
         box._packaged = minions
         for m in minions:
@@ -240,7 +242,7 @@ class TOY_879:
 
     # Stuff all minions into a 2-Cost Box, then shuffle it into the
     # opponent's deck.
-    play = _RepackageStuff(ALL_MINIONS)
+    play = _RepackageStuff(CONTROLLER)
 
 
 class TOY_879t:

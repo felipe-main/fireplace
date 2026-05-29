@@ -15,15 +15,11 @@ class _BotfaceGiveMinis(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        from .. import cards as card_module
-
         ctrl = source.controller
         pool = [
             cid
-            for cid in card_module.db.filter(
-                collectible=False, type=CardType.MINION
-            )
-            if card_module.db[cid].tags.get(GameTag.MINI) == 1
+            for cid in db.filter(collectible=False, type=CardType.MINION)
+            if db[cid].tags.get(GameTag.MINI) == 1
         ]
         if not pool:
             return

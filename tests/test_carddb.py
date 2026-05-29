@@ -47,6 +47,12 @@ def test_battlecry_scripts():
         if card.battlecry and card.collectible:
             if card.id in ["DRG_308", "GIL_614", "ULD_003"]:
                 continue
+            # Harth Stonebrew (GIFT_01) is an anniversary EVENT card that
+            # replaces your hand with a hardcoded "iconic" historical decklist
+            # — content not present in the data and unrelated to any
+            # implemented expansion. Out of scope.
+            if card.id in ["GIFT_01", "CORE_GIFT_01"]:
+                continue
             # MotLK mini-set "Return of the Lich King" (NX2_*) is
             # deferred — out of scope for the Festival of Legends pass.
             if card.id.startswith("NX2_"):

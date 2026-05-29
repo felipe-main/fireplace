@@ -1,1 +1,266 @@
 from ..utils import *
+
+
+##
+# Custom actions
+
+
+class _NemsyDrawDemon(TargetedAction):
+	"""Game Master Nemsy battlecry — draw a Demon from your deck and
+	remember which card was drawn so the deathrattle can swap with it."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ctrl = source.controller
+		demons = [c for c in ctrl.deck if Race.DEMON in getattr(c, "races", [])]
+		if not demons:
+			return
+		import random
+		pick = random.choice(demons)
+		source.game.cheat_action(source, [Draw(ctrl, pick)])
+		# Remember the drawn demon entity for the deathrattle swap.
+		source._nemsy_demon = pick
+
+
+class _NemsySwap(TargetedAction):
+	"""Game Master Nemsy deathrattle — swap places with the Demon drawn
+	by the battlecry. The drawn Demon (still in hand) is summoned into
+	Nemsy's board slot, and a copy of Nemsy is returned to hand."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		demon = getattr(source, "_nemsy_demon", None)
+		ctrl = source.controller
+		if demon is None:
+			return
+		# The drawn demon must still be in the player's hand to swap.
+		if demon.zone != Zone.HAND:
+			return
+		# Summon the demon into play (Nemsy's slot — it died, so append).
+		source.game.cheat_action(source, [Summon(ctrl, demon)])
+		# Return Nemsy to hand (a fresh copy, since the original is dead).
+		if len(ctrl.hand) < ctrl.max_hand_size:
+			source.game.cheat_action(source, [Give(ctrl, "TOY_524")])
+
+
+class _CursedCampaignDeathrattle(TargetedAction):
+	"""Final Session (TOY_527e) — when the enchanted minion dies, summon
+	two copies of it that are Dormant for 2 turns."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		# `source` is the enchantment; its owner is the dying minion.
+		host = getattr(source, "owner", None)
+		if host is None:
+			return
+		ctrl = host.controller
+		base_id = host.id
+		for _ in range(2):
+			if len(ctrl.field) >= 7:
+				break
+			source.game.cheat_action(source, [Summon(ctrl, base_id)])
+			if ctrl.field and ctrl.field[-1].id == base_id:
+				source.game.cheat_action(
+					source, [Dormant(ctrl.field[-1], 2)]
+				)
+
+
+class _WheelOfDeathTick(TargetedAction):
+	"""Wheel of Death Counter (TOY_529e1) — counts down at the start of
+	each of your turns. When the counter reaches 0, destroy the enemy
+	hero."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ticks = getattr(source, "_wheel_ticks", 0) + 1
+		source._wheel_ticks = ticks
+		if ticks >= 5:
+			source.game.cheat_action(
+				source, [Destroy(source.controller.opponent.hero)]
+			)
+			source.game.cheat_action(source, [Destroy(source)])
+
+
+class _CraneGameSummon(TargetedAction):
+	"""Crane Game — summon copies of two (distinct) Demons in your deck."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ctrl = source.controller
+		demons = [c for c in ctrl.deck if Race.DEMON in getattr(c, "races", [])]
+		if not demons:
+			return
+		import random
+		random.shuffle(demons)
+		picks = demons[:2]
+		copier = ExactCopy(None)
+		for demon in picks:
+			if len(ctrl.field) >= 7:
+				break
+			copy = copier.copy(source, demon)
+			source.game.cheat_action(source, [Summon(ctrl, copy)])
+
+
+class _EndgameResurrect(TargetedAction):
+	"""Endgame — resurrect your last Demon that died (the most recently
+	deceased friendly Demon)."""
+
+	TARGET = ActionArg()
+
+	def do(self, source, target):
+		ctrl = source.controller
+		demons = [
+			c for c in ctrl.graveyard
+			if c.type == CardType.MINION
+			and Race.DEMON in getattr(c, "races", [])
+		]
+		if not demons:
+			return
+		# Graveyard preserves death order; the last entry died most recently.
+		last = demons[-1]
+		source.game.cheat_action(source, [Summon(ctrl, last.id)])
+
+
+##
+# Minions
+
+
+class TOY_524:
+	"""Game Master Nemsy"""
+
+	# Battlecry: Draw a Demon. Deathrattle: Swap places with it.
+	play = _NemsyDrawDemon(SELF)
+	deathrattle = _NemsySwap(SELF)
+
+
+class TOY_526:
+	"""Malefic Rook"""
+
+	# Battlecry: Attack YOUR hero.
+	play = Attack(SELF, FRIENDLY_HERO)
+
+
+class TOY_914:
+	"""Wretched Queen"""
+
+	# Taunt. Deathrattle: Summon two 4/6 Knights with Taunt.
+	deathrattle = Summon(CONTROLLER, "TOY_914t") * 2
+
+
+class TOY_914t:
+	"""Ignoble Knight"""
+
+	# Taunt. (Taunt lives in data.)
+
+
+class TOY_915:
+	"""Tabletop Roleplayer"""
+
+	# Miniaturize. Battlecry: Give a friendly Demon +2 Attack and Immune
+	# this turn. (Engine adds the paired Mini token automatically.)
+	requirements = {
+		PlayReq.REQ_TARGET_TO_PLAY: 0,
+		PlayReq.REQ_MINION_TARGET: 0,
+		PlayReq.REQ_FRIENDLY_TARGET: 0,
+		PlayReq.REQ_TARGET_WITH_RACE: Race.DEMON,
+	}
+	play = Buff(TARGET, "TOY_915e")
+
+
+class TOY_915t:
+	"""Tabletop Roleplayer"""
+
+	# Mini. Battlecry: Give a friendly Demon +2 Attack and Immune this turn.
+	requirements = {
+		PlayReq.REQ_TARGET_TO_PLAY: 0,
+		PlayReq.REQ_MINION_TARGET: 0,
+		PlayReq.REQ_FRIENDLY_TARGET: 0,
+		PlayReq.REQ_TARGET_WITH_RACE: Race.DEMON,
+	}
+	play = Buff(TARGET, "TOY_915e")
+
+
+class TOY_915e:
+	# In Character — +2 Attack and Immune this turn. TAG_ONE_TURN_EFFECT in
+	# data auto-clears at end of turn; the immune tags aren't parsed from
+	# data so declare them here.
+	tags = {
+		GameTag.ATK: 2,
+		GameTag.CANT_BE_DAMAGED: True,
+		GameTag.CANT_BE_TARGETED_BY_OPPONENTS: True,
+	}
+
+
+class TOY_916:
+	"""Sketch Artist"""
+
+	# Battlecry: Draw a Shadow spell. Get a temporary copy of it.
+	play = (Find(FRIENDLY_DECK + SPELL + SHADOW_SPELL)) & ForceDraw(
+		RANDOM(FRIENDLY_DECK + SPELL + SHADOW_SPELL)
+	).then(
+		Give(CONTROLLER, Copy(ForceDraw.TARGET)).then(GiveTemporary(Give.CARD))
+	)
+
+
+##
+# Spells
+
+
+class TOY_527:
+	"""Cursed Campaign"""
+
+	# Give a friendly minion "Deathrattle: Summon two copies of this minion
+	# that are Dormant for 2 turns."
+	requirements = {
+		PlayReq.REQ_TARGET_TO_PLAY: 0,
+		PlayReq.REQ_MINION_TARGET: 0,
+		PlayReq.REQ_FRIENDLY_TARGET: 0,
+	}
+	play = Buff(TARGET, "TOY_527e")
+
+
+class TOY_527e:
+	# Final Session — grants a deathrattle that summons two Dormant copies.
+	tags = {GameTag.DEATHRATTLE: True}
+	deathrattle = _CursedCampaignDeathrattle(SELF)
+
+
+class TOY_529:
+	"""Wheel of DEATH!!!"""
+
+	# Destroy your deck. In 5 turns, destroy the enemy hero.
+	play = Destroy(FRIENDLY_DECK), Buff(FRIENDLY_HERO, "TOY_529e1")
+
+
+class TOY_529e1:
+	# Wheel of Death Counter — ticks down at the start of each of your
+	# turns; destroys the enemy hero on the 5th tick.
+	events = OWN_TURN_BEGIN.on(_WheelOfDeathTick(SELF))
+
+
+class TOY_883:
+	"""Table Flip"""
+
+	# Deal $3 damage to all enemy minions. Costs (1) less for each other
+	# card in your hand.
+	cost_mod = -Count(FRIENDLY_HAND - SELF)
+	play = Hit(ENEMY_MINIONS, 3)
+
+
+class TOY_884:
+	"""Crane Game"""
+
+	# Summon copies of two Demons in your deck.
+	play = _CraneGameSummon(SELF)
+
+
+class TOY_886:
+	"""Endgame"""
+
+	# Resurrect your last Demon that died.
+	play = _EndgameResurrect(SELF)

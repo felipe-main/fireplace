@@ -10,5 +10,7 @@ from .shaman import *
 from .warlock import *
 from .warrior import *
 from .neutral import *
+from .neutral2 import *
+from .neutral3 import *
 from .tokens import *
 from .zilliax import *

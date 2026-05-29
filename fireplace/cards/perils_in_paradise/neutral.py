@@ -313,16 +313,49 @@ class _AmuletTrackingGet(TargetedAction):
                     source.game.cheat_action(source, [Morph(c, cid)])
 
 
-class _MixologistCraft(TargetedAction):
-    """Mixologist — Battlecry: Craft a custom 1-Cost Potion. Gives the
-    Mixologist's Special token (a custom potion combining two random effects).
-    The combined effect is data-driven cosmetic placeholders, so the token is
-    a benign no-op spell here."""
+class _MixologistCraft(MultipleChoice):
+    """Mixologist — Battlecry: Craft a custom 1-Cost Potion. Mixologist works
+    like Kazakus but always crafts a 1-Cost potion: choose two effects from the
+    Kazakus 1-Cost potion pool and combine them into one Mixologist's Special
+    (VAC_523t), whose play is the two chosen effects' plays concatenated."""
 
-    TARGET = ActionArg()
+    PLAYER = ActionArg()
+    choose_times = 2
+    # Same effect pool Kazakus uses for its 1-Cost potion (CFM_621).
+    cost_1_potions = [
+        "CFM_621t4", "CFM_621t10", "CFM_621t37", "CFM_621t2", "CFM_621t3",
+        "CFM_621t6", "CFM_621t8", "CFM_621t9", "CFM_621t5",
+    ]
 
-    def do(self, source, target):
-        source.game.cheat_action(source, [Give(source.controller, "VAC_523t")])
+    def do_step1(self):
+        self.potions = [self.player.card(c) for c in self.cost_1_potions]
+        self.cards = self.source.game.random.sample(self.potions, 3)
+
+    def do_step2(self):
+        card1 = self.choosed_cards[0]
+        self.potions.remove(card1)
+        self.cards = self.source.game.random.sample(self.potions, 3)
+
+    def done(self):
+        card1 = self.choosed_cards[0]
+        card2 = self.choosed_cards[1]
+        # Keep a stable ordering for the combined text.
+        if self.cost_1_potions.index(card1.id) > self.cost_1_potions.index(card2.id):
+            card1, card2 = card2, card1
+        new_card = self.player.card("VAC_523t")
+        new_card.custom_card = True
+
+        def create_custom_card(nc):
+            nc.data.scripts.play = (
+                card1.data.scripts.play + card2.data.scripts.play
+            )
+            nc.requirements = card1.requirements | card2.requirements
+            nc.tags[GameTag.CARDTEXT_ENTITY_0] = card1.description
+            nc.tags[GameTag.CARDTEXT_ENTITY_1] = card2.description
+
+        new_card.create_custom_card = create_custom_card
+        new_card.create_custom_card(new_card)
+        self.player.give(new_card)
 
 
 class _OctoDamage(TargetedAction):
@@ -685,7 +718,7 @@ class VAC_523:
     """Mixologist"""
 
     # Battlecry: Craft a custom 1-Cost Potion.
-    play = _MixologistCraft(SELF)
+    play = _MixologistCraft(CONTROLLER)
 
 
 class VAC_523t:

@@ -1397,6 +1397,19 @@ class Damage(TargetedAction):
     def do(self, source, target, amount=None):
         if not amount:
             amount = target.predamage
+        # Perils in Paradise — Aranna, Thrill Seeker: damage the controller's
+        # hero would take on the controller's turn is REDIRECTED (pre-damage)
+        # to a random enemy, so the hero never takes it (armor untouched, no
+        # on-hero-damage triggers fire).
+        if (amount and target.type == CardType.HERO
+                and target.controller.current_player
+                and any(m.id == "VAC_501" for m in target.controller.field)):
+            opp = target.controller.opponent
+            enemies = [c for c in [opp.hero] + list(opp.field)
+                       if c is not None and not c.dead]
+            if enemies:
+                target.predamage = 0
+                target = target.game.random.choice(enemies)
         # Whizbang's Workshop — Shudderblock: a boosted battlecry can't damage
         # the enemy hero. The enemy hero's controller's opponent is the player
         # whose battlecry is resolving; if that player has the flag set, drop

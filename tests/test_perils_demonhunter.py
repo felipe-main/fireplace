@@ -359,3 +359,20 @@ def test_aranna_priest_tourist_unlocks_priest_cards():
             has_tourist = True
     assert has_priest
     assert has_tourist
+
+
+# VAC_501 Aranna (Tier-2 faithful): your-turn hero damage is REDIRECTED
+# pre-damage to a random enemy - the hero takes nothing (armor untouched).
+def test_aranna_redirects_predamage_hero_untouched():
+    from fireplace.actions import Hit
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p, opp = game.player1, game.player2
+    opp.hero.max_health = 80
+    opp.hero._max_health = 80
+    p.summon("VAC_501")
+    p.hero.armor = 5
+    hp, armor, opp_hp = p.hero.health, p.hero.armor, opp.hero.health
+    game.queue_actions(p.hero, [Hit(p.hero, 4)])
+    # Hero never takes the damage (armor preserved); the lone enemy takes it.
+    assert p.hero.health == hp and p.hero.armor == armor
+    assert opp.hero.health == opp_hp - 4

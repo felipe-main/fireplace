@@ -332,3 +332,22 @@ def test_food_fight_entree_deathrattle_summons_for_caster():
     # The seeded Wisp was summoned onto the caster's (p1) board.
     assert seed.zone == Zone.PLAY
     assert len(p1.field) == pre_p1_field + 1
+
+
+# VAC_338 Cup o' Muscle (Tier-2 faithful): player CHOOSES which hand minion
+# gets +2/+1 (modelled as an ENTITY_CHOICE over friendly hand minions).
+def test_cup_o_muscle_buffs_chosen_hand_minion():
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p = game.player1
+    for c in list(p.hand):
+        c.discard()
+    m1 = p.give("CS2_172")  # Bloodfen Raptor 3/2
+    m2 = p.give("CS2_182")  # Chillwind Yeti 4/5
+    p.give("VAC_338").play()
+    while p.choice:
+        p.choice.choose(p.choice.cards[0])
+    buffed = [m for m in (m1, m2) if m.atk != m.data.atk]
+    assert len(buffed) == 1            # exactly one hand minion buffed
+    assert buffed[0].atk == buffed[0].data.atk + 2
+    # Drink chain still returns the next copy.
+    assert any(c.id == "VAC_338t" for c in p.hand)

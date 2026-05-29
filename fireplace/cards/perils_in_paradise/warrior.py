@@ -1,5 +1,58 @@
 from ..utils import *
 
+
+##
+# "Choose a minion in your hand" support
+#
+# The engine's play-targets only range over in-play characters, so a hand
+# minion cannot be a normal play-target. Model the printed player choice with
+# an ENTITY_CHOICE over the friendly hand minions (mirrors Chillin' Vol'jin's
+# pick), then run a callback on the chosen minion.
+
+class _HandMinionChoice:
+    type = "ENTITY_CHOICE"
+    min_count = 1
+    max_count = 1
+
+    def __init__(self, source, player, cards, apply):
+        self.source = source
+        self.player = player
+        self.cards = list(cards)
+        self._apply = apply
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise ValueError("not a valid pick")
+        self.player.choice = None
+        self._apply(self.source, card)
+
+
+def _choose_hand_minion(source, apply):
+    """Let the controller choose a friendly hand minion, then run
+    apply(source, chosen). Auto-resolves when there is exactly one; no-op when
+    there are none."""
+    ctrl = source.controller
+    minions = [c for c in ctrl.hand if c.type == CardType.MINION]
+    if not minions:
+        return
+    if len(minions) == 1:
+        apply(source, minions[0])
+        return
+    ctrl.choice = _HandMinionChoice(source, ctrl, minions, apply)
+
+
+class _CupOMuscleBuff(TargetedAction):
+    """Cup o' Muscle — give a CHOSEN minion in your hand +2/+1."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        _choose_hand_minion(
+            source,
+            lambda s, m: s.game.cheat_action(s, [Buff(m, "VAC_338e")]),
+        )
+
+
 ##
 # Minions
 
@@ -174,12 +227,11 @@ class VAC_338:
     """Cup o' Muscle"""
 
     # [x]Give a minion in your hand +2/+1. (3 Drinks left!)
-    # Drink chain: cast the effect AND give the next copy to hand. The engine
-    # can only target characters in play, so "a minion in your hand" resolves
-    # to a random friendly hand minion (repo convention).
+    # Drink chain: give the next copy first, then open the hand-minion choice
+    # (so the choice is the last thing pending when the play resolves).
     play = (
-        Buff(RANDOM(FRIENDLY_HAND + MINION), "VAC_338e"),
         Give(CONTROLLER, "VAC_338t"),
+        _CupOMuscleBuff(SELF),
     )
 
 
@@ -191,8 +243,8 @@ class VAC_338t:
 
     # [x]Give a minion in your hand +2/+1. (2 Drinks left!)
     play = (
-        Buff(RANDOM(FRIENDLY_HAND + MINION), "VAC_338e"),
         Give(CONTROLLER, "VAC_338t2"),
+        _CupOMuscleBuff(SELF),
     )
 
 
@@ -200,7 +252,7 @@ class VAC_338t2:
     """Cup o' Muscle"""
 
     # [x]Give a minion in your hand +2/+1. (Last Drink!)
-    play = Buff(RANDOM(FRIENDLY_HAND + MINION), "VAC_338e")
+    play = _CupOMuscleBuff(SELF)
 
 
 class _CharExcessBuff(TargetedAction):
@@ -218,12 +270,12 @@ class _CharExcessBuff(TargetedAction):
         source.game.cheat_action(source, [Hit(target, amount)])
         if excess <= 0:
             return
-        hand_minions = [c for c in source.controller.hand if c.type == CardType.MINION]
-        if not hand_minions:
-            return
-        pick = source.game.random.choice(hand_minions)
-        source.game.cheat_action(
-            source, [Buff(pick, "VAC_526e", atk=excess, max_health=excess)]
+        # Player chooses which hand minion gets +excess/+excess.
+        _choose_hand_minion(
+            source,
+            lambda s, m: s.game.cheat_action(
+                s, [Buff(m, "VAC_526e", atk=excess, max_health=excess)]
+            ),
         )
 
 

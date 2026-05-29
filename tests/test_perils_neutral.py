@@ -409,6 +409,10 @@ def test_mixologist_crafts_potion():
     p1 = game.player1
     mix = p1.give("VAC_523")
     mix.play()
+    # Crafting picks two effects (Kazakus-style); resolve the choices.
+    steps = 0
+    while p1.choice and steps < 6:
+        p1.choice.choose(p1.choice.cards[0]); steps += 1
     potions = [c for c in p1.hand if c.id == "VAC_523t"]
     assert len(potions) == 1
     assert potions[0].cost == 1
@@ -859,3 +863,23 @@ def test_griftah_gives_real_to_you_phony_to_enemy():
         "VAC_959t10": "VAC_959t10t",
     }[chosen]
     assert any(c.id == phony for c in p2.hand)
+
+
+# VAC_523 Mixologist (Tier-2 faithful): crafts a 1-Cost potion combining two
+# effects from the Kazakus 1-Cost pool (Mixologist's Special, VAC_523t).
+def test_mixologist_crafts_combined_potion():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    for c in list(p.hand):
+        c.discard()
+    p.give("VAC_523").play()
+    steps = 0
+    while p.choice and steps < 6:
+        p.choice.choose(p.choice.cards[0]); steps += 1
+    potions = [c for c in p.hand if c.id == "VAC_523t"]
+    assert len(potions) == 1
+    potion = potions[0]
+    assert potion.cost == 1
+    # Two effects combined into a real play script; placeholders filled.
+    assert potion.data.scripts.play is not None
+    assert "{0}" not in potion.description and "{1}" not in potion.description

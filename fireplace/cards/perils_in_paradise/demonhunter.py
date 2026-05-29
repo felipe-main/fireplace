@@ -5,27 +5,6 @@ from ..utils import *
 # Custom actions
 
 
-class _ArannaRedirect(TargetedAction):
-    """Aranna, Thrill Seeker — redirect self-damage taken by your hero on
-    your turn to a random enemy. Implemented reactively: after the hero
-    takes damage on the controller's turn, restore that much Health and
-    deal the same amount to a random enemy. This is a net-state
-    approximation of a true pre-damage redirect (see review notes)."""
-
-    TARGET = ActionArg()  # the friendly hero that took damage
-    AMOUNT = IntArg()
-
-    def do(self, source, target, amount):
-        if amount <= 0:
-            return
-        game = source.game
-        # Only on the controller's own turn.
-        if game.current_player is not target.controller:
-            return
-        game.queue_actions(source, [Heal(target, amount)])
-        game.queue_actions(source, [Hit(RANDOM_ENEMY_CHARACTER, amount)])
-
-
 class _SkirtingDeathSteal(TargetedAction):
     """Skirting Death — your hero steals up to 4 Attack from the chosen
     minion this turn: the minion loses that Attack and your hero gains it
@@ -52,11 +31,9 @@ class VAC_501:
     """Aranna, Thrill Seeker"""
 
     # [x]<b>Priest Tourist</b> Damage your hero takes on your turn is
-    # redirected to a random enemy.
-    # (Tourist is a deckbuilding keyword only — no in-game trigger.)
-    events = Damage(FRIENDLY_HERO).on(
-        _ArannaRedirect(Damage.TARGET, Damage.AMOUNT)
-    )
+    # redirected to a random enemy. The redirect is a true pre-damage hook in
+    # Damage.do (gated on a friendly Aranna in play), so no card-level event is
+    # needed here. (Tourist is a deckbuilding keyword only.)
 
 
 class VAC_927:

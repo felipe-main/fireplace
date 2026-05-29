@@ -506,15 +506,24 @@ class _PuzzleBoxMorph(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        minions = [m for p in source.game.players for m in list(p.field)]
-        for minion in minions:
-            pick = RandomMinion(cost=(minion.cost or 0) + 3).evaluate(source)
-            if isinstance(pick, list):
-                pick = pick[0] if pick else None
-            if not pick:
-                continue
-            new_card = source.controller.card(pick.id, source=source)
-            source.game.cheat_action(source, [Morph(minion, new_card)])
+        # Morph each minion into a random one costing its cost + 3. Mark the
+        # morph result so a minion is never re-morphed: this play can re-fire
+        # off the board change the Morph triggers, and without the guard the
+        # already-upgraded minion would morph again (cost+3 a second time).
+        for p in source.game.players:
+            for minion in list(p.field):
+                if minion.zone != Zone.PLAY:
+                    continue
+                if getattr(minion, "_puzzle_morphed", False):
+                    continue
+                pick = RandomMinion(cost=(minion.cost or 0) + 3).evaluate(source)
+                if isinstance(pick, list):
+                    pick = pick[0] if pick else None
+                if not pick:
+                    continue
+                new_card = source.controller.card(pick.id, source=source)
+                new_card._puzzle_morphed = True
+                source.game.cheat_action(source, [Morph(minion, new_card)])
 
 
 class VAC_464t12:

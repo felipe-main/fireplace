@@ -325,3 +325,32 @@ def test_voljin_unlocks_hunter_tourist_deck():
         tourist_class_of(_cards.db[cid]) == CardClass.HUNTER for cid in deck
     )
     assert has_tourist
+
+
+# VAC_418 Sauna Regular (Tier-2): costs (1) less per damage EVENT on your turn.
+def test_sauna_regular_cost_per_damage_event():
+    from fireplace.actions import Hit
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    sauna = p.give("VAC_418")
+    assert sauna.cost == 5
+    # Two separate 1-damage events to our own hero on our turn -> -2 (not -1
+    # per point; a single 2-damage hit would also be one event).
+    game.queue_actions(p.hero, [Hit(p.hero, 1)])
+    game.queue_actions(p.hero, [Hit(p.hero, 1)])
+    assert sauna.cost == 3
+
+
+# VAC_420t Fortune (Tier-2): playing a minion Fortune fires its battlecry.
+def test_fortune_fires_minion_battlecry():
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    # Deck (bottom->top): a Wisp, then Novice Engineer on top.
+    p.card("CS2_231").zone = Zone.DECK
+    p.card("EX1_015").zone = Zone.DECK  # Novice Engineer = top (battlecry: draw)
+    pre_deck = len(p.deck)
+    fortune = p.give("VAC_420t")
+    fortune.play()
+    # Fortune copied + played the Novice Engineer; its battlecry drew a card.
+    assert any(m.id == "EX1_015" for m in p.field)
+    assert len(p.deck) == pre_deck - 1

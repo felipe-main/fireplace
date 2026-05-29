@@ -302,3 +302,20 @@ def test_rising_waves_single_hit_when_one_dies():
     # One minion died -> no second tick. Survivor took exactly 2.
     assert dies.zone == Zone.GRAVEYARD
     assert survivor.damage == 2
+
+
+# VAC_524 King Tide (Tier-2): the cost-(5) window persists if King Tide dies.
+def test_king_tide_window_persists_after_death():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.player1
+    kt = p.give("VAC_524")
+    kt.play()
+    fb = p.give("CS2_029")  # Fireball, base cost 4
+    assert fb.cost == 5
+    kt.destroy()
+    game.process_deaths()
+    # Window persists even though King Tide left play.
+    assert fb.cost == 5
+    # Two own-turn-ends close the window; spells revert.
+    game.end_turn(); game.end_turn(); game.end_turn(); game.end_turn()
+    assert p.give("CS2_029").cost == 4

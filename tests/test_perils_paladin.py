@@ -355,3 +355,18 @@ def test_sancazel_location_buffs_minion_and_turns_back():
     # Location turns back into the Sanc'Azel minion.
     minions = [m for m in p1.field if m.id == "VAC_923"]
     assert len(minions) == 1
+
+
+# VAC_558 Sea Shanty (Tier-2): costs (1) less per spell cast ON A CHARACTER.
+def test_sea_shanty_cost_per_spell_on_character():
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p = game.player1
+    shanty = p.give("VAC_558")
+    assert shanty.cost == 10
+    # Two spells cast on a character (Moonfire on the enemy hero).
+    p.give("CS2_008").play(target=game.player2.hero)
+    p.give("CS2_008").play(target=game.player2.hero)
+    assert shanty.cost == 8
+    # A spell NOT cast on a character (Arcane Intellect) does not count.
+    p.give("CS2_023").play()
+    assert shanty.cost == 8

@@ -411,3 +411,14 @@ def test_loot_crusty_devours_minion_stats():
     # Base 3/3 + devoured 3 atk / 2 health = 6/5.
     assert crusty.atk == 3 + 3
     assert crusty.max_health == 3 + 2
+
+
+# VAC_464t12 Puzzle Box (Tier-2): transform all minions into ones costing +3.
+def test_puzzle_box_transforms_to_cost_plus_three():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.player1
+    p.summon("CS2_172")  # Bloodfen Raptor, 2-cost
+    p.give("VAC_464t12").play()
+    # The (now morphed) minion costs 2 + 3 = 5.
+    assert len(p.field) == 1
+    assert p.field[0].data.cost == 5

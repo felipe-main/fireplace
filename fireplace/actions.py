@@ -620,6 +620,12 @@ class Play(GameAction):
         # FINALE-gated card scripts.
         card.play_finale = (player.mana == 0)
 
+        # Showdown in the Badlands — Quickdraw snapshot. Capture whether the
+        # card is being played the same turn it entered hand BEFORE its zone
+        # changes to PLAY (quickdraw_active reads HAND zone). Read by
+        # QUICKDRAW-gated `play`/battlecry actions.
+        card.quickdraw_played = card.quickdraw_active
+
         card.target = target
         card._summon_index = index
 
@@ -3267,3 +3273,61 @@ class Trade(GameAction):
         actions = target.get_actions("trade")
         if actions:
             source.game.trigger(target, actions, event_args=None)
+
+
+# Showdown in the Badlands — Excavate treasure pools (non-collectible
+# WILD_WEST cards). Each Excavate digs one tier deeper; the controller's
+# class decides whether tier 4 (a class Legendary) is reachable.
+EXCAVATE_TIERS = {
+    1: ["WW_001t", "WW_001t18", "WW_001t2", "WW_001t3", "WW_001t4"],
+    2: ["WW_001t16", "WW_001t5", "WW_001t7", "WW_001t8", "WW_001t9"],
+    3: ["WW_001t11", "WW_001t12", "WW_001t13", "WW_001t14", "WW_001t17"],
+}
+# Tier-4 class Legendary treasures. Only five Excavate classes shipped in
+# Patch 28.0 (Paladin and Shaman gain theirs in the Delve into Deepholm
+# mini-set). A class absent from this map tops out at tier 3.
+EXCAVATE_LEGENDARY = {
+    CardClass.ROGUE: "WW_001t23",
+    CardClass.MAGE: "WW_001t24",
+    CardClass.WARLOCK: "WW_001t25",
+    CardClass.DEATHKNIGHT: "WW_001t26",
+    CardClass.WARRIOR: "WW_001t27",
+}
+
+
+class Excavate(TargetedAction):
+    """
+    Showdown in the Badlands — the target player Excavates a treasure.
+
+    Each Excavate digs one tier deeper: 1st = random 1-mana Common, 2nd =
+    2-mana Rare, 3rd = 3-mana Epic. Excavate-identity classes (those in
+    EXCAVATE_LEGENDARY) dig a 4th tier for their unique 4-mana Legendary.
+    After the deepest tier the cycle restarts at tier 1.
+    """
+
+    TARGET = ActionArg()
+
+    def _tier_for(self, player):
+        max_tier = 4 if player.hero.data.card_class in EXCAVATE_LEGENDARY else 3
+        # excavates_this_game is bumped before this call, so it is the
+        # 1-indexed ordinal of the dig being resolved.
+        n = player.excavates_this_game
+        return ((n - 1) % max_tier) + 1
+
+    def do(self, source, target):
+        player = target
+        player.excavates_this_game += 1
+        tier = self._tier_for(player)
+        if tier == 4:
+            card_id = EXCAVATE_LEGENDARY[player.hero.data.card_class]
+        else:
+            card_id = source.game.random.choice(EXCAVATE_TIERS[tier])
+        log.info("%s Excavates (tier %i) -> %s", player, tier, card_id)
+        if len(player.hand) >= player.max_hand_size:
+            log.info("%s's hand is full; Excavated treasure is lost", player)
+            return []
+        card = player.card(card_id, source=source)
+        card.zone = Zone.HAND
+        source.game.manager.targeted_action(self, source, target)
+        self.broadcast(source, EventListener.AFTER, target, card)
+        return [card]

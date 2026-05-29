@@ -334,6 +334,14 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # was played with the player's last mana crystal). Read by
         # Finale-gated `play` actions.
         self.play_finale = False
+        # Showdown in the Badlands — Quickdraw. `_turn_entered_hand` is
+        # stamped every time this card enters HAND (drawn OR generated);
+        # `quickdraw_active` is True while the card is still in hand on
+        # that same turn (used by cost mods). `quickdraw_played` is the
+        # snapshot captured by Play.do the instant the card is played,
+        # read by QUICKDRAW-gated `play`/battlecry actions.
+        self._turn_entered_hand = -1
+        self.quickdraw_played = False
         # Festival of Legends — ETC, Band Manager sideboard. Populated
         # at deck-draft time with the 3 cards picked for the band.
         # Empty for every other card. Read by ETC's Battlecry Discover.
@@ -520,6 +528,16 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         return self.turn_played == self.game.turn
 
     @property
+    def quickdraw_active(self):
+        # Showdown in the Badlands — Quickdraw is live while the card is in
+        # hand on the same turn it entered (by any means: drawn, generated,
+        # bounced). Read by cost mods (e.g. Dehydrate "Costs (1)") and as
+        # the source for the quickdraw_played snapshot in Play.do.
+        if self.zone != Zone.HAND:
+            return False
+        return self._turn_entered_hand == self.game.turn
+
+    @property
     def play_outcast(self):
         return self.play_left_most or self.play_right_most
 
@@ -544,6 +562,12 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                 self.controller.copy_cthun_buff(self)
 
         if self.zone == Zone.HAND:
+            # Showdown in the Badlands — stamp the turn this card entered hand
+            # (drawn, generated, or bounced) so Quickdraw can tell whether it is
+            # being played the same turn it arrived.
+            game = getattr(self, "game", None)
+            if game is not None:
+                self._turn_entered_hand = game.turn
             # Create the "Choose One" subcards
             del self.choose_cards[:]
             for id in self.data.choose_cards:

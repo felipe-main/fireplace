@@ -121,6 +121,11 @@ class Player(Entity, TargetableByAuras):
         self.cthun = None
         self.invoke_counter = 0
         self.spells_played_this_game = 0
+        # Showdown in the Badlands — number of times this player has Excavated
+        # this game. Drives the escalating treasure tier (Common -> Rare ->
+        # Epic -> class Legendary for excavate classes, then cycles) and is
+        # read by payoff cards (e.g. The Azerite Scorpion at 8 Excavates).
+        self.excavates_this_game = 0
         # Per-game / per-turn counters introduced for Alterac Valley cards.
         self.num_hero_attacks_this_game = 0
         self.armor_gained_this_game = 0

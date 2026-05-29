@@ -218,6 +218,17 @@ CORPSES = Attr(CONTROLLER, "corpses")
 #   play = (Damage(TARGET, 3), FINALE & Draw(CONTROLLER) * 2)
 FINALE = Attr(SELF, "play_finale") >= 1
 
+# Showdown in the Badlands — Quickdraw gate. True only when the card was
+# played the same turn it entered hand (Play.do snapshots this from
+# `quickdraw_active`). The base effect always resolves; the Quickdraw
+# bonus is added on top. Use like:
+#   play = (Damage(TARGET, 3), QUICKDRAW & Buff(SELF, "WW_xxxe"))
+# For "this card costs less while Quickdraw is live in hand" effects, gate
+# the cost_mod on `quickdraw_active` instead (it tracks the in-hand state):
+#   cost_mod = QUICKDRAW_HAND & SET(1)
+QUICKDRAW = Attr(SELF, "quickdraw_played") >= 1
+QUICKDRAW_HAND = Attr(SELF, "quickdraw_active") >= 1
+
 
 def SET(amt):
     return lambda self, i: amt

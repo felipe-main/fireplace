@@ -275,8 +275,10 @@ class TOY_806e:
 class TOY_807:
     """Owlonius"""
 
+    # Spell Damage +1, and "your spells get DOUBLE BONUS from Spell Damage" —
+    # only the Spell Damage bonus is doubled, not the spell's base damage.
     tags = {GameTag.SPELLPOWER: 1}
-    update = Refresh(CONTROLLER, {GameTag.SPELLPOWER_DOUBLE: 1})
+    update = Refresh(CONTROLLER, {enums.SPELLPOWER_BONUS_DOUBLE: 1})
 
 
 ##

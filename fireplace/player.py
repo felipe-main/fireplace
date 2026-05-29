@@ -42,6 +42,7 @@ class Player(Entity, TargetableByAuras):
     healing_as_damage = slot_property("healing_as_damage")
     shadowform = slot_property("shadowform")
     spellpower_double = slot_property("spellpower_double", sum)
+    spellpower_bonus_double = slot_property("spellpower_bonus_double", sum)
     spellpower_adjustment = slot_property("spellpower", sum)
     spellpower_arcane_adjustment = slot_property("spellpower_arcane", sum)
     spellpower_fire_adjustment = slot_property("spellpower_fire", sum)
@@ -487,6 +488,10 @@ class Player(Entity, TargetableByAuras):
         yield from self.buffs
         if self.hero:
             yield from self.hero.entities
+        # Locations are in play and must be visible to IN_PLAY/LOCATION_CARD
+        # selectors (e.g. Workshop Janitor's "if you control a location").
+        if self.location:
+            yield from self.location.entities
         yield self
 
     @property
@@ -614,11 +619,19 @@ class Player(Entity, TargetableByAuras):
             SpellSchool.SHADOW: self.spellpower_shadow,
             SpellSchool.FEL: self.spellpower_fel,
         }
+        # The bonus is everything Spell Damage contributes on top of the
+        # spell's base amount (school spellpower + flat spellpower + the
+        # one-shot next-spell boost). Whizbang's Workshop — Owlonius doubles
+        # only this bonus, not the base damage (distinct from Velen-style
+        # SPELLPOWER_DOUBLE, which doubles the whole figure below).
+        bonus = 0
         if getattr(spell, "spell_school", SpellSchool.NONE) in spell_school_power_map:
-            amount += spell_school_power_map[spell.spell_school]
-        amount += self.spellpower
+            bonus += spell_school_power_map[spell.spell_school]
+        bonus += self.spellpower
         # TITANS — The Primus Runes of Frost: next spell has Spell Damage +N.
-        amount += self.next_spell_spellpower
+        bonus += self.next_spell_spellpower
+        bonus <<= self.controller.spellpower_bonus_double
+        amount += bonus
         amount <<= self.controller.spellpower_double
         return amount
 

@@ -545,7 +545,11 @@ class EndTurn(GameAction):
             )
         source.game.manager.game_action(self, source, player)
         self.broadcast(source, EventListener.ON, player)
-        for card in player.hand:
+        # Snapshot the hand: card.discard() mutates player.hand, so iterating
+        # the live list skips the neighbour of each discarded card. (Surfaced
+        # by Sweetened Snowflurry, the first card to grant two temporary cards
+        # at once — without the copy one of the two survived end of turn.)
+        for card in list(player.hand):
             if card.temporary:
                 card.discard()
         if player.extra_end_turn_effect:

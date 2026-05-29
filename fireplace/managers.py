@@ -305,6 +305,7 @@ CARD_ATTRIBUTE_MAP = {
     enums.CAST_ON_FRIENDLY_MINIONS: "cast_on_friendly_minions",
     enums.CAST_ON_FRIENDLY_CHARACTERS: "cast_on_friendly_characters",
     enums.EXTRA_BATTLECRIES: "extra_battlecries",
+    enums.SPELLPOWER_BONUS_DOUBLE: "spellpower_bonus_double",
     enums.EXTRA_TRIGGER_SECRET: "extra_trigger_secret",
     enums.MINION_EXTRA_BATTLECRIES: "minio_extra_battlecries",
     enums.MINION_EXTRA_COMBOS: "minio_extra_combos",

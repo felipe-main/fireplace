@@ -26,6 +26,9 @@ HERO_HEALTH_CHANGED_THIS_TURN = -29
 TEMPORARY = -30
 INCOMING_DAMAGE_MULTIPLIER_FROM_SPELL = -31
 INCOMING_DAMAGE_MAX = -32
+# Whizbang's Workshop — Owlonius: double only the BONUS your spells get from
+# Spell Damage (not the base damage; distinct from SPELLPOWER_DOUBLE).
+SPELLPOWER_BONUS_DOUBLE = -33
 
 
 class SpellType(IntEnum):

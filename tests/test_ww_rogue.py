@@ -30,28 +30,21 @@ def test_dig_for_treasure_pirate_gives_coin():
     spell.play()
     assert pirate.zone == Zone.HAND
     coins = [c for c in p1.hand if c.id == "GAME_005"]
-    # BUG: printed card says "Draw a minion. If it's a Pirate, get a Coin."
-    # The impl is `ForceDraw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION))` but
-    # ForceDraw only accepts a single TARGET arg, so TARGET=CONTROLLER (the
-    # Player) and the minion selector is ignored. The pirate-check then runs
-    # `Find(ForceDraw.TARGET + PIRATE)` == Player ∩ Pirates == empty, so the
-    # Coin is NEVER granted. Correct behaviour: len(coins) == 1.
-    assert len(coins) == 0
+    # Drew a Pirate -> exactly one Coin granted.
+    assert len(coins) == 1
 
 
-def test_dig_for_treasure_draws_any_card_not_just_minion():
-    # BUG: "Draw a minion" should be minion-restricted, but the impl ignores
-    # the minion selector and draws whatever is on top. Here the only deck
-    # card is a spell (Moonfire) and it gets drawn anyway.
+def test_dig_for_treasure_is_minion_restricted():
+    # "Draw a minion" is minion-restricted. With only a spell in the deck, the
+    # minion selector matches nothing, so the spell is NOT drawn (stays in deck).
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
     p1 = game.player1
     spell_in_deck = p1.give("CS2_008")  # Moonfire (a SPELL, not a minion)
     spell_in_deck.zone = Zone.DECK
     spell = p1.give("TOY_510")
     spell.play()
-    # Correct behaviour would leave the spell in the deck (drew "a minion");
-    # current behaviour draws the spell.
-    assert spell_in_deck.zone == Zone.HAND
+    # The spell remains in the deck because the draw is minion-restricted.
+    assert spell_in_deck.zone == Zone.DECK
 
 
 def test_dig_for_treasure_nonpirate_no_coin():

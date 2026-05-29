@@ -161,19 +161,21 @@ def test_chalk_artist_transforms_drawn_minion():
     m = morphed[0]
     assert m.type == CardType.MINION
     assert m.rarity == Rarity.LEGENDARY
-    # BUG: printed text says "keeping its original stats and Cost" — the drawn
-    # Target Dummy (0-cost 0/2) should retain cost 0, atk 0, health 2 after the
-    # transform. The TOY_388e2 "Adjusted stats" enchant is never applied, so the
-    # morphed Legendary shows ITS OWN natural stats instead. Asserting current
-    # (buggy) behaviour: the card carries no chalk enchant and its stats are the
-    # natural stats of the Legendary it became, NOT the seed's 0/0/2.
-    assert not any(b.id == "TOY_388e2" for b in m.buffs)
+    # "keeping its original stats and Cost": the drawn Target Dummy (0-cost 0/2)
+    # transforms into a random Legendary that retains cost 0, atk 0, health 2.
+    assert m.id != "GVG_093"  # it really transformed into something else
+    assert m.cost == 0
+    assert m.atk == 0
+    assert m.health == 2
+    assert m.max_health == 2
+    # The chalk enchants are attached to the morphed card (not the discarded
+    # original): stats persist + the cost override is present while in hand.
+    assert any(b.id == "TOY_388e2" for b in m.buffs)
+    assert any(b.id == "TOY_388e3" for b in m.buffs)
+    # The Legendary's own natural stats differ from the preserved 0/0/2 (proves
+    # the stats are actually being overridden, not coincidentally equal).
     natural = game.player1.card(m.id)
-    assert m.cost == natural.cost
-    assert m.atk == natural.atk
-    assert m.health == natural.health
-    # The seed's original stats are NOT preserved (proves the deviation):
-    assert not (m.cost == 0 and m.atk == 0 and m.health == 2 and m.id != "GVG_093")
+    assert not (natural.cost == 0 and natural.atk == 0 and natural.health == 2)
 
 
 # TOY_714 — Fly Off the Shelves: Deal $1 damage to all enemy minions. Repeat

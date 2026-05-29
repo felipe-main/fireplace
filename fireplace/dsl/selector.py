@@ -388,6 +388,10 @@ RIGHT_OF = lambda s: BoardPositionSelector(BoardPositionSelector.Direction.RIGHT
 ADJACENT = lambda s: LEFT_OF(s) | RIGHT_OF(s)
 SELF_ADJACENT = ADJACENT(SELF)
 TARGET_ADJACENT = ADJACENT(TARGET)
+# Minions flanking the *defender* of an attack. During an Attack event the
+# attacker's chosen victim lives in `source.attack_target` (not `source.target`,
+# which stays None), so cleave-on-attack effects must read ATTACK_TARGET.
+ATTACK_TARGET_ADJACENT = ADJACENT(ATTACK_TARGET)
 
 
 class RandomSelector(Selector):

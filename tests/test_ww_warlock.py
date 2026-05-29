@@ -22,13 +22,13 @@ def test_game_master_nemsy_draw_and_swap():
     assert demon.zone == Zone.HAND
     assert nemsy.zone == Zone.PLAY
 
-    pre_field = len(game.player1.field)
     nemsy.destroy()
     game.process_deaths()
     # Deathrattle: the drawn demon is summoned into play (swap places).
     assert demon.zone == Zone.PLAY
-    # Nemsy returned to hand (a fresh copy).
-    assert any(c.id == "TOY_524" for c in game.player1.hand)
+    # The ACTUAL Nemsy entity (same object) is returned to hand, not a copy.
+    assert nemsy.zone == Zone.HAND
+    assert nemsy in game.player1.hand
 
 
 # TOY_526 — Malefic Rook: Battlecry Attack YOUR hero.
@@ -186,6 +186,21 @@ def test_crane_game_summons_two_demons():
     crane.play()
     summoned = [c for c in game.player1.field if c.id == IMP_DEMON]
     assert len(summoned) == 2
+
+
+def test_crane_game_single_demon_summons_two_copies():
+    # With only ONE Demon in the deck, Crane Game still summons TWO copies
+    # (two independent picks with replacement) — not just one.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    for c in list(game.player1.deck):
+        c.discard()
+    only = game.player1.give(IMP_DEMON); only.shuffle_into_deck()
+    crane = game.player1.give("TOY_884")
+    crane.play()
+    summoned = [c for c in game.player1.field if c.id == IMP_DEMON]
+    assert len(summoned) == 2
+    # The single deck Demon is copied, not moved — it stays in the deck.
+    assert only.zone == Zone.DECK
 
 
 def test_crane_game_no_demons_does_nothing():

@@ -26,7 +26,9 @@ class _NemsyDrawDemon(TargetedAction):
 class _NemsySwap(TargetedAction):
 	"""Game Master Nemsy deathrattle — swap places with the Demon drawn
 	by the battlecry. The drawn Demon (still in hand) is summoned into
-	Nemsy's board slot, and a copy of Nemsy is returned to hand."""
+	Nemsy's board slot, and the ACTUAL Nemsy entity is returned to hand via
+	Bounce (the same card, not a fresh copy). Bounce also handles the
+	full-hand case by destroying instead, matching live Hearthstone."""
 
 	TARGET = ActionArg()
 
@@ -40,9 +42,10 @@ class _NemsySwap(TargetedAction):
 			return
 		# Summon the demon into play (Nemsy's slot — it died, so append).
 		source.game.cheat_action(source, [Summon(ctrl, demon)])
-		# Return Nemsy to hand (a fresh copy, since the original is dead).
-		if len(ctrl.hand) < ctrl.max_hand_size:
-			source.game.cheat_action(source, [Give(ctrl, "TOY_524")])
+		# Return the actual Nemsy entity to hand (swap places). Bounce moves
+		# this very card, so any tracking that identifies "the same Nemsy"
+		# is preserved; on hand-entry it resets to base like every bounce.
+		source.game.cheat_action(source, [Bounce(source)])
 
 
 class _CursedCampaignDeathrattle(TargetedAction):
@@ -86,7 +89,10 @@ class _WheelOfDeathTick(TargetedAction):
 
 
 class _CraneGameSummon(TargetedAction):
-	"""Crane Game — summon copies of two (distinct) Demons in your deck."""
+	"""Crane Game — "Summon copies of two Demons in your deck." Two independent
+	random picks WITH replacement (matching live HS), so a deck with a single
+	Demon yields two copies of it rather than just one. Each pick rolls over
+	the full demon pool, so the same Demon can legitimately be chosen twice."""
 
 	TARGET = ActionArg()
 
@@ -96,12 +102,11 @@ class _CraneGameSummon(TargetedAction):
 		if not demons:
 			return
 		import random
-		random.shuffle(demons)
-		picks = demons[:2]
 		copier = ExactCopy(None)
-		for demon in picks:
+		for _ in range(2):
 			if len(ctrl.field) >= 7:
 				break
+			demon = random.choice(demons)
 			copy = copier.copy(source, demon)
 			source.game.cheat_action(source, [Summon(ctrl, copy)])
 

@@ -12,8 +12,13 @@ class TOY_505:
 class TOY_510:
     """Dig for Treasure"""
 
-    play = ForceDraw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION)).then(
-        Find(ForceDraw.TARGET + PIRATE) & Give(CONTROLLER, "GAME_005")
+    # Draw(CONTROLLER, <selector>) draws the selected card (minion-restricted)
+    # and exposes it as Draw.CARD; gate the Coin on the drawn card being a
+    # Pirate. ForceDraw only takes a TARGET (no card selector), so the old
+    # ForceDraw(CONTROLLER, RANDOM(...)) silently ignored the minion filter
+    # and Find(ForceDraw.TARGET + PIRATE) matched the Player, never the card.
+    play = Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION)).then(
+        Find(Draw.CARD + PIRATE) & Give(CONTROLLER, "GAME_005")
     )
 
 

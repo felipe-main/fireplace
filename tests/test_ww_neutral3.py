@@ -246,11 +246,10 @@ def test_joymancer_copies_one_stat_minions():
 # ---------------------------------------------------------------------------
 def test_gnomelia_cleave_wired():
     """Gnomelia's cleave uses the canonical Attack(SELF).on(CLEAVE) pattern
-    (same wiring as Enslaved Fel Lord / Foe Reaper). Live cleave damage is
-    an engine-level limitation shared by every cleave-on-attack minion:
-    CLEAVE = Hit(TARGET_ADJACENT, ATK(SELF)) reads source.target, which is
-    None during an attack (attacks set attack_target), so adjacent minions
-    take no damage in the harness. We verify the wiring is identical."""
+    (same wiring as Enslaved Fel Lord / Foe Reaper). CLEAVE now reads
+    ATTACK_TARGET_ADJACENT so it resolves live (see
+    test_gnomelia_main_attack_cleaves_flanking_minions). We verify the
+    wiring is identical to the reference cleave minions."""
     from fireplace.actions import Attack as AttackAction, Hit
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     gnomelia = game.player1.summon("TOY_100")
@@ -267,10 +266,9 @@ def test_gnomelia_cleave_wired():
     assert isinstance(cleave, Hit)
 
 
-def test_gnomelia_main_attack_no_live_cleave():
-    # BUG/APPROX: printed text "Also damages minions next to whomever this
-    # attacks" does not resolve live (engine cleave-on-attack limitation).
-    # Adjacent enemies survive; only the defender takes the hit.
+def test_gnomelia_main_attack_cleaves_flanking_minions():
+    # "Also damages minions next to whomever this attacks": attacking the middle
+    # of three enemies deals Gnomelia's Attack to BOTH flanking minions.
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     gnomelia = game.player1.summon("TOY_100")
     gnomelia.max_health = 80
@@ -283,11 +281,14 @@ def test_gnomelia_main_attack_no_live_cleave():
     mid.damage = 0
     right = game.player2.summon(WISP)
     pre_mid = mid.health
+    atk = gnomelia.atk
     gnomelia.attack(mid)
     game.process_deaths()
-    assert mid.health == pre_mid - gnomelia.atk
-    assert not left.dead  # cleave did not fire (current behaviour)
-    assert not right.dead
+    # Defender takes the normal attack damage.
+    assert mid.health == pre_mid - atk
+    # Both 1-health flankers take the cleave (= Gnomelia's Attack) and die.
+    assert left.dead
+    assert right.dead
 
 
 def test_gnomelia_deathrattle_2_to_all_enemies():

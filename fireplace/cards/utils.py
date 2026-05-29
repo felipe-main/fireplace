@@ -41,7 +41,11 @@ GiveReborn = lambda target: SetTag(target, GameTag.REBORN)
 GiveTemporary = lambda target: SetTag(target, enums.TEMPORARY)
 
 
-CLEAVE = Hit(TARGET_ADJACENT, ATK(SELF))
+# Cleave-on-attack: damage the minions flanking the *defender*. Uses
+# ATTACK_TARGET_ADJACENT, not TARGET_ADJACENT — every CLEAVE user wires it via
+# `Attack(SELF).on(CLEAVE)`, and during an attack the defender is in
+# `source.attack_target` while `source.target` is None.
+CLEAVE = Hit(ATTACK_TARGET_ADJACENT, ATK(SELF))
 COINFLIP = RandomNumber(0, 1) == 1
 EMPTY_BOARD = Count(FRIENDLY_MINIONS) == 0
 EMPTY_HAND = Count(FRIENDLY_HAND) == 0

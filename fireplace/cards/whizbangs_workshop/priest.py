@@ -19,15 +19,16 @@ class _ZarimiBumpDragons(TargetedAction):
 
 class _ChalkArtistTransform(TargetedAction):
     """Chalk Artist — transform the just-drawn minion into a random Legendary
-    minion, keeping its original Attack, Health and Cost (re-applied via the
-    TOY_388e2 enchant, mirroring Lady Prestor)."""
+    minion, keeping its original Attack, Health and Cost. Uses the canonical
+    Lady Prestor (SW_078) SetStateBuff pattern: the buff is applied to the
+    *morphed* card (Morph.CARD) and reads the original's stats from
+    Morph.TARGET. The hand-rolled approach this replaces applied the enchant
+    to Morph.TARGET (the now-SETASIDE original) instead of the new card, so
+    the stats were silently dropped and the Legendary kept its own."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        cost = target.cost
-        atk = target.atk
-        health = target.health
         new_id = RandomLegendaryMinion().evaluate(source)
         if not new_id:
             return
@@ -39,27 +40,10 @@ class _ChalkArtistTransform(TargetedAction):
         source.game.cheat_action(
             source,
             [Morph(target, morphed).then(
-                _ChalkApplyStats(Morph.TARGET, cost, atk, health)
+                SetStateBuff(Morph.CARD, Morph.TARGET, "TOY_388e2"),
+                SetStateBuff(Morph.CARD, Morph.TARGET, "TOY_388e3"),
             )],
         )
-
-
-class _ChalkApplyStats(TargetedAction):
-    """Stamp the captured original Attack/Health/Cost onto the morphed card via
-    the TOY_388e2 'Adjusted stats' enchant."""
-
-    TARGET = ActionArg()
-    COST = IntArg()
-    ATK = IntArg()
-    HEALTH = IntArg()
-
-    def do(self, source, target, cost, atk, health):
-        buff = source.controller.card("TOY_388e2", source=source)
-        buff.source = source
-        buff._xcost = cost
-        buff._xatk = atk
-        buff._xhealth = health
-        buff.apply(target)
 
 
 class _RepackageStuff(TargetedAction):
@@ -197,11 +181,18 @@ class TOY_388:
 
 
 class TOY_388e2:
-    # "Covered in Chalk" — re-applies the original minion's Attack, Health and
-    # Cost after the Legendary transform (Lady Prestor pattern).
-    events = REMOVED_IN_PLAY
+    # "Covered in Chalk" — re-applies the original minion's Attack and Health
+    # after the Legendary transform (persists into play). Lady Prestor pattern;
+    # SetStateBuff stamps _xatk/_xhealth from the original at apply time.
     atk = lambda self, _: self._xatk
     max_health = lambda self, _: self._xhealth
+
+
+class TOY_388e3:
+    # Cost half of the Chalk Artist transform — REMOVED_IN_PLAY so the original
+    # Cost only governs the card while it's in hand (mirrors Lady Prestor's
+    # SW_078e2). SetStateBuff stamps _xcost from the original at apply time.
+    events = REMOVED_IN_PLAY
     cost = lambda self, _: self._xcost
 
 

@@ -5,6 +5,38 @@ from hearthstone.enums import CardType, GameTag, Rarity
 CARDS = utils.fireplace.cards.db
 
 
+# Out-of-scope cards that became collectible (or were reworked to carry a
+# Battlecry/Deathrattle tag) only in the Patch 31.2.2 data (build 213852,
+# pinned for The Great Dark Beyond). None belong to any implemented standard
+# expansion, so they are skipped exactly like the NX2_/YOG_ deferred mini-sets:
+#   - VAN_*  : VANILLA set — Classic-mode reprints of EX1_/CS2_/NEW1_/… cards.
+#   - LEG_*  : LEGACY set — Legacy-format reprints (CS3_/RLK_).
+#   - WORK_* : ISLAND_VACATION (Perils in Paradise) Tourist/Travel cards added
+#              after the VAC_ Perils pass; out of scope for the GDB expansion.
+# Plus individual stragglers from other modes/sets reworked in this build:
+#   - BG31_BOB           : EVENT (Battlegrounds) — different game mode.
+#   - WON_145            : EVENT (Caverns of Time) — different game mode.
+#   - BT_307 (Darkglare) : BLACK_TEMPLE — reworked to a Battlecry in newer data.
+#   - TOY_913 (Ci'Cigi)  : WHIZBANGS_WORKSHOP straggler outside the MIS_ mini-set.
+#   - Core_UNG_*, CORE_VAN_* : CORE-set reprints of Un'Goro/Vanilla cards.
+_OUT_OF_SCOPE_PREFIXES = ("NX2_", "YOG_", "VAN_", "LEG_", "WORK_")
+_OUT_OF_SCOPE_IDS = frozenset(
+    [
+        "BG31_BOB",
+        "WON_145",
+        "BT_307",
+        "TOY_913",
+        "Core_UNG_072",
+        "Core_UNG_211",
+        "CORE_VAN_EX1_561",
+    ]
+)
+
+
+def _out_of_scope(cid):
+    return cid in _OUT_OF_SCOPE_IDS or cid.startswith(_OUT_OF_SCOPE_PREFIXES)
+
+
 # def test_all_tags_known():
 #     """
 #     Iterate through the card database and check that all specified GameTags
@@ -53,15 +85,7 @@ def test_battlecry_scripts():
             # implemented expansion. Out of scope.
             if card.id in ["GIFT_01", "CORE_GIFT_01"]:
                 continue
-            # MotLK mini-set "Return of the Lich King" (NX2_*) is
-            # deferred — out of scope for the Festival of Legends pass.
-            if card.id.startswith("NX2_"):
-                continue
-            # TITANS mini-set "Fall of Ulduar" (YOG_*) is deferred — these
-            # cards became collectible in the Patch 28.0 data but the mini-set
-            # was skipped in the roadmap (out of scope for Showdown in the
-            # Badlands).
-            if card.id.startswith("YOG_"):
+            if _out_of_scope(card.id):
                 continue
             assert card.scripts.play
 
@@ -79,13 +103,7 @@ def test_deathrattle_scripts():
                 "SW_069",
             ]:
                 continue
-            # MotLK mini-set "Return of the Lich King" (NX2_*) is
-            # deferred — out of scope for the Festival of Legends pass.
-            if card.id.startswith("NX2_"):
-                continue
-            # TITANS mini-set "Fall of Ulduar" (YOG_*) is deferred — became
-            # collectible in Patch 28.0 data but is out of scope.
-            if card.id.startswith("YOG_"):
+            if _out_of_scope(card.id):
                 continue
             assert card.scripts.deathrattle
 

@@ -57,7 +57,7 @@ class _EscapePod(TargetedAction):
             source.game.cheat_action(
                 source,
                 [
-                    Buff(m, "GDB_877e2", atk=1, max_health=1),
+                    Buff(m, "GDB_877e", atk=1, max_health=1),
                     SetTags(m, {GameTag.RUSH: True}),
                 ],
             )
@@ -75,6 +75,20 @@ class _Doommaiden(TargetedAction):
             source.game.cheat_action(source, [Draw(source.controller, card)])
 
 
+class _ArmStarlightWanderer(TargetedAction):
+    """Starlight Wanderer — the next Draenei you play gains +2/+1."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        game = source.game
+
+        def hook(played):
+            game.cheat_action(played, [Buff(played, "GDB_720e1")])
+
+        source.controller.next_draenei_hooks.append(hook)
+
+
 ##
 # Custom actions
 
@@ -86,8 +100,11 @@ class _GainBonusEffects(TargetedAction):
     AMOUNT = IntArg()
 
     def do(self, source, target, amount):
-        for tags in roll_bonus_effects(source.game.random, amount):
-            source.game.cheat_action(source, [SetTags(target, tags)])
+        # roll_bonus_effects returns ONE merged tag dict for all `amount`
+        # effects — apply it in a single SetTags (iterating it would yield
+        # bare GameTag keys).
+        tags = roll_bonus_effects(source.game.random, amount)
+        source.game.cheat_action(source, [SetTags(target, tags)])
 
 
 class _ArmAceWayfinder(TargetedAction):
@@ -97,14 +114,13 @@ class _ArmAceWayfinder(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
+        # One merged tag dict for both effects (see _GainBonusEffects).
         rolled = roll_bonus_effects(source.game.random, 2)
-        for tags in rolled:
-            source.game.cheat_action(source, [SetTags(source, tags)])
+        source.game.cheat_action(source, [SetTags(source, rolled)])
         game = source.game
 
         def hook(played):
-            for tags in rolled:
-                game.cheat_action(played, [SetTags(played, tags)])
+            game.cheat_action(played, [SetTags(played, rolled)])
 
         source.controller.next_draenei_hooks.append(hook)
 
@@ -118,22 +134,30 @@ class _VelenTrigger(TargetedAction):
 
     def do(self, source, target):
         ctrl = source.controller
-        seen = []
-        for card in list(ctrl.cards_played_this_game):
-            if card is source or card.id in seen:
-                continue
-            if card.type != CardType.MINION or Race.DRAENEI not in getattr(
-                card, "races", []
-            ):
-                continue
-            seen.append(card.id)
-            data = card.data
-            for kind in ("play", "deathrattle"):
-                actions = getattr(data.scripts, kind, None)
-                if actions:
-                    proxy = ctrl.card(card.id, source)
-                    proxy.controller = ctrl
-                    source.game.queue_actions(proxy, list(actions))
+        # Re-entrancy guard: a re-triggered Draenei's play might itself be a
+        # Velen, which would re-trigger every Draenei again — recurse forever.
+        if getattr(ctrl, "_velen_retriggering", False):
+            return
+        ctrl._velen_retriggering = True
+        try:
+            seen = []
+            for card in list(ctrl.cards_played_this_game):
+                if card is source or card.id in seen:
+                    continue
+                if card.type != CardType.MINION or Race.DRAENEI not in getattr(
+                    card, "races", []
+                ):
+                    continue
+                seen.append(card.id)
+                data = card.data
+                for kind in ("play", "deathrattle"):
+                    actions = getattr(data.scripts, kind, None)
+                    if actions:
+                        proxy = ctrl.card(card.id, source)
+                        proxy.controller = ctrl
+                        source.game.queue_actions(proxy, list(actions))
+        finally:
+            ctrl._velen_retriggering = False
 
 
 class _StarVulpera(TargetedAction):
@@ -171,6 +195,10 @@ class _DeepSpaceCurator(TargetedAction):
     SPELL = ActionArg()
 
     def do(self, source, target, spell):
+        # The Spellburst SPELL arg can arrive as a single card or a 1-element
+        # list depending on the trigger path — normalize to one card.
+        if isinstance(spell, (list, tuple)):
+            spell = spell[0] if spell else None
         cost = spell.cost if spell is not None else 0
         source.game.cheat_action(
             source,
@@ -426,6 +454,13 @@ class GDB_463:
     spellburst = ForceDraw(RANDOM(FRIENDLY_DECK + DRAENEI))
 
 
+class GDB_720:
+    """Starlight Wanderer"""
+
+    # Battlecry: The next Draenei you play gains +2/+1.
+    play = _ArmStarlightWanderer(SELF)
+
+
 class GDB_722:
     """Crimson Commander"""
 
@@ -543,9 +578,14 @@ class GDB_130e:
     tags = {GameTag.ATK: 2, GameTag.HEALTH: 2}
 
 
+@custom_card
 class GDB_311e:
-    # Deep Space Curator — set the minion's Cost to (0).
-    cost = SET(0)
+    # Deep Space Curator — set the minion's Cost to (0). COST: -100 clamps to 0.
+    tags = {
+        GameTag.CARDNAME: "Deep Space Curator",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -100,
+    }
 
 
 class GDB_333e:
@@ -558,9 +598,14 @@ class GDB_722e:
     tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
 
 
+@custom_card
 class GDB_862e:
     # Galactic Crusader — the Holy spell costs (3) less.
-    tags = {GameTag.COST: -3}
+    tags = {
+        GameTag.CARDNAME: "Galactic Crusader",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -3,
+    }
 
 
 class GDB_878e:

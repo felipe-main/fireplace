@@ -17,6 +17,20 @@ class _ArmFirstSpellDiscount(TargetedAction):
         source.controller.first_spell_discount += 1
 
 
+class _SetGivenCostToOne(TargetedAction):
+    """Final Frontier — set the just-given minion's Cost to (1). 'Set' (not
+    reduce), so apply the per-card delta (1 - card.cost) via the buff kwarg."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None:
+            return
+        source.game.cheat_action(
+            source, [Buff(target, "GDB_857e", cost=1 - target.cost)]
+        )
+
+
 class _StarlightRecast(TargetedAction):
     """Starlight Reactor — recast the just-cast Arcane spell with random
     targets. Re-entrancy guarded so the recast doesn't chain endlessly."""
@@ -157,7 +171,7 @@ class GDB_857:
     # Discover a 10-Cost minion from the past. Set its Cost to (1).
     play = Discover(
         CONTROLLER, RandomMinion(cost=10, is_standard=None)
-    ).then(Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "GDB_857e")))
+    ).then(Give(CONTROLLER, Discover.CARD).then(_SetGivenCostToOne(Give.CARD)))
 
 
 class GDB_882:
@@ -194,9 +208,14 @@ class GDB_882t:
 # Enchantments
 
 
+@custom_card
 class GDB_852e:
     # Arkonite Revelation — drawn spell costs (1) less.
-    tags = {GameTag.COST: -1}
+    tags = {
+        GameTag.CARDNAME: "Arkonite Revelation",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -1,
+    }
     events = REMOVED_IN_PLAY
 
 
@@ -205,14 +224,25 @@ class GDB_855e:
     tags = {GameTag.ATK: 8}
 
 
+@custom_card
 class GDB_856e:
     # Exarch Othaar — Arcane spell costs (2) less.
-    tags = {GameTag.COST: -2}
+    tags = {
+        GameTag.CARDNAME: "Exarch Othaar",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
 
 
+@custom_card
 class GDB_857e:
-    # Final Frontier — set the discovered minion's Cost to (1).
-    cost = SET(1)
+    # Final Frontier — set the discovered minion's Cost to (1). The COST delta
+    # is supplied per-card via the `cost=` buff kwarg (1 - card.cost).
+    tags = {
+        GameTag.CARDNAME: "Final Frontier",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: 0,
+    }
 
 
 class GDB_882e:

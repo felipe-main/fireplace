@@ -49,6 +49,10 @@ class _PocketDimensionStep(TargetedAction):
     CARD = ActionArg()
 
     def do(self, source, target, card):
+        if isinstance(card, (list, tuple)):
+            card = card[0] if card else None
+        if card is None:
+            return
         seen = source._pocket_seen
         if card.id in seen:
             return
@@ -66,15 +70,15 @@ class _FillHandFireSpells(TargetedAction):
         while len(ctrl.hand) < ctrl.max_hand_size:
             before = len(ctrl.hand)
             source.game.cheat_action(
-                source,
-                [
-                    Give(ctrl, RandomSpell(spell_school=SpellSchool.FIRE)).then(
-                        Buff(Give.CARD, "GDB_301e")
-                    )
-                ],
+                source, [Give(ctrl, RandomSpell(spell_school=SpellSchool.FIRE))]
             )
             if len(ctrl.hand) <= before:
                 break
+            # "They cost (1)": set, not reduce — apply the per-card delta.
+            card = ctrl.hand[-1]
+            source.game.cheat_action(
+                source, [Buff(card, "GDB_301e", cost=1 - card.cost)]
+            )
 
 
 class _BlazingAccretion(TargetedAction):
@@ -199,14 +203,25 @@ class GDB_456:
 # Enchantments
 
 
+@custom_card
 class GDB_301e:
-    # Supernova — Fire spell costs (1).
-    cost = SET(1)
+    # Supernova — Fire spell costs (1). The COST delta is supplied per-card via
+    # the `cost=` buff kwarg (1 - card.cost), so the base tag is a placeholder.
+    tags = {
+        GameTag.CARDNAME: "Supernova",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: 0,
+    }
 
 
+@custom_card
 class GDB_303e:
     # Blasteroid — Fire spell costs (2) less.
-    tags = {GameTag.COST: -2}
+    tags = {
+        GameTag.CARDNAME: "Blasteroid",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
 
 
 class GDB_304e:
@@ -214,6 +229,11 @@ class GDB_304e:
     tags = {GameTag.SPELLPOWER_FIRE: 1}
 
 
+@custom_card
 class GDB_136e2:
     # Exarch Hataaru — discovered spell costs (1) less.
-    tags = {GameTag.COST: -1}
+    tags = {
+        GameTag.CARDNAME: "Exarch Hataaru",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -1,
+    }

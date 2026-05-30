@@ -165,9 +165,14 @@ class GDB_840t:
 # Enchantments
 
 
+@custom_card
 class GDB_844e:
     # Detailed Notes — the Beast costs (2) less.
-    tags = {GameTag.COST: -2}
+    tags = {
+        GameTag.CARDNAME: "Detailed Notes",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
 
 
 class GDB_843e2:

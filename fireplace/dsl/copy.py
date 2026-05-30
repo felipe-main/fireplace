@@ -30,7 +30,12 @@ class Copy(LazyValue):
     def evaluate(self, source) -> list[str]:
         if isinstance(self.selector, LazyValue):
             entity = self.selector.evaluate(source)
-            entities = [entity] if entity else []
+            # Event-arg LazyValues (e.g. Discovered.CARD) evaluate to a list of
+            # entities; single-entity LazyValues return one. Normalize both.
+            if isinstance(entity, (list, tuple)):
+                entities = list(entity)
+            else:
+                entities = [entity] if entity else []
         else:
             entities = self.selector.eval(source.game, source)
 

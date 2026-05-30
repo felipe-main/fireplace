@@ -215,7 +215,12 @@ class GDB_110e2:
     tags = {GameTag.ATK: 1}
 
 
+@custom_card
 class GDB_474e:
     # Warp Drive — drawn card costs (2) less.
-    tags = {GameTag.COST: -2}
+    tags = {
+        GameTag.CARDNAME: "Warp Drive",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
     events = REMOVED_IN_PLAY

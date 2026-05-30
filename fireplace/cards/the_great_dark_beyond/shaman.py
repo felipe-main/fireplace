@@ -1,8 +1,28 @@
 from ..utils import *
 
+from hearthstone.enums import CardType, Zone
+
 
 ##
 # Custom actions
+
+
+def _offer_deck_spells(source):
+    """Offer up to 3 DISTINCT deck spells as preview copies for a faithful
+    "Discover from your deck". Returns (controller, [preview cards]); the list
+    is empty when the deck holds no spells."""
+    ctrl = source.controller
+    seen = set()
+    distinct = []
+    for c in ctrl.deck:
+        if c.type == CardType.SPELL and c.id not in seen:
+            seen.add(c.id)
+            distinct.append(c)
+    if not distinct:
+        return ctrl, []
+    n = min(3, len(distinct))
+    picks = source.game.random.sample(distinct, n)
+    return ctrl, [ctrl.card(c.id, source=source) for c in picks]
 
 
 class _AsteroidStrike(TargetedAction):
@@ -43,21 +63,72 @@ class _ArmPlanetaryNavigator(TargetedAction):
 
 
 class _Triangulate(TargetedAction):
-    """Triangulate — Discover a different spell from your deck, then shuffle 3
-    copies of it into your deck."""
+    """Triangulate — Discover a spell from your deck (move it to hand), then
+    shuffle 3 copies of it into your deck."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ctrl = source.controller
+        ctrl, offered = _offer_deck_spells(source)
+        if not offered:
+            return
         source.game.queue_actions(
             source,
-            [
-                Discover(ctrl, FRIENDLY_DECK + SPELL).then(
-                    Shuffle(ctrl, Discover.CARD) * 3
-                )
-            ],
+            [Choice(ctrl, offered).then(_TriangulatePick(Choice.PLAYER, Choice.CARD))],
         )
+
+
+class _TriangulatePick(TargetedAction):
+    """Triangulate choose-callback: move the real chosen deck spell to hand,
+    then shuffle 3 fresh copies of it into the deck."""
+
+    PLAYER = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, picked):
+        if isinstance(picked, list):
+            picked = picked[0] if picked else None
+        if picked is None:
+            return
+        real = next((c for c in player.deck if c.id == picked.id), None)
+        if real is not None:
+            real.zone = Zone.HAND
+        for _ in range(3):
+            source.game.cheat_action(source, [Shuffle(player, picked.id)])
+
+
+class _Cosmonaut(TargetedAction):
+    """Cosmonaut — Discover a spell from your deck (move it to hand) and reduce
+    its Cost by (5)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl, offered = _offer_deck_spells(source)
+        if not offered:
+            return
+        source.game.queue_actions(
+            source,
+            [Choice(ctrl, offered).then(_CosmonautPick(Choice.PLAYER, Choice.CARD))],
+        )
+
+
+class _CosmonautPick(TargetedAction):
+    """Cosmonaut choose-callback: move the real chosen deck spell to hand and
+    apply the (5)-Cost reduction."""
+
+    PLAYER = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, player, picked):
+        if isinstance(picked, list):
+            picked = picked[0] if picked else None
+        if picked is None:
+            return
+        real = next((c for c in player.deck if c.id == picked.id), None)
+        if real is not None:
+            real.zone = Zone.HAND
+            source.game.cheat_action(source, [Buff(real, "GDB_443e")])
 
 
 ##
@@ -77,9 +148,7 @@ class GDB_443:
     """Cosmonaut"""
 
     # Battlecry: Discover a spell from your deck. Reduce its Cost by (5).
-    play = Discover(CONTROLLER, FRIENDLY_DECK + SPELL).then(
-        Buff(Discover.CARD, "GDB_443e")
-    )
+    play = _Cosmonaut(SELF)
 
 
 class GDB_444:
@@ -180,6 +249,11 @@ class GDB_430:
 # Enchantments
 
 
+@custom_card
 class GDB_443e:
     # Cosmonaut — the discovered spell costs (5) less.
-    tags = {GameTag.COST: -5}
+    tags = {
+        GameTag.CARDNAME: "Cosmonaut",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -5,
+    }

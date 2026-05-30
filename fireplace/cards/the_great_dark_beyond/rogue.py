@@ -126,7 +126,7 @@ class GDB_465:
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_UNDAMAGED_TARGET: 0,
     }
-    cost_mod = BUILDING_STARSHIP(SELF) & -2
+    cost_mod = BUILDING_STARSHIP(CONTROLLER) & -2
     play = Hit(TARGET, 5)
 
 

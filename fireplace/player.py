@@ -197,6 +197,18 @@ class Player(Entity, TargetableByAuras):
         # Navigator) applied to the next Draenei in hand and consumed on play.
         self.next_draenei_hooks = []
         self.next_draenei_discount = 0
+        # The Great Dark Beyond — Exarch Maladaar: the next card played this
+        # turn costs Corpses instead of Mana while this is > 0.
+        self.next_card_costs_corpses = 0
+        # The Great Dark Beyond — Sha'tari Cloakfield: each in-play source adds
+        # (1) to the discount on the controller's first spell each turn. Armed
+        # by the sources, reset every turn.
+        self.first_spell_discount = 0
+        # The Great Dark Beyond — Discover tracking (Alien Encounters cost mod,
+        # Parallax Cannon's +2 Attack, Rangari Scout's copy trigger). Bumped
+        # whenever the player resolves a Discover; per-turn count resets each turn.
+        self.discovers_this_game = 0
+        self.discovers_this_turn = 0
         # The Great Dark Beyond — Starship building state. `starship` is the
         # current Permanent Starship entity on the board (or None); the dead
         # Starship Pieces banked into it since the last launch are tracked on
@@ -709,6 +721,9 @@ class Player(Entity, TargetableByAuras):
             return self.hero.health > card.cost
         if card.card_costs_health:
             return self.hero.health > card.cost
+        # The Great Dark Beyond — Exarch Maladaar: the next card pays Corpses.
+        if getattr(self, "next_card_costs_corpses", 0) > 0:
+            return self.corpses >= card.cost
         # Throne of the Tides — Commander Ulthok: while this flag is up the
         # player pays Health for every card instead of Mana.
         if getattr(self, "pays_health_for_cards_turns_left", 0) > 0:
@@ -720,6 +735,16 @@ class Player(Entity, TargetableByAuras):
         Make player pay \a amount mana.
         Returns how much mana is spent, after temporary mana adjustments.
         """
+        # The Great Dark Beyond — Exarch Maladaar: the next card played this
+        # turn pays its Cost in Corpses instead of Mana (0 mana spent).
+        if getattr(self, "next_card_costs_corpses", 0) > 0:
+            self.next_card_costs_corpses -= 1
+            spent = min(self.corpses, max(0, amount))
+            self.corpses = max(0, self.corpses - max(0, amount))
+            self.corpses_spent_this_game += spent
+            self.log("%s plays %r for %i Corpses (Exarch Maladaar)",
+                     self, source, max(0, amount))
+            return 0
         # MotLK — Bonelord Frostwhisper: while the doom-aura is armed on
         # this player, the first card they play each turn costs (0).
         # Applies to every card type (spell/minion/weapon/HP-via-card).

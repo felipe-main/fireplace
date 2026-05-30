@@ -170,6 +170,9 @@ FORGETFUL = Attack(SELF).on(
 
 AT_MAX_MANA = lambda s: MANA(s) == MAX_MANA(s)
 OVERLOADED = lambda s: (OVERLOAD_LOCKED(s) > 0) or (OVERLOAD_OWED(s) > 0)
+# The Great Dark Beyond — "if you're building a Starship" (a Permanent Starship
+# is on the board awaiting launch). Used as ``BUILDING_STARSHIP(CONTROLLER) & …``.
+BUILDING_STARSHIP = lambda s: Attr(s, "is_building_starship") >= 1
 CHECK_CTHUN = ATK(HIGHEST_ATK(CTHUN)) >= 10
 INVOKED_TWICE = Attr(CONTROLLER, GameTag.INVOKE_COUNTER) >= 2
 

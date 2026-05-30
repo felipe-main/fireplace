@@ -496,6 +496,19 @@ class BaseGame(Entity):
         player.spell_mana_spent_this_turn = 0
         # Whizbang mini-set — Holy Glowsticks (MIS_709) per-turn discount.
         player.holy_spells_cast_this_turn = 0
+        # The Great Dark Beyond — adjacency: clear each hand card's per-turn
+        # "an adjacent card was played" count.
+        for hand_card in player.hand:
+            hand_card.adjacent_plays_this_turn = 0
+        # The Great Dark Beyond — Exarch Maladaar's "next card costs Corpses"
+        # is a this-turn window; clear any unused charge.
+        player.next_card_costs_corpses = 0
+        # The Great Dark Beyond — Sha'tari Cloakfield first-spell discount is
+        # re-armed each turn by the in-play sources (OWN_TURN_BEGIN), so clear
+        # it first.
+        player.first_spell_discount = 0
+        # The Great Dark Beyond — per-turn Discover count (Parallax Cannon).
+        player.discovers_this_turn = 0
         # Audiopocalypse — Ambient Lightspawn counter resets per turn.
         player.overheals_triggered_this_turn = 0
         # TITANS — Tar Slick: clear per-turn "minions take double damage" flag.

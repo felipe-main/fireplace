@@ -577,7 +577,8 @@ class Death(GameAction):
                 and target.reborn
             ):
                 source.game.queue_actions(
-                    target, [Summon(target.controller, RebornCopy(SELF))]
+                    target,
+                    [Summon(target.controller, RebornCopy(SELF)), Reborn(target)],
                 )
         return super()._broadcast(entity, source, at, *args)
 
@@ -759,6 +760,18 @@ class Play(GameAction):
     def do(self, source, card, target, index, choose):
         player = source
         log.info("%s plays %r (target=%r, index=%r)", player, card, target, index)
+
+        # The Great Dark Beyond — adjacency ("Orbital" cards / Red Giant): the
+        # cards immediately left and right of this one in hand remember that an
+        # adjacent card was played, both this turn and cumulatively while they
+        # sit in hand. Captured before the card leaves the hand zone.
+        if card in player.hand:
+            _idx = player.hand.index(card)
+            for _nb in (_idx - 1, _idx + 1):
+                if 0 <= _nb < len(player.hand):
+                    neighbor = player.hand[_nb]
+                    neighbor.adjacent_plays_this_turn += 1
+                    neighbor.adjacent_plays_while_in_hand += 1
 
         player.pay_cost(card, card.cost)
 
@@ -1835,6 +1848,47 @@ class LaunchStarship(TargetedAction):
         return ship
 
 
+class _StarshipSpellburst(TargetedAction):
+    """Spellburst delegation for a launched Starship — replay each banked
+    piece's own spellburst with the ship as the source."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        for spellburst in getattr(target, "_starship_spellbursts", []):
+            actions = spellburst
+            if callable(actions):
+                actions = actions(target, None)
+            if not isinstance(actions, (list, tuple)):
+                actions = [actions]
+            source.game.queue_actions(target, list(actions))
+
+
+class Reborn(TargetedAction):
+    """Broadcast-only marker fired after a minion returns via the Reborn
+    keyword. `target` is the minion that was reborn — listeners (e.g. Auchenai
+    Death-Speaker) react to it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.game.manager.targeted_action(self, source, target)
+        self.broadcast(source, EventListener.ON, target)
+
+
+class Discovered(TargetedAction):
+    """Broadcast-only marker fired after a player resolves a Discover.
+    `target` is the discovering player; `card` is the chosen card. Listeners
+    (e.g. Rangari Scout) react to it."""
+
+    TARGET = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, card):
+        source.game.manager.targeted_action(self, source, target, card)
+        self.broadcast(source, EventListener.ON, target, card)
+
+
 class ExtraBattlecry(Battlecry):
     def has_extra_battlecries(self, player, card):
         return False
@@ -2037,12 +2091,16 @@ class Discover(TargetedAction):
                 "%r is not a valid choice (one of %r)" % (card, self.cards)
             )
         self.player.choice = None
+        # The Great Dark Beyond — Discover tracking + "After you Discover" event.
+        self.player.discovers_this_game += 1
+        self.player.discovers_this_turn += 1
         for action in self._callback:
             self.source.game.trigger(
                 self.source, [action], [self.target, self.cards, card]
             )
         self.callback = self._callback
         self.trigger_choice_callback()
+        self.source.game.queue_actions(self.source, [Discovered(self.player, card)])
 
 
 class Draw(TargetedAction):

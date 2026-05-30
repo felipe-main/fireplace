@@ -372,6 +372,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         self.cast_on_friendly_minions = False
         self.play_left_most = False
         self.play_right_most = False
+        # The Great Dark Beyond — adjacency ("Orbital" cards / Red Giant).
+        # `adjacent_plays_this_turn` resets each turn; `adjacent_plays_while_in_hand`
+        # accumulates while the card sits in hand (reset on hand entry).
+        self.adjacent_plays_this_turn = 0
+        self.adjacent_plays_while_in_hand = 0
         # Festival of Legends — Finale flag. Set True by Play.do when
         # pay_cost left the controller with exactly 0 mana (the card
         # was played with the player's last mana crystal). Read by
@@ -537,6 +542,16 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= self.controller.next_draenei_discount
                 self.received_draenei_discount = True
+            # The Great Dark Beyond — Sha'tari Cloakfield: the first spell each
+            # turn costs (1) less per source. Shown on every spell in hand
+            # until a spell is played this turn (then spells_played_this_turn
+            # is non-zero and the rest pay full).
+            if (
+                self.type == CardType.SPELL
+                and getattr(self.controller, "first_spell_discount", 0) > 0
+                and self.controller.spells_played_this_turn == 0
+            ):
+                ret -= self.controller.first_spell_discount
         ret = self._getattr("cost", ret)
         return max(0, ret)
 
@@ -621,6 +636,10 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             game = getattr(self, "game", None)
             if game is not None:
                 self._turn_entered_hand = game.turn
+            # The Great Dark Beyond — adjacency counters reset on every hand
+            # entry (a freshly drawn/bounced card has no adjacent plays yet).
+            self.adjacent_plays_this_turn = 0
+            self.adjacent_plays_while_in_hand = 0
             # Create the "Choose One" subcards
             del self.choose_cards[:]
             for id in self.data.choose_cards:

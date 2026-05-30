@@ -207,6 +207,17 @@ class Player(Entity, TargetableByAuras):
         # The Great Dark Beyond — Spacerock Collector: the next Combo card you
         # play costs this much less.
         self.next_combo_discount = 0
+        # The Great Dark Beyond — Bolide Behemoth: your Asteroids deal this much
+        # extra damage for the rest of the game.
+        self.asteroid_damage_bonus = 0
+        # The Great Dark Beyond — Foreboding Flame: Demons that didn't start in
+        # your deck cost this much less for the rest of the game.
+        self.foreboding_flame = 0
+        # The Great Dark Beyond — Infernal Stratagem: the next Demon you play
+        # costs this much less.
+        self.next_demon_discount = 0
+        # The Great Dark Beyond — Healthstone: hero damage taken this turn.
+        self.hero_damage_taken_this_turn = 0
         # The Great Dark Beyond — Interstellar Wayfarer/Starslicer: Librams cost
         # this much less for the rest of the game.
         self.libram_discount = 0

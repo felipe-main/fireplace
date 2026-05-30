@@ -361,6 +361,13 @@ class BaseGame(Entity):
         for player in self.players:
             player.prepare_for_game()
 
+        # The Great Dark Beyond — mark every card that started in a player's
+        # deck or opening hand so "didn't start in your deck" effects
+        # (Foreboding Flame, Archimonde) can tell generated cards apart.
+        for player in self.players:
+            for card in list(player.deck) + list(player.hand):
+                card._started_in_deck = True
+
         if self.is_standard:
             self.skin = self.random.choice(standard_board_skins)
         else:
@@ -509,6 +516,8 @@ class BaseGame(Entity):
         player.first_spell_discount = 0
         # The Great Dark Beyond — per-turn Discover count (Parallax Cannon).
         player.discovers_this_turn = 0
+        # The Great Dark Beyond — per-turn hero damage (Healthstone).
+        player.hero_damage_taken_this_turn = 0
         # Audiopocalypse — Ambient Lightspawn counter resets per turn.
         player.overheals_triggered_this_turn = 0
         # TITANS — Tar Slick: clear per-turn "minions take double damage" flag.

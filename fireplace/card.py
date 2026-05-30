@@ -377,6 +377,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         # accumulates while the card sits in hand (reset on hand entry).
         self.adjacent_plays_this_turn = 0
         self.adjacent_plays_while_in_hand = 0
+        # The Great Dark Beyond — True only for cards that were in a player's
+        # deck/hand at game start (stamped in game.setup). Generated cards stay
+        # False, powering "didn't start in your deck" effects (Foreboding Flame,
+        # Archimonde).
+        self._started_in_deck = False
         # Festival of Legends — Finale flag. Set True by Play.do when
         # pay_cost left the controller with exactly 0 mana (the card
         # was played with the player's last mana crystal). Read by
@@ -542,6 +547,15 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= self.controller.next_draenei_discount
                 self.received_draenei_discount = True
+            # The Great Dark Beyond — Foreboding Flame: Demons that didn't start
+            # in your deck cost less for the rest of the game.
+            if (
+                self.type == CardType.MINION
+                and Race.DEMON in getattr(self, "races", [])
+                and not getattr(self, "_started_in_deck", False)
+                and getattr(self.controller, "foreboding_flame", 0) > 0
+            ):
+                ret -= self.controller.foreboding_flame
             # The Great Dark Beyond — Spacerock Collector: the next Combo card
             # costs less.
             if (
@@ -550,6 +564,15 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= self.controller.next_combo_discount
                 self.received_combo_discount = True
+            # The Great Dark Beyond — Infernal Stratagem: the next Demon you
+            # play costs (2) less.
+            if (
+                self.type == CardType.MINION
+                and Race.DEMON in getattr(self, "races", [])
+                and getattr(self.controller, "next_demon_discount", 0) > 0
+            ):
+                ret -= self.controller.next_demon_discount
+                self.received_demon_discount = True
             # The Great Dark Beyond — Interstellar Wayfarer / Starslicer:
             # Librams cost less for the rest of the game.
             if getattr(self, "libram", False) and getattr(

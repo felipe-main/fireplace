@@ -1046,6 +1046,16 @@ class Play(GameAction):
         ):
             player.next_combo_discount -= 1
             card.received_combo_discount = False
+        # The Great Dark Beyond — Infernal Stratagem: consume the one-shot Demon
+        # discount for a Demon that took it.
+        if (
+            card.type == CardType.MINION
+            and Race.DEMON in getattr(card, "races", [])
+            and player.next_demon_discount > 0
+            and getattr(card, "received_demon_discount", False)
+        ):
+            player.next_demon_discount -= 1
+            card.received_demon_discount = False
 
 
 class Activate(GameAction):
@@ -1677,6 +1687,9 @@ class Damage(TargetedAction):
             target.damaged_this_turn += amount
             if target.type == CardType.HERO:
                 target.controller.hero_health_changed_this_turn += 1
+                # The Great Dark Beyond — Healthstone restores this turn's hero
+                # damage.
+                target.controller.hero_damage_taken_this_turn += amount
                 if not target.controller.current_player:
                     # Damage dealt to the hero while it's the opponent's turn.
                     target.controller.damage_taken_on_opponents_turn += amount

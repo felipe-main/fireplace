@@ -651,6 +651,7 @@ TOTEM = EnumSelector(Race.TOTEM)
 ELEMENTAL = EnumSelector(Race.ELEMENTAL)
 NAGA = EnumSelector(Race.NAGA)
 UNDEAD = EnumSelector(Race.UNDEAD)
+DRAENEI = EnumSelector(Race.DRAENEI)
 TREANT = FuncSelector(
     lambda entities, src: [
         e for e in entities if getattr(e, "name_enUS", "").endswith("Treant")

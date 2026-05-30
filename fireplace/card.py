@@ -527,6 +527,16 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= 2
                 self.received_murloc_discount = True
+            # The Great Dark Beyond — Planetary Navigator: the next Draenei you
+            # play costs (2) less. Stamps `received_draenei_discount` so the
+            # Play.do consume hook only fires for a Draenei that took it.
+            if (
+                self.type == CardType.MINION
+                and Race.DRAENEI in getattr(self, "races", [])
+                and getattr(self.controller, "next_draenei_discount", 0) > 0
+            ):
+                ret -= self.controller.next_draenei_discount
+                self.received_draenei_discount = True
         ret = self._getattr("cost", ret)
         return max(0, ret)
 

@@ -190,6 +190,18 @@ class Player(Entity, TargetableByAuras):
         self.next_deathrattle_dies_on_play = 0
         # Clownfish: next N Murloc plays cost (2) less.
         self.next_n_murlocs_discount = 0
+        # The Great Dark Beyond — "the next Draenei you play …" effects.
+        # `next_draenei_hooks` is a list of callables hook(played_minion) run
+        # (and cleared) when the controller next plays a Draenei minion;
+        # `next_draenei_discount` is a one-shot Cost reduction (Planetary
+        # Navigator) applied to the next Draenei in hand and consumed on play.
+        self.next_draenei_hooks = []
+        self.next_draenei_discount = 0
+        # The Great Dark Beyond — Starship building state. `starship` is the
+        # current Permanent Starship entity on the board (or None); the dead
+        # Starship Pieces banked into it since the last launch are tracked on
+        # the entity itself (see actions._bank_starship_piece).
+        self.starship = None
         # Commander Ulthok: opponent's cards cost Health instead of Mana for
         # this many of THEIR turns (decremented at their begin_turn).
         self.pays_health_for_cards_turns_left = 0
@@ -538,6 +550,12 @@ class Player(Entity, TargetableByAuras):
     @property
     def minion_slots(self):
         return max(0, self.game.MAX_MINIONS_ON_FIELD - len(self.field))
+
+    @property
+    def is_building_starship(self):
+        """The Great Dark Beyond — True while a Permanent Starship is on the
+        board awaiting launch."""
+        return self.starship is not None and self.starship.zone == Zone.PLAY
 
     def copy_cthun_buff(self, card):
         for buff in self.cthun.buffs:

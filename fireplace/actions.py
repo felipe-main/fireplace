@@ -115,6 +115,104 @@ def _resolve_giant_id(card):
     return None
 
 
+# The Great Dark Beyond — Starship support.
+#
+# A "Starship Piece" is a normal minion. When it dies, its stats and effects are
+# banked into the controller's Starship: the first banked piece summons a
+# Permanent Starship (a dormant, untouchable board entity that carries the
+# running combined stats); each later piece adds to it. Launching the Starship
+# (LaunchStarship) wakes the Permanent into a real minion whose stats and
+# effects are the combined stats and effects of every banked piece.
+
+# Per-class Starship token (the launched/building ship). Classes without a
+# unique ship — Mage, Priest, Paladin, Shaman, Warrior and Neutral — fall back
+# to the neutral "The Exile's Hope".
+_STARSHIP_TOKENS = {
+    CardClass.DEATHKNIGHT: "GDB_100t4",
+    CardClass.DEMONHUNTER: "GDB_100t5",
+    CardClass.DRUID: "GDB_100t6",
+    CardClass.HUNTER: "GDB_100t7",
+    CardClass.ROGUE: "GDB_100t8",
+    CardClass.WARLOCK: "GDB_100t9",
+}
+
+# Keyword GameTags carried over from banked pieces onto the launched ship.
+_STARSHIP_KEYWORD_TAGS = (
+    GameTag.TAUNT,
+    GameTag.WINDFURY,
+    GameTag.LIFESTEAL,
+    GameTag.RUSH,
+    GameTag.CHARGE,
+    GameTag.STEALTH,
+    GameTag.POISONOUS,
+    GameTag.REBORN,
+    GameTag.CANT_BE_TARGETED_BY_SPELLS,
+    GameTag.CANT_BE_TARGETED_BY_HERO_POWERS,
+)
+
+
+def _starship_token_id(player):
+    cls = getattr(player.hero, "card_class", None)
+    return _STARSHIP_TOKENS.get(cls, "GDB_100t2")
+
+
+def _capture_starship_piece(piece):
+    """Snapshot a dying Starship Piece's death-time stats, keywords and id so
+    they can be combined into the ship later (the live entity is gone by
+    launch time)."""
+    keywords = [tag for tag in _STARSHIP_KEYWORD_TAGS if piece.tags.get(tag, 0)]
+    return {
+        "id": piece.id,
+        "atk": max(0, piece.atk),
+        "health": max(1, piece.max_health),
+        "keywords": keywords,
+        "divine_shield": bool(getattr(piece, "divine_shield", False)),
+    }
+
+
+def _bank_starship_piece(source, piece):
+    """Bank a dead Starship Piece into its controller's Starship, summoning the
+    Permanent ship on the first piece."""
+    player = piece.controller
+    if player is None:
+        return
+    ship = player.starship
+    if ship is None or ship.zone != Zone.PLAY:
+        if player.minion_slots <= 0:
+            # No room for the Permanent — the piece is lost (matches the
+            # full-board behaviour of other token summons).
+            return
+        ship = player.card(_starship_token_id(player), source)
+        ship.controller = player
+        ship._starship_pieces = []
+        ship.dormant = True
+        ship.dormant_turns = 0
+        ship.cant_be_damaged = True
+        player.starship = ship
+        place = True
+    else:
+        place = False
+
+    info = _capture_starship_piece(piece)
+    ship._starship_pieces.append(info)
+    total_atk = sum(p["atk"] for p in ship._starship_pieces)
+    total_health = sum(p["health"] for p in ship._starship_pieces)
+
+    if place:
+        # Stamp the running stats BEFORE entering play so the 0/0 base never
+        # reads as dead during death processing, then place it on the board
+        # directly (a building ship is not a "real" summon — it must not
+        # trigger summon synergies).
+        ship.atk = total_atk
+        ship.max_health = total_health
+        ship.damage = 0
+        ship._summon_index = None
+        ship.zone = Zone.PLAY
+    else:
+        ship.atk = total_atk
+        ship.max_health = total_health
+
+
 def _eval_card(source, card):
     """
     Return a Card instance from \a card
@@ -499,6 +597,10 @@ class Death(GameAction):
             # morphs into its infused twin. Also bump the per-game
             # friendly-minion-deaths counter (Sire Denathrius reads it).
             if card.type == CardType.MINION and card.controller:
+                # The Great Dark Beyond — a dying Starship Piece banks its
+                # stats and effects into its controller's Starship.
+                if card.data.tags.get(GameTag.STARSHIP_PIECE, 0):
+                    _bank_starship_piece(source, card)
                 card.controller.friendly_minions_died_this_game += 1
                 # March of the Lich King — every friendly minion death
                 # gives the controller a Corpse, even non-DK players
@@ -810,6 +912,19 @@ class Play(GameAction):
             giant_id = _resolve_giant_id(card)
             if giant_id:
                 source.game.queue_actions(player, [Give(player, giant_id)])
+
+        # The Great Dark Beyond — "the next Draenei you play …" effects. Fire
+        # and clear any pending hooks on this freshly-played Draenei BEFORE its
+        # battlecry, so the minion benefits from prior registrations but does
+        # not consume the hook its own battlecry is about to register.
+        if card.type == CardType.MINION and Race.DRAENEI in card.races:
+            if getattr(card, "received_draenei_discount", False):
+                player.next_draenei_discount = 0
+                card.received_draenei_discount = False
+            hooks = player.next_draenei_hooks
+            player.next_draenei_hooks = []
+            for hook in hooks:
+                hook(card)
 
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:
@@ -1666,6 +1781,58 @@ class Battlecry(TargetedAction):
 
         if card.overload:
             source.game.queue_actions(card, [Overload(player, card.overload)])
+
+
+class LaunchStarship(TargetedAction):
+    """The Great Dark Beyond — launch the player target's Starship: wake the
+    Permanent into a real minion with the combined stats and effects of all
+    banked Starship Pieces."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from .cards import db
+
+        player = target
+        ship = getattr(player, "starship", None)
+        if ship is None or ship.zone != Zone.PLAY:
+            return
+        pieces = getattr(ship, "_starship_pieces", [])
+
+        # Wake the ship: no longer a dormant, untouchable Permanent. It launches
+        # with summoning sickness (turns_in_play 0) unless a piece gave it Rush
+        # or Charge.
+        ship.dormant = False
+        ship.dormant_turns = 0
+        ship.cant_be_damaged = False
+        ship.turns_in_play = 0
+
+        spellbursts = []
+        for info in pieces:
+            data = db[info["id"]]
+            scripts = data.scripts
+            for tag in info["keywords"]:
+                ship.tags[tag] = True
+            if info["divine_shield"]:
+                ship.divine_shield = True
+            deathrattle = getattr(scripts, "deathrattle", None)
+            if deathrattle:
+                ship.additional_deathrattles.append(deathrattle)
+                ship.has_deathrattle = True
+            events = getattr(scripts, "events", None)
+            if events:
+                ship._events.extend(events)
+            spellburst = getattr(scripts, "spellburst", None)
+            if spellburst:
+                spellbursts.append(spellburst)
+        if spellbursts:
+            ship._starship_spellbursts = spellbursts
+            ship.has_spellburst = True
+
+        player.starship = None
+        source.game.manager.targeted_action(self, source, target)
+        source.game.refresh_auras()
+        return ship
 
 
 class ExtraBattlecry(Battlecry):

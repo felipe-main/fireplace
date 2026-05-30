@@ -190,6 +190,33 @@ def test_maestra_discovers_other_class_hero_card():
     assert any(c.id == chosen for c in p1.hand)
 
 
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_336 Maestra, Mask Merchant)
+# Edge: the Discover must offer HERO cards from ANOTHER class (never the
+# controller's own class), and they must be collectible "Hero cards from the
+# past". Confirm the pool composition tightly.
+# ---------------------------------------------------------------------------
+def test_maestra_discover_pool_is_foreign_collectible_heroes():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    maestra = p1.give("VAC_336")
+    maestra.play()
+    assert p1.choice is not None
+    # A Discover offers 3 options.
+    assert len(p1.choice.cards) == 3
+    for cid in p1.choice.cards:
+        cdata = _cards.db[cid]
+        assert cdata.type == CardType.HERO
+        assert cdata.collectible
+        classes = list(getattr(cdata, "classes", None) or [cdata.card_class])
+        # Never the controller's own class (Rogue).
+        assert CardClass.ROGUE not in classes
+    # Picking one puts that exact Hero card into hand.
+    chosen = p1.choice.cards[1]
+    p1.choice.choose(chosen)
+    assert any(c.id == chosen for c in p1.hand)
+
+
 # VAC_460 — Oh, Manager! (2-cost spell):
 # Deal $2 damage. Combo: Get a coin.
 def test_oh_manager_deals_2_no_combo():

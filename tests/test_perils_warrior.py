@@ -167,6 +167,52 @@ def test_undercooked_calamari_cannot_destroy_higher_attack():
     assert small in targets
 
 
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_341 Undercooked Calamari)
+# Edge: both the targeting filter AND the destroy track the source minion's
+# *live* Attack ("Attack <= this minion's"). A buffed Calamari can target and
+# kill a bigger minion; an equal-attack minion is destroyed (== boundary).
+# ---------------------------------------------------------------------------
+def test_undercooked_calamari_buffed_kills_bigger_minion():
+    from fireplace.actions import Buff
+
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    cal = p1.give("VAC_341")
+    assert cal.atk == 3  # printed Attack
+    # A 5-attack enemy is NOT targetable by the unbuffed 3-attack Calamari...
+    big = p2.summon("CS2_172")  # Bloodfen Raptor
+    big.atk = 5
+    big.max_health = 2
+    big.damage = 0
+    assert big not in cal.play_targets
+    # ...but after buffing Calamari to Attack 9 it can target AND destroy it,
+    # because the gate tracks the source's LIVE Attack, not its printed 3.
+    game.queue_actions(p1.hero, [Buff(cal, "CS2_087e")])  # +3 -> 6
+    game.queue_actions(p1.hero, [Buff(cal, "CS2_087e")])  # +3 -> 9
+    assert cal.atk == 9
+    assert big in cal.play_targets
+    cal.play(target=big)
+    game.process_deaths()
+    assert big.dead
+
+
+def test_undercooked_calamari_equal_attack_destroyed():
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    cal = p1.give("VAC_341")  # Attack 3
+    # Enemy with Attack exactly equal to Calamari's (3) -> the "<=" boundary
+    # destroys it.
+    equal = p2.summon("CS2_172")  # Bloodfen Raptor 3/2 (Attack 3)
+    assert equal.atk == 3
+    equal.max_health = 5
+    equal.damage = 0
+    assert equal in cal.play_targets
+    cal.play(target=equal)
+    game.process_deaths()
+    assert equal.dead
+
+
 # VAC_526 — Char: Deal 7 to a minion; give a minion in your hand stats equal to
 # the excess damage.
 def test_char_deals_7_and_buffs_excess():
@@ -277,6 +323,39 @@ def test_slice_of_bread_sandwich_packs_and_resummons():
     assert len(p1.field) == pre + 2
     ids = sorted(m.id for m in p1.field[pre:])
     assert ids == sorted(["CS2_172", WISP])
+
+
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_525 The Ryecleaver / Slice of Bread)
+# Edge: only minions summoned BETWEEN the two slices get stuffed. A minion
+# summoned BEFORE the first slice must stay on the board and NOT be packed.
+# ---------------------------------------------------------------------------
+def test_slice_of_bread_excludes_minions_before_first_slice():
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.player1
+    # A minion already on board BEFORE any slice is played.
+    before = p1.summon("CS2_182")  # Chillwind Yeti 4/5
+    # First slice marks the board AFTER 'before' is already present.
+    slice1 = p1.give("VAC_525t1")
+    slice1.play()
+    assert p1._ryecleaver_slice == 1  # snapshot = board width (the 1 'before')
+    # Now summon exactly one in-between minion.
+    between = p1.summon(WISP)
+    # Second slice: stuffs ONLY the in-between minion.
+    slice2 = p1.give("VAC_525t1")
+    slice2.play()
+    # 'before' stays in play; 'between' is removed (stuffed).
+    assert before in p1.field
+    assert before.zone == Zone.PLAY
+    assert between.zone == Zone.REMOVEDFROMGAME
+    sandwich = [c for c in p1.hand if c.id == "VAC_525t2"]
+    assert len(sandwich) == 1
+    assert sandwich[0]._sandwich_ids == [WISP]
+    # Playing the sandwich re-summons ONLY the one stuffed minion.
+    pre = len(p1.field)
+    sandwich[0].play()
+    assert len(p1.field) == pre + 1
+    assert p1.field[-1].id == WISP
 
 
 # VAC_528 — All You Can Eat: Draw three minions of different minion types.

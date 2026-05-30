@@ -160,6 +160,35 @@ def test_corpsicle_no_return_without_corpses():
     assert not any(c.id == "VAC_427" for c in p1.hand)
 
 
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_427 Corpsicle)
+# Edge: spends EXACTLY 3 corpses (leaving any surplus), deals exactly 3 damage,
+# and returns a Corpsicle to hand at end of turn. The impl returns a FRESH copy
+# (a different instance than the one cast).
+# ---------------------------------------------------------------------------
+def test_corpsicle_spends_exactly_three_corpses_and_returns_fresh_copy():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1, p2 = game.player1, game.player2
+    target = p2.summon(GOLDSHIRE_FOOTMAN)
+    target.max_health = 80
+    target.damage = 0
+    p1.corpses = 5  # surplus beyond the 3 required
+    spell = p1.give("VAC_427")
+    spell.play(target=target)
+    # Exactly 3 damage and exactly 3 corpses spent (2 left over).
+    assert target.damage == 3
+    assert p1.corpses == 2
+    # No Corpsicle in hand yet (returns at end of turn).
+    assert not any(c.id == "VAC_427" for c in p1.hand)
+    game.end_turn()
+    returned = [c for c in p1.hand if c.id == "VAC_427"]
+    assert len(returned) == 1
+    # The returned card is a fresh instance, not the spell that was cast (which
+    # is now in the graveyard).
+    assert returned[0] is not spell
+    assert spell.zone == Zone.GRAVEYARD
+
+
 # VAC_429 — Snow Shredder: Costs (1) if a character is Frozen. Base cost 4.
 def test_snow_shredder_full_cost_when_nothing_frozen():
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)

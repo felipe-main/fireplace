@@ -17,6 +17,7 @@ import fireplace.cards as _cards
 FIREBALL = "CS2_029"          # FIRE  (school 2)
 FROSTBOLT = "CS2_024"         # FROST (school 3)
 ARCANE_INTELLECT = "CS2_023"  # ARCANE (school 1)
+INNERVATE = "EX1_169"         # NATURE (school 4), target-free
 
 
 # VAC_301 — Razzle-Dazzler: Battlecry: Summon a random 5-Cost minion.
@@ -114,6 +115,36 @@ def test_siren_song_spells_from_uncast_schools():
     assert len(gained) == 2
     for c in gained:
         assert int(c.spell_school) != int(SpellSchool.FIRE)
+
+
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_308 Siren Song)
+# Edge: the two spells must come from schools NOT cast this game. With TWO
+# schools already cast (FIRE + FROST) and five unused schools remaining, the
+# "any random spell" fallback never engages, so neither result may be FIRE or
+# FROST.
+# ---------------------------------------------------------------------------
+def test_siren_song_avoids_both_already_cast_schools():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    for c in list(p1.hand):
+        c.discard()
+    # Cast FIRE then FROST -> two cast schools recorded.
+    p1.give(FIREBALL).play(target=game.player2.hero)
+    p1.give(FROSTBOLT).play(target=game.player2.hero)
+    cast = set(p1.spells_cast_by_school.keys())
+    assert cast == {int(SpellSchool.FIRE), int(SpellSchool.FROST)}
+    pre = len(p1.hand)
+    p1.give("VAC_308").play()
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
+    gained = p1.hand[pre:]
+    assert len(gained) == 2
+    # Five not-yet-cast schools remain, so the fallback is never used: neither
+    # generated spell may belong to a cast school.
+    for c in gained:
+        assert c.type == CardType.SPELL
+        assert int(c.spell_school) not in cast
 
 
 # VAC_323 — Malted Magma (Drink): Deal 1 damage to all enemies. (3 Drinks left!)
@@ -239,6 +270,41 @@ def test_carress_transforms_after_two_distinct_schools():
     held = [c for c in p1.hand if c.id.startswith("VAC_449t")]
     assert len(held) == 1
     assert held[0].id == "VAC_449t"
+
+
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_449 Carress, Cabaret Star)
+# Edge: the chosen transform variant must be the one keyed by the *specific*
+# pair of spell schools played while holding (not always the first variant).
+# Probe a DIFFERENT pair than the existing ARCANE+FIRE test: FROST(3)+NATURE(4)
+# -> (3,4) -> VAC_449t11 (Gain +2/+2 & Taunt + Freeze 3).
+# ---------------------------------------------------------------------------
+def test_carress_transform_variant_matches_frost_nature_pair():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    carress = p1.give("VAC_449")
+    # FROST then NATURE -> two distinct schools {3,4}.
+    p1.give(FROSTBOLT).play(target=game.player2.hero)
+    assert carress.id == "VAC_449"  # one school so far, not yet transformed
+    p1.give(INNERVATE).play()
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
+    held = [c for c in p1.hand if c.id.startswith("VAC_449t")]
+    assert len(held) == 1
+    # (3, 4) maps to VAC_449t11 specifically.
+    assert held[0].id == "VAC_449t11"
+
+
+def test_carress_no_transform_on_two_spells_same_school():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    carress = p1.give("VAC_449")
+    # Two FIRE spells -> only ONE distinct school -> no transform.
+    p1.give(FIREBALL).play(target=game.player2.hero)
+    p1.give(FIREBALL).play(target=game.player2.hero)
+    assert carress.id == "VAC_449"
+    assert carress.spell_schools_cast_while_holding == {int(SpellSchool.FIRE)}
+    assert not any(c.id.startswith("VAC_449t") for c in p1.hand)
 
 
 # VAC_450 — Carefree Cookie (Demon Hunter Tourist): After a friendly minion

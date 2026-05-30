@@ -8,6 +8,13 @@ from .enums import PlayReq
 
 from .cards.utils import SOUL_FRAGMENT
 
+# Cards whose REQ_TARGET_MAX_ATTACK means "Attack <= THIS minion's" rather than a
+# fixed number. For these the source's LIVE Attack is the cap (a buffed source
+# can target bigger minions; an unbuffed one is limited to its real Attack). All
+# other MAX_ATTACK cards (Cabal Shadow Priest "2 or less", Book Wyrm "3 or less",
+# Scorp-o-matic "1 or less") keep the fixed data param regardless of buffs.
+MAX_ATTACK_TRACKS_SOURCE = {"VAC_341"}  # Undercooked Calamari
+
 TARGETING_PREREQUISITES = (
     PlayReq.REQ_TARGET_TO_PLAY,
     PlayReq.REQ_TARGET_FOR_COMBO,
@@ -113,7 +120,14 @@ def is_valid_target(self, target, requirements=None):
             if not target.frozen:
                 return False
         elif req == PlayReq.REQ_TARGET_MAX_ATTACK:
-            if target.atk > param or 0:
+            # Most MAX_ATTACK cards use a fixed data param. A few read "Attack
+            # <= THIS minion's" instead (see MAX_ATTACK_TRACKS_SOURCE), for which
+            # the source's live Attack is authoritative.
+            if getattr(self, "id", None) in MAX_ATTACK_TRACKS_SOURCE:
+                max_attack = self.atk
+            else:
+                max_attack = param or 0
+            if target.atk > max_attack:
                 return False
         elif req == PlayReq.REQ_NONSELF_TARGET:
             if target is self:

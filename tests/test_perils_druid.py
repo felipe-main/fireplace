@@ -287,3 +287,47 @@ def test_hiking_trail_reopens_after_gaining_armor():
         p1.choice.choose(p1.choice.cards[0])
     assert p1.hero.armor == 5
     assert loc.cooldown == 0
+
+
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_948 Hydration Station)
+# Edge: must pick the 3 HIGHEST-COST *Taunt* minions specifically — a cheaper
+# Taunt beats a more-expensive NON-Taunt, and the lowest-cost Taunt loses its
+# slot to the three pricier Taunts.
+# ---------------------------------------------------------------------------
+def test_hydration_station_prefers_cheaper_taunt_over_expensive_nontaunt():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    # Graveyard: three cheap-ish Taunts (cost 1, 3, 5) and a very expensive
+    # NON-Taunt (cost 8). Hydration Station resurrects the THREE highest-cost
+    # *Taunts* — so all three Taunts return and the 8-cost non-taunt does not,
+    # proving the filter is "Taunt", not merely "highest cost on board".
+    t1 = p1.summon(GOLDSHIRE_FOOTMAN)  # 1-cost Taunt
+    t3 = p1.summon("EX1_390")          # Tauren Warrior, 3-cost Taunt
+    t5 = p1.summon("CS2_187")          # Booty Bay Bodyguard, 5-cost Taunt
+    big_nontaunt = p1.summon("NEW1_030")  # Deathwing, 10-cost, NOT a Taunt
+    assert not bool(big_nontaunt.tags.get(GameTag.TAUNT))
+    for m in (t1, t3, t5, big_nontaunt):
+        m.destroy()
+    game.process_deaths()
+    assert len(p1.field) == 0
+    p1.give("VAC_948").play()
+    res_ids = sorted(m.id for m in p1.field)
+    # Exactly the three Taunts; the 8-cost non-taunt is excluded despite being
+    # the single highest-cost dead minion.
+    assert res_ids == sorted([GOLDSHIRE_FOOTMAN, "EX1_390", "CS2_187"])
+    assert all(bool(m.tags.get(GameTag.TAUNT)) for m in p1.field)
+    assert "NEW1_030" not in [m.id for m in p1.field]
+
+
+def test_hydration_station_no_taunts_does_nothing():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    # Only non-taunt minions in the graveyard -> nothing to resurrect.
+    a = p1.summon(WISP)
+    b = p1.summon(WISP)
+    for m in (a, b):
+        m.destroy()
+    game.process_deaths()
+    p1.give("VAC_948").play()
+    assert len(p1.field) == 0

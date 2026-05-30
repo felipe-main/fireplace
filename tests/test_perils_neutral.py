@@ -206,6 +206,41 @@ def test_seaside_giant_cost_reduction_per_location_use():
 
 
 # ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_439 Seaside Giant + VAC_956
+# Housekeeper). Edge: both read a per-game locations-used counter driven by
+# REAL UseLocation events. Drive two genuine location activations and assert
+# the cost drops by exactly 2 per use and Housekeeper grants exactly 3 armor
+# per use.
+# ---------------------------------------------------------------------------
+def test_seaside_giant_and_housekeeper_track_real_location_uses():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    giant = p1.give("VAC_439")
+    p1.summon("VAC_956")  # XB-931 Housekeeper
+    p1.hero.armor = 0
+    assert giant.cost == 10
+    assert getattr(p1, "locations_used_this_game", 0) == 0
+
+    loc = p1.give("TOY_512")  # The Crystal Cove location
+    loc.play()
+    loc.turn_played = -5
+    loc.cooldown = 0
+
+    # First real location use.
+    loc.use()
+    assert p1.locations_used_this_game == 1
+    assert giant.cost == 10 - 2  # one use -> -2 -> 8
+    assert p1.hero.armor == 3    # Housekeeper: +3 armor per use
+
+    # Second real location use (reopen by clearing cooldown).
+    loc.cooldown = 0
+    loc.use()
+    assert p1.locations_used_this_game == 2
+    assert giant.cost == 10 - 4  # two uses -> -4 -> 6
+    assert p1.hero.armor == 6    # exactly +3 more
+
+
+# ---------------------------------------------------------------------------
 # VAC_440 — Customs Enforcer: Enemy cards that didn't start in their deck cost
 # (2) more.
 # ---------------------------------------------------------------------------
@@ -836,6 +871,42 @@ def test_adaptive_amalgam_all_types_and_reshuffle():
     shuffled = [c for c in p1.deck if c.id == "VAC_958"]
     assert len(shuffled) == 1
     assert len(p1.deck) == pre_deck + 1
+
+
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_958 Adaptive Amalgam)
+# Edge (a): counts as ALL minion types simultaneously (multiple distinct
+# tribes at once). Edge (b): a buffed Amalgam shuffled back by its deathrattle
+# RETAINS its enchantment ("It keeps any enchantments").
+# ---------------------------------------------------------------------------
+def test_adaptive_amalgam_satisfies_multiple_distinct_tribes():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    amalgam = p1.summon("VAC_958")
+    # It is simultaneously a Murloc AND a Dragon AND a Mech (distinct tribes).
+    assert Race.MURLOC in amalgam.races
+    assert Race.DRAGON in amalgam.races
+    assert Race.MECHANICAL in amalgam.races
+
+
+def test_adaptive_amalgam_keeps_enchantment_on_reshuffle():
+    from fireplace.actions import Buff
+
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    amalgam = p1.summon("VAC_958")  # 1/2
+    assert amalgam.atk == 1
+    # Buff it +3 Attack via an enchant, then kill it.
+    game.queue_actions(p1.hero, [Buff(amalgam, "CS2_087e")])  # +3 Attack
+    assert amalgam.atk == 1 + 3
+    amalgam.destroy()
+    game.process_deaths()
+    # The same minion is shuffled into the deck and KEEPS the enchant.
+    shuffled = [c for c in p1.deck if c.id == "VAC_958"]
+    assert len(shuffled) == 1
+    copy = shuffled[0]
+    assert any(b.id == "CS2_087e" for b in copy.buffs)
+    assert copy.atk == 1 + 3
 
 
 # ---------------------------------------------------------------------------

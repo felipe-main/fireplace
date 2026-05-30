@@ -334,6 +334,33 @@ def test_sancazel_turns_into_location_after_attack():
     assert p1.location.durability == 5
 
 
+# ---------------------------------------------------------------------------
+# Once-over defensive test (review.csv: VAC_923 Sanc'Azel)
+# Edge: the minion->location transform must reflect the minion's CURRENT Health
+# onto the location's durability. Probe with damage taken BEFORE the attack and
+# a 0-attack defender (no retaliation) so the carried health is unambiguous.
+# ---------------------------------------------------------------------------
+def test_sancazel_location_reflects_current_health_exactly():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1, p2 = game.player1, game.player2
+    azel = p1.summon("VAC_923")  # 3/8
+    assert (azel.atk, azel.max_health) == (3, 8)
+    # Pre-damage the minion to 5 health, then attack a 0-attack target that
+    # deals no retaliation. The location must carry exactly 5 durability.
+    azel.damage = 3
+    assert azel.health == 5
+    dummy = p2.summon("GVG_093")  # Target Dummy, 0/4 (0 attack, no retaliation)
+    dummy.max_health = 40
+    dummy.damage = 0
+    azel.attack(dummy)
+    game.process_deaths()
+    # Minion form gone; a VAC_923t location now holds the carried health.
+    assert not any(m.id == "VAC_923" for m in p1.field)
+    assert p1.location is not None
+    assert p1.location.id == "VAC_923t"
+    assert p1.location.durability == 5
+
+
 def test_sancazel_location_buffs_minion_and_turns_back():
     game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
     p1, p2 = game.player1, game.player2

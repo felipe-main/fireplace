@@ -1037,6 +1037,15 @@ class Play(GameAction):
         ):
             player.next_n_murlocs_discount -= 1
             card.received_murloc_discount = False
+        # The Great Dark Beyond — Spacerock Collector: consume the one-shot
+        # Combo discount for a Combo card that actually took it.
+        if (
+            getattr(card, "has_combo", False)
+            and player.next_combo_discount > 0
+            and getattr(card, "received_combo_discount", False)
+        ):
+            player.next_combo_discount -= 1
+            card.received_combo_discount = False
 
 
 class Activate(GameAction):
@@ -1845,6 +1854,14 @@ class LaunchStarship(TargetedAction):
         player.starship = None
         source.game.manager.targeted_action(self, source, target)
         source.game.refresh_auras()
+        # The Gravitational Displacer — if banked, the launch summons a copy of
+        # the assembled ship.
+        if any(info["id"] in ("GDB_466",) for info in pieces):
+            from .dsl.copy import ExactCopy
+
+            copy = ExactCopy(None).copy(ship, ship)
+            copy._starship_pieces = list(getattr(ship, "_starship_pieces", []))
+            source.game.cheat_action(player, [Summon(player, copy)])
         return ship
 
 
@@ -1874,6 +1891,19 @@ class Reborn(TargetedAction):
     def do(self, source, target):
         source.game.manager.targeted_action(self, source, target)
         self.broadcast(source, EventListener.ON, target)
+
+
+class Overheal(TargetedAction):
+    """Broadcast-only marker fired when a heal overheals its target. `target`
+    is the overhealed character; `amount` is the overheal amount. Listeners
+    (e.g. Anchorite) react to it."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        source.game.manager.targeted_action(self, source, target, amount)
+        self.broadcast(source, EventListener.ON, target, amount)
 
 
 class Discovered(TargetedAction):
@@ -2456,6 +2486,11 @@ class Heal(TargetedAction):
             # Bumped only when an actual overheal happens; reset at
             # OWN_TURN_BEGIN.
             source.controller.overheals_triggered_this_turn += 1
+            # The Great Dark Beyond — Anchorite reacts to any overheal (even a
+            # pure overheal, which broadcasts no Heal event).
+            source.game.queue_actions(
+                source, [Overheal(target, overheal_amount)]
+            )
         amount = actual
         if amount:
             # Undamaged targets do not receive heals

@@ -204,6 +204,12 @@ class Player(Entity, TargetableByAuras):
         # (1) to the discount on the controller's first spell each turn. Armed
         # by the sources, reset every turn.
         self.first_spell_discount = 0
+        # The Great Dark Beyond — Spacerock Collector: the next Combo card you
+        # play costs this much less.
+        self.next_combo_discount = 0
+        # The Great Dark Beyond — Interstellar Wayfarer/Starslicer: Librams cost
+        # this much less for the rest of the game.
+        self.libram_discount = 0
         # The Great Dark Beyond — Discover tracking (Alien Encounters cost mod,
         # Parallax Cannon's +2 Attack, Rangari Scout's copy trigger). Bumped
         # whenever the player resolves a Discover; per-turn count resets each turn.

@@ -542,6 +542,20 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= self.controller.next_draenei_discount
                 self.received_draenei_discount = True
+            # The Great Dark Beyond — Spacerock Collector: the next Combo card
+            # costs less.
+            if (
+                getattr(self, "has_combo", False)
+                and getattr(self.controller, "next_combo_discount", 0) > 0
+            ):
+                ret -= self.controller.next_combo_discount
+                self.received_combo_discount = True
+            # The Great Dark Beyond — Interstellar Wayfarer / Starslicer:
+            # Librams cost less for the rest of the game.
+            if getattr(self, "libram", False) and getattr(
+                self.controller, "libram_discount", 0
+            ) > 0:
+                ret -= self.controller.libram_discount
             # The Great Dark Beyond — Sha'tari Cloakfield: the first spell each
             # turn costs (1) less per source. Shown on every spell in hand
             # until a spell is played this turn (then spells_played_this_turn

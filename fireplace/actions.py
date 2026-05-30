@@ -89,6 +89,32 @@ def _resolve_mini_id(card):
     return None
 
 
+def _resolve_giant_id(card):
+    """Whizbang's Workshop mini-set — resolve the 8-Cost 8/8 "Gigantic" token
+    paired with a GIGANTIFY minion. Every Gigantic form is an 8-mana 8/8 minion
+    keeping the original's text, so pick the unambiguous candidate among the
+    related-card tag and the "<id>t" / "<id>t1" naming conventions (MIS_025
+    carries both a Mini and a Gigantic token, so name+stats disambiguate)."""
+    from .cards import db
+
+    candidates = []
+    rel = card.data.tags.get(GameTag.COLLECTION_RELATED_CARD_DATABASE_ID, 0)
+    if rel and rel in db.dbf:
+        candidates.append(db.dbf[rel])
+    candidates += [card.id + "t1", card.id + "t"]
+    for cand in candidates:
+        if cand in db:
+            data = db[cand]
+            if (
+                data.type == CardType.MINION
+                and (data.cost or 0) == 8
+                and data.atk == 8
+                and data.health == 8
+            ):
+                return cand
+    return None
+
+
 def _eval_card(source, card):
     """
     Return a Card instance from \a card
@@ -774,6 +800,17 @@ class Play(GameAction):
             if mini_id:
                 source.game.queue_actions(player, [Give(player, mini_id)])
 
+        # Whizbang's Workshop mini-set — Gigantify: like Miniaturize but
+        # bigger. Playing a GIGANTIFY minion adds its 8-Cost 8/8 "Gigantic"
+        # copy (same text, fixed 8/8 stats) to hand. Same timing as
+        # Miniaturize — on the real play, before the battlecry.
+        if card.type == CardType.MINION and card.data.tags.get(
+            GameTag.GIGANTIFY, 0
+        ):
+            giant_id = _resolve_giant_id(card)
+            if giant_id:
+                source.game.queue_actions(player, [Give(player, giant_id)])
+
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:
             if trigger_battlecry:
@@ -816,6 +853,11 @@ class Play(GameAction):
                 player.spells_cast_by_school.setdefault(int(school), []).append(
                     card.id
                 )
+            # Whizbang mini-set — Holy spell counters (Flickering Lightbot
+            # MIS_918 per-game cost_mod; Holy Glowsticks MIS_709 per-turn cost).
+            if school and int(school) == int(SpellSchool.HOLY):
+                player.holy_spells_cast_this_game += 1
+                player.holy_spells_cast_this_turn += 1
             # Castle Nathria — Relic counter. Hardcoded id list since
             # the data has no GameTag.RELIC; bump on each Relic cast so
             # "Improve your future Relics" scales subsequent casts.
@@ -2339,6 +2381,9 @@ class Reveal(TargetedAction):
             target.triggered_secret = True
             # TITANS — Starstrung Bow: count friendly secrets that have triggered.
             target.controller.secrets_triggered_this_game += 1
+            # Whizbang mini-set — Product 9: remember each triggered Secret's
+            # id so it can recast them all later.
+            target.controller.secrets_triggered_cards_this_game.append(target.id)
             target.zone = Zone.GRAVEYARD
             # Castle Nathria — Halkias's soul: if this secret was
             # marked, resummon Halkias when it triggers.

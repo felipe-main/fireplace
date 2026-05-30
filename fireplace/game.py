@@ -494,6 +494,8 @@ class BaseGame(Entity):
         # Sunken City: per-turn flags reset at the start of own turn.
         player.spells_poisonous_this_turn = False
         player.spell_mana_spent_this_turn = 0
+        # Whizbang mini-set — Holy Glowsticks (MIS_709) per-turn discount.
+        player.holy_spells_cast_this_turn = 0
         # Audiopocalypse — Ambient Lightspawn counter resets per turn.
         player.overheals_triggered_this_turn = 0
         # TITANS — Tar Slick: clear per-turn "minions take double damage" flag.

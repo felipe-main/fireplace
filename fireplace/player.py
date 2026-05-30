@@ -173,6 +173,11 @@ class Player(Entity, TargetableByAuras):
         # Garden's Grace). Bumped from Play.do using the spell's paid cost.
         self.mana_spent_on_spells_this_game = 0
         self.mana_spent_on_holy_spells_this_game = 0
+        # Whizbang mini-set — Holy spell counts. Per-game drives Flickering
+        # Lightbot's (MIS_918) cost reduction; per-turn drives Holy Glowsticks'
+        # (MIS_709) "Costs (1) this turn" discount (reset in game.begin_turn).
+        self.holy_spells_cast_this_game = 0
+        self.holy_spells_cast_this_turn = 0
         # Sunken City: while True, the next damage dealt by your spells
         # also poisons the damaged minion (Urchin Spines, this-turn flag).
         self.spells_poisonous_this_turn = False
@@ -235,6 +240,10 @@ class Player(Entity, TargetableByAuras):
         self._plagues_are_unending = False
         # TITANS — Starstrung Bow cost_mod. Bumped when a Secret triggers.
         self.secrets_triggered_this_game = 0
+        # Whizbang's Workshop mini-set — Product 9 (MIS_914) recasts every
+        # friendly Secret that triggered this game. Ledger of their card ids,
+        # appended in Reveal.do as each friendly Secret fires.
+        self.secrets_triggered_cards_this_game = []
         # TITANS — Tar Slick: while True, minions take double damage this turn.
         # Set by the spell's play; cleared at OWN_TURN_END.
         self.minion_damage_doubled_this_turn = False

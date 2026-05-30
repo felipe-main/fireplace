@@ -263,3 +263,63 @@ class TOY_354e:
 class TOY_355e2:
     # Foam Fury — the Legendary Beast costs (2) less.
     tags = {GameTag.COST: -2}
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_104:
+    """Wilderness Pack"""
+
+    # Add 5 random Beasts to your hand. They are Temporary.
+    play = (
+        Give(CONTROLLER, RandomBeast()).then(GiveTemporary(Give.CARD))
+    ) * 5
+
+
+class _BargainBinDraw(TargetedAction):
+    """After the opponent plays a minion/spell/weapon, draw a card of one of
+    the other two types from your deck."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        kinds = {CardType.MINION, CardType.SPELL, CardType.WEAPON}
+        if target.type not in kinds:
+            return
+        wanted = kinds - {target.type}
+        pool = [c for c in ctrl.deck if c.type in wanted]
+        if pool:
+            source.game.cheat_action(
+                source, [ForceDraw(source.game.random.choice(pool))]
+            )
+
+
+class MIS_105:
+    """Bargain Bin"""
+
+    # Secret: After your opponent plays a minion, spell, or weapon, draw a
+    # card of the other 2 types.
+    secret = Play(OPPONENT, MINION | SPELL | WEAPON).after(
+        Reveal(SELF), _BargainBinDraw(Play.CARD)
+    )
+
+
+class _Product9Recast(TargetedAction):
+    """Recast every friendly Secret that triggered this game (re-arms them)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        for cid in list(ctrl.secrets_triggered_cards_this_game):
+            source.game.cheat_action(source, [CastSpell(cid)])
+
+
+class MIS_914:
+    """Product 9"""
+
+    # Battlecry: Recast every friendly Secret that triggered this game.
+    play = _Product9Recast(SELF)

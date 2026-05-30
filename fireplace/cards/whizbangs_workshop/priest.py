@@ -261,3 +261,48 @@ class TOY_879t:
 
     # Add the resealed minions to your hand.
     play = _RepackageOpen(SELF)
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_305:
+    """Delayed Product"""
+
+    # Discover and summon a minion that costs (8) or more. It goes Dormant
+    # for 2 turns.
+    play = Discover(
+        CONTROLLER, RandomMinion(custom_filter=lambda c: (c.cost or 0) >= 8)
+    ).then(Summon(CONTROLLER, Discover.CARD).then(Dormant(Summon.CARD, 2)))
+
+
+class MIS_714:
+    """Funhouse Mirror"""
+
+    # Summon a copy of an enemy minion. It attacks the original.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_ENEMY_TARGET: 0,
+    }
+    play = Summon(CONTROLLER, Copy(TARGET)).then(Attack(Summon.CARD, TARGET))
+
+
+class MIS_919:
+    """Puppet Theatre"""
+
+    # Location. Choose an enemy minion. Get a 1/1 copy of it that costs (1).
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_ENEMY_TARGET: 0,
+    }
+    activate = Give(CONTROLLER, Copy(TARGET)).then(Buff(Give.CARD, "MIS_919e"))
+
+
+class MIS_919e:
+    # Puppet — stats set to 1/1, cost (1).
+    atk = lambda self, i: 1
+    max_health = lambda self, i: 1
+    cost = SET(1)

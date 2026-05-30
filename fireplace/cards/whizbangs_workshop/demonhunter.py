@@ -237,3 +237,34 @@ class TOY_641e:
     # In-data "Game Time!" — the (2)-cost reduction stamp for the drawn Demon.
     # The COST value isn't parsed from data, so declare it here.
     tags = {GameTag.COST: -2}
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_102:
+    """Return Policy"""
+
+    # Discover a friendly Deathrattle card you've played this game. Trigger
+    # its Deathrattle. (Mirrors Nine Lives: the chosen copy enters hand and
+    # its Deathrattle fires.)
+    play = GenericChoice(
+        CONTROLLER,
+        Copy(RANDOM(DeDuplicate(CARDS_PLAYED_THIS_GAME + DEATHRATTLE)) * 3),
+    ).then(Deathrattle(GenericChoice.CARD))
+
+
+class MIS_710:
+    """Sock Puppet Slitherspear"""
+
+    # This minion's Attack is improved by your hero's. Continuous aura that
+    # adds the friendly hero's current Attack on top of the base 1.
+    update = Refresh(SELF, {GameTag.ATK: Attr(FRIENDLY_HERO, GameTag.ATK)})
+
+
+class MIS_911:
+    """Gibbering Reject"""
+
+    # After your hero attacks, summon another Gibbering Reject.
+    events = Attack(FRIENDLY_HERO).after(Summon(CONTROLLER, "MIS_911"))

@@ -269,3 +269,65 @@ class TOY_886:
 
 	# Resurrect your last Demon that died.
 	play = _EndgameResurrect(SELF)
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class _DominoEffect(TargetedAction):
+    """Deal 2 to the target minion, then topple along one direction (toward
+    whichever side has more minions; ties go right), dealing 1 more each hop.
+    The chain is snapshotted before any damage so deaths don't shift it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        board = list(target.controller.field)
+        if target not in board:
+            return
+        idx = board.index(target)
+        left = idx
+        right = len(board) - idx - 1
+        step = 1 if right >= left else -1
+        chain = []
+        i = idx
+        while 0 <= i < len(board):
+            chain.append(board[i])
+            i += step
+        dmg = 2
+        for minion in chain:
+            amt = source.controller.get_spell_damage(source, dmg)
+            source.game.cheat_action(source, [Hit(minion, amt)])
+            dmg += 1
+
+
+class MIS_027:
+    """Domino Effect"""
+
+    # Deal 2 damage to a minion. Repeat to the left or right, dealing 1 more
+    # damage each time.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = _DominoEffect(TARGET)
+
+
+class MIS_703:
+    """INFERNAL!"""
+
+    # Taunt (data). Battlecry: Set your hero's remaining Health to 15.
+    play = SetCurrentHealth(FRIENDLY_HERO, 15)
+
+
+class MIS_707:
+    """Mass Production"""
+
+    # Draw 2 cards. Deal 3 damage to your hero. Shuffle 2 copies of this
+    # into your deck.
+    play = (
+        Draw(CONTROLLER) * 2,
+        Hit(FRIENDLY_HERO, 3),
+        Shuffle(CONTROLLER, "MIS_707") * 2,
+    )

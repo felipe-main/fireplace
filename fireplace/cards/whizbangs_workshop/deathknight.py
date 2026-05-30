@@ -356,3 +356,114 @@ class TOY_829hp:
 
     requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
     activate = Hit(TARGET, 3), DISCOVER(RandomMinion(race=Race.UNDEAD))
+
+
+##
+# Whizbang's Workshop mini-set (Dr. Boom's Incredible Inventions)
+
+
+# "Choose a minion in your hand" support — the engine's play-targets only
+# range over in-play characters, so model the printed hand pick with an
+# ENTITY_CHOICE over the friendly hand minions, then run a callback.
+class _HandMinionChoice:
+    type = "ENTITY_CHOICE"
+    min_count = 1
+    max_count = 1
+
+    def __init__(self, source, player, cards, apply):
+        self.source = source
+        self.player = player
+        self.cards = list(cards)
+        self._apply = apply
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise ValueError("not a valid pick")
+        self.player.choice = None
+        self._apply(self.source, card)
+
+
+def _choose_hand_minion(source, apply):
+    ctrl = source.controller
+    minions = [c for c in ctrl.hand if c.type == CardType.MINION]
+    if not minions:
+        return
+    if len(minions) == 1:
+        apply(source, minions[0])
+        return
+    ctrl.choice = _HandMinionChoice(source, ctrl, minions, apply)
+
+
+@custom_card
+class MIS_006e:
+    # "Collection Bonus" battlecry discount — magnitude (this minion's
+    # Attack) is supplied via the cost= kwarg at Buff time. Not in data.
+    tags = {
+        GameTag.CARDNAME: "Collection Bonus",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+
+
+class MIS_006:
+    """Toysnatching Geist"""
+
+    # Gigantify (engine). Battlecry: Discover an Undead. Reduce its Cost by
+    # this minion's Attack.
+    play = Discover(CONTROLLER, RandomMinion(race=Race.UNDEAD)).then(
+        Give(CONTROLLER, Discover.CARD).then(
+            Buff(Give.CARD, "MIS_006e", cost=-ATK(SELF))
+        )
+    )
+
+
+class MIS_006t(MIS_006):
+    """Toysnatching Geist"""
+
+    # Gigantic 8/8 form — same Discover battlecry (reduces by 8 Attack).
+
+
+class _HelmHandBuff(TargetedAction):
+    """Helm of Humiliation — give a CHOSEN minion in your hand +5/+5."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        _choose_hand_minion(
+            source,
+            lambda s, m: s.game.cheat_action(s, [Buff(m, "MIS_100e1")]),
+        )
+
+
+class MIS_100:
+    """Helm of Humiliation"""
+
+    # Give a minion -5/-5. Give a minion in your hand +5/+5.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Buff(TARGET, "MIS_100e"), _HelmHandBuff(SELF)
+
+
+class MIS_100e:
+    # Humiliated — -5/-5.
+    tags = {GameTag.ATK: -5, GameTag.HEALTH: -5}
+
+
+class MIS_100e1:
+    # Discount Lich King — +5/+5.
+    tags = {GameTag.ATK: 5, GameTag.HEALTH: 5}
+
+
+class MIS_101:
+    """Foamrender"""
+
+    # Whenever your hero attacks, spend 3 Corpses to gain +1 Durability.
+    events = Attack(FRIENDLY_HERO).after(
+        (CORPSES >= 3) & SpendCorpses(CONTROLLER, 3).then(Buff(SELF, "MIS_101e"))
+    )
+
+
+class MIS_101e:
+    # Some Assembly Required — +1 Durability.
+    tags = {GameTag.HEALTH: 1}

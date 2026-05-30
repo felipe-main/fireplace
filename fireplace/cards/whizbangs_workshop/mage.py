@@ -225,3 +225,40 @@ class TOY_375t:
         PlayReq.REQ_ENEMY_TARGET: 0,
     }
     play = GainArmor(FRIENDLY_HERO, ATK(TARGET)), Freeze(TARGET)
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_107:
+    """Malfunction"""
+
+    # Deal 3 damage split among all enemy minions. If your deck has no
+    # minions, deal 3 more. (Spell Damage applies to each scatter.)
+    play = Hit(RANDOM_ENEMY_MINION, 1) * SPELL_DAMAGE(3), (
+        -Find(FRIENDLY_DECK + MINION)
+    ) & (Hit(RANDOM_ENEMY_MINION, 1) * SPELL_DAMAGE(3))
+
+
+class MIS_302:
+    """Buy One, Get One Freeze"""
+
+    # Freeze a minion. Summon a Frozen copy of it.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Freeze(TARGET), Summon(CONTROLLER, Copy(TARGET)).then(
+        Freeze(Summon.CARD)
+    )
+
+
+class MIS_303:
+    """Darkmoon Magician"""
+
+    # Elusive (data). After you cast a spell, cast a random spell that costs
+    # (1) more.
+    events = OWN_SPELL_PLAY.after(
+        CastSpell(RandomSpell(cost=COST(Play.CARD) + 1))
+    )

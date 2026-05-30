@@ -279,3 +279,95 @@ class TOY_509:
     # TAG_SCRIPT_DATA_NUM_1) and increments by 1 each time the card is Traded.
     play = _WindUpMusicianBattlecry(SELF)
     trade = _WindUpMusicianUpgrade(SELF)
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_025:
+    """The Replicator-inator"""
+
+    # Miniaturize, Gigantify (engine). After you play a minion with the same
+    # Attack as this, summon a copy of it.
+    events = Play(CONTROLLER, MINION).after(
+        (ATK(Play.CARD) == ATK(SELF)) & Summon(CONTROLLER, Copy(Play.CARD))
+    )
+
+
+class MIS_025t(MIS_025):
+    """The Replicator-inator"""
+
+    # Mini 1/1 form — same trigger (matches Attack 1).
+
+
+class MIS_025t1(MIS_025):
+    """The Replicator-inator"""
+
+    # Gigantic 8/8 form — same trigger (matches Attack 8).
+
+
+class MIS_026:
+    """Puppetmaster Dorian"""
+
+    # After you draw a minion, get a 1/1 copy of it that costs (1).
+    # (Draw broadcasts on the ON listener, not AFTER.)
+    events = Draw(CONTROLLER).on(
+        Find(Draw.CARD + MINION)
+        & Give(CONTROLLER, Copy(Draw.CARD)).then(Buff(Give.CARD, "MIS_026e"))
+    )
+
+
+class MIS_026e:
+    # Creepy Puppet — stats set to 1/1, cost (1).
+    atk = lambda self, i: 1
+    max_health = lambda self, i: 1
+    cost = SET(1)
+
+
+class MIS_308:
+    """Explodineer"""
+
+    # At the end of your turn, shuffle a Bomb into your opponent's deck. When
+    # drawn, it explodes for 5 damage (BOT_511t — Casts When Drawn).
+    events = OWN_TURN_END.on(Shuffle(OPPONENT, "BOT_511t"))
+
+
+class MIS_314:
+    """Building-Block Golem"""
+
+    # Rush (data). Deathrattle: Summon three random 1-Cost minions.
+    deathrattle = Summon(CONTROLLER, RandomMinion(cost=1)) * 3
+
+
+class _ProGamerResolve(TargetedAction):
+    """Resolve Rock-Paper-Scissors: compare the chosen throw against the
+    opponent's random throw; the winner draws 2. Ties draw nothing."""
+
+    TARGET = ActionArg()
+    # Each throw beats the one it maps to: Rock>Scissors, Paper>Rock,
+    # Scissors>Paper.
+    _BEATS = {"MIS_916a": "MIS_916c", "MIS_916b": "MIS_916a", "MIS_916c": "MIS_916b"}
+
+    def do(self, source, target):
+        ctrl = source.controller
+        opp = ctrl.opponent
+        my_throw = target.id
+        opp_throw = source.game.random.choice(
+            ["MIS_916a", "MIS_916b", "MIS_916c"]
+        )
+        if self._BEATS.get(my_throw) == opp_throw:
+            source.game.cheat_action(source, [Draw(ctrl), Draw(ctrl)])
+        elif self._BEATS.get(opp_throw) == my_throw:
+            source.game.cheat_action(source, [Draw(opp), Draw(opp)])
+
+
+class MIS_916:
+    """Pro Gamer"""
+
+    # Battlecry: Challenge your opponent to a game of Rock-Paper-Scissors!
+    # The winner draws 2 cards. (You pick your throw; the opponent's is
+    # random.) Plain Choice keeps the throw token out of hand — it just picks.
+    play = Choice(CONTROLLER, ["MIS_916a", "MIS_916b", "MIS_916c"]).then(
+        _ProGamerResolve(Choice.CARD)
+    )

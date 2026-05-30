@@ -157,3 +157,39 @@ class TOY_522:
 # Waterslider — 1/1 Pirate token.
 class TOY_522t:
     """Waterslider"""
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+# The four pieces of "junk": Coin, Banana, Rock, Wicked Knife.
+_RANDOM_JUNK = RandomID("GAME_005", "EX1_014t", "WW_001t", "CS2_082")
+
+
+class MIS_706:
+    """Dust Bunny"""
+
+    # Battlecry and Deathrattle: Add a random piece of junk to your hand
+    # (a Coin, Rock, Banana, or Knife).
+    play = Give(CONTROLLER, _RANDOM_JUNK)
+    deathrattle = Give(CONTROLLER, _RANDOM_JUNK)
+
+
+class MIS_708:
+    """Twisted Pack"""
+
+    # Add 5 random cards from other classes to your hand. They are Temporary.
+    play = (
+        Give(CONTROLLER, RandomOtherClassCollectible()).then(
+            GiveTemporary(Give.CARD)
+        )
+    ) * 5
+
+
+class MIS_903:
+    """Dubious Purchase"""
+
+    # Draw 3 cards. Combo: Destroy a random enemy minion.
+    play = Draw(CONTROLLER) * 3
+    combo = Draw(CONTROLLER) * 3, Destroy(RANDOM_ENEMY_MINION)

@@ -156,3 +156,48 @@ class TOY_908:
     # <b>Deathrattle:</b> Summon two 1/1 Boom Bots. <i>WARNING: Bots may
     # explode.</i>
     deathrattle = Summon(CONTROLLER, "GVG_110t") * 2
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_705:
+    """Standardized Pack"""
+
+    # Add 5 random Taunt minions to your hand. They are Temporary.
+    play = (
+        Give(
+            CONTROLLER,
+            RandomMinion(custom_filter=lambda c: c.tags.get(GameTag.TAUNT, 0)),
+        ).then(GiveTemporary(Give.CARD))
+    ) * 5
+
+
+class MIS_711:
+    """Safety Expert"""
+
+    # Rush (data). Deathrattle: Shuffle three Bombs into your opponent's deck.
+    deathrattle = Shuffle(OPPONENT, "BOT_511t") * 3
+
+
+class _PartScrapper(TargetedAction):
+    """Lose up to 5 Armor; your next Mech costs that much less (reuses the
+    engine's _next_mech_cost_reduction refund-on-play counter)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        hero = ctrl.hero
+        lost = min(hero.armor, 5)
+        if lost > 0:
+            hero.armor -= lost
+            ctrl._next_mech_cost_reduction += lost
+
+
+class MIS_902:
+    """Part Scrapper"""
+
+    # Lose up to 5 Armor. Your next Mech costs that much less.
+    play = _PartScrapper(SELF)

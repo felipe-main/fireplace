@@ -304,3 +304,31 @@ class TOY_850e:
     # In-data "Magical Harvest" — Spell Damage +1 this turn.
     tags = {GameTag.TAG_ONE_TURN_EFFECT: True}
     update = Refresh(CONTROLLER, {GameTag.SPELLPOWER: 1})
+
+
+##
+# Whizbang's Workshop mini-set
+
+# MIS_300 Snuggle Teddy is a vanilla Gigantify minion (Elusive/Lifesteal/
+# Taunt all live in data; the engine supplies the Gigantic token) — no script.
+
+
+class MIS_301:
+    """Overgrown Beanstalk"""
+
+    # Summon a 2/2 Treant. Draw a card for each Treant you control (the new
+    # Treant counts — it is summoned before the count).
+    play = Summon(CONTROLLER, "MIS_301t").then(
+        Draw(CONTROLLER) * Count(FRIENDLY_MINIONS + TREANT)
+    )
+
+
+class MIS_712:
+    """Toyrantus"""
+
+    # Taunt, Elusive (data). Battlecry: If you have 10 Mana Crystals, gain
+    # +7/+7.
+    play = MANATHIRST(10) & Buff(SELF, "MIS_712e")
+
+
+MIS_712e = buff(7, 7)  # Dino Mojo — +7/+7.

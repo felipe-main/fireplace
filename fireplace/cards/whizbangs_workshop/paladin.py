@@ -343,3 +343,46 @@ class TOY_810e:
 
     # +1/+1 (data enchant carries no stats — supply them here).
     tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
+
+
+##
+# Whizbang's Workshop mini-set
+
+
+class MIS_700:
+    """Whack-A-Gnoll"""
+
+    # Discover a Paladin weapon from the past. Give it +1/+1. ("From the
+    # past" = any collectible Paladin weapon, so suppress the standard-only
+    # restriction with is_standard=None.)
+    play = Discover(
+        CONTROLLER, RandomWeapon(card_class=CardClass.PALADIN, is_standard=None)
+    ).then(Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "MIS_700e")))
+
+
+MIS_700e = buff(1, 1)  # Whack! — weapon +1/+1.
+
+
+class MIS_709:
+    """Holy Glowsticks"""
+
+    # Lifesteal (data). Deal 4 damage. Costs (1) if you've cast a Holy spell
+    # this turn.
+    requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
+    play = Hit(TARGET, 4)
+    # "Costs (1)" — base 4, so a -3 delta when a Holy spell was cast this turn.
+    cost_mod = (Attr(CONTROLLER, "holy_spells_cast_this_turn") >= 1) & -3
+
+
+class MIS_918:
+    """Flickering Lightbot"""
+
+    # Gigantify (engine). Costs (1) less for each Holy spell you've cast this
+    # game.
+    cost_mod = -Attr(CONTROLLER, "holy_spells_cast_this_game")
+
+
+class MIS_918t(MIS_918):
+    """Flickering Lightbot"""
+
+    # Gigantic 8/8 form — same per-game Holy cost reduction.

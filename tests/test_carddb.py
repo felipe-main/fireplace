@@ -63,11 +63,6 @@ def test_battlecry_scripts():
             # Badlands).
             if card.id.startswith("YOG_"):
                 continue
-            # Whizbang's Workshop mini-set (MIS_*, CardSet WHIZBANGS_WORKSHOP)
-            # became collectible in the Patch 30.0 data but is a separate set,
-            # out of scope for the Perils in Paradise pass (next roadmap item).
-            if card.id.startswith("MIS_"):
-                continue
             assert card.scripts.play
 
 
@@ -91,10 +86,6 @@ def test_deathrattle_scripts():
             # TITANS mini-set "Fall of Ulduar" (YOG_*) is deferred — became
             # collectible in Patch 28.0 data but is out of scope.
             if card.id.startswith("YOG_"):
-                continue
-            # Whizbang's Workshop mini-set (MIS_*) — out of scope for the
-            # Perils in Paradise pass (next roadmap item).
-            if card.id.startswith("MIS_"):
                 continue
             assert card.scripts.deathrattle
 

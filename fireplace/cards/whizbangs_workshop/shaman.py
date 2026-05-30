@@ -215,3 +215,46 @@ class TOY_513t:
 	# [x]<b>Mini</b> <b>Battlecry:</b> Give your hero +1 Attack and
 	# <b>Windfury</b> this turn.
 	play = Buff(FRIENDLY_HERO, "TOY_513e")
+
+
+##
+# Whizbang's Workshop mini-set
+
+# MIS_306 Rocket Hopper is a vanilla Rush + Overload:(4) minion (both in
+# data) — no script needed.
+
+
+class _GrowfinSummon(TargetedAction):
+    """Summon a Molded Tinyfin (Rush) whose stats equal Murloc Growfin's."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        atk = source.atk
+        health = source.health
+        tiny = source.controller.summon("MIS_307t")
+        tiny.atk = atk
+        tiny.max_health = health
+        tiny.damage = 0
+
+
+class MIS_307:
+    """Murloc Growfin"""
+
+    # Gigantify (engine). Battlecry: Summon a Tinyfin with Rush and stats
+    # equal to this minion's.
+    play = _GrowfinSummon(SELF)
+
+
+class MIS_307t1(MIS_307):
+    """Murloc Growfin"""
+
+    # Gigantic 8/8 form — summons an 8/8 Molded Tinyfin.
+
+
+class MIS_701:
+    """Wave of Nostalgia"""
+
+    # Transform ALL minions into random Legendary ones from the past (any
+    # collectible Legendary minion — suppress the standard-only restriction).
+    play = Morph(ALL_MINIONS, RandomLegendaryMinion(is_standard=None))

@@ -40,6 +40,11 @@ class _GalacticOrbRecast(TargetedAction):
         for c in list(ctrl.spells_cast_this_game):
             if c.type != CardType.SPELL:
                 continue
+            # Never recast another Galactic Orb: each recast appends to the
+            # cast ledger, so an Orb-in-the-pool would recurse without bound
+            # (two Orbs cast in a game, or one conjured by Darkmoon Magician).
+            if c.id in ("TOY_378", "CORE_TOY_378"):
+                continue
             by_cost.setdefault(c.cost or 0, []).append(c.id)
         for cost in sorted(by_cost):
             picked = source.game.random.choice(by_cost[cost])

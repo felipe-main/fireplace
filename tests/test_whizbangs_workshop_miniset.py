@@ -313,6 +313,23 @@ def test_darkmoon_magician_recasts_pricier_spell():
     assert len(p1.spells_cast_this_game) == before + 2
 
 
+def test_galactic_orb_does_not_recast_itself():
+    # Regression: The Galactic Projection Orb (TOY_378) must not recast itself
+    # — each recast appends to the cast ledger, so a second Orb recasting the
+    # first would recurse without bound (surfaced by the mini-set's denser
+    # spell casting, e.g. Darkmoon Magician conjuring Orbs).
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    p2.hero.max_health = 200
+    p2.hero.damage = 0
+    p1.give(MOONFIRE).play(target=p2.hero)  # a spell to recast
+    p1.used_mana = 0
+    p1.give("TOY_378").play()  # first Orb
+    p1.used_mana = 0
+    p1.give("TOY_378").play()  # second Orb must not loop on the first
+    assert len([c for c in p1.spells_cast_this_game if c.id == "TOY_378"]) == 2
+
+
 # ---------------------------------------------------------------------------
 # Paladin
 # ---------------------------------------------------------------------------

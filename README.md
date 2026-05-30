@@ -10,7 +10,8 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 30.0.0.203120](https://hearthstone.wiki.gg/wiki/Patch_30.0.0.203120)
+Now updated to [Patch 31.2.2.213852](https://hearthstone.wiki.gg/wiki/Patch_31.2.2.213852)
+* **100%** The Great Dark Beyond (145 of 145 cards) — adds Starships (Piece banking + Launch assembly) and the Draenei tribe
 * **100%** Perils in Paradise (145 of 145 cards) — adds Tourist (cross-class deckbuilding), Drinks, and reopening Locations
 * **100%** Whizbang's Workshop (145 of 145 cards) — adds Miniaturize + Zilliax Deluxe 3000 modular assembly
 * **100%** Delve into Deepholm mini-set (38 of 38 cards) — completes the Showdown block; Paladin + Shaman Excavate

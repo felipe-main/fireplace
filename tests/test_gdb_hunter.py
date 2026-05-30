@@ -143,12 +143,6 @@ def test_rangari_scout_copies_discovered_card():
 
 # GDB_842 — Gorm the Worldeater: Dormant for 5 turns. At the end of your turn,
 # destroy the minion to the right of this to awaken 1 turn sooner.
-@pytest.mark.xfail(
-    reason="CARD BUG: printed 'Dormant for 5 turns' but GDB_842 never enters "
-    "dormancy (no DORMANT data tag, no dormant_turns script attr), so it is "
-    "active on play instead of waiting 5 turns.",
-    strict=False,
-)
 def test_gorm_is_dormant_for_five_turns_on_play():
     game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
     p1 = game.player1
@@ -159,12 +153,6 @@ def test_gorm_is_dormant_for_five_turns_on_play():
     assert gorm.dormant_turns == 5
 
 
-@pytest.mark.xfail(
-    reason="CARD BUG: GDB_842 is never dormant (see above), so its "
-    "dormant_events 'eat the minion to my right to awaken 1 sooner' never "
-    "fires and the right neighbor survives.",
-    strict=False,
-)
 def test_gorm_eats_right_neighbor_and_awakens_sooner():
     game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
     p1 = game.player1
@@ -177,9 +165,12 @@ def test_gorm_eats_right_neighbor_and_awakens_sooner():
     victim = p1.summon(WISP)
     assert list(p1.field).index(victim) == list(p1.field).index(gorm) + 1
     game.end_turn()
-    # End-of-turn: the right neighbor is destroyed and Gorm awakens 1 sooner.
+    # End of your turn: the right neighbor is destroyed and Gorm awakens 1
+    # sooner (an immediate extra -1 on top of the normal countdown).
     assert victim.zone == Zone.GRAVEYARD
-    # One natural dormant tick (end_turn) plus the -1 from eating the neighbor.
+    assert gorm.dormant_turns == start - 1
+    # Back around to your next turn: the natural dormant tick fires too.
+    game.end_turn()  # opponent's turn
     assert gorm.dormant_turns == start - 2
 
 
@@ -214,12 +205,6 @@ def test_parallax_cannon_plus2_when_discovered_this_turn():
     assert weapon.atk == base
 
 
-@pytest.mark.xfail(
-    reason="ENGINE LIMIT: Spellburst only fires for minions on the board "
-    "(Play.do iterates player.field); weapons are excluded, so Parallax "
-    "Cannon's Spellburst never grants hero Immune. Card script is correct.",
-    strict=False,
-)
 def test_parallax_cannon_spellburst_makes_hero_immune():
     game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
     p1, p2 = game.player1, game.player2

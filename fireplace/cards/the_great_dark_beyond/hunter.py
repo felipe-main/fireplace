@@ -83,7 +83,11 @@ class GDB_842:
     """Gorm the Worldeater"""
 
     # Dormant for 5 turns. At the end of your turn, destroy the minion to the
-    # right of this to awaken 1 turn sooner.
+    # right of this to awaken 1 turn sooner. GDB_842's data omits the DORMANT
+    # tag, so declare it here (like Dozing Dragon) — otherwise _set_zone leaves
+    # it awake and the dormant_events never fire.
+    tags = {GameTag.DORMANT: True}
+    dormant_turns = 5
     dormant_events = OWN_TURN_END.on(_GormEatRight(SELF))
 
 

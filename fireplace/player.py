@@ -221,6 +221,9 @@ class Player(Entity, TargetableByAuras):
         self.next_demon_discount = 0
         # The Great Dark Beyond — Healthstone: hero damage taken this turn.
         self.hero_damage_taken_this_turn = 0
+        # The Great Dark Beyond — Space Pirate: the next weapon you play costs
+        # this much less (consumed when a weapon is played).
+        self.next_weapon_discount = 0
         # The Great Dark Beyond — Interstellar Wayfarer/Starslicer: Librams cost
         # this much less for the rest of the game.
         self.libram_discount = 0

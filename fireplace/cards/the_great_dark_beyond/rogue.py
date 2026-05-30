@@ -87,9 +87,11 @@ class GDB_472:
 class GDB_870:
     """Eredar Skulker"""
 
-    # Combo and Spellburst: Gain +2 Attack and Stealth.
-    combo = Buff(SELF, "GDB_870e2"), SetTags(SELF, {GameTag.STEALTH: True})
-    spellburst = Buff(SELF, "GDB_870e2"), SetTags(SELF, {GameTag.STEALTH: True})
+    # Combo and Spellburst: Gain +2 Attack and Stealth. The GDB_870e2 data
+    # enchant ('Skulking') carries no ATK tag in this build, so supply +2 via
+    # the buff kwarg.
+    combo = Buff(SELF, "GDB_870e2", atk=2), SetTags(SELF, {GameTag.STEALTH: True})
+    spellburst = Buff(SELF, "GDB_870e2", atk=2), SetTags(SELF, {GameTag.STEALTH: True})
 
 
 class GDB_875:

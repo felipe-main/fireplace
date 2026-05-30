@@ -36,13 +36,6 @@ def test_shatari_cloakfield_discount_machinery_reduces_spell_cost():
     assert fireball.cost == p1.card("CS2_029").cost - 1
 
 
-@pytest.mark.xfail(
-    reason="ENGINE ORDER: BeginTurn broadcasts OWN_TURN_BEGIN (arming the "
-    "Cloakfield discount) BEFORE _begin_turn resets first_spell_discount=0, so "
-    "the discount is wiped before the action phase. Root cause is shared engine "
-    "code (game.py/_begin_turn ordering), not the card script.",
-    strict=False,
-)
 def test_shatari_cloakfield_first_spell_discount_armed_each_turn():
     game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
     p1 = game.current_player
@@ -58,11 +51,6 @@ def test_shatari_cloakfield_first_spell_discount_armed_each_turn():
 
 # GDB_108 — Starlight Reactor (3/3/3): After you cast an Arcane spell, recast it
 # (targets chosen randomly). Starship Piece.
-@pytest.mark.xfail(
-    reason="CARD BUG: GDB_108 _StarlightRecast.do receives Play.CARD as a list, "
-    "so `spell.id` raises AttributeError — recasting any Arcane spell crashes",
-    strict=False,
-)
 def test_starlight_reactor_recasts_arcane_spell():
     game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
     p1 = game.current_player

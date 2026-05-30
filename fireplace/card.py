@@ -589,6 +589,12 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                 and self.controller.spells_played_this_turn == 0
             ):
                 ret -= self.controller.first_spell_discount
+            # The Great Dark Beyond — Space Pirate: the next weapon costs less.
+            if (
+                self.type == CardType.WEAPON
+                and getattr(self.controller, "next_weapon_discount", 0) > 0
+            ):
+                ret -= self.controller.next_weapon_discount
         ret = self._getattr("cost", ret)
         return max(0, ret)
 

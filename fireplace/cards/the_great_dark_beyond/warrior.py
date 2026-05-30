@@ -170,12 +170,18 @@ class GDB_231:
 class GDB_227:
     """Jettison"""
 
-    # Discover a spell. Spend 2 Armor to Discover another.
+    # Discover a spell. Spend 2 Armor to Discover another. Nest the second
+    # Discover inside the first's .then() so the two choices don't collide
+    # (flat-tuple Discovers all set player.choice at once — only the last wins).
     play = Discover(CONTROLLER, RandomSpell()).then(
-        Give(CONTROLLER, Discover.CARD)
-    ), (Attr(FRIENDLY_HERO, GameTag.ARMOR) >= 2) & (
-        GainArmor(FRIENDLY_HERO, -2),
-        Discover(CONTROLLER, RandomSpell()).then(Give(CONTROLLER, Discover.CARD)),
+        Give(CONTROLLER, Discover.CARD),
+        (Attr(FRIENDLY_HERO, GameTag.ARMOR) >= 2)
+        & (
+            GainArmor(FRIENDLY_HERO, -2),
+            Discover(CONTROLLER, RandomSpell()).then(
+                Give(CONTROLLER, Discover.CARD)
+            ),
+        ),
     )
 
 

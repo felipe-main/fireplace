@@ -70,13 +70,6 @@ def test_hostile_invader_deathrattle_hits_all_other_minions():
 
 
 # GDB_227 — Jettison: Discover a spell. Spend 2 Armor to Discover another.
-@pytest.mark.xfail(
-    reason="CARD BUG: with >=2 Armor, Jettison should Discover a SECOND spell and "
-    "spend 2 Armor; the script's flat play tuple lets the first Discover's choice "
-    "clobber the conditional second branch, so only ONE spell is discovered and no "
-    "armor is spent.",
-    strict=False,
-)
 def test_jettison_with_armor_discovers_two_spells():
     game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1 = game.player1

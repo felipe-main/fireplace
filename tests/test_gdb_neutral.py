@@ -86,9 +86,6 @@ def test_the_exodar_does_nothing_without_starship():
 # registered in the opponent's hand). Likely a shared-engine cross-player Draw
 # bug — reported in notes; asserted at the printed behaviour and xfailed.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="CARD BUG: Doommaiden draws opponent's card but it "
-                          "does not land in your hand (cross-player Draw)",
-                   strict=False)
 def test_doommaiden_draws_from_opponent_deck():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1, p2 = game.player1, game.player2
@@ -228,10 +225,6 @@ def test_ceaseless_expanse_cost_reduction():
 # GDB_143 — Nexus-Prince Shaffar: Spellburst: Give a minion in your hand +3/+3
 # and this Spellburst.  (UNIMPLEMENTED in script -> CARD BUG.)
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="CARD BUG: Nexus-Prince Shaffar spellburst is "
-                          "unscripted (SPELLBURST tag set, no spellburst "
-                          "action) -> casting a spell does nothing",
-                   strict=False)
 def test_nexus_prince_shaffar_spellburst_buffs_hand_minion():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
@@ -434,9 +427,6 @@ def test_splitting_stone_into_pebbles():
 # COST tag does nothing to weapons in hand -> the next weapon is not discounted.
 # CARD BUG (needs a real next-weapon cost_mod).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="CARD BUG: Space Pirate's GDB_333e ({COST:-1}) on "
-                          "the player does not reduce the next weapon's cost",
-                   strict=False)
 def test_space_pirate_discounts_next_weapon():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
@@ -605,10 +595,6 @@ def test_troubled_mechanic_spellburst_draws_draenei():
 # the enchant has no ATK/HEALTH tags in data -> the +2/+1 is never granted.
 # CARD BUG.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="CARD BUG: Starlight Wanderer's GDB_720e1 carries no "
-                          "ATK/HEALTH (script passes none) -> next Draenei "
-                          "gains +0/+0 instead of +2/+1",
-                   strict=False)
 def test_starlight_wanderer_buffs_next_draenei():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
@@ -720,10 +706,6 @@ def test_galactic_crusader_deathrattle_two_discounted_holy_spells():
 # minion's cost (+5) instead of SETTING the spell's cost. Pyroblast 10 -> 15
 # rather than 5. CARD BUG ("set the Cost" implemented as "+Cost").
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="CARD BUG: Lunar Trailblazer ADDS its cost to the "
-                          "spell (Buff cost=+5) instead of SETTING it; "
-                          "Pyroblast becomes 15, not 5",
-                   strict=False)
 def test_lunar_trailblazer_sets_spell_cost_to_own_cost():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
@@ -743,10 +725,6 @@ def test_lunar_trailblazer_sets_spell_cost_to_own_cost():
 # GDB_874 — Astrobiologist: Battlecry: At the start of your next turn, Discover
 # a spell.  (Enchant GDB_874e has no events -> effect not wired. CARD BUG.)
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(reason="CARD BUG: Astrobiologist enchant GDB_874e has no "
-                          "events, so 'at the start of your next turn, "
-                          "Discover a spell' never fires",
-                   strict=False)
 def test_astrobiologist_discovers_spell_next_turn():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1

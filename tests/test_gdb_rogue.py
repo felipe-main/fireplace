@@ -114,12 +114,6 @@ def test_gravitational_displacer_banks_as_piece_and_launches():
     assert not launched[0].dormant
 
 
-@pytest.mark.xfail(
-    reason="ENGINE BUG (LaunchStarship): the GDB_466 copy is created with the "
-    "opponent as controller and dies on summon, so the launch never summons a "
-    "copy of the Starship. Root cause is engine code, not the GDB_466 script.",
-    strict=False,
-)
 def test_gravitational_displacer_launch_summons_copy():
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
     p1 = game.player1
@@ -190,12 +184,6 @@ def test_talgath_no_combo_no_backstab():
 
 # GDB_870 — Eredar Skulker | MINION 2/1/3:
 # Combo and Spellburst: Gain +2 Attack and Stealth.
-@pytest.mark.xfail(
-    reason="CARD BUG: printed grants +2 Attack and Stealth, but Buff(SELF, "
-    "'GDB_870e2') references a data enchant ('Skulking') that carries no ATK "
-    "tag, so only Stealth is granted; Attack stays at base.",
-    strict=False,
-)
 def test_eredar_skulker_combo_buffs_and_stealths():
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
     p1 = game.player1
@@ -233,12 +221,6 @@ def test_eredar_skulker_combo_grants_stealth():
     assert skulker.stealthed
 
 
-@pytest.mark.xfail(
-    reason="CARD BUG: printed grants +2 Attack and Stealth, but Buff(SELF, "
-    "'GDB_870e2') references a data enchant ('Skulking') that carries no ATK "
-    "tag, so only Stealth is granted; Attack stays at base.",
-    strict=False,
-)
 def test_eredar_skulker_spellburst_buffs_and_stealths():
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
     p1, p2 = game.player1, game.player2

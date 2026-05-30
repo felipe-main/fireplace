@@ -72,7 +72,13 @@ class _Doommaiden(TargetedAction):
         opp = source.controller.opponent
         if opp.deck:
             card = source.game.random.choice(list(opp.deck))
-            source.game.cheat_action(source, [Draw(source.controller, card)])
+            # Re-home the card into YOUR hand: a cross-player Draw() flips the
+            # controller but leaves the card registered in the opponent's hand
+            # list, so move zones explicitly (SETASIDE clears it from the
+            # opponent's deck, then HAND adds it under the new controller).
+            card.zone = Zone.SETASIDE
+            card.controller = source.controller
+            card.zone = Zone.HAND
 
 
 class _ArmStarlightWanderer(TargetedAction):
@@ -84,7 +90,10 @@ class _ArmStarlightWanderer(TargetedAction):
         game = source.game
 
         def hook(played):
-            game.cheat_action(played, [Buff(played, "GDB_720e1")])
+            # GDB_720e1 carries no stat tags in data — supply +2/+1 via kwargs.
+            game.cheat_action(
+                played, [Buff(played, "GDB_720e1", atk=2, max_health=1)]
+            )
 
         source.controller.next_draenei_hooks.append(hook)
 
@@ -220,8 +229,10 @@ class _LunarTrailblazer(TargetedAction):
         spells = [c for c in source.controller.hand if c.type == CardType.SPELL]
         if spells:
             victim = source.game.random.choice(spells)
+            # SET the cost (not add): COST tag is additive, so the delta brings
+            # the spell to exactly this minion's Cost.
             source.game.cheat_action(
-                source, [Buff(victim, "GDB_863e", cost=source.cost)]
+                source, [Buff(victim, "GDB_863e", cost=source.cost - victim.cost)]
             )
 
 
@@ -340,6 +351,15 @@ class GDB_142:
     play = Destroy(ALL_MINIONS - SELF)
 
 
+class GDB_143:
+    """Nexus-Prince Shaffar"""
+
+    # Spellburst: Give a minion in your hand +3/+3 and this Spellburst.
+    # (The "and this Spellburst" propagation onto the buffed minion is a
+    # documented approximation — the +3/+3 is applied exactly. See review.csv.)
+    spellburst = Buff(RANDOM(FRIENDLY_HAND + MINION), "GDB_143e", atk=3, max_health=3)
+
+
 class GDB_145:
     """Kil'jaeden"""
 
@@ -397,11 +417,21 @@ class GDB_331:
     deathrattle = Summon(CONTROLLER, "GDB_331t1") * 2
 
 
+class _SpacePirateNextWeapon(TargetedAction):
+    """Space Pirate — your next weapon costs (1) less (player-level discount;
+    a flat COST tag on the player does not reach a weapon in hand)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.next_weapon_discount += 1
+
+
 class GDB_333:
     """Space Pirate"""
 
     # Deathrattle: Your next weapon costs (1) less.
-    deathrattle = Buff(CONTROLLER, "GDB_333e")
+    deathrattle = _SpacePirateNextWeapon(CONTROLLER)
 
 
 class GDB_340:
@@ -514,11 +544,35 @@ class GDB_863:
     play = _LunarTrailblazer(SELF)
 
 
+class _AstrobiologistDiscover(TargetedAction):
+    """Astrobiologist — at the start of your next turn, Discover a spell, then
+    remove the countdown enchant so it only fires once."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        source.game.cheat_action(
+            source,
+            [Discover(ctrl, RandomSpell()).then(Give(ctrl, Discover.CARD))],
+        )
+        source.game.cheat_action(source, [Destroy(source)])
+
+
 class GDB_874:
     """Astrobiologist"""
 
     # Battlecry: At the start of your next turn, Discover a spell.
-    play = Buff(CONTROLLER, "GDB_874e")
+    play = Buff(FRIENDLY_HERO, "GDB_874e")
+
+
+class GDB_874e:
+    # Astrobiologist — fires once at the start of the controller's next turn.
+    tags = {
+        GameTag.CARDNAME: "Astrobiologist",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    events = OWN_TURN_BEGIN.on(_AstrobiologistDiscover(SELF))
 
 
 class GDB_877:

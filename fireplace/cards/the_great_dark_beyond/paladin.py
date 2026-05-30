@@ -159,11 +159,15 @@ class GDB_462:
 
     # Discover a Draenei. If you played an adjacent card this turn, Discover
     # another.
+    # Nest the conditional second Discover inside the first's .then() — a flat
+    # tuple of Discovers all set player.choice at once and only the last wins.
     play = Discover(CONTROLLER, RandomMinion(race=Race.DRAENEI)).then(
-        Give(CONTROLLER, Discover.CARD)
-    ), (Attr(SELF, "adjacent_plays_this_turn") >= 1) & Discover(
-        CONTROLLER, RandomMinion(race=Race.DRAENEI)
-    ).then(Give(CONTROLLER, Discover.CARD))
+        Give(CONTROLLER, Discover.CARD),
+        (Attr(SELF, "adjacent_plays_this_turn") >= 1)
+        & Discover(CONTROLLER, RandomMinion(race=Race.DRAENEI)).then(
+            Give(CONTROLLER, Discover.CARD)
+        ),
+    )
 
 
 ##

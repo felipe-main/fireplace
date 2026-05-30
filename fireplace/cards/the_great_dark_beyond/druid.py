@@ -39,6 +39,10 @@ class _StarlightRecast(TargetedAction):
     SPELL = ActionArg()
 
     def do(self, source, target, spell):
+        if isinstance(spell, (list, tuple)):
+            spell = spell[0] if spell else None
+        if spell is None:
+            return
         if getattr(source, "_starlight_recasting", False):
             return
         source._starlight_recasting = True

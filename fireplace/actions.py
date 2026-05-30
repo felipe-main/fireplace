@@ -516,6 +516,11 @@ class BeginTurn(GameAction):
         source.manager.step(source.next_step, Step.MAIN_START_TRIGGERS)
         source.manager.step(source.next_step, source.next_step)
         source.game.manager.game_action(self, source, player)
+        # The Great Dark Beyond — clear Sha'tari Cloakfield's first-spell
+        # discount BEFORE OWN_TURN_BEGIN so in-play sources re-arm it cleanly
+        # (resetting it in _begin_turn, which runs after this broadcast, would
+        # wipe the freshly armed discount).
+        player.first_spell_discount = 0
         self.broadcast(source, EventListener.ON, player)
         if player.choice:
             player.choice.choice_callback.append(lambda: source._begin_turn(player))
@@ -1002,8 +1007,13 @@ class Play(GameAction):
                     player.next_relic_casts_twice -= 1
                     player.relics_played_this_game += 1
                     source.game.queue_actions(player, [CastSpell(card.id)])
-            for entity in player.field[:]:
-                if entity.has_spellburst:
+            # Minions AND the weapon can carry Spellburst (e.g. Parallax
+            # Cannon), so scan the weapon too — it never sits in player.field.
+            spellburst_sources = player.field[:]
+            if player.weapon is not None:
+                spellburst_sources.append(player.weapon)
+            for entity in spellburst_sources:
+                if getattr(entity, "has_spellburst", False):
                     source.game.queue_actions(card, [Spellburst(entity, card)])
         # MotLK Outcast counter: bump if this card has the OUTCAST tag
         # and was played from the leftmost or rightmost slot. Single
@@ -1057,6 +1067,10 @@ class Play(GameAction):
         ):
             player.next_demon_discount -= 1
             card.received_demon_discount = False
+        # The Great Dark Beyond — Space Pirate: consume the next-weapon discount
+        # when a weapon is played.
+        if card.type == CardType.WEAPON and player.next_weapon_discount > 0:
+            player.next_weapon_discount -= 1
 
 
 class Activate(GameAction):
@@ -1869,12 +1883,45 @@ class LaunchStarship(TargetedAction):
         source.game.manager.targeted_action(self, source, target)
         source.game.refresh_auras()
         # The Gravitational Displacer — if banked, the launch summons a copy of
-        # the assembled ship.
-        if any(info["id"] in ("GDB_466",) for info in pieces):
-            from .dsl.copy import ExactCopy
-
-            copy = ExactCopy(None).copy(ship, ship)
+        # the assembled ship. Build the copy explicitly under the launching
+        # player and transfer the combined stats/keywords/effects (a fresh
+        # token only carries base stats).
+        if any(info["id"] == "GDB_466" for info in pieces):
+            copy = player.card(ship.id, source=ship)
+            copy.controller = player
+            copy.dormant = False
+            copy.cant_be_damaged = False
             copy._starship_pieces = list(getattr(ship, "_starship_pieces", []))
+            # Check specific keyword tags directly — iterating ship.tags.items()
+            # would touch the description tag and format its {0} placeholder.
+            for tag in (
+                GameTag.TAUNT,
+                GameTag.RUSH,
+                GameTag.CHARGE,
+                GameTag.WINDFURY,
+                GameTag.LIFESTEAL,
+                GameTag.POISONOUS,
+                GameTag.REBORN,
+                GameTag.DIVINE_SHIELD,
+            ):
+                if ship.tags.get(tag):
+                    copy.tags[tag] = True
+            copy.divine_shield = getattr(ship, "divine_shield", False)
+            copy.additional_deathrattles = list(
+                getattr(ship, "additional_deathrattles", [])
+            )
+            if copy.additional_deathrattles:
+                copy.has_deathrattle = True
+            copy._events = list(getattr(ship, "_events", []))
+            sb = list(getattr(ship, "_starship_spellbursts", []))
+            if sb:
+                copy._starship_spellbursts = sb
+                copy.has_spellburst = True
+            # Match the assembled ship's stats BEFORE summoning — a fresh ship
+            # token has base 0/0 and would die on entry otherwise.
+            copy.atk = ship.atk
+            copy.max_health = ship.max_health
+            copy.damage = 0
             source.game.cheat_action(player, [Summon(player, copy)])
         return ship
 

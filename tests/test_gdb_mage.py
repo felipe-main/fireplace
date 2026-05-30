@@ -33,12 +33,6 @@ def _is_fire_spell(card):
 
 # GDB_133 — Pocket Dimension — Discover a spell. Repeat until you see one for
 # the second time.
-@pytest.mark.xfail(
-    reason="CARD BUG: Pocket Dimension Discovers spells but never Gives them to "
-    "hand (the _PocketDimension action omits the .then(Give(...)) the printed "
-    "'Discover a spell' requires), so 0 spells are actually added.",
-    strict=False,
-)
 def test_pocket_dimension_discovers_spells_until_repeat():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
@@ -53,10 +47,11 @@ def test_pocket_dimension_discovers_spells_until_repeat():
         offered += 1
         p1.choice.choose(p1.choice.cards[0])
     # At least the initial discover happened, and every chosen card landed in
-    # hand. The number of spells gained equals the number of discovers resolved.
+    # hand — the spells gained equal the discovers resolved, capped by the
+    # 10-card hand limit (extra discovers past a full hand are burned).
     gained = len([c for c in p1.hand if c.type == CardType.SPELL])
     assert offered >= 1
-    assert gained == offered
+    assert gained == min(offered, p1.max_hand_size - pre_hand)
 
 
 # GDB_134 — Arkwing Pilot — At the end of your turn, deal 3 damage to a random

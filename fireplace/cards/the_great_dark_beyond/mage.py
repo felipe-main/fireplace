@@ -38,7 +38,8 @@ class _PocketDimension(TargetedAction):
             source,
             [
                 Discover(ctrl, RandomSpell()).then(
-                    _PocketDimensionStep(source, Discover.CARD)
+                    Give(CONTROLLER, Discover.CARD),
+                    _PocketDimensionStep(source, Discover.CARD),
                 )
             ],
         )

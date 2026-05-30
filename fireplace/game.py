@@ -511,9 +511,10 @@ class BaseGame(Entity):
         # is a this-turn window; clear any unused charge.
         player.next_card_costs_corpses = 0
         # The Great Dark Beyond — Sha'tari Cloakfield first-spell discount is
-        # re-armed each turn by the in-play sources (OWN_TURN_BEGIN), so clear
-        # it first.
-        player.first_spell_discount = 0
+        # re-armed each turn by the in-play sources via OWN_TURN_BEGIN, which
+        # fires in BeginTurn.do BEFORE _begin_turn runs. So the reset lives
+        # there (pre-broadcast); clearing it here would clobber the freshly
+        # armed discount.
         # The Great Dark Beyond — per-turn Discover count (Parallax Cannon).
         player.discovers_this_turn = 0
         # The Great Dark Beyond — per-turn hero damage (Healthstone).

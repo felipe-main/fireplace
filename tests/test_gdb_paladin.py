@@ -280,14 +280,6 @@ def test_orbital_satellite_no_second_discover_without_adjacent_play():
     assert len(p1.hand) == pre_hand + 1
 
 
-@pytest.mark.xfail(
-    reason="CARD BUG: Orbital Satellite — 'If you played an adjacent card this "
-    "turn, Discover another' never fires the second Discover. The two Discovers "
-    "sit in a flat play tuple; the first sets player.choice and suspends the "
-    "action block, so the conditional second Discover is never queued. "
-    "adjacent_plays_this_turn is correctly 1, but only one Discover resolves.",
-    strict=False,
-)
 def test_orbital_satellite_double_discover_with_adjacent_play():
     game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
     p1 = game.player1

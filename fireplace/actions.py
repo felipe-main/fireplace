@@ -938,6 +938,7 @@ class Play(GameAction):
             player.next_draenei_hooks = []
             for hook in hooks:
                 hook(card)
+            player.last_draenei_played = card.id
 
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:

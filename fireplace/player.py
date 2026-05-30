@@ -197,6 +197,9 @@ class Player(Entity, TargetableByAuras):
         # Navigator) applied to the next Draenei in hand and consumed on play.
         self.next_draenei_hooks = []
         self.next_draenei_discount = 0
+        # The Great Dark Beyond — Astral Vigilant: id of the last Draenei the
+        # player played this game (None until one is played).
+        self.last_draenei_played = None
         # The Great Dark Beyond — Exarch Maladaar: the next card played this
         # turn costs Corpses instead of Mana while this is > 0.
         self.next_card_costs_corpses = 0

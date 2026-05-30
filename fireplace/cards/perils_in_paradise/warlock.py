@@ -34,19 +34,33 @@ class _AnnounceDarkness(TargetedAction):
                 type_pools[card_type] = list(ids)
             return type_pools[card_type]
 
-        # Snapshot the hand — morphing mutates the hand list as we go.
+        # Cards already Warlock are left untouched; everything else is morphed
+        # into a random Warlock card of the same type. Track the untouched
+        # cards by identity so the cost enchant lands on exactly the
+        # replacements during the rescan below — even when a replacement is a
+        # self-ranking token (e.g. Imp Swarm) whose hand entity differs from
+        # the immediate Morph result, which would slip past a `card.morphed`
+        # check. Snapshot the hand first — morphing mutates it as we go.
+        untouched = set()
         for card in list(ctrl.hand):
             classes = getattr(card, "classes", None) or [card.card_class]
             if CardClass.WARLOCK in classes:
+                untouched.add(id(card))
                 continue
             pool = pool_for(card.type)
             if not pool:
+                untouched.add(id(card))
                 continue
             new_id = random.choice(pool)
             game.cheat_action(source, [Morph(card, new_id)])
-            new_card = getattr(card, "morphed", None)
-            if new_card is not None and new_card.zone == Zone.HAND:
-                game.cheat_action(source, [Buff(new_card, "VAC_941e")])
+
+        # Stamp the (1)-less enchant on every replacement now in hand.
+        for card in list(ctrl.hand):
+            if id(card) in untouched:
+                continue
+            if any(buff.id == "VAC_941e" for buff in card.buffs):
+                continue
+            game.cheat_action(source, [Buff(card, "VAC_941e")])
 
 
 ##

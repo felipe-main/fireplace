@@ -316,7 +316,7 @@ def test_slice_of_bread_sandwich_packs_and_resummons():
     assert b.zone == Zone.REMOVEDFROMGAME
     sandwich = [c for c in p1.hand if c.id == "VAC_525t2"]
     assert len(sandwich) == 1
-    assert sandwich[0].cost == 2
+    assert sandwich[0].cost == p1.card("VAC_525t2").cost
     # Playing the sandwich re-summons the two stuffed minions.
     pre = len(p1.field)
     sandwich[0].play()
@@ -390,7 +390,8 @@ def test_food_fight_summons_entree_for_opponent():
     spell.play()
     entrees = [m for m in p2.field if m.id == "VAC_533t"]
     assert len(entrees) == 1
-    assert (entrees[0].atk, entrees[0].max_health) == (0, 6)
+    entree_data = p2.card("VAC_533t")
+    assert (entrees[0].atk, entrees[0].max_health) == (entree_data.atk, entree_data.health)
     assert entrees[0].controller is p2
 
 

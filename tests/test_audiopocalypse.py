@@ -554,8 +554,8 @@ def test_funnel_cake_overheal_refreshes_mana_crystal():
 	for m in (left, mid, right):
 		m.damage = 1  # heal 3 → overheal by 2
 	game.player1.max_mana = 10
-	game.player1.used_mana = 9  # 1 mana for Funnel Cake → 10 used post-cast
 	cake = game.player1.give("JAM_025")
+	game.player1.used_mana = 10 - cake.cost  # leave exactly the cake's Cost
 	cake.play(target=mid)
 	# All three overhealed → 3 mana crystals refunded. Funnel Cake itself
 	# costs 1; net used_mana = 10 (pre) - 3 (refunds) = 7.
@@ -625,11 +625,12 @@ def test_doomkin_steals_empty_mana_crystal():
 	# 6-cost Doomkin), 0 used. The steal grows player1 to 7.
 	game.player2.max_mana = 5
 	game.player2.used_mana = 0
-	game.player1.max_mana = 6
+	doom = game.player1.give("JAM_029")
+	game.player1.max_mana = doom.cost
 	game.player1.used_mana = 0
-	game.player1.give("JAM_029").play()
+	doom.play()
 	assert game.player2.max_mana == 4
-	assert game.player1.max_mana == 7
+	assert game.player1.max_mana == doom.cost + 1
 
 
 # ---------------------------------------------------------------------------

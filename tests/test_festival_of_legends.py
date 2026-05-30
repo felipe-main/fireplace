@@ -2585,9 +2585,9 @@ def test_demonic_dynamics_finale_buffs_exactly_the_two_picked_demons():
     decoy = p.give("CS2_065")  # Voidwalker (1-cost demon)
     pre_decoy_atk = decoy.atk
     pre_decoy_hp = decoy.max_health
-    # Drop mana so Finale fires (spell costs 3 — leave exactly 3).
-    p.used_mana = 10 - 3
+    # Drop mana so Finale fires — leave exactly the spell's Cost.
     dyn = p.give("ETC_083")
+    p.used_mana = 10 - dyn.cost
     dyn.play()
     picks = []
     while p.choice:

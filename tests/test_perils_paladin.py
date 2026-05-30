@@ -238,14 +238,15 @@ def test_service_ace_reduces_highest_cost_on_attack_gain():
     # Clear hand to control the highest-cost card precisely.
     for c in list(p1.hand):
         c.discard()
-    ace = p1.summon("VAC_920")  # 3/3/3
+    ace = p1.summon("VAC_920")
+    pre_atk = ace.atk
     expensive = p1.give("CS2_029")  # Fireball, cost 4 (highest in hand)
     cheap = p1.give("CS2_008")      # Moonfire, cost 0
     assert expensive.cost == 4
     # Give the Ace +3 Attack through the action pipeline (the path a buff
     # spell takes) so the "after this minion gains Attack" trigger fires.
     game.queue_actions(p1.hero, [Buff(ace, "CS2_087e")])  # +3 Attack
-    assert ace.atk == 6
+    assert ace.atk == pre_atk + 3
     # Highest-cost card (Fireball) reduced by 1; the cheap card untouched.
     assert expensive.cost == 3
     assert cheap.cost == 0

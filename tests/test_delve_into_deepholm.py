@@ -341,11 +341,12 @@ def test_deep_druid_gloomstone_forge_does_neither():
 def test_deep_druid_crystal_cluster_room():
     game = prepare_game(CardClass.DRUID, CardClass.DRUID)
     p = game.player1
-    p.max_mana = 6
+    cluster = p.give("DEEP_028")
+    p.max_mana = cluster.cost
     p.used_mana = 0
-    p.give("DEEP_028").play()
-    # all 3 crystals fit (6 -> 9), no Crusher summoned
-    assert p.max_mana == 9
+    cluster.play()
+    # all 3 crystals fit (cost 7 -> 10), no Crusher summoned
+    assert p.max_mana == 10
     assert len(p.field) == 0
 
 

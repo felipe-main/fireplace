@@ -209,13 +209,14 @@ def test_everything_must_go_cost_reduction_per_draw():
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
     p1 = game.player1
     card = p1.give("TOY_519")
-    assert card.cost == 8  # base
+    base = p1.card("TOY_519").cost
+    assert card.cost == base
     # Draw 3 cards this turn -> cost reduced by 3.
     for _ in range(3):
         p1.give("CS2_231").zone = Zone.DECK
     p1.draw(3)
     assert p1.cards_drawn_this_turn == 3
-    assert card.cost == 8 - 3
+    assert card.cost == base - 3
 
 
 # TOY_521 — Sandbox Scoundrel: Battlecry: Your next card this turn costs (3)

@@ -33,6 +33,49 @@ if TYPE_CHECKING:
 THE_COIN = "GAME_005"
 
 
+# Modern CardDefs (Patch 31.x / build 210009+) collapsed the static SPELLPOWER
+# magnitude to a boolean flag (1) — legacy cards like Malygos now ship with
+# SPELLPOWER=1 even though they grant "Spell Damage +5". The printed card text
+# is the authoritative magnitude, so recover it at minion init. Only applies
+# when the matching static spell-power flag tag is set (>=1), leaving
+# conditional / aura grants (flag 0) untouched.
+_STATIC_SPELLPOWER_RE = re.compile(
+    r"(?:(Arcane|Fire|Frost|Nature|Holy|Shadow|Fel) )?Spell Damage \+(\d+)"
+)
+_SPELLPOWER_SCHOOL_ATTR = {
+    None: "spellpower",
+    "Arcane": "spellpower_arcane",
+    "Fire": "spellpower_fire",
+    "Frost": "spellpower_frost",
+    "Nature": "spellpower_nature",
+    "Holy": "spellpower_holy",
+    "Shadow": "spellpower_shadow",
+    "Fel": "spellpower_fel",
+}
+_SPELLPOWER_SCHOOL_FLAG = {
+    None: GameTag.SPELLPOWER,
+    "Arcane": GameTag.SPELLPOWER_ARCANE,
+    "Fire": GameTag.SPELLPOWER_FIRE,
+    "Frost": GameTag.SPELLPOWER_FROST,
+    "Nature": GameTag.SPELLPOWER_NATURE,
+    "Holy": GameTag.SPELLPOWER_HOLY,
+    "Shadow": GameTag.SPELLPOWER_SHADOW,
+    "Fel": GameTag.SPELLPOWER_FEL,
+}
+
+
+def _correct_static_spell_damage(minion, data):
+    description = getattr(data, "description", "") or ""
+    for match in _STATIC_SPELLPOWER_RE.finditer(description):
+        school = match.group(1)
+        amount = int(match.group(2))
+        if amount <= 1:
+            continue
+        flag = _SPELLPOWER_SCHOOL_FLAG[school]
+        if data.tags.get(flag, 0):
+            setattr(minion, _SPELLPOWER_SCHOOL_ATTR[school], amount)
+
+
 def Card(id):
     data = cards.db[id]
     subclass = {
@@ -1464,6 +1507,7 @@ class Minion(Character):
         self.has_frenzy = False
         self.honorably_killed = False
         super().__init__(data)
+        _correct_static_spell_damage(self, data)
 
     def dump(self):
         data = super().dump()
@@ -1616,12 +1660,21 @@ class Spell(PlayableCard):
         self.spell_school = SpellSchool.NONE
         self.immune_to_spellpower = False
         self.receives_double_spelldamage_bonus = False
+        # Initialised before super().__init__ runs the data-tag setattr pass so
+        # the ``twinspell_copy`` getter never reads an undefined attribute on
+        # spells whose data carries no TWINSPELL_COPY tag.
+        self._twinspell_copy = 0
         super().__init__(data)
 
     @property
     def twinspell_copy(self):
         if self._twinspell_copy:
             return cards.db.dbf[self._twinspell_copy]
+        # Modern CardDefs dropped the TWINSPELL_COPY tag; the copy follows the
+        # "<id>ts" naming convention (e.g. DAL_141 -> DAL_141ts).
+        candidate = self.id + "ts"
+        if candidate in cards.db:
+            return candidate
         return None
 
     @twinspell_copy.setter

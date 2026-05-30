@@ -174,12 +174,19 @@ def slot_buff_property(attr, f=any):
 def boolean_property(attr):
     @property
     def func(self):
-        return (
-            getattr(self, "_" + attr, False)
-            or (any(getattr(buff, attr, False) for buff in self.buffs))
-            or (any(getattr(slot, attr, False) for slot in self.slots))
-            or (getattr(self.data.scripts, attr, lambda s, x: x)(self, False))
-        )
+        if getattr(self, "_" + attr, False):
+            return True
+        if any(getattr(buff, attr, False) for buff in self.buffs):
+            return True
+        if any(getattr(slot, attr, False) for slot in self.slots):
+            return True
+        # A script may declare the flag either as a callable
+        # ``def attr(self, value): ...`` or as a plain static ``attr = True``
+        # boolean (e.g. Blood Treant's ``card_costs_health = True``).
+        script_val = getattr(self.data.scripts, attr, None)
+        if callable(script_val):
+            return bool(script_val(self, False))
+        return bool(script_val)
 
     @func.setter
     def func(self, value):

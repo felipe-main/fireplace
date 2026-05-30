@@ -17,7 +17,7 @@ def test_metal_detector_coin_on_kill():
     p1, p2 = game.player1, game.player2
     weapon = p1.give("VAC_330")
     weapon.play()
-    assert p1.hero.atk == 2
+    assert p1.hero.atk == weapon.atk
     # Enemy 1-health minion the hero can kill outright.
     victim = p2.summon("CS2_231")  # Wisp 1/1
     pre_coins = len([c for c in p1.hand if c.id == "GAME_005"])

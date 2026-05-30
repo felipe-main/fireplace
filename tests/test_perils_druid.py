@@ -189,16 +189,16 @@ def test_sleep_under_the_stars_all_three_effects():
     p1.max_mana = 10
     p1.used_mana = 0
     p1.hero.armor = 0
-    spell = p1.give("VAC_907")  # costs 7
-    assert spell.cost == 7
+    spell = p1.give("VAC_907")
+    cost = spell.cost
     spell.play()
     # Draw 2 cards.
     assert len([c for c in p1.hand if c.id == WISP]) == 2
     # Gain 5 Armor.
     assert p1.hero.armor == 5
-    # Refresh 3 Mana Crystals: paying 7 leaves 3 available (10 - 7), and the
-    # refresh restores 3 more, so 6 mana is available this turn.
-    assert p1.mana == 6
+    # Refresh 3 Mana Crystals: paying the Cost leaves (10 - cost) available and
+    # the refresh restores 3 more.
+    assert p1.mana == (10 - cost) + 3
 
 
 # VAC_948 — Hydration Station: Resurrect your 3 highest Cost Taunt minions.
@@ -281,6 +281,8 @@ def test_hiking_trail_reopens_after_gaining_armor():
     assert loc.cooldown == 2
     # "After you gain Armor, reopen this." -> gaining Armor sets cooldown back
     # to 0 so the location is usable again immediately.
+    p1.max_mana = 10
+    p1.used_mana = 0
     armor = p1.give("VAC_907")  # Sleep Under the Stars gains 5 Armor
     armor.play()
     while p1.choice:

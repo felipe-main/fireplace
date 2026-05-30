@@ -185,6 +185,9 @@ def test_fly_off_the_shelves_base():
     enemy = game.player2.summon(GOLDSHIRE_FOOTMAN)  # 1/2
     enemy.max_health = 80
     enemy.damage = 0
+    # Clear the random starting hand so "no Dragons held" is deterministic.
+    for c in list(game.player1.hand):
+        c.discard()
     spell = game.player1.give("TOY_714")
     # No dragons in hand -> 1 hit of 1 damage
     spell.play()
@@ -196,6 +199,9 @@ def test_fly_off_the_shelves_with_dragons():
     enemy = game.player2.summon(GOLDSHIRE_FOOTMAN)
     enemy.max_health = 80
     enemy.damage = 0
+    # Clear the random starting hand so the Dragon count is exactly 3.
+    for c in list(game.player1.hand):
+        c.discard()
     # Hold 3 dragons -> 1 + 3 = 4 hits of 1 damage each.
     for _ in range(3):
         game.player1.give("TOY_380t2")  # Clay Whelp, a Dragon

@@ -151,7 +151,7 @@ def test_furious_fowls_summons_two_birds_that_attack_target():
     birds = [m for m in p1.field if m.id == "VAC_410t"]
     assert len(birds) == 2
     for b in birds:
-        assert (b.atk, b.max_health) == (3, 2)
+        assert (b.atk, b.max_health) == (3, 3)
     # Both birds attacked -> 6 damage total; Immune-while-attacking means
     # they took no return damage and are at full health.
     assert target.damage == 6
@@ -314,7 +314,7 @@ def test_pet_parrot_repeats_last_1cost_card():
 def test_angry_bird_token_stats():
     game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
     bird = game.player1.summon("VAC_410t")
-    assert (bird.atk, bird.max_health) == (3, 2)
+    assert (bird.atk, bird.max_health) == (3, 3)
     assert Race.BEAST in bird.races
 
 

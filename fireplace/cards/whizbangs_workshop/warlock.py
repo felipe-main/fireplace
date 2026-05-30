@@ -276,25 +276,42 @@ class TOY_886:
 
 
 class _DominoEffect(TargetedAction):
-    """Deal 2 to the target minion, then topple along one direction (toward
-    whichever side has more minions; ties go right), dealing 1 more each hop.
-    The chain is snapshotted before any damage so deaths don't shift it."""
+    """Deal 2 to the target minion, then topple along one direction, dealing
+    1 more each hop, to the end of that side. Per the wiki: if minions are
+    adjacent on both sides, the toppling direction is chosen randomly; with
+    only one side available, that side is used; the cascade stops at the
+    board edge or an untargetable minion. The chain is snapshotted before any
+    damage so deaths don't shift it."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
+        from ...targeting import is_valid_target
+
         board = list(target.controller.field)
         if target not in board:
             return
         idx = board.index(target)
-        left = idx
-        right = len(board) - idx - 1
-        step = 1 if right >= left else -1
-        chain = []
-        i = idx
-        while 0 <= i < len(board):
-            chain.append(board[i])
-            i += step
+        has_left = idx > 0
+        has_right = idx < len(board) - 1
+        if has_left and has_right:
+            step = source.game.random.choice([-1, 1])
+        elif has_right:
+            step = 1
+        elif has_left:
+            step = -1
+        else:
+            step = 0
+        chain = [target]
+        if step:
+            i = idx + step
+            while 0 <= i < len(board):
+                minion = board[i]
+                # Stop the topple at the first untargetable minion.
+                if not is_valid_target(source, minion):
+                    break
+                chain.append(minion)
+                i += step
         dmg = 2
         for minion in chain:
             amt = source.controller.get_spell_damage(source, dmg)

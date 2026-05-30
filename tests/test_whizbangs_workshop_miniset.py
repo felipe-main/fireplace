@@ -499,20 +499,74 @@ def test_wave_of_nostalgia():
 # ---------------------------------------------------------------------------
 
 
-def test_domino_effect_cascades():
+def test_domino_effect_single_direction():
+    # Target the leftmost minion: only the right side is available, so the
+    # topple direction is forced. Cascade: 2, 3, 4.
     game = prepare_game(CardClass.WARLOCK, CardClass.MAGE)
     p1, p2 = game.player1, game.player2
-    a = p2.summon("CS2_186")  # leftmost target
+    a = p2.summon("CS2_186")  # leftmost = target
     b = p2.summon("CS2_186")
     c = p2.summon("CS2_186")
     for m in (a, b, c):
         m.max_health = 80
         m.damage = 0
     p1.give("MIS_027").play(target=a)
-    # Topples rightward from a: 2, 3, 4.
     assert a.damage == 2
     assert b.damage == 3
     assert c.damage == 4
+
+
+def test_domino_effect_random_direction():
+    # With minions on both sides of the target, the topple direction is random
+    # and goes entirely one way. Casting repeatedly (advancing the game RNG)
+    # shows both directions; each cast deals 2 to the target and cascades 3, 4
+    # down exactly one side, leaving the other untouched.
+    game = prepare_game(CardClass.WARLOCK, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    seen = set()
+    for _ in range(40):
+        for m in list(p2.field):
+            m.destroy()
+        left2 = p2.summon("CS2_186")
+        left1 = p2.summon("CS2_186")
+        target = p2.summon("CS2_186")
+        right1 = p2.summon("CS2_186")
+        right2 = p2.summon("CS2_186")
+        for m in (left2, left1, target, right1, right2):
+            m.max_health = 80
+            m.damage = 0
+        sp = p1.give("MIS_027")
+        p1.used_mana = 0
+        sp.play(target=target)
+        assert target.damage == 2
+        went_left = left1.damage == 3 and left2.damage == 4
+        went_right = right1.damage == 3 and right2.damage == 4
+        # Exactly one direction, and the other side is untouched.
+        assert went_left ^ went_right
+        if went_left:
+            assert right1.damage == 0 and right2.damage == 0
+        else:
+            assert left1.damage == 0 and left2.damage == 0
+        seen.add("L" if went_left else "R")
+    assert seen == {"L", "R"}  # both directions actually happen
+
+
+def test_domino_effect_stops_at_untargetable():
+    # The cascade stops at the first minion it can't target (Elusive). Target
+    # the leftmost; the next minion is a Stone Drake (can't be targeted by
+    # spells), so only the target takes damage.
+    game = prepare_game(CardClass.WARLOCK, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    target = p2.summon("CS2_186")
+    elusive = p2.summon("DEEP_006")  # Stone Drake — Elusive (2/8)
+    behind = p2.summon("CS2_186")
+    for m in (target, behind):
+        m.max_health = 80
+        m.damage = 0
+    p1.give("MIS_027").play(target=target)
+    assert target.damage == 2
+    assert elusive.damage == 0
+    assert behind.damage == 0
 
 
 def test_infernal_sets_health_to_15():

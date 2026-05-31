@@ -125,14 +125,28 @@ class GDB_135:
     play = _ArmIngeniousArtificer(SELF)
 
 
+class _MarkHataaru(TargetedAction):
+    """Tag the discovered spell so that playing it THIS turn repeats Exarch
+    Hataaru's Discover (engine hook in Play.do re-runs the source's play)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None:
+            return
+        target._hataaru_source = source
+        target._hataaru_turn = source.game.turn
+
+
 class GDB_136:
     """Exarch Hataaru"""
 
     # Battlecry: Discover a spell and reduce its Cost by (1). If you play it
-    # this turn, repeat this effect. (Approximation: the play-it-this-turn
-    # repeat is not modelled — single Discover. Tracked in review.csv.)
+    # this turn, repeat this effect.
     play = Discover(CONTROLLER, RandomSpell()).then(
-        Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "GDB_136e2"))
+        Give(CONTROLLER, Discover.CARD),
+        Buff(Discover.CARD, "GDB_136e2"),
+        _MarkHataaru(Discover.CARD),
     )
 
 

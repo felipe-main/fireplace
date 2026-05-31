@@ -272,6 +272,26 @@ def test_kara_spellburst_no_enemy_minion_noop():
     assert p1.hero.max_health == 30
 
 
+def test_kara_shadow_spell_does_not_remove_spellburst():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    p1.hero.max_health = 30
+    p1.hero.damage = 0
+    kara = p1.summon("GDB_127")
+    assert kara.has_spellburst
+    v1 = p2.summon(GOLDSHIRE_FOOTMAN)  # 1/2
+    # A SHADOW spell (Mind Blast) fires the steal AND keeps the Spellburst.
+    shadow = p1.give("DS1_233")
+    assert int(shadow.spell_school) == 6  # SpellSchool.SHADOW
+    shadow.play()
+    assert v1.max_health == 2 - 2  # steal happened
+    assert kara.has_spellburst  # re-armed: Shadow spell didn't remove it
+    # A non-Shadow spell now consumes the Spellburst as normal.
+    p2.summon(GOLDSHIRE_FOOTMAN)
+    p1.give(MOONFIRE).play(target=p1.hero)
+    assert kara.has_spellburst is False
+
+
 # ---------------------------------------------------------------------------
 # GDB_128 — Archimonde: Battlecry: Summon every Demon you played this game that
 # didn't start in your deck. (7/7/7)

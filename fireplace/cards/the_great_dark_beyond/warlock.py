@@ -1,6 +1,6 @@
 from ..utils import *
 
-from hearthstone.enums import CardType
+from hearthstone.enums import CardType, SpellSchool
 
 
 ##
@@ -72,19 +72,29 @@ class _StealHealth(TargetedAction):
     hero gains 2)."""
 
     TARGET = ActionArg()
+    SPELL = ActionArg()
 
-    def do(self, source, target):
+    def do(self, source, target, spell):
         enemies = (ENEMY_MINIONS).eval(source.game, source)
-        if not enemies:
-            return
-        victim = source.game.random.choice(enemies)
-        source.game.cheat_action(
-            source,
-            [
-                Buff(victim, "GDB_127eb", max_health=-2),
-                Buff(source.controller.hero, "GDB_127e2b", max_health=2),
-            ],
-        )
+        if enemies:
+            victim = source.game.random.choice(enemies)
+            source.game.cheat_action(
+                source,
+                [
+                    Buff(victim, "GDB_127eb", max_health=-2),
+                    Buff(source.controller.hero, "GDB_127e2b", max_health=2),
+                ],
+            )
+        # "Shadow spells don't remove this Spellburst" — re-arm so the next
+        # spell triggers it again (the steal still fires on Shadow spells).
+        if isinstance(spell, (list, tuple)):
+            spell = spell[0] if spell else None
+        if (
+            spell is not None
+            and spell.spell_school is not None
+            and int(spell.spell_school) == int(SpellSchool.SHADOW)
+        ):
+            target._rearm_spellburst = True
 
 
 class _Archimonde(TargetedAction):
@@ -128,10 +138,9 @@ class GDB_121:
 class GDB_127:
     """K'ara, the Dark Star"""
 
-    # Spellburst: Steal 2 Health from a random enemy. (Shadow spells don't
-    # remove this Spellburst — approximated as a one-shot Spellburst; tracked
-    # in review.csv.)
-    spellburst = _StealHealth(SELF)
+    # Spellburst: Steal 2 Health from a random enemy. Shadow spells don't
+    # remove this Spellburst (it re-arms so the next spell triggers it again).
+    spellburst = _StealHealth(SELF, Spellburst.SPELL)
 
 
 class GDB_128:

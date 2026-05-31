@@ -594,6 +594,10 @@ class Death(GameAction):
             if card.zone == Zone.PLAY:
                 card._dead_position = card.zone_position - 1
             card.zone = Zone.GRAVEYARD
+            # The Great Dark Beyond — The Ceaseless Expanse cost ledger.
+            source.game.cards_dpd_this_game = (
+                getattr(source.game, "cards_dpd_this_game", 0) + 1
+            )
             source.game.check_for_end_game()
             source.game.refresh_auras()
             log.info("Processing Deathrattle for %r", card)
@@ -778,6 +782,10 @@ class Play(GameAction):
                     neighbor.adjacent_plays_this_turn += 1
                     neighbor.adjacent_plays_while_in_hand += 1
 
+        # Snapshot the effective cost at play time (still in hand, all discounts
+        # applied) so battlecries can gate on "if this costs (0)" — the raw COST
+        # tag misses player-level discounts like Libram cost reduction.
+        card._played_cost = card.cost
         player.pay_cost(card, card.cost)
 
         # Festival of Legends — Finale flag captured at the post-pay-cost
@@ -1071,6 +1079,25 @@ class Play(GameAction):
         # when a weapon is played.
         if card.type == CardType.WEAPON and player.next_weapon_discount > 0:
             player.next_weapon_discount -= 1
+        # The Great Dark Beyond — The Ceaseless Expanse cost ledger (a card was
+        # played).
+        source.game.cards_dpd_this_game = (
+            getattr(source.game, "cards_dpd_this_game", 0) + 1
+        )
+        # The Great Dark Beyond — Exarch Hataaru: playing a marked discovered
+        # spell the same turn repeats Hataaru's effect (re-run the source's
+        # play script, generically — no card import needed here).
+        hat = getattr(card, "_hataaru_source", None)
+        if hat is not None and getattr(card, "_hataaru_turn", -1) == source.turn:
+            card._hataaru_source = None
+            play_script = getattr(hat.data.scripts, "play", None)
+            if play_script:
+                actions = (
+                    list(play_script)
+                    if isinstance(play_script, (list, tuple))
+                    else [play_script]
+                )
+                source.game.queue_actions(hat, actions)
 
 
 class Activate(GameAction):
@@ -2227,6 +2254,10 @@ class Draw(TargetedAction):
             card.zone = Zone.HAND
             card.turn_drawn = source.game.turn
             source.controller.cards_drawn_this_turn += 1
+            # The Great Dark Beyond — The Ceaseless Expanse cost ledger.
+            source.game.cards_dpd_this_game = (
+                getattr(source.game, "cards_dpd_this_game", 0) + 1
+            )
             source.game.manager.targeted_action(self, source, target, card)
             self.broadcast(source, EventListener.ON, target, card, source)
             if source.game.step > Step.BEGIN_MULLIGAN:
@@ -2416,6 +2447,18 @@ class Give(TargetedAction):
             if len(target.hand) >= target.max_hand_size:
                 log.info("Give(%r) fails because %r's hand is full", card, target)
                 continue
+            # Cross-controller Give (e.g. stealing from the opponent's deck):
+            # detach from the OLD controller's zone cache via the shared
+            # SETASIDE first, so the controller switch doesn't leave _set_zone
+            # trying to remove the card from the NEW controller's cache (which
+            # raises ValueError). Limited to deck/hand/graveyard so play-zone
+            # bounces are unaffected.
+            if card.controller is not target and card.zone in (
+                Zone.DECK,
+                Zone.HAND,
+                Zone.GRAVEYARD,
+            ):
+                card.zone = Zone.SETASIDE
             card.controller = target
             card.zone = Zone.HAND
             ret.append(card)
@@ -3630,6 +3673,15 @@ class Spellburst(TargetedAction):
         actions = getattr(target.data.scripts, "spellburst")
         if callable(actions):
             actions = actions(target, spell)
+        if actions is None:
+            actions = []
+        elif not isinstance(actions, (list, tuple)):
+            actions = [actions]
+        else:
+            actions = list(actions)
+        # Per-instance spellbursts grafted onto this minion (e.g. Nexus-Prince
+        # Shaffar propagating its Spellburst onto a buffed hand minion).
+        actions += list(getattr(target, "_instance_spellbursts", []))
         return actions
 
     def do(self, source, target, spell):
@@ -3639,7 +3691,12 @@ class Spellburst(TargetedAction):
 
         actions = self.get_actions(target, spell)
         source.game.queue_actions(target, actions, event_args=[target, spell])
-        target.has_spellburst = False
+        # A spellburst script may request to keep its Spellburst (K'ara keeps
+        # it on Shadow spells); honour that one-shot flag, else clear as usual.
+        if getattr(target, "_rearm_spellburst", False):
+            target._rearm_spellburst = False
+        else:
+            target.has_spellburst = False
         source.game.manager.targeted_action(self, source, target, spell)
 
 

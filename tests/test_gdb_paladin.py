@@ -135,6 +135,24 @@ def test_libram_of_clarity_free_buffs_drawn_minions():
     assert m2.atk == 6 and m2.max_health == 6
 
 
+def test_libram_of_clarity_free_via_libram_discount_buffs_minions():
+    # The real free path: the COST *tag* is unchanged, but the effective cost is
+    # driven to 0 purely by libram_discount (Wayfarer/Starslicer).
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    m1 = p1.give("CS2_172"); m1.zone = Zone.DECK  # 3/2
+    clarity = p1.give("GDB_137")
+    base = clarity.cost
+    assert base > 0
+    p1.libram_discount = base  # drive effective cost to 0 via discount only
+    assert clarity.cost == 0
+    assert clarity.data.tags.get(GameTag.COST) != 0  # raw data cost is NOT zero
+    clarity.play()
+    assert m1.zone == Zone.HAND
+    # Free (by discount) -> +2/+1 applied.
+    assert (m1.atk, m1.max_health) == (3 + 2, 2 + 1)
+
+
 # GDB_138 — Libram of Divinity: Give a minion +3/+3. If this costs (0), return
 # this to your hand at the end of your turn. (Approximation: the engine gives a
 # copy immediately when free — tracked in review.csv.)

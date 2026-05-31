@@ -100,6 +100,42 @@ def test_doommaiden_draws_from_opponent_deck():
     assert seed in p1.hand
 
 
+def test_doommaiden_returns_unplayed_card_at_end_of_turn():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    if game.current_player is not p1:
+        game.end_turn()
+    seed = p2.give(WISP)
+    seed.zone = Zone.DECK
+    p1.give("GDB_129").play()
+    assert seed in p1.hand
+    # You don't play it -> at end of your turn it goes back to the opponent.
+    # (end_turn also starts p2's turn, and with an otherwise-empty deck p2
+    # immediately draws the returned card — so assert it left your hand and is
+    # the opponent's again, not the exact zone.)
+    game.end_turn()
+    assert seed not in p1.hand
+    assert seed.controller is p2
+
+
+def test_doommaiden_keeps_card_if_played_this_turn():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    if game.current_player is not p1:
+        game.end_turn()
+    seed = p2.give(WISP)
+    seed.zone = Zone.DECK
+    p1.give("GDB_129").play()
+    assert seed in p1.hand
+    # Play it this turn -> it stays in play, not returned.
+    p1.used_mana = 0
+    seed.play()
+    assert seed.zone == Zone.PLAY
+    game.end_turn()
+    assert seed.zone == Zone.PLAY
+    assert seed.controller is p1
+
+
 # ---------------------------------------------------------------------------
 # GDB_130 — Crystal Welder: Taunt. Battlecry: If you're building a Starship,
 # gain +2/+2.
@@ -221,6 +257,24 @@ def test_ceaseless_expanse_cost_reduction():
     assert expanse.cost == 100 - 2
 
 
+def test_ceaseless_expanse_counts_draw_play_destroy():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    expanse = p1.give("GDB_142")
+    assert expanse.cost == 100  # baseline: ledger at 0
+    # Draw a card (+1).
+    seed = p1.give(WISP)
+    seed.zone = Zone.DECK
+    p1.draw()
+    # Play a minion (+1) then destroy it (+1).
+    m = p1.give(WISP)
+    m.play()
+    m.destroy()
+    game.process_deaths()
+    # Drawn + played + destroyed = 3 ledger events -> 3 cheaper.
+    assert expanse.cost == 100 - 3
+
+
 # ---------------------------------------------------------------------------
 # GDB_143 — Nexus-Prince Shaffar: Spellburst: Give a minion in your hand +3/+3
 # and this Spellburst.  (UNIMPLEMENTED in script -> CARD BUG.)
@@ -237,6 +291,26 @@ def test_nexus_prince_shaffar_spellburst_buffs_hand_minion():
     p1.give(MOONFIRE).play(target=p1.hero)
     assert hand_minion.atk == base_atk + 3
     assert hand_minion.max_health == base_health + 3
+    # ...and the buffed minion gained the Spellburst too.
+    assert hand_minion.has_spellburst
+
+
+def test_nexus_prince_shaffar_spellburst_propagates():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.summon("GDB_143")
+    first = p1.give(WISP)  # 1/1, the only hand minion
+    # First spell: Shaffar buffs the Wisp +3/+3 and grants it the Spellburst.
+    p1.give(MOONFIRE).play(target=p1.hero)
+    assert (first.atk, first.max_health) == (1 + 3, 1 + 3)
+    assert first.has_spellburst
+    # Play the buffed Wisp, add a second hand minion, cast again -> the Wisp's
+    # propagated Spellburst buffs the second minion +3/+3.
+    first.play()
+    second = p1.give(WISP)  # the only hand minion now
+    p1.give(MOONFIRE).play(target=p1.hero)
+    assert (second.atk, second.max_health) == (1 + 3, 1 + 3)
+    assert second.has_spellburst
 
 
 # ---------------------------------------------------------------------------

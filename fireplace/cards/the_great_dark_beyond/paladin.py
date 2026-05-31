@@ -107,9 +107,11 @@ class GDB_726:
 class GDB_137:
     """Libram of Clarity"""
 
-    # Draw 2 minions. If this costs (0), give them +2/+1.
+    # Draw 2 minions. If this costs (0), give them +2/+1. Gate on the effective
+    # play cost (Attr _played_cost), not the raw COST tag, so a Libram made free
+    # by Wayfarer/Starslicer discount counts.
     play = ForceDraw(RANDOM(FRIENDLY_DECK + MINION)).then(
-        (COST(SELF) == 0) & Buff(ForceDraw.TARGET, "GDB_137e1")
+        (Attr(SELF, "_played_cost") == 0) & Buff(ForceDraw.TARGET, "GDB_137e1")
     ) * 2
 
 
@@ -123,7 +125,7 @@ class GDB_138:
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
-    play = Buff(TARGET, "GDB_138e"), (COST(SELF) == 0) & Give(
+    play = Buff(TARGET, "GDB_138e"), (Attr(SELF, "_played_cost") == 0) & Give(
         CONTROLLER, "GDB_138"
     )
 
@@ -133,9 +135,9 @@ class GDB_139:
 
     # Summon three 3/3 Draenei with Divine Shield. If this costs (0), give them
     # Rush.
-    play = Summon(CONTROLLER, "GDB_139t") * 3, (COST(SELF) == 0) & SetTags(
-        FRIENDLY_MINIONS + DRAENEI, {GameTag.RUSH: True}
-    )
+    play = Summon(CONTROLLER, "GDB_139t") * 3, (
+        Attr(SELF, "_played_cost") == 0
+    ) & SetTags(FRIENDLY_MINIONS + DRAENEI, {GameTag.RUSH: True})
 
 
 class GDB_140:

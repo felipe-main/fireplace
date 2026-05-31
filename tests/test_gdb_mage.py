@@ -127,6 +127,29 @@ def test_exarch_hataaru_discovers_and_discounts():
     spell = gained[0]
     # ...and its cost is reduced by (1) vs its base data cost.
     assert spell.cost == max(0, (spell.data.cost or 0) - 1)
+    # ...and the discovered spell is marked for the play-it-this-turn repeat.
+    assert getattr(spell, "_hataaru_source", None) is not None
+    assert spell._hataaru_turn == game.turn
+
+
+def test_exarch_hataaru_repeats_when_marked_spell_played():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    for c in list(p1.hand):
+        c.discard()
+    hataaru = p1.summon("GDB_136")  # in play, source for the repeat
+    # A controlled marked spell (Moonfire) stands in for the discovered one.
+    moon = p1.give(MOONFIRE)
+    moon._hataaru_source = hataaru
+    moon._hataaru_turn = game.turn
+    assert p1.choice is None
+    moon.play(target=p1.hero)
+    # Playing the marked spell this turn repeats Hataaru -> a new Discover opens.
+    assert p1.choice is not None
+    for cid in p1.choice.cards:
+        assert _cards.db[cid].type == CardType.SPELL
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
 
 
 # GDB_301 — Supernova — Fill your hand with random Fire spells. They cost (1).

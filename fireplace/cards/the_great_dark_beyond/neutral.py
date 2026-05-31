@@ -79,6 +79,26 @@ class _Doommaiden(TargetedAction):
             card.zone = Zone.SETASIDE
             card.controller = source.controller
             card.zone = Zone.HAND
+            # Remember it so we can put it back at end of turn if unplayed.
+            source._doom_card = card
+
+
+class _DoommaidenReturn(TargetedAction):
+    """Doommaiden — at the end of your turn, if the stolen card is still in your
+    hand (you didn't play it), put it back in the opponent's deck."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        card = getattr(source, "_doom_card", None)
+        if card is None:
+            return
+        source._doom_card = None
+        if card.zone == Zone.HAND and card.controller is source.controller:
+            opp = source.controller.opponent
+            card.zone = Zone.SETASIDE
+            card.controller = opp
+            card.zone = Zone.DECK
 
 
 class _ArmStarlightWanderer(TargetedAction):
@@ -136,8 +156,8 @@ class _ArmAceWayfinder(TargetedAction):
 
 class _VelenTrigger(TargetedAction):
     """Velen — trigger the Battlecries and Deathrattles of all other Draenei
-    you played this game. (Approximation: re-fires their deathrattle scripts;
-    battlecries that require a target are skipped. Tracked in review.csv.)"""
+    you played this game. Targeted battlecries are re-fired against a random
+    valid target."""
 
     TARGET = ActionArg()
 
@@ -161,10 +181,20 @@ class _VelenTrigger(TargetedAction):
                 data = card.data
                 for kind in ("play", "deathrattle"):
                     actions = getattr(data.scripts, kind, None)
-                    if actions:
-                        proxy = ctrl.card(card.id, source)
-                        proxy.controller = ctrl
-                        source.game.queue_actions(proxy, list(actions))
+                    if not actions:
+                        continue
+                    proxy = ctrl.card(card.id, source)
+                    proxy.controller = ctrl
+                    # Give a targeted battlecry a random valid target so it
+                    # isn't silently dropped.
+                    if kind == "play":
+                        try:
+                            targets = proxy.play_targets
+                        except Exception:
+                            targets = []
+                        if targets:
+                            proxy.target = source.game.random.choice(targets)
+                    source.game.queue_actions(proxy, list(actions))
         finally:
             ctrl._velen_retriggering = False
 
@@ -307,9 +337,9 @@ class GDB_129:
     """Doommaiden"""
 
     # Battlecry: Draw a card from your opponent's deck. If you don't play it
-    # this turn, put it back. (Approximation: draws from the opponent's deck;
-    # the put-back rider is not modelled. Tracked in review.csv.)
+    # this turn, put it back.
     play = _Doommaiden(SELF)
+    events = OWN_TURN_END.on(_DoommaidenReturn(SELF))
 
 
 class GDB_130:
@@ -341,23 +371,52 @@ class GDB_132:
     )
 
 
+class _CardsDrawnPlayedDestroyed(LazyNum):
+    """Game-wide count of cards drawn, played, or destroyed this game (both
+    players) — drives The Ceaseless Expanse's cost reduction."""
+
+    def evaluate(self, source):
+        return self.base * getattr(source.game, "cards_dpd_this_game", 0)
+
+
 class GDB_142:
     """The Ceaseless Expanse"""
 
-    # Costs (1) less for each time a card was drawn, played, or destroyed.
-    # Battlecry: Destroy all other minions. (Cost approximation: counts the
-    # controller's cards played this game. Tracked in review.csv.)
-    cost_mod = -Count(CARDS_PLAYED_THIS_GAME)
+    # Costs (1) less for each time a card was drawn, played, or destroyed
+    # (by either player). Battlecry: Destroy all other minions.
+    cost_mod = -_CardsDrawnPlayedDestroyed()
     play = Destroy(ALL_MINIONS - SELF)
+
+
+class _ShaffarSpellburst(TargetedAction):
+    """Nexus-Prince Shaffar — give a random minion in your hand +3/+3 and this
+    same Spellburst, which propagates as those minions are later played."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        hand_minions = [
+            c for c in source.controller.hand if c.type == CardType.MINION
+        ]
+        if not hand_minions:
+            return
+        victim = source.game.random.choice(hand_minions)
+        source.game.cheat_action(
+            source, [Buff(victim, "GDB_143e", atk=3, max_health=3)]
+        )
+        # Grant the buffed minion this same Spellburst (manifests once it is in
+        # play and you cast a spell).
+        victim.has_spellburst = True
+        if not hasattr(victim, "_instance_spellbursts"):
+            victim._instance_spellbursts = []
+        victim._instance_spellbursts.append(_ShaffarSpellburst(SELF))
 
 
 class GDB_143:
     """Nexus-Prince Shaffar"""
 
     # Spellburst: Give a minion in your hand +3/+3 and this Spellburst.
-    # (The "and this Spellburst" propagation onto the buffed minion is a
-    # documented approximation — the +3/+3 is applied exactly. See review.csv.)
-    spellburst = Buff(RANDOM(FRIENDLY_HAND + MINION), "GDB_143e", atk=3, max_health=3)
+    spellburst = _ShaffarSpellburst(SELF)
 
 
 class GDB_145:

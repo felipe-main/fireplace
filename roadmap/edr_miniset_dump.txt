@@ -1,0 +1,39 @@
+# NEW Emerald Dream mini-set collectibles: 38 (not yet implemented)
+FIR_777      MINION 2/1/3    PRIEST        Spirit of the Kaldorei             | <b>Taunt</b>, <b>Lifesteal</b> <b>Battlecry:</b> If you used your Hero Power this turn, gain +2/+2.
+FIR_778      MINION 9/9/9    SHAMAN        Avatar of Destruction              | [x]<b>Taunt</b> <b>Deathrattle:</b> Deal 9 damage to all enemy minions.
+FIR_900      SPELL  3        DEATHKNIGHT   Cremate                            | <b>Discover</b> a minion with a <b>Dark Gift</b>. It costs (2) less.
+FIR_901      MINION 5/4/4    DEATHKNIGHT   Frostburn Matriarch                | <b>Battlecry:</b> If you're holding a minion with a <b>Dark Gift</b>, summon two 4/4 Dragons with <b>Taunt</b>.
+FIR_902      SPELL  2        DEMONHUNTER   Sigil of Cinder                    | [x]At the start of your next turn, deal $6 damage randomly split among all enemies.
+FIR_904      MINION 2/2/3    DEMONHUNTER   Felfire Blaze                      | [x]After you cast a Fel spell, destroy this and deal 2 damage to all enemies.
+FIR_906      SPELL  3        DRUID         Overheat                           | Give your minions +1/+1. Discard a random Nature spell to give them +1/+1 more.
+FIR_907      LOCATION 4        DRUID         Amirdrassil                        | [x]Summon a @-Cost minion. Gain @ Armor. Draw @ |4(card, cards). Refresh @ Mana Crystal. <i>(Improves each use!)</i>
+FIR_908      MINION 1/1/2    DRUID         Charred Chameleon                  | <b>Battlecry:</b> If you've used your Hero Power this turn, give a friendly minion +1/+2 and <b>Rush</b>.
+FIR_909      SPELL  2        HUNTER        Bursting Shot                      | Deal $2 damage to three random enemies.
+FIR_910      SPELL  3        MAGE          Scorching Winds                    | Deal $3 damage. Discard a random Fire spell to deal $3 more.
+FIR_911      SPELL  2        MAGE          Smoldering Grove                   | Draw {0} |4(card, cards). <i>(Upgrades each turn, but discards after {1}!)</i>@Draw {0} cards. <i>(Discards this turn!)</i>
+FIR_913      MINION 4/3/6    MAGE          Inferno Herald                     | [x]After you cast a Fire spell, get a random Elemental and reduce its Cost by (3).
+FIR_914      SPELL  1        PALADIN       Smoldering Strength                | Give a friendly minion +{0}/+{0}. <i>(Upgrades each turn, but discards after {1}!)</i>@Give a friendly minion +{0}/+{0}. <i>(Discards this turn!)</i>
+FIR_916      SPELL  2        PRIEST        Smoldering Ascent                  | Deal ${0} damage to all enemy minions. <i>(Upgrades each turn, but discards after {1}!)</i>@Deal ${0} damage to all enemy minions. <i>(Discards this turn!)</i>
+FIR_918      SPELL  3        PRIEST        Light of the New Moon              | [x]Give a minion +3/+3. <i>(Cast @ |4(spell, spells) to return this to your hand when played.)</i>
+FIR_919      MINION 4/2/2    ROGUE         Everburning Phoenix                | Costs (1) less for each card you've played this turn. <b>Deathrattle:</b> Return this to your hand.
+FIR_920      SPELL  2        ROGUE         Smoke Bomb                         | <b>Discover</b> a <b>Combo</b>, <b>Battlecry</b>, or <b>Stealth</b> minion with a <b>Dark Gift</b>.
+FIR_921      MINION 3/2/3    NEUTRAL       Petal Picker                       | [x]<b>Battlecry:</b> If you've <b>Imbued</b> your Hero Power twice, draw 2 cards.
+FIR_922      WEAPON 1/1/2    ROGUE         Cindersword                        | <b>Battlecry:</b> If you're holding a minion with a <b>Dark Gift</b>, gain +3 Attack.
+FIR_923      SPELL  2        SHAMAN        Flames of the Firelord             | [x]Deal $4 damage to a random enemy minion. If you're holding a card that costs (8) or more, deal $8 instead.
+FIR_924      MINION 4/4/3    WARLOCK       Shadowflame Stalker                | <b>Battlecry:</b> <b>Discover</b> a Demon with a <b>Dark Gift</b>. Get a copy of it.
+FIR_927      MINION 3/3/2    SHAMAN        Emberscarred Whelp                 | [x]<b>Battlecry:</b> <b>Discover</b> a 5-Cost card. Gain 1 Mana Crystal next turn only.
+FIR_928      MINION 5/5/5    WARRIOR       Keeper of Flame                    | [x]<b>Battlecry:</b> Give all minions in your hand +3/+3. They are discarded in 3 turns.
+FIR_929      MINION 2/2/2    NEUTRAL       Living Flame                       | <b>Deathrattle:</b> Draw a Fire spell.
+FIR_939      SPELL  3        WARRIOR       Shadowflame Suffusion              | [x]Deal $3 damage. <b>Discover</b> a Warrior minion with a <b>Dark Gift</b>.
+FIR_940      MINION 6/4/4    NEUTRAL       Zaqali Flamemancer                 | <b>Battlecry:</b> If every card in your hand is of a different Cost, reduce their Costs by (2).
+FIR_941      SPELL  7        PALADIN       Searing Reflection                 | Draw a minion. Summon an 8/8 copy of it with <b>Divine Shield</b>.
+FIR_951      MINION 8/5/5    DEATHKNIGHT   Volcoross                          | [x]<b>Rush, Taunt</b> <b>Battlecry:</b> Choose to spend 10, 20, or 30 <b>Corpses</b> to gain that many stats.
+FIR_952      MINION 4/4/4    DEMONHUNTER   Scorchreaver                       | [x]<b>Battlecry:</b> <b>Discover</b> a Fel spell. Reduce the Cost of Fel spells in your hand by (1).
+FIR_953      MINION 8/5/8    HUNTER        Magma Hound                        | [x]<b>Rush</b>. After this attacks a minion and survives, deal this minion's Attack damage split among all enemies.
+FIR_954      SPELL  1        WARLOCK       Conflagrate                        | Deal $5 damage to a minion. Its owner draws a card.
+FIR_955      MINION 3/3/3    WARLOCK       Emberroot Destroyer                | [x]Whenever your hero takes damage on your turn, deal 3 damage to a random enemy minion.
+FIR_956      MINION 4/3/6    WARRIOR       Dragon Turtle                      | [x]<b>Battlecry:</b> If you're holding a minion with a <b>Dark Gift</b>, give your hero +3 Attack this turn and 6 Armor.
+FIR_958      MINION 4/4/3    NEUTRAL       Tindral Sageswift                  | [x]<b>Deathrattle:</b> Deal 1 damage to all enemies. If it's your opponent's turn, deal 4 damage instead.
+FIR_959      MINION 9/7/7    NEUTRAL       Fyrakk the Blazing                 | [x]<b>Immune</b> to Fire spells. <b>Battlecry:</b> Cast 20 Mana worth of Fire spells at random enemies.
+FIR_960      MINION 3/3/2    HUNTER        Tending Dragonkin                  | <b>Battlecry:</b> Copy the lowest Cost Beast in your hand.
+FIR_961      MINION 2/3/2    PALADIN       Ashleaf Pixie                      | <b>Battlecry:</b> If you're holding a spell that costs (5) or more, gain <b>Divine Shield</b> and <b>Lifesteal</b>.

@@ -209,7 +209,7 @@ class SC_409:
     # Starship Piece. Battlecry: Deal 1 damage to all enemies. Also triggers on
     # launch.
     play = Hit(ENEMY_CHARACTERS, 1)
-    spellburst = Hit(ENEMY_CHARACTERS, 1)
+    launch = Hit(ENEMY_CHARACTERS, 1)
 
 
 class SC_413:

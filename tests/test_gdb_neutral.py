@@ -963,6 +963,9 @@ def test_spawning_pool_activate_gives_zergling_and_deathrattle_rush():
     game.process_deaths()
     assert zerg.rush
     assert not nonzerg.rush
+    # "Rush this turn" — the one-turn enchant is swept at end of your turn.
+    game.end_turn()
+    assert not zerg.rush
 
 
 # ---------------------------------------------------------------------------
@@ -981,6 +984,28 @@ def test_brood_queen_end_of_turn_gives_larva():
     game.end_turn()  # ends p1's turn -> Brood Queen fires
     larvae = [c for c in p1.hand if c.id == "SC_003t"]
     assert len(larvae) == 1
+
+
+def test_larva_rerolls_into_a_new_zerg_minion_each_turn():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    if game.current_player is not p1:
+        game.end_turn()
+    for c in list(p1.hand):
+        c.discard()
+    p1.give("SC_003t")  # a lone Larva in hand
+    # First of my turns: it transforms into a random Zerg minion AND keeps the
+    # SC_003te re-roll enchant so it cycles again.
+    game.end_turn(); game.end_turn()
+    card = p1.hand[0]
+    assert card.id != "SC_003t"
+    assert card.data.tags.get(GameTag.ZERG, 0)            # became a Zerg minion
+    assert any(b.id == "SC_003te" for b in card.buffs)    # still cycling
+    # Second of my turns: it re-rolls again (proves it didn't freeze on roll 1).
+    game.end_turn(); game.end_turn()
+    card2 = p1.hand[0]
+    assert card2.data.tags.get(GameTag.ZERG, 0)
+    assert any(b.id == "SC_003te" for b in card2.buffs)
 
 
 # ---------------------------------------------------------------------------

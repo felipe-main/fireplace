@@ -106,7 +106,12 @@ class _Hallucination(TargetedAction):
         if not candidates:
             return
         original = source.game.random.choice(candidates)
-        copy = ctrl.card(original.id, source)
+        # Exact copy preserves the chosen minion's buffs / enchants; it enters
+        # play fresh (full health), so clear any inherited damage.
+        from ...dsl.copy import ExactCopy
+
+        copy = ExactCopy(SELF).copy(source, original)
+        copy.damage = 0
         source.game.cheat_action(source, [Summon(ctrl, copy)])
         if not copy.dead:
             source.game.cheat_action(

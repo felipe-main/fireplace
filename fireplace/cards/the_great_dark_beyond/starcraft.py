@@ -1,6 +1,7 @@
 from ..utils import *
 
 from ...actions import _StarshipSpellburst  # noqa: F401
+from ...dsl.random_picker import RandomCardPicker
 from .neutral import _GainBonusEffects
 from .tokens import _StarshipToken
 
@@ -9,25 +10,20 @@ from .tokens import _StarshipToken
 # Custom actions
 
 
-class _LarvaTransform(TargetedAction):
-    """Larva — transform this card (in hand) into a random Zerg minion."""
+class _RandomZergMinion(RandomCardPicker):
+    """A random collectible Zerg minion (faction = GameTag.ZERG). Used by
+    Larva, which re-rolls into a new one each turn it sits in hand."""
 
-    TARGET = ActionArg()
-
-    def do(self, source, target):
+    def find_cards(self, source, **filters):
         from .. import db as _db
 
-        pool = [
+        return [
             cid
             for cid, c in _db.items()
             if c.collectible
             and c.type == CardType.MINION
             and c.tags.get(GameTag.ZERG, 0)
         ]
-        if not pool:
-            return
-        choice = source.game.random.choice(pool)
-        source.game.cheat_action(source, [Morph(target, choice)])
 
 
 class _SiegeTankDeployed(TargetedAction):
@@ -116,8 +112,23 @@ class SC_003t:
     """Larva"""
 
     # Each turn this is in your hand, transform it into a random Zerg minion.
+    # Re-rolls EVERY turn: the morph carries the SC_003te enchant forward, whose
+    # own Hand trigger morphs again next turn (Shifting Scroll / Bandersmosh).
     class Hand:
-        events = OWN_TURN_BEGIN.on(_LarvaTransform(SELF))
+        events = OWN_TURN_BEGIN.on(
+            Morph(SELF, _RandomZergMinion()).then(Buff(Morph.CARD, "SC_003te"))
+        )
+
+
+class SC_003te:
+    """Transforming Larva"""
+
+    class Hand:
+        events = OWN_TURN_BEGIN.on(
+            Morph(OWNER, _RandomZergMinion()).then(Buff(Morph.CARD, "SC_003te"))
+        )
+
+    events = REMOVED_IN_PLAY
 
 
 class SC_006:

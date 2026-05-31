@@ -312,7 +312,7 @@ def test_missile_pod_battlecry_hits_all_enemies():
     assert p2.hero.health == 29
 
 
-def test_missile_pod_launch_effect_fires_on_next_spell():
+def test_missile_pod_launch_effect_fires_at_launch():
     game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
     p1, p2 = game.player1, game.player2
     foe = p2.summon("CS2_182")
@@ -325,10 +325,10 @@ def test_missile_pod_launch_effect_fires_on_next_spell():
     mp.destroy()  # bank into a Starship
     game.process_deaths()
     game.queue_actions(p1.hero, [LaunchStarship(p1)])
-    # The launch ("Also triggers on launch") effect is the ship's spellburst,
-    # which fires on the next spell cast — dealing another 1 to all enemies.
-    p1.give("CS2_008").play(target=p2.hero)  # Moonfire (hero only)
-    assert foe.damage == 2  # the launch effect added the second tick
+    game.process_deaths()
+    # "Also triggers on launch" fires immediately at launch (no spell needed):
+    # a second 1 to all enemies.
+    assert foe.damage == 2
 
 
 # SC_413 — Siege Tank: Battlecry: Deal 10 damage to a random enemy minion.

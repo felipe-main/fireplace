@@ -130,7 +130,7 @@ class SC_405:
     # Starship Piece. Battlecry: Gain +1/+1 for each other friendly minion.
     # Also triggers on launch.
     play = _UltraCapacitor(SELF)
-    spellburst = _UltraCapacitor(SELF)
+    launch = _UltraCapacitor(SELF)
 
 
 class SC_412:

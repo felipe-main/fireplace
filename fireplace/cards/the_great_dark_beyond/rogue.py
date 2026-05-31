@@ -181,11 +181,12 @@ class SC_752:
     """Dark Templar"""
 
     # Stealth (data). Battlecry: Destroy an enemy minion. Play another Templar
-    # to merge into an Archon!
+    # to merge into an Archon! Playable on an empty enemy board (the destroy
+    # simply whiffs) — REQ_TARGET_IF_AVAILABLE, not REQ_TARGET_TO_PLAY.
     requirements = {
-        PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_ENEMY_TARGET: 0,
+        PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
     }
     play = Destroy(TARGET), _TemplarMerge(SELF)
 

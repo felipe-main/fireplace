@@ -1030,9 +1030,16 @@ class SC_000:
     """Spawning Pool"""
 
     # Location. Get a 1/1 Zergling. Deathrattle: Your Zerg minions have Rush
-    # this turn.
+    # this turn. The one-turn Rush enchant (SC_000te2) is cleaned up at end of
+    # turn via TAG_ONE_TURN_EFFECT (game.py end-of-turn buff sweep).
     activate = Give(CONTROLLER, "SC_010")
-    deathrattle = SetTags(FRIENDLY_MINIONS + ZERG, {GameTag.RUSH: True})
+    deathrattle = Buff(FRIENDLY_MINIONS + ZERG, "SC_000te2")
+
+
+class SC_000te2:
+    """Zerg Rush!"""
+
+    tags = {GameTag.RUSH: True, GameTag.TAG_ONE_TURN_EFFECT: True}
 
 
 class SC_003:

@@ -409,6 +409,18 @@ def test_dark_templar_destroys_and_is_stealthed():
     assert dt.id == "SC_752"  # no merge with only one Templar
 
 
+def test_dark_templar_playable_on_empty_enemy_board():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    dt = p1.give("SC_752")
+    dt.cost = 0
+    # No enemy minions — REQ_TARGET_IF_AVAILABLE means it's still playable,
+    # the destroy battlecry simply whiffs.
+    assert dt.is_playable()
+    dt.play()
+    assert dt in p1.field
+
+
 # SC_765 — High Templar (6/3/5): Battlecry: Deal 2 damage to all enemies.
 # Play another Templar to merge into an Archon!
 def test_high_templar_aoe():

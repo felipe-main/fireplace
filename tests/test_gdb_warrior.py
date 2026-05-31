@@ -285,7 +285,7 @@ def test_yamato_cannon_battlecry_destroys_enemy_minion():
     assert foe.dead
 
 
-def test_yamato_cannon_launch_effect_fires_on_next_spell():
+def test_yamato_cannon_launch_effect_fires_at_launch():
     game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1, p2 = game.player1, game.player2
     foe1 = p2.summon("CS2_182")
@@ -294,10 +294,11 @@ def test_yamato_cannon_launch_effect_fires_on_next_spell():
     assert foe1.dead
     y.destroy()  # bank into a Starship
     game.process_deaths()
+    foe2 = p2.summon("CS2_182")  # a fresh enemy minion present BEFORE launch
     game.queue_actions(p1.hero, [LaunchStarship(p1)])
-    foe2 = p2.summon("CS2_182")  # a fresh enemy minion for the launch effect
-    p1.give("CS2_008").play(target=p2.hero)  # Moonfire triggers ship spellburst
-    assert foe2.dead  # launch effect destroyed the new enemy minion
+    game.process_deaths()
+    # "Also triggers on launch" fires immediately at launch — no spell needed.
+    assert foe2.dead
 
 
 # SC_411 — Concussive Shells: Deal 2 damage and gain 2 Armor. Your next
@@ -333,13 +334,16 @@ def test_thor_transforms_when_launched():
     game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1, p2 = game.player1, game.player2
     _build_and_launch(game, p1)
+    assert p1._sc_starships_launched == 1
     foe = p2.summon("CS2_182")
     foe.max_health = 80
     foe.damage = 0
+    p2.hero.set_current_health(30)
     t = p1.give("SC_414")
     t.play(target=foe)
-    # Deployed form deals the 5 to the chosen target; the per-launch repeats
-    # rely on the engine launch counter (not bumped in this build), so only the
-    # base 5 lands here.
-    assert foe.damage == 5
     assert "SC_414t" in [m.id for m in p1.field]  # transformed to Explosive Payload
+    # Deployed form: 5 to the chosen target, then "repeat at a random enemy"
+    # once (1 Starship launched). The repeat lands on foe or hero, so assert the
+    # deterministic TOTAL of 10 damage dealt across the two enemies.
+    total = foe.damage + (30 - p2.hero.health)
+    assert total == 10

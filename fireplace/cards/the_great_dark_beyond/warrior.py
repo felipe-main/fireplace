@@ -168,7 +168,7 @@ class SC_406:
     # Starship Piece. Battlecry: Destroy a random enemy minion. Also triggers on
     # launch.
     play = Destroy(RANDOM(ENEMY_MINIONS))
-    spellburst = Destroy(RANDOM(ENEMY_MINIONS))
+    launch = Destroy(RANDOM(ENEMY_MINIONS))
 
 
 class SC_411:

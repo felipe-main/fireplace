@@ -11,3 +11,4 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 1:Heroes of StarCraft | P3 cards+gate | all 49 SC_ cards implemented (workflow); fixed 3 base docstrings (data renames); full suite 3057 passed/2 skipped
 - 2026-05-31 | 1:Heroes of StarCraft | engine-fix | launch effects fire at launch (new launch channel) + Thor _sc_starships_launched counter
 - 2026-05-31 | 1:Heroes of StarCraft | P4+soak launch | audit workflow wf_bccbf6b0 + 1000-game soak (background)
+- 2026-05-31 | 1:Heroes of StarCraft | soak | 1000/1000 succeeded, 0 failed (SC_ cards clean in random pools)

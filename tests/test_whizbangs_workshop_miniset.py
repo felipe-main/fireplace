@@ -348,7 +348,10 @@ def test_whack_a_gnoll():
     p1.choice.choose(chosen)
     weapon = [c for c in p1.hand if c.id == chosen][0]
     assert weapon.atk == data.atk + 1
-    assert weapon.durability == data.durability + 1
+    # Build 219197 moved weapon durability into the HEALTH tag, so
+    # data.durability now reads 0 — the real base durability lives in
+    # data.health. Assert against that + the +1 from MIS_700e.
+    assert weapon.durability == data.health + 1
 
 
 def test_holy_glowsticks_cost_and_lifesteal():

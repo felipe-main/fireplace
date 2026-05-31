@@ -586,6 +586,9 @@ class TTN_330:
 
     # Rush. Whenever this attacks a minion, put it in your hand.
     # Deathrattle: Move any in your hand to your opponent's.
+    # Build 219197 rebuilt the data and dropped the DEATHRATTLE GameTag,
+    # so re-assert it here or the engine never fires the deathrattle.
+    tags = {GameTag.DEATHRATTLE: True}
     events = Attack(SELF, ALL_MINIONS).on(_KologarnCapture(Attack.DEFENDER))
     deathrattle = _KologarnDeathrattle(SELF)
 

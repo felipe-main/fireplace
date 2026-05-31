@@ -911,8 +911,12 @@ def test_remornia_transforms_into_weapon_after_attacking():
     # Stats read from data so per-patch rebalances don't break the test.
     from fireplace.cards import db
     data = db["REV_316t"]
+    # Build 219197 moved weapon durability from the DURABILITY tag into the
+    # HEALTH tag, so data.durability now reads 0; the real durability lives in
+    # the HEALTH/max_health slot. Assert the live weapon durability against it.
     assert game.player1.weapon.atk == data.atk
-    assert game.player1.weapon.durability == data.durability
+    assert game.player1.weapon.durability == data.health
+    assert game.player1.weapon.durability == 10
 
 
 def test_sanguine_depths_deals_1_and_buffs_attack():

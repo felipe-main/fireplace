@@ -154,7 +154,7 @@ class GDB_843:
 class GDB_237:
     """Alien Encounters"""
 
-    # Summon two 2/5 Beasts with Taunt. Costs (1) less for each card you
+    # Summon two 2/4 Beasts with Taunt. Costs (1) less for each card you
     # Discovered this game.
     cost_mod = -Attr(CONTROLLER, "discovers_this_game")
     play = Summon(CONTROLLER, "GDB_237t") * 2

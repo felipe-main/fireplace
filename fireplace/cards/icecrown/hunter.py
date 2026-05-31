@@ -97,13 +97,11 @@ class ICC_828p:
             beast_ids = RandomBeast(
                 card_class=[CardClass.HUNTER, CardClass.NEUTRAL], cost=range(0, 6)
             ).find_cards(source)
+            self.all_ids = list(beast_ids)
             self.first_ids = []
-            self.second_ids = []
             for id in beast_ids:
                 if get_script_definition(id):
                     self.first_ids.append(id)
-                else:
-                    self.second_ids.append(id)
             super().do(source, player)
 
         def do_step1(self):
@@ -115,7 +113,7 @@ class ICC_828p:
         def do_step2(self):
             self.cards = [
                 self.player.card(id)
-                for id in self.source.game.random.sample(self.second_ids, 3)
+                for id in self.source.game.random.sample(self.all_ids, 3)
             ]
 
         def done(self):

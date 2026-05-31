@@ -289,19 +289,21 @@ def test_ceaseless_expanse_cost_reduction():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     expanse = p1.give("GDB_142")
-    assert expanse.cost == 100
+    base = expanse.data.cost  # ledger at 0 -> base cost from data
+    assert expanse.cost == base
     # cost_mod = -Count(CARDS_PLAYED_THIS_GAME): play 2 cards.
     p1.give(WISP).play()
     p1.give(WISP).play()
     assert len(p1.cards_played_this_game) == 2
-    assert expanse.cost == 100 - 2
+    assert expanse.cost == base - 2
 
 
 def test_ceaseless_expanse_counts_draw_play_destroy():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     expanse = p1.give("GDB_142")
-    assert expanse.cost == 100  # baseline: ledger at 0
+    base = expanse.data.cost  # baseline: ledger at 0 -> base cost from data
+    assert expanse.cost == base
     # Draw a card (+1).
     seed = p1.give(WISP)
     seed.zone = Zone.DECK
@@ -312,7 +314,7 @@ def test_ceaseless_expanse_counts_draw_play_destroy():
     m.destroy()
     game.process_deaths()
     # Drawn + played + destroyed = 3 ledger events -> 3 cheaper.
-    assert expanse.cost == 100 - 3
+    assert expanse.cost == base - 3
 
 
 # ---------------------------------------------------------------------------
@@ -1308,7 +1310,7 @@ def test_void_ray_no_buff_at_full_cost():
     voidray = p1.give("SC_783")
     assert voidray.cost == 3
     voidray.play()
-    assert (voidray.atk, voidray.max_health) == (3, 1)
+    assert (voidray.atk, voidray.max_health) == (3, 2)
     assert voidray.rush
     assert voidray.divine_shield
 
@@ -1320,7 +1322,7 @@ def test_void_ray_gains_2_2_when_free():
     p1.next_protoss_minion_discount = 3  # makes Void Ray cost 0
     assert voidray.cost == 0
     voidray.play()
-    # 3/1 base + 2/2 -> 5/3.
-    assert (voidray.atk, voidray.max_health) == (5, 3)
+    # 3/2 base + 2/2 -> 5/4.
+    assert (voidray.atk, voidray.max_health) == (5, 4)
     assert voidray.rush
     assert voidray.divine_shield

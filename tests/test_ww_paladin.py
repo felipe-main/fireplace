@@ -89,14 +89,17 @@ def test_painters_virtue_lifesteal_and_hand_buff():
     p1, p2 = game.player1, game.player2
     p1.hero.set_current_health(20)
     p1.give("TOY_810").play()
-    assert p1.weapon.lifesteal
+    # Build 219197 reworked the card (Lifesteal removed) and moved weapon
+    # durability into the HEALTH tag: the weapon is a vanilla 2/3.
+    assert (p1.weapon.atk, p1.weapon.durability) == (2, 3)
+    assert not p1.weapon.lifesteal
     # A minion sitting in hand that should get +1/+1 after the hero attacks.
     in_hand = p1.give("CS2_182")  # Chillwind Yeti 4/5 in hand
     assert (in_hand.atk, in_hand.health) == (4, 5)
     game.end_turn(); game.end_turn()  # fresh turn so the hero can attack
     p1.hero.attack(p2.hero)
-    # Lifesteal: 2 weapon attack heals the hero by 2.
-    assert p1.hero.health == 22
+    # No Lifesteal anymore: the hero takes the counter-attack and is not healed.
+    assert p1.hero.health == 20
     # Hand minion buffed +1/+1.
     assert (in_hand.atk, in_hand.health) == (5, 6)
 

@@ -192,33 +192,37 @@ def test_travel_agent_discovers_location():
 
 
 # ---------------------------------------------------------------------------
-# VAC_439 — Seaside Giant: Costs (2) less for each time you've used a location
+# VAC_439 — Seaside Giant: Costs (1) less for each time you've used a location
 # this game.
 # ---------------------------------------------------------------------------
 def test_seaside_giant_cost_reduction_per_location_use():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     giant = p1.give("VAC_439")
-    assert giant.cost == 10  # base, no locations used yet
+    base = _cards.db["VAC_439"].cost  # base cost from data (9 as of build 219197)
+    assert base == 9
+    assert giant.cost == base  # base, no locations used yet
     # The cost_mod reads the per-game "locations used" counter.
     p1.locations_used_this_game = 2
-    assert giant.cost == 10 - 2 * 2  # 2 uses -> -4 -> 6
+    assert giant.cost == base - 2 * 1  # 2 uses -> -2 -> 7
 
 
 # ---------------------------------------------------------------------------
 # Once-over defensive test (review.csv: VAC_439 Seaside Giant + VAC_956
 # Housekeeper). Edge: both read a per-game locations-used counter driven by
 # REAL UseLocation events. Drive two genuine location activations and assert
-# the cost drops by exactly 2 per use and Housekeeper grants exactly 3 armor
+# the cost drops by exactly 1 per use and Housekeeper grants exactly 3 armor
 # per use.
 # ---------------------------------------------------------------------------
 def test_seaside_giant_and_housekeeper_track_real_location_uses():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     giant = p1.give("VAC_439")
+    base = _cards.db["VAC_439"].cost  # base cost from data (9 as of build 219197)
+    assert base == 9
     p1.summon("VAC_956")  # XB-931 Housekeeper
     p1.hero.armor = 0
-    assert giant.cost == 10
+    assert giant.cost == base
     assert getattr(p1, "locations_used_this_game", 0) == 0
 
     loc = p1.give("TOY_512")  # The Crystal Cove location
@@ -229,14 +233,14 @@ def test_seaside_giant_and_housekeeper_track_real_location_uses():
     # First real location use.
     loc.use()
     assert p1.locations_used_this_game == 1
-    assert giant.cost == 10 - 2  # one use -> -2 -> 8
+    assert giant.cost == base - 1  # one use -> -1 -> 8
     assert p1.hero.armor == 3    # Housekeeper: +3 armor per use
 
     # Second real location use (reopen by clearing cooldown).
     loc.cooldown = 0
     loc.use()
     assert p1.locations_used_this_game == 2
-    assert giant.cost == 10 - 4  # two uses -> -4 -> 6
+    assert giant.cost == base - 2  # two uses -> -2 -> 7
     assert p1.hero.armor == 6    # exactly +3 more
 
 

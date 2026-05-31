@@ -18,3 +18,5 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 2:Into the Emerald Dream | cards+engine | 145 EDR_ + Imbue (workflow wf_79cf7ebb + 2 hand-added); gate GREEN; weapon engine bug fixed; soak Give-crash fixed
 - 2026-05-31 | 2:Into the Emerald Dream | needs-human | 14 non-EDR data-bump test regressions + Imbue scaling/Dark Gift approximations + audit pending; STOPPED before sets #3-8 (see REPORT.md)
 - 2026-05-31 | 2:Into the Emerald Dream | soak | 600/600 succeeded, 0 failed (after Give-crash fix); engine stable
+- 2026-05-31 | RESUME | user override "do all, don't stop" | resuming autonomous run: finish set#2 cleanup (14 regressions + audit) then drive sets #3-8. Local commits only.
+- 2026-05-31 | 2:Into the Emerald Dream | databump-fix launch | workflow wf_933351f9 (9 agents, 1 per failing test file) to green the 14 regressions

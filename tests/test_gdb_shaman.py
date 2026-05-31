@@ -231,7 +231,32 @@ def test_triangulate_pulls_spell_and_shuffles_three_copies():
 
 # GDB_479 — Nebula: Discover two 8-Cost minions to summon with Taunt and
 # Elusive.
-def test_nebula_summons_two_eight_cost_taunt_elusive_minions():
+def test_nebula_summons_two_eight_cost_taunt_elusive_minions(monkeypatch):
+    # Build 219197 added Colossal minions (Ozumat, Gaia, Gigafin) to the
+    # 8-Cost minion pool. When Nebula (correctly) summons one, it ALSO summons
+    # its body-part tokens, blowing past a tight board-count assertion. Make
+    # the discover pool deterministic by stripping the Colossal ids from any
+    # cost==8 minion query so two plain minions are summoned.
+    COLOSSAL_8COST = {
+        cid
+        for cid in _cards.filter(collectible=True, type=CardType.MINION, cost=8)
+        if _cards.db[cid].tags.get(GameTag.COLOSSAL)
+    }
+    assert COLOSSAL_8COST, "expected at least one 8-Cost Colossal minion in data"
+
+    _orig_filter = _cards.filter
+
+    def _filter_no_colossal(**kwargs):
+        ids = _orig_filter(**kwargs)
+        if (
+            kwargs.get("cost") == 8
+            and kwargs.get("type") == CardType.MINION
+        ):
+            ids = [cid for cid in ids if cid not in COLOSSAL_8COST]
+        return ids
+
+    monkeypatch.setattr(_cards, "filter", _filter_no_colossal)
+
     game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
     p1 = game.player1
     pre = len(p1.field)

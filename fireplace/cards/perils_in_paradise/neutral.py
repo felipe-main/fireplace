@@ -106,12 +106,12 @@ class _LocationUseCounter(TargetedAction):
 
 
 class _SeasideGiantCost(LazyNum):
-    """Seaside Giant — costs (2) less for each time you've used a location
+    """Seaside Giant — costs (1) less for each time you've used a location
     this game."""
 
     def evaluate(self, source):
         used = getattr(source.controller, "locations_used_this_game", 0)
-        return self.num(used * 2)
+        return self.num(used * 1)
 
 
 class _MarinChooseTreasure(TargetedAction):
@@ -601,7 +601,7 @@ class VAC_438:
 class VAC_439:
     """Seaside Giant"""
 
-    # Costs (2) less for each time you've used a location this game.
+    # Costs (1) less for each time you've used a location this game.
     cost_mod = -_SeasideGiantCost()
     # Observe every friendly location use from any zone to keep the per-game
     # counter accurate even before this card is drawn.

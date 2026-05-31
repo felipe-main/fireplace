@@ -70,7 +70,11 @@ class EDR_449p:
         yield Discover(
             CONTROLLER,
             RandomCard(card_class=CardClass.PRIEST),
-        ).then(Give(CONTROLLER).then(Buff(Give.CARD, "EDR_449pe", cost=-level)))
+        ).then(
+            Give(CONTROLLER, Discover.CARD).then(
+                Buff(Give.CARD, "EDR_449pe", cost=-level)
+            )
+        )
 
 
 @custom_card

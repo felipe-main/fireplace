@@ -181,12 +181,15 @@ def test_barbed_thorn_choose_poisonous_this_turn():
     weapon.play(choose="EDR_525A")  # Extra Eyes — Gain Poisonous this turn
     w = p1.weapon
     assert w.id == "EDR_525"
-    # The weapon is Poisonous (the enchant also carries TAG_ONE_TURN_EFFECT so
-    # it will fade at turn end once the engine sweeps weapon buffs — see
-    # EDR_525e1; player.entities currently skips the weapon, an engine gap).
+    # The weapon is Poisonous, granted by a one-turn enchant (EDR_525e1).
     assert w.poisonous
     toxins = next(b for b in w.buffs if b.id == "EDR_525e1")
     assert toxins.one_turn_effect
+    # "this turn" — the end-of-turn sweep expires the weapon buff, so Poisonous
+    # is gone on the next turn (engine: game.py sweeps weapon.buffs at end_turn).
+    game.end_turn()
+    assert not any(b.id == "EDR_525e1" for b in p1.weapon.buffs)
+    assert not p1.weapon.poisonous
 
 
 def test_barbed_thorn_choose_deathrattle_hits_all_enemies():
@@ -364,3 +367,19 @@ def test_harbinger_summons_two_two_cost_minions():
     summoned = p1.field[pre:]
     assert len(summoned) == 2
     assert all(m.cost == 2 for m in summoned)
+
+
+def test_harbinger_triggers_on_bounce_to_hand():
+    # The real trigger: bouncing Harbinger off the battlefield summons two
+    # random 2-Cost minions (wired via the Bounce action).
+    from fireplace.actions import Bounce
+    from hearthstone.enums import Zone
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    harbinger = p1.summon("EDR_781")
+    assert len(p1.field) == 1  # just Harbinger
+    game.cheat_action(harbinger, [Bounce(harbinger)])
+    # Harbinger is back in hand; exactly two 2-Cost minions are on the board.
+    assert harbinger.zone == Zone.HAND
+    assert len(p1.field) == 2
+    assert all(m.cost == 2 for m in p1.field)

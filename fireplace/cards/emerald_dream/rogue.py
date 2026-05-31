@@ -210,9 +210,11 @@ class EDR_781:
     """Harbinger of the Blighted"""
 
     # Whenever this enters your hand from the battlefield, summon two random
-    # 2-Cost minions. (See _HarbingerSummon — trigger awaits an engine
-    # bounce/zone-change event; the effect itself is fully implemented.)
-    play = None
+    # 2-Cost minions. Bounce now broadcasts at AFTER (the card is already in
+    # hand), so the listener must live in Hand.events — a card's normal events
+    # are inactive once it leaves PLAY (PlayableCard.events is zone-gated).
+    class Hand:
+        events = Bounce(SELF).after(_HarbingerSummon(SELF))
 
 
 ##

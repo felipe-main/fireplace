@@ -464,6 +464,15 @@ class BaseGame(Entity):
             for buff in CardList(entity.entities).filter(one_turn_effect=True):
                 self.log("Ending One-Turn effect: %r", buff)
                 buff.remove()
+        # Weapon enchantments live in weapon.buffs; Hero.entities yields the
+        # weapon object but not its buffs, so one-turn effects buffed onto a
+        # weapon (e.g. Barbed Thorn's EDR_525e1 Poisonous-this-turn) are not
+        # reached by the sweeps above. Expire them explicitly.
+        for player in self.players:
+            if player.weapon:
+                for buff in CardList(player.weapon.buffs).filter(one_turn_effect=True):
+                    self.log("Ending One-Turn effect: %r", buff)
+                    buff.remove()
         # Extra turn
         if self.next_players:
             next_player = self.next_players.pop(0)

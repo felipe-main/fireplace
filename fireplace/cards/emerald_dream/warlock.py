@@ -102,15 +102,19 @@ class _WallowAbsorb(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        absorbed = getattr(source, "_wallow_absorbed", set())
-        absorbed = set(absorbed)
+        absorbed = set(getattr(source, "_wallow_absorbed", set()))
         for minion in source.controller.field:
-            for gift_id in getattr(minion, "_dark_gifts", []):
-                key = (id(minion), gift_id)
+            # Each gift is a raw tag-dict (as applied by _GiveDarkGift via
+            # SetTags); key by (minion identity, slot index) since dicts are
+            # unhashable. Re-apply the same tags to Wallow and record them so
+            # Wallow itself reads as a Dark-Gift minion.
+            for idx, tags in enumerate(getattr(minion, "_dark_gifts", [])):
+                key = (id(minion), idx)
                 if key in absorbed:
                     continue
                 absorbed.add(key)
-                source.game.cheat_action(source, [Buff(source, gift_id)])
+                source.game.cheat_action(source, [SetTags(source, tags)])
+                source._dark_gifts = getattr(source, "_dark_gifts", []) + [tags]
         source._wallow_absorbed = absorbed
 
 

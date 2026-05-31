@@ -129,19 +129,14 @@ class EDR_804:
 
     # Destroy a friendly Wisp to draw 3 cards.
     #
-    # WATCH (engine gap): the printed card may only target a friendly *Wisp*
-    # (by card name). The engine's targeting filter (targeting.py
-    # is_valid_target) supports REQ_TARGET_WITH_RACE but has no
-    # card-name / card-id target requirement, and the Wisp tokens span both
-    # Undead (EDR_851t) and raceless (CS2_231) variants — so no single Race
-    # filter is faithful. A precise fix needs an engine change: a
-    # REQ_TARGET_WITH_CARD_NAME (or _CARD_ID) PlayReq handled in
-    # is_valid_target + the playability gate in card.py. Until then the
-    # target stays "any friendly minion".
+    # "a friendly Wisp" is a card-NAME restriction: Wisp tokens span Undead
+    # (EDR_851t) and raceless (CS2_231) variants, so no Race filter is faithful.
+    # Uses the custom REQ_TARGET_WITH_CARD_NAME PlayReq (param = "Wisp").
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_FRIENDLY_TARGET: 0,
         PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_TARGET_WITH_CARD_NAME: "Wisp",
     }
     play = Destroy(TARGET), Draw(CONTROLLER) * 3
 

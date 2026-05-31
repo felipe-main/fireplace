@@ -187,6 +187,13 @@ class PlayReq(IntEnum):
     REQ_TARGET_IF_AVAILABLE_AND_SHADOW_IN_HAND = 200
     REQ_TARGET_IF_AVAILABLE_AND_HERO_DAMAGED_THIS_TURN = 201
 
+    # Custom (not in CardXML): restrict a target by its printed card NAME. The
+    # param is the name string. Used by cards that target a specific token by
+    # name where no Race/tag is a faithful filter (e.g. Divination -> "Wisp":
+    # Wisp tokens span Undead and raceless variants, so REQ_TARGET_WITH_RACE
+    # cannot express "a Wisp").
+    REQ_TARGET_WITH_CARD_NAME = 250
+
     # Renamed
     REQ_ENCHANTED_TARGET = REQ_MAX_SECRETS
     REQ_ENTIRE_ENTOURAGE_NOT_IN_PLAY = REQ_ALL_BASIC_TOTEMS_NOT_IN_PLAY

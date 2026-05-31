@@ -35,6 +35,10 @@ class _GiveDarkGift(TargetedAction):
         for t in targets:
             tags = roll_bonus_effects(source.game.random, 1)
             source.game.cheat_action(source, [SetTags(t, tags)])
+            # Record each granted gift on the recipient so cards that read a
+            # minion's accumulated Dark Gifts (Wallow EDR_487, Overgrown Horror
+            # EDR_654) can observe them. Stored as a list of the tag-dicts.
+            t._dark_gifts = getattr(t, "_dark_gifts", []) + [tags]
 
 
 ##

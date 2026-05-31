@@ -114,23 +114,24 @@ def test_wallow_absorbs_dark_gifts_from_friendly_minions_once():
     wallow = p1.give("EDR_487")  # sits in hand
     assert wallow.atk == 6 and wallow.max_health == 6
 
-    # Simulate a Dark Gift (+3/+3, EDR_491e is a 0/0 host -> use a real buff).
+    # A Dark Gift is a merged keyword tag-dict, exactly as _GiveDarkGift records
+    # it on the recipient (see roll_bonus_effects). Stamp a real Taunt gift.
+    from hearthstone.enums import GameTag
     gifted = p1.summon(WISP)
-    gifted._dark_gifts = ["EDR_654e"]  # -2 cost enchant as a stand-in gift
+    assert not gifted.taunt
+    gifted._dark_gifts = [{GameTag.TAUNT: True}]
 
-    # On the controller's next turn-begin, Wallow copies the gift once.
+    # On the controller's next turn-begin, Wallow copies the gift once: the
+    # Taunt keyword lands on Wallow and Wallow now reads as a Dark-Gift minion.
     game.end_turn()
     game.end_turn()
-    # EDR_654e is a -2 cost gift; it doesn't change stats but is now on Wallow.
-    assert any(b.id == "EDR_654e" for b in wallow.buffs)
-    absorbed_count = sum(1 for b in wallow.buffs if b.id == "EDR_654e")
-    assert absorbed_count == 1
+    assert wallow.taunt is True
+    assert len(getattr(wallow, "_dark_gifts", [])) == 1
 
     # A second turn does NOT re-absorb the same gift.
     game.end_turn()
     game.end_turn()
-    absorbed_count = sum(1 for b in wallow.buffs if b.id == "EDR_654e")
-    assert absorbed_count == 1
+    assert len(getattr(wallow, "_dark_gifts", [])) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -336,8 +337,9 @@ def test_hungering_ancient_eats_and_returns_on_death():
 def test_overgrown_horror_discounts_dark_gift_minions_in_hand():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
+    from hearthstone.enums import GameTag
     gifted = p1.give(CHILLWIND)  # cost 4
-    gifted._dark_gifts = ["EDR_654e"]  # marked as carrying a Dark Gift
+    gifted._dark_gifts = [{GameTag.DIVINE_SHIELD: True}]  # carries a Dark Gift
     plain = p1.give(WISP)  # cost 0, no gift
     gifted_cost_before = gifted.cost
 
@@ -348,3 +350,22 @@ def test_overgrown_horror_discounts_dark_gift_minions_in_hand():
     # Only the Dark-Gift minion gets -2.
     assert gifted.cost == gifted_cost_before - 2
     assert plain.cost == 0
+
+
+# Engine: _GiveDarkGift must RECORD each granted gift on the recipient (the
+# marker Wallow/Overgrown Horror read), not just apply the keyword tags.
+# ---------------------------------------------------------------------------
+def test_give_dark_gift_records_on_recipient():
+    from fireplace.cards.emerald_dream.neutral import _GiveDarkGift
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    target = p1.summon(CHILLWIND)
+    assert not getattr(target, "_dark_gifts", [])
+    game.queue_actions(p1.hero, [_GiveDarkGift(target)])
+    gifts = getattr(target, "_dark_gifts", [])
+    assert len(gifts) == 1
+    # The recorded gift is a non-empty keyword tag-dict that was really applied.
+    tags = gifts[0]
+    assert isinstance(tags, dict) and tags
+    for tag, val in tags.items():
+        assert target.tags.get(tag) == val

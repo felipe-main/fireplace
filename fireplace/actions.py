@@ -1427,6 +1427,10 @@ class Bounce(TargetedAction):
             log.info("%r is bounced back to %s's hand", target, target.controller)
             target.zone = Zone.HAND
             source.game.manager.targeted_action(self, source, target)
+            # Broadcast so cards can react to entering hand from the battlefield
+            # (e.g. Harbinger of the Blighted EDR_781). The destroy-on-full-hand
+            # path above does NOT broadcast — the minion never reaches the hand.
+            self.broadcast(source, EventListener.AFTER, target)
 
 
 class Choice(TargetedAction):

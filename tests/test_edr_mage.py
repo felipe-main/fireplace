@@ -121,15 +121,21 @@ def test_divination_destroys_wisp_and_draws_three():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     wisp = p1.summon(WISP)
+    yeti = p1.summon("CS2_182")  # Chillwind Yeti — a friendly non-Wisp minion
     # Stock the deck so the three draws are real.
     for _ in range(5):
         c = p1.card("CS2_029")
         c.zone = Zone.DECK
     spell = p1.give("EDR_804")
+    # Targeting is restricted to a friendly Wisp by NAME: the Wisp is valid,
+    # the Yeti is not (REQ_TARGET_WITH_CARD_NAME).
+    assert wisp in spell.play_targets
+    assert yeti not in spell.play_targets
     pre_hand = len(p1.hand)
     spell.play(target=wisp)
     assert wisp.dead
     assert wisp.zone == Zone.GRAVEYARD
+    assert not yeti.dead
     # Hand: -1 (Divination leaves hand) +3 (drawn) relative to pre-play count.
     assert len(p1.hand) == pre_hand - 1 + 3
 

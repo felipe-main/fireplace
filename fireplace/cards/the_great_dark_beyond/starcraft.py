@@ -148,35 +148,35 @@ class SC_403a:
     """Viking"""
 
     # Starship Piece. When this is launched, gain 7 Armor.
-    spellburst = GainArmor(FRIENDLY_HERO, 7)
+    launch = GainArmor(FRIENDLY_HERO, 7)
 
 
 class SC_403b:
     """Liberator"""
 
     # Starship Piece. When this is launched, deal 2 damage to all enemies.
-    spellburst = Hit(ENEMY_CHARACTERS, 2)
+    launch = Hit(ENEMY_CHARACTERS, 2)
 
 
 class SC_403c:
     """Raven"""
 
     # Starship Piece. When this is launched, gain 3 random Bonus Effects.
-    spellburst = _GainBonusEffects(SELF, 3)
+    launch = _GainBonusEffects(SELF, 3)
 
 
 class SC_403d:
     """Banshee"""
 
     # Starship Piece. When this is launched, deal 5 damage to a random enemy.
-    spellburst = Hit(RANDOM(ENEMY_CHARACTERS), 5)
+    launch = Hit(RANDOM(ENEMY_CHARACTERS), 5)
 
 
 class SC_403f:
     """Medivac"""
 
     # Starship Piece. When this is launched, summon two 2/2 Marines with Taunt.
-    spellburst = Summon(CONTROLLER, "SC_403t") * 2
+    launch = Summon(CONTROLLER, "SC_403t") * 2
 
 
 class SC_412t:

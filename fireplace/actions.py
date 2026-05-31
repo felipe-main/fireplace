@@ -1926,6 +1926,7 @@ class LaunchStarship(TargetedAction):
         ship.turns_in_play = 0
 
         spellbursts = []
+        launch_effects = []
         for info in pieces:
             data = db[info["id"]]
             scripts = data.scripts
@@ -1943,9 +1944,22 @@ class LaunchStarship(TargetedAction):
             spellburst = getattr(scripts, "spellburst", None)
             if spellburst:
                 spellbursts.append(spellburst)
+            # Heroes of StarCraft — Starship Pieces with a "When this is
+            # launched, …" effect declare it as `launch`; it fires once,
+            # immediately, as the ship launches (distinct from Spellburst).
+            launch = getattr(scripts, "launch", None)
+            if launch:
+                launch_effects.append(launch)
         if spellbursts:
             ship._starship_spellbursts = spellbursts
             ship.has_spellburst = True
+        # Retain the banked launch effects on the ship so Jim Raynor can
+        # relaunch it (re-fire its "when launched" effects) later this game.
+        ship._starship_launch_effects = launch_effects
+
+        # Heroes of StarCraft — count this launch (Thor / Jim Raynor scale off
+        # the number of Starships launched this game).
+        player._sc_starships_launched += 1
 
         player.starship = None
         # Record the just-launched ship so battlecries that fire alongside the
@@ -1954,6 +1968,15 @@ class LaunchStarship(TargetedAction):
         player._last_launched_ship = ship
         source.game.manager.targeted_action(self, source, target)
         source.game.refresh_auras()
+        # Fire each banked Piece's immediate "when launched" effect now, with
+        # the assembled ship as the source.
+        for launch in launch_effects:
+            actions = launch
+            if callable(actions):
+                actions = actions(ship, None)
+            if not isinstance(actions, (list, tuple)):
+                actions = [actions]
+            source.game.queue_actions(ship, list(actions))
         # The Gravitational Displacer — if banked, the launch summons a copy of
         # the assembled ship. Build the copy explicitly under the launching
         # player and transfer the combined stats/keywords/effects (a fresh

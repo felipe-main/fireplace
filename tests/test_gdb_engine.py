@@ -193,3 +193,23 @@ def test_starship_launch_discount_reduces_launch_button():
     launch = p1.give("GDB_905")          # Launch Starship, base 5
     p1.starship_launch_discount = 2
     assert launch.cost == 5 - 2
+
+
+def test_launch_effect_fires_immediately_at_launch_and_bumps_counter():
+    # SC_403b Liberator is a Starship Piece whose "when launched" effect deals
+    # 2 damage to all enemies — it must fire AT launch (not on a later spell).
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    boss = p2.summon("CS2_182")
+    boss.max_health = 200
+    boss.damage = 0
+    p2.hero.damage = 0
+    assert p1._sc_starships_launched == 0
+    p1.summon("SC_403b").destroy()       # bank the Liberator piece
+    game.process_deaths()
+    game.queue_actions(p1.hero, [LaunchStarship(p1)])
+    game.process_deaths()
+    # Launch effect fired exactly once, immediately, with no spell cast.
+    assert p2.hero.damage == 2
+    assert boss.damage == 2
+    assert p1._sc_starships_launched == 1

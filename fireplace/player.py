@@ -272,6 +272,10 @@ class Player(Entity, TargetableByAuras):
         #   protoss_spells_cast_this_game — Colossus scales with the number of
         #     Protoss spells you've cast this game. Bumped in Play.do; never reset.
         self.protoss_spells_cast_this_game = 0
+        #   _sc_starships_launched — number of Starships you've launched this
+        #     game (Thor's "repeat for each Starship you've launched"; Jim
+        #     Raynor). Bumped in LaunchStarship.do; never reset.
+        self._sc_starships_launched = 0
         # Commander Ulthok: opponent's cards cost Health instead of Mana for
         # this many of THEIR turns (decremented at their begin_turn).
         self.pays_health_for_cards_turns_left = 0

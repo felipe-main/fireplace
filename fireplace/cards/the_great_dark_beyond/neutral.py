@@ -1010,11 +1010,11 @@ class _JimRaynorRelaunch(TargetedAction):
             m
             for m in ctrl.field
             if m.id in _LAUNCHED_SHIP_IDS
-            and getattr(m, "_starship_spellbursts", None)
+            and getattr(m, "_starship_launch_effects", None)
         ]
         for ship in ships:
-            for spellburst in ship._starship_spellbursts:
-                actions = spellburst
+            for launch in ship._starship_launch_effects:
+                actions = launch
                 if callable(actions):
                     actions = actions(ship, None)
                 if not isinstance(actions, (list, tuple)):

@@ -1079,8 +1079,10 @@ def test_jim_raynor_relaunches_launched_starships():
     game.process_deaths()
     game.queue_actions(p1.hero, [LaunchStarship(p1)])
     game.process_deaths()
-    ship = [m for m in p1.field if getattr(m, "_starship_spellbursts", None)]
+    ship = [m for m in p1.field if getattr(m, "_starship_launch_effects", None)]
     assert len(ship) == 1
+    # The Banshee's launch effect (5 dmg to a random enemy) already fired once
+    # at launch onto the lone beefy boss.
     dmg_before_jim = p2.hero.damage + boss.damage
     # Jim Raynor relaunches the launched ship -> its banked launch effect (5
     # damage to a random enemy) fires again. The lone beefy boss soaks it.

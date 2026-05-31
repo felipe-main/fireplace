@@ -953,6 +953,27 @@ class Play(GameAction):
                 hook(card)
             player.last_draenei_played = card.id
 
+        # Heroes of StarCraft — consume one-shot Protoss cost reductions on the
+        # card that actually took them (stamped in card.cost), and count Protoss
+        # spells cast this game (Colossus scales off this). Done before the
+        # battlecry so a Protoss card's own battlecry can't re-consume the hook.
+        if card.data.tags.get(GameTag.PROTOSS, 0):
+            if getattr(card, "received_protoss_minion_discount", False):
+                player.next_protoss_minion_discount = 0
+                card.received_protoss_minion_discount = False
+            if getattr(card, "received_protoss_spell_discount", False):
+                player.next_protoss_spell_discount = 0
+                card.received_protoss_spell_discount = False
+            if getattr(card, "received_protoss_card_discount", False):
+                player.next_protoss_card_discount = 0
+                card.received_protoss_card_discount = False
+            if card.type == CardType.SPELL:
+                player.protoss_spells_cast_this_game += 1
+        # Heroes of StarCraft — the Launch Starship button consumes the pending
+        # "next Starship launch costs (2) less" reduction.
+        if card.id == "GDB_905" and player.starship_launch_discount:
+            player.starship_launch_discount = 0
+
         # "Can't Play" (aka Counter) means triggers don't happen either
         if not card.cant_play:
             if trigger_battlecry:

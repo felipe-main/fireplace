@@ -652,6 +652,21 @@ ELEMENTAL = EnumSelector(Race.ELEMENTAL)
 NAGA = EnumSelector(Race.NAGA)
 UNDEAD = EnumSelector(Race.UNDEAD)
 DRAENEI = EnumSelector(Race.DRAENEI)
+# Heroes of StarCraft — the three StarCraft factions are static GameTags (not
+# Races), and faction tags are NOT copied into the runtime entity.tags dict, so
+# EnumSelector(GameTag.PROTOSS) can't see them. Match the raw data tag instead
+# (same approach as TREANT/IMP below).
+def _faction_selector(tag):
+    return FuncSelector(
+        lambda entities, src, _t=tag: [
+            e for e in entities if getattr(e, "data", None) and e.data.tags.get(_t, 0)
+        ]
+    )
+
+
+PROTOSS = _faction_selector(GameTag.PROTOSS)
+TERRAN = _faction_selector(GameTag.TERRAN)
+ZERG = _faction_selector(GameTag.ZERG)
 TREANT = FuncSelector(
     lambda entities, src: [
         e for e in entities if getattr(e, "name_enUS", "").endswith("Treant")

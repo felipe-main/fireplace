@@ -127,3 +127,69 @@ def test_starship_class_token_resolves_by_hero_class():
     p1.summon("GDB_100").destroy()
     game.process_deaths()
     assert p1.starship.id == "GDB_100t8"
+
+
+# Heroes of StarCraft — faction (Protoss/Terran/Zerg GameTag) primitives.
+
+def test_faction_selectors_match_faction_tagged_cards():
+    from fireplace.cards.utils import PROTOSS, ZERG
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    colossus = p1.summon("SC_758")  # Protoss
+    zergling = p1.summon("SC_010")  # Zerg
+    assert colossus in PROTOSS.eval(p1.field, p1)
+    assert zergling not in PROTOSS.eval(p1.field, p1)
+    assert zergling in ZERG.eval(p1.field, p1)
+    assert colossus not in ZERG.eval(p1.field, p1)
+
+
+def test_protoss_cost_reduction_is_per_game_and_minion_scoped():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    colossus = p1.give("SC_758")          # Protoss minion, base 12
+    spell = p1.give("SC_759")             # Protoss spell, base 2
+    fireball = p1.give("CS2_029")         # non-Protoss
+    p1.protoss_cost_reduction = 3
+    assert colossus.cost == 12 - 3        # minion gets the per-game discount
+    assert spell.cost == 2                # spell does NOT (minion-scoped)
+    assert fireball.cost == p1.card("CS2_029").cost
+
+
+def test_next_protoss_minion_discount_only_minions():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    colossus = p1.give("SC_758")
+    spell = p1.give("SC_759")
+    p1.next_protoss_minion_discount = 3
+    assert colossus.cost == 12 - 3
+    assert spell.cost == 2                # spell unaffected
+
+
+def test_next_protoss_spell_discount_only_spells():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    colossus = p1.give("SC_758")
+    spell = p1.give("SC_759")
+    p1.next_protoss_spell_discount = 2
+    assert spell.cost == 2 - 2
+    assert colossus.cost == 12           # minion unaffected
+
+
+def test_next_protoss_card_discount_any_type():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    colossus = p1.give("SC_758")
+    spell = p1.give("SC_759")
+    fireball = p1.give("CS2_029")        # non-Protoss
+    p1.next_protoss_card_discount = 2
+    assert colossus.cost == 12 - 2
+    assert spell.cost == 2 - 2
+    assert fireball.cost == p1.card("CS2_029").cost
+
+
+def test_starship_launch_discount_reduces_launch_button():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    launch = p1.give("GDB_905")          # Launch Starship, base 5
+    p1.starship_launch_discount = 2
+    assert launch.cost == 5 - 2

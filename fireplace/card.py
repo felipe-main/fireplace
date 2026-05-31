@@ -244,6 +244,13 @@ class BaseCard(BaseEntity):
     def classes(self):
         if self.multi_class_group != MultiClassGroup.INVALID:
             return MultiClassGroup(self.multi_class_group).card_classes
+        # Heroes of StarCraft and other modern multi-class cards encode their
+        # classes in the GameTag.MULTIPLE_CLASSES bitmask (e.g. 106 = Druid /
+        # Mage / Priest / Rogue), not the legacy MULTI_CLASS_GROUP. The CardXML
+        # data card already decodes that bitmask, so defer to it.
+        data_classes = getattr(self.data, "classes", None)
+        if data_classes and len(data_classes) > 1:
+            return list(data_classes)
         return [self.card_class]
 
     @zone.setter
@@ -595,6 +602,42 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
                 and getattr(self.controller, "next_weapon_discount", 0) > 0
             ):
                 ret -= self.controller.next_weapon_discount
+            # Heroes of StarCraft — Protoss faction cost reductions. Faction is
+            # a static GameTag on the card. Stamps `received_protoss_*` so the
+            # Play.do consume hooks only clear one-shots for cards that took them.
+            if self.data.tags.get(GameTag.PROTOSS, 0):
+                # "Your Protoss minions cost (X) less this game" (permanent).
+                if (
+                    self.type == CardType.MINION
+                    and getattr(self.controller, "protoss_cost_reduction", 0) > 0
+                ):
+                    ret -= self.controller.protoss_cost_reduction
+                # Warp Gate — next Protoss minion costs (3) less (one-shot).
+                if (
+                    self.type == CardType.MINION
+                    and getattr(self.controller, "next_protoss_minion_discount", 0) > 0
+                ):
+                    ret -= self.controller.next_protoss_minion_discount
+                    self.received_protoss_minion_discount = True
+                # Shield Battery — next Protoss spell costs (2) less (one-shot).
+                if (
+                    self.type == CardType.SPELL
+                    and getattr(self.controller, "next_protoss_spell_discount", 0) > 0
+                ):
+                    ret -= self.controller.next_protoss_spell_discount
+                    self.received_protoss_spell_discount = True
+                # Construct Pylons — next Protoss card THIS TURN costs (2) less
+                # (one-shot, any card type; also reset at end of turn).
+                if getattr(self.controller, "next_protoss_card_discount", 0) > 0:
+                    ret -= self.controller.next_protoss_card_discount
+                    self.received_protoss_card_discount = True
+            # Heroes of StarCraft — "your next Starship launch costs (2) less"
+            # applies to the Launch Starship button (GDB_905).
+            if (
+                self.id == "GDB_905"
+                and getattr(self.controller, "starship_launch_discount", 0) > 0
+            ):
+                ret -= self.controller.starship_launch_discount
         ret = self._getattr("cost", ret)
         return max(0, ret)
 

@@ -251,6 +251,27 @@ class Player(Entity, TargetableByAuras):
         # The Exodar — the minion produced by the most recent LaunchStarship,
         # so a launch-time Protocol choice can read its stats / banked Pieces.
         self._last_launched_ship = None
+        # Heroes of StarCraft (SC_) — StarCraft factions are GameTags
+        # (PROTOSS/TERRAN/ZERG), not Races. Faction cost effects:
+        #   protoss_cost_reduction — "Your Protoss minions cost (X) less this
+        #     game" (Photon Cannon, Artanis, Sentry); permanent, minion-scoped.
+        self.protoss_cost_reduction = 0
+        #   next_protoss_minion_discount — Warp Gate "your next Protoss minion
+        #     costs (3) less"; one-shot, consumed on the next Protoss minion.
+        self.next_protoss_minion_discount = 0
+        #   next_protoss_spell_discount — Shield Battery "your next Protoss
+        #     spell costs (2) less"; one-shot, consumed on the next Protoss spell.
+        self.next_protoss_spell_discount = 0
+        #   next_protoss_card_discount — Construct Pylons "your next Protoss
+        #     card THIS TURN costs (2) less"; one-shot, also reset each turn.
+        self.next_protoss_card_discount = 0
+        #   starship_launch_discount — SCV / Salvage the Bunker / Concussive
+        #     Shells "your next Starship launch costs (2) less"; one-shot,
+        #     consumed when the Launch Starship button (GDB_905) is played.
+        self.starship_launch_discount = 0
+        #   protoss_spells_cast_this_game — Colossus scales with the number of
+        #     Protoss spells you've cast this game. Bumped in Play.do; never reset.
+        self.protoss_spells_cast_this_game = 0
         # Commander Ulthok: opponent's cards cost Health instead of Mana for
         # this many of THEIR turns (decremented at their begin_turn).
         self.pays_health_for_cards_turns_left = 0

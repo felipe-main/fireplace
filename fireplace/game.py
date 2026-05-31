@@ -545,6 +545,9 @@ class BaseGame(Entity):
         player.discovers_this_turn = 0
         # The Great Dark Beyond — per-turn hero damage (Healthstone).
         player.hero_damage_taken_this_turn = 0
+        # Heroes of StarCraft — Construct Pylons' "next Protoss card THIS TURN"
+        # discount expires at the start of the player's next turn.
+        player.next_protoss_card_discount = 0
         # Audiopocalypse — Ambient Lightspawn counter resets per turn.
         player.overheals_triggered_this_turn = 0
         # TITANS — Tar Slick: clear per-turn "minions take double damage" flag.

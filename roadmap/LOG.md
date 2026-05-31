@@ -15,3 +15,5 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 1:Heroes of StarCraft | P5 tierfix | 8 fixed (654056da: Spawning Pool one-turn rush, launch-channel x3, Larva re-roll, Hallucination ExactCopy, Dark Templar req, Thor) + 4 watch; 0 open
 - 2026-05-31 | 1:Heroes of StarCraft | P6 docs + re-soak | README->31.4, memory bumped, soak 1000/1000; SET #1 DONE
 - 2026-05-31 | 2:Into the Emerald Dream | P0+P1 | bump 214839->219197.1; 145 EDR_ cards; novel mechanic=Imbue (hero-power upgrade, 6 Imbued HPs); manifest written
+- 2026-05-31 | 2:Into the Emerald Dream | cards+engine | 145 EDR_ + Imbue (workflow wf_79cf7ebb + 2 hand-added); gate GREEN; weapon engine bug fixed; soak Give-crash fixed
+- 2026-05-31 | 2:Into the Emerald Dream | needs-human | 14 non-EDR data-bump test regressions + Imbue scaling/Dark Gift approximations + audit pending; STOPPED before sets #3-8 (see REPORT.md)

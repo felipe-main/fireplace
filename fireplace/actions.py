@@ -614,9 +614,10 @@ class Death(GameAction):
                 card.controller.friendly_minions_died_this_game += 1
                 # March of the Lich King — every friendly minion death
                 # gives the controller a Corpse, even non-DK players
-                # (Corpses just sit unused for non-DK).
-                card.controller.corpses += 1
-                card.controller.corpses_gained_this_game += 1
+                # (Corpses just sit unused for non-DK). Falric doubles the gain.
+                _corpse_gain = 2 if card.controller.corpses_doubled else 1
+                card.controller.corpses += _corpse_gain
+                card.controller.corpses_gained_this_game += _corpse_gain
                 # MotLK — precise "died after your last turn" window for
                 # Undead-synergy cards. Reset at OWN_TURN_END (see
                 # game.py:end_turn_cleanup).
@@ -3413,6 +3414,76 @@ class RefreshHeroPower(TargetedAction):
             return
         heropower.additional_activations_this_turn += 1
         source.game.manager.targeted_action(self, source, heropower)
+
+
+# Into the Emerald Dream — IMBUE.
+# Maps a player's class to its Imbued Hero Power token. Only six classes
+# have one in the 219197 data; the other four (DK / DH / Rogue / Warlock /
+# Warrior) have no Imbued token, so neutral Imbue cards still *count* (bump
+# imbues_this_game) but leave the Hero Power unchanged.
+IMBUED_HERO_POWERS = {
+    CardClass.DRUID: "EDR_847p",     # Blessing of the Golem
+    CardClass.HUNTER: "EDR_850p",    # Blessing of the Wolf
+    CardClass.MAGE: "EDR_851p",      # Blessing of the Wisp
+    CardClass.PALADIN: "EDR_445p",   # Blessing of the Dragon
+    CardClass.PRIEST: "EDR_449p",    # Blessing of the Moon
+    CardClass.SHAMAN: "EDR_448p",    # Blessing of the Wind
+}
+
+
+def imbued_hero_power_for(player):
+    """Return the Imbued Hero Power id for *player*'s class, or None."""
+    for card_class in player.hero.classes:
+        if card_class in IMBUED_HERO_POWERS:
+            return IMBUED_HERO_POWERS[card_class]
+    return IMBUED_HERO_POWERS.get(player.hero.card_class, None)
+
+
+class Imbue(TargetedAction):
+    """
+    Into the Emerald Dream — "Imbue your Hero Power."
+
+    Replaces *target* player's Hero Power with their class's Imbued Hero
+    Power token and bumps the per-game ``imbues_this_game`` counter. On
+    subsequent imbues the counter keeps climbing, so the Imbued Hero
+    Power's effect scales (its ``activate`` reads
+    ``controller.imbues_this_game``). The token also caches the level on
+    its ``imbue_level`` attribute for convenience / cosmetics.
+
+    Classes without an Imbued Hero Power still increment the counter so
+    payoff cards (e.g. EDR_860 "Imbued twice", EDR_888 "Imbued 4 times")
+    behave consistently regardless of class.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # Accept a player directly, or a hero / character whose controller
+        # is the player to imbue.
+        if hasattr(target, "imbues_this_game"):
+            player = target
+        else:
+            player = getattr(target, "controller", target)
+        log.info("%r imbues %s's Hero Power", source, player)
+        player.imbues_this_game += 1
+        source.game.manager.targeted_action(self, source, player)
+
+        power_id = imbued_hero_power_for(player)
+        if power_id is None:
+            # Class with no Imbued Hero Power — count only, HP unchanged.
+            return
+
+        existing = player.hero_power
+        if existing is not None and existing.id == power_id:
+            # Already imbued this class's power — keep the same token but
+            # refresh its cached level so its scaling stays in sync.
+            existing.imbue_level = player.imbues_this_game
+            return
+
+        new_power = player.card(power_id, source=source)
+        new_power.imbue_level = player.imbues_this_game
+        source.game.queue_actions(player, [Summon(player, new_power)])
+        return new_power
 
 
 class MultipleChoice(TargetedAction):

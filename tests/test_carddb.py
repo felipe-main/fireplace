@@ -1,3 +1,5 @@
+import re
+
 import utils
 import pytest
 from hearthstone.enums import CardType, GameTag, Rarity
@@ -29,6 +31,11 @@ _OUT_OF_SCOPE_IDS = frozenset(
         "Core_UNG_072",
         "Core_UNG_211",
         "CORE_VAN_EX1_561",
+        # CORE id-collisions: these CORE cards are DIFFERENT cards that happen to
+        # share an id with one of our expansion cards after CORE_-stripping, so
+        # get_script_definition resolves them to the wrong (expansion) script.
+        # They are out-of-scope CORE reprints, not the expansion card.
+        "CORE_EDR_001",  # "Babbling Bookcase" (collides with EDR_001 Hopeful Dryad)
     ]
 )
 
@@ -112,6 +119,8 @@ def test_card_docstrings():
     for card in CARDS.values():
         if card.locale != "enUS":
             continue
+        if _out_of_scope(card.id):
+            continue
         c = utils.fireplace.cards.get_script_definition(card.id)
         name = c.__doc__
         if name is not None:
@@ -119,5 +128,9 @@ def test_card_docstrings():
                 continue
             if GameTag.DECK_RULE_COUNT_AS_COPY_OF_CARD_ID in card.tags:
                 continue
-            if name != card.name:
-                assert name == card.name
+            # Some CORE reprints carry a cosmetic "[CORE 2024] " name prefix in
+            # the data (e.g. CORE_LOOT_204 Cheat Death); the script docstring is
+            # the bare printed name, so strip the prefix before comparing.
+            card_name = re.sub(r"^\[CORE \d+\] ", "", card.name)
+            if name != card_name:
+                assert name == card_name

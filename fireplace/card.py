@@ -2079,6 +2079,13 @@ class Weapon(rules.WeaponRules, LiveEntity):
     def __init__(self, *args):
         super().__init__(*args)
         self.damage = 0
+        # As of build ~219197 (Patch 32.0) weapons no longer carry the
+        # GameTag.DURABILITY tag — their durability lives in the HEALTH tag
+        # (read via max_health in the max_durability property below). The
+        # CardManager therefore never populates _max_durability, so default it
+        # to 0 (it is only non-zero for legacy DURABILITY-tagged weapons).
+        if not hasattr(self, "_max_durability"):
+            self._max_durability = 0
 
     @property
     def base_events(self):
@@ -2253,6 +2260,11 @@ class HeroPower(PlayableCard):
         self.additional_activations_this_turn = 0
         self.activations_this_game = 0
         self._upgraded_hero_power = None
+        # Into the Emerald Dream — IMBUE. Cached scaling level set by
+        # actions.Imbue when this token is installed (mirrors the
+        # controller's imbues_this_game at install time). 0 for ordinary
+        # Hero Powers that were never imbued.
+        self.imbue_level = 0
         super().__init__(data)
 
     def dump(self):

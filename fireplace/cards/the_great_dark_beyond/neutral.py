@@ -1043,7 +1043,7 @@ class SC_000te2:
 
 
 class SC_003:
-    """Brood Queen"""
+    """Hive Queen"""
 
     # At the end of your turn, get a Larva that transforms into random Zerg
     # minions.

@@ -39,8 +39,10 @@ class DMF_066:
 class DMF_067:
     """Prize Vendor"""
 
-    # <b>Battlecry:</b> Each player draws a card.
+    # Battlecry and Deathrattle: Each player draws a card.
+    # (Reworked from Battlecry-only in build ~219197 / Patch 32.0.)
     play = Draw(CONTROLLER), Draw(OPPONENT)
+    deathrattle = Draw(CONTROLLER), Draw(OPPONENT)
 
 
 class DMF_068:

@@ -95,6 +95,12 @@ class Player(Entity, TargetableByAuras):
         self.temp_mana = 0
         self.timeout = 75
         self.times_hero_power_used_this_game = 0
+        # Into the Emerald Dream — IMBUE. Per-game counter; NEVER reset
+        # mid-game. Each "Imbue your Hero Power" replaces the controller's
+        # Hero Power with their class's Imbued token (see actions.Imbue) and
+        # bumps this. Imbued Hero Powers scale off this level; payoff cards
+        # (e.g. EDR_860, EDR_888) gate on it.
+        self.imbues_this_game = 0
         self.used_mana = 0
         self.minions_killed_this_turn = 0
         self.minions_played_this_turn = 0
@@ -276,6 +282,10 @@ class Player(Entity, TargetableByAuras):
         #     game (Thor's "repeat for each Starship you've launched"; Jim
         #     Raynor). Bumped in LaunchStarship.do; never reset.
         self._sc_starships_launched = 0
+        # Into the Emerald Dream — Falric: while in play, you gain twice as many
+        # Corpses. Count of active doublers (incremented on enter, decremented
+        # on leave); Deaths.do doubles the corpse gain while > 0.
+        self.corpses_doubled = 0
         # Commander Ulthok: opponent's cards cost Health instead of Mana for
         # this many of THEIR turns (decremented at their begin_turn).
         self.pays_health_for_cards_turns_left = 0

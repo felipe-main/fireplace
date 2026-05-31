@@ -11,3 +11,4 @@ from .warlock import *
 from .warrior import *
 from .neutral import *
 from .tokens import *
+from .starcraft import *

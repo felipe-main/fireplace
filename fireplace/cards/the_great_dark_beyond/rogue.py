@@ -73,6 +73,62 @@ class _ArmComboDiscount(TargetedAction):
         target.next_combo_discount += 1
 
 
+# The two Templars (Dark Templar SC_752, High Templar SC_765) merge into an
+# Archon (SC_671t1) when you control both at once.
+_TEMPLAR_IDS = ("SC_752", "SC_765")
+
+
+class _TemplarMerge(TargetedAction):
+    """Dark/High Templar — after the battlecry, if you control another Templar,
+    remove both and summon an Archon in their place."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        templars = [
+            m for m in ctrl.field
+            if m.id in _TEMPLAR_IDS and not m.dead
+        ]
+        if len(templars) < 2:
+            return
+        # Merge the earliest two Templars (the just-played one is among them).
+        pair = templars[:2]
+        index = min(m.zone_position for m in pair)
+        for m in pair:
+            source.game.cheat_action(source, [Destroy(m)])
+        archon = ctrl.card("SC_671t1", source)
+        archon._summon_index = index - 1
+        source.game.cheat_action(source, [Summon(ctrl, archon)])
+
+
+class _BlinkDraw(TargetedAction):
+    """Blink — draw a random Protoss minion from your deck. Set `discount` on
+    the subclass to also reduce the drawn minion's Cost by (2) (the Combo
+    branch). The engine runs the `combo` script in place of `play` when a card
+    was already played this turn, so the discount lives on _BlinkDrawCombo."""
+
+    TARGET = ActionArg()
+    discount = False
+
+    def do(self, source, target):
+        candidates = list(
+            (FRIENDLY_DECK + MINION + PROTOSS).eval(source.game, source)
+        )
+        if not candidates:
+            return
+        card = source.game.random.choice(candidates)
+        source.game.cheat_action(source, [ForceDraw(card)])
+        if self.discount and not card.dead and card.zone == Zone.HAND:
+            source.game.cheat_action(source, [Buff(card, "SC_761e")])
+
+
+class _BlinkDrawCombo(_BlinkDraw):
+    """Blink (Combo) — also discount the drawn minion by (2)."""
+
+    discount = True
+
+
 ##
 # Minions
 
@@ -121,8 +177,37 @@ class GDB_876:
     play = _GiveOtherClassPiece(SELF)
 
 
+class SC_752:
+    """Dark Templar"""
+
+    # Stealth (data). Battlecry: Destroy an enemy minion. Play another Templar
+    # to merge into an Archon!
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_ENEMY_TARGET: 0,
+    }
+    play = Destroy(TARGET), _TemplarMerge(SELF)
+
+
+class SC_765:
+    """High Templar"""
+
+    # Battlecry: Deal 2 damage to all enemies. Play another Templar to merge
+    # into an Archon!
+    play = Hit(ENEMY_CHARACTERS, 2), _TemplarMerge(SELF)
+
+
 ##
 # Spells
+
+
+class SC_761:
+    """Blink"""
+
+    # Draw a Protoss minion. Combo: It costs (2) less.
+    play = _BlinkDraw(SELF)
+    combo = _BlinkDrawCombo(SELF)
 
 
 class GDB_102:
@@ -205,4 +290,14 @@ class GDB_881e:
         GameTag.CARDNAME: "Pressure Points",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
         GameTag.COST: -1,
+    }
+
+
+@custom_card
+class SC_761e:
+    # Blink (Combo) — the drawn Protoss minion costs (2) less.
+    tags = {
+        GameTag.CARDNAME: "Blink",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
     }

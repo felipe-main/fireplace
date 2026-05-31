@@ -313,7 +313,7 @@ class TSC_638e:
 
 
 class TSC_645:
-    """Mothership"""
+    """Stormcoil Mothership"""
 
     # Rush. Deathrattle: Summon two random Mechs that cost (3) or less.
     deathrattle = Summon(CONTROLLER, RandomMinion(race=Race.MECHANICAL, cost=3)) * 2

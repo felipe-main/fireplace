@@ -281,3 +281,81 @@ def test_ultraviolet_breaker_hits_enemy_minion_and_shuffles_three():
     assert target.damage == 3
     # 3 Asteroids shuffled into the caster's deck.
     assert len([c for c in p1.deck if c.id == ASTEROID]) == 3
+
+
+# ===========================================================================
+# Heroes of StarCraft — Terran (Shaman)
+# ===========================================================================
+from fireplace.actions import LaunchStarship
+
+
+def _build_and_launch(game, p1):
+    p1.summon("GDB_100").destroy()
+    game.process_deaths()
+    assert p1.is_building_starship
+    game.queue_actions(p1.hero, [LaunchStarship(p1)])
+    assert not p1.is_building_starship
+    assert p1._last_launched_ship is not None
+
+
+# SC_409 — Missile Pod: Starship Piece. Battlecry: Deal 1 damage to all
+# enemies. Also triggers on launch.
+def test_missile_pod_battlecry_hits_all_enemies():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    foe = p2.summon("CS2_182")  # 4/5
+    foe.max_health = 80
+    foe.damage = 0
+    p2.hero.set_current_health(30)
+    p1.give("SC_409").play()
+    assert foe.damage == 1
+    assert p2.hero.health == 29
+
+
+def test_missile_pod_launch_effect_fires_on_next_spell():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    foe = p2.summon("CS2_182")
+    foe.max_health = 80
+    foe.damage = 0
+    p2.hero.set_current_health(30)
+    mp = p1.give("SC_409")
+    mp.play()  # battlecry: 1 to all enemies
+    assert foe.damage == 1
+    mp.destroy()  # bank into a Starship
+    game.process_deaths()
+    game.queue_actions(p1.hero, [LaunchStarship(p1)])
+    # The launch ("Also triggers on launch") effect is the ship's spellburst,
+    # which fires on the next spell cast — dealing another 1 to all enemies.
+    p1.give("CS2_008").play(target=p2.hero)  # Moonfire (hero only)
+    assert foe.damage == 2  # the launch effect added the second tick
+
+
+# SC_413 — Siege Tank: Battlecry: Deal 10 damage to a random enemy minion.
+# (Transforms into Siege Tank, Deployed if you launched a Starship this game;
+# the deployed form deals 10 with excess hitting the enemy hero.)
+def test_siege_tank_battlecry_no_launch():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    foe = p2.summon("CS2_182")  # 4/5
+    foe.max_health = 80
+    foe.damage = 0
+    p2.hero.set_current_health(30)
+    st = p1.give("SC_413")
+    st.play()
+    assert foe.damage == 10  # 10 to the only enemy minion
+    assert p2.hero.health == 30  # no excess-to-hero in the base form
+    assert "SC_413" in [m.id for m in p1.field]  # not transformed
+
+
+def test_siege_tank_transforms_and_spills_excess_when_launched():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    _build_and_launch(game, p1)
+    foe = p2.summon("CS2_182")  # 4/5 — dies to 10, 5 excess to hero
+    p2.hero.set_current_health(30)
+    st = p1.give("SC_413")
+    st.play()
+    assert foe.dead  # took 10, destroyed
+    assert p2.hero.health == 25  # 5 excess damage spilled to the enemy hero
+    assert "SC_413t" in [m.id for m in p1.field]  # transformed to Deployed

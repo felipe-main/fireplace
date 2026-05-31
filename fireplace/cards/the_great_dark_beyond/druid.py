@@ -131,6 +131,59 @@ class _UluuChoose(TargetedAction):
         )
 
 
+class _ConstructPylons(TargetedAction):
+    """Construct Pylons — your next Protoss card this turn costs (2) less."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.next_protoss_card_discount += 2
+
+
+class _CarrierInterceptors(TargetedAction):
+    """Carrier — summon four 4/1 Interceptors, each attacking a random enemy.
+    Summon all four first, then have them swing (so a later Interceptor can't
+    be picked as an earlier one's target)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        summoned = []
+        for _ in range(4):
+            before = set(ctrl.field)
+            source.game.cheat_action(source, [Summon(ctrl, "SC_756t")])
+            summoned.extend(m for m in ctrl.field if m not in before)
+        for minion in summoned:
+            if minion.dead:
+                continue
+            enemies = [e for e in ENEMY_CHARACTERS.eval(source.game, source)
+                       if not e.dead]
+            if enemies:
+                source.game.cheat_action(
+                    source,
+                    [Attack(minion, source.game.random.choice(enemies))],
+                )
+
+
+class _ImmortalDoubleStats(TargetedAction):
+    """Immortal — Battlecry: spend 4 Mana to double this minion's stats."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None:
+            return
+        ctrl = source.controller
+        if ctrl.mana < 4:
+            return
+        ctrl.used_mana += 4
+        source.game.cheat_action(
+            source,
+            [Buff(target, "SC_763e", atk=target.atk, max_health=target.max_health)],
+        )
+
+
 ##
 # Minions
 
@@ -258,6 +311,33 @@ class GDB_883:
         Summon(CONTROLLER, RandomMinion(cost=2)) * 2,
         ManaThisTurn(CONTROLLER, 2),
     )
+
+
+##
+# Heroes of StarCraft — Protoss (Druid)
+
+
+class SC_755:
+    """Construct Pylons"""
+
+    # Your next Protoss card this turn costs (2) less.
+    play = _ConstructPylons(SELF)
+
+
+class SC_756:
+    """Carrier"""
+
+    # At the end of your turn, summon four 4/1 Interceptors that attack random
+    # enemies.
+    events = OWN_TURN_END.on(_CarrierInterceptors(SELF))
+
+
+class SC_763:
+    """Immortal"""
+
+    # Taunt, Divine Shield (data). Battlecry: Spend 4 Mana to double this
+    # minion's stats.
+    play = _ImmortalDoubleStats(SELF)
 
 
 ##

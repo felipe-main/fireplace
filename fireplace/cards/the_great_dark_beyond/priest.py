@@ -91,6 +91,65 @@ class _GravityLapse(TargetedAction):
                 m.damage = 0
 
 
+class _Hallucination(TargetedAction):
+    """Hallucination — summon a copy of a random friendly Protoss minion. The
+    copy takes double damage (INCOMING_DAMAGE_MULTIPLIER 1 == double)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        candidates = [
+            m for m in (FRIENDLY_MINIONS + PROTOSS).eval(source.game, source)
+            if not m.dead
+        ]
+        if not candidates:
+            return
+        original = source.game.random.choice(candidates)
+        copy = ctrl.card(original.id, source)
+        source.game.cheat_action(source, [Summon(ctrl, copy)])
+        if not copy.dead:
+            source.game.cheat_action(
+                source,
+                [
+                    Buff(copy, "SC_757e"),
+                    SetTags(copy, {GameTag.INCOMING_DAMAGE_MULTIPLIER: 1}),
+                ],
+            )
+
+
+class _ArmSentry(TargetedAction):
+    """Sentry — Deathrattle: your Protoss minions cost (1) less this game."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.protoss_cost_reduction += 1
+
+
+class _GiveRandomProtossMinions(TargetedAction):
+    """Mothership — get two random Protoss minions (added to hand)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from .. import db as _db
+
+        pool = [
+            cid
+            for cid, c in _db.items()
+            if c.collectible
+            and c.type == CardType.MINION
+            and c.tags.get(GameTag.PROTOSS, 0)
+        ]
+        if not pool:
+            return
+        for _ in range(2):
+            source.game.cheat_action(
+                source, [Give(source.controller, source.game.random.choice(pool))]
+            )
+
+
 ##
 # Minions
 
@@ -188,6 +247,33 @@ class GDB_464:
 
     # Set EVERY minion's Attack and Health to the lower of the two.
     play = _GravityLapse(SELF)
+
+
+##
+# Heroes of StarCraft — Protoss (Priest)
+
+
+class SC_757:
+    """Hallucination"""
+
+    # Summon a copy of a friendly Protoss minion. It takes double damage.
+    play = _Hallucination(SELF)
+
+
+class SC_762:
+    """Mothership"""
+
+    # Taunt (data). Battlecry and Deathrattle: Get two random Protoss minions.
+    play = _GiveRandomProtossMinions(SELF)
+    deathrattle = _GiveRandomProtossMinions(SELF)
+
+
+class SC_764:
+    """Sentry"""
+
+    # Lifesteal (data). Deathrattle: Your Protoss minions cost (1) less this
+    # game.
+    deathrattle = _ArmSentry(SELF)
 
 
 ##

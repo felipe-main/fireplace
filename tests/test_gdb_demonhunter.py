@@ -297,3 +297,89 @@ def test_infiltrate_hits_all_other_minions_not_the_chosen():
     assert chosen.damage == 0           # the chosen minion is spared
     assert other_friendly.damage == 3   # every OTHER minion takes 3
     assert other_enemy.damage == 3
+
+
+# SC_009 — Lurker: After a friendly minion attacks, deal 1 damage to a random
+# enemy (or 2 if your minion is a Zerg).
+def test_lurker_nonzerg_attacker_deals_1_to_random_enemy():
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1, p2 = game.player1, game.player2
+    # Single enemy so the "random enemy" is deterministic: the enemy hero.
+    p2.hero.max_health = 80
+    p2.hero._max_health = 80
+    lurker = p1.summon("SC_009")
+    attacker = p1.summon(WISP)  # 1/1, NOT a Zerg
+    attacker.charge = True
+    attacker.attack(p2.hero)
+    # Wisp deals 1 in combat + Lurker triggers 1 more (non-Zerg) = 2 total.
+    assert p2.hero.damage == 2
+
+
+def test_lurker_zerg_attacker_deals_2_to_random_enemy():
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1, p2 = game.player1, game.player2
+    p2.hero.max_health = 80
+    p2.hero._max_health = 80
+    lurker = p1.summon("SC_009")
+    attacker = p1.summon("SC_019t")  # 1/1 Baneling — a Zerg
+    attacker.charge = True
+    attacker.attack(p2.hero)
+    # Baneling deals 1 in combat + Lurker triggers 2 (Zerg) = 3 total.
+    assert p2.hero.damage == 3
+
+
+# SC_011 — Creep Tumor: Your Zerg minions have +1 Attack and Rush. Lasts 3
+# turns.
+def test_creep_tumor_buffs_zerg_attack_and_rush():
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    zerg = p1.summon("SC_006")  # 8/8 Zerg Ultralisk
+    nonzerg = p1.summon(WISP)   # 1/1 non-Zerg
+    base_zerg_atk = zerg.atk
+    spell = p1.give("SC_011")
+    spell.play()
+    # Zerg gets +1 Attack and Rush; non-Zerg is untouched.
+    assert zerg.atk == base_zerg_atk + 1
+    assert zerg.rush
+    assert nonzerg.atk == 1
+    assert not nonzerg.rush
+
+
+# SC_022 — Mutalisk: Also damages minions next to whomever this attacks (and
+# the enemy hero if a neighbor is missing).
+def test_mutalisk_splashes_both_neighbors():
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1, p2 = game.player1, game.player2
+    muta = p1.summon("SC_022")  # 5/2
+    muta.charge = True
+    left = p2.summon(TARGET_DUMMY)
+    mid = p2.summon(TARGET_DUMMY)
+    right = p2.summon(TARGET_DUMMY)
+    for m in (left, mid, right):
+        m.max_health = 80
+        m._max_health = 80
+    muta.attack(mid)
+    # mid takes the combat 5; both neighbors take the 5 splash.
+    assert mid.damage == 5
+    assert left.damage == 5
+    assert right.damage == 5
+
+
+def test_mutalisk_missing_neighbor_hits_enemy_hero():
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1, p2 = game.player1, game.player2
+    p2.hero.max_health = 80
+    p2.hero._max_health = 80
+    muta = p1.summon("SC_022")  # 5/2
+    muta.charge = True
+    left = p2.summon(TARGET_DUMMY)
+    target = p2.summon(TARGET_DUMMY)  # rightmost -> no right neighbor
+    for m in (left, target):
+        m.max_health = 80
+        m._max_health = 80
+    muta.attack(target)
+    # target takes combat 5; left neighbor takes 5; missing right neighbor
+    # routes its 5 to the enemy hero.
+    assert target.damage == 5
+    assert left.damage == 5
+    assert p2.hero.damage == 5

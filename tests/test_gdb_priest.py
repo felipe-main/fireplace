@@ -323,3 +323,71 @@ def test_gravity_lapse_sets_all_to_lower_stat():
     assert (c.atk, c.max_health) == (1, 1)
     # Damage cleared by the effect.
     assert a.damage == 0 and b.damage == 0 and c.damage == 0
+
+
+# SC_757 — Hallucination (spell, 1): Summon a copy of a friendly Protoss
+# minion. It takes double damage.
+def test_hallucination_copies_protoss_and_takes_double_damage():
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    # Sole friendly Protoss minion: a 10/10 Mothership (Taunt). The copy is the
+    # only valid pick, so the outcome is deterministic.
+    orig = p1.summon("SC_762")
+    pre_count = len(p1.field)
+    p1.give("SC_757").play()
+    assert len(p1.field) == pre_count + 1
+    copy = p1.field[-1]
+    assert copy.id == "SC_762"
+    assert copy is not orig
+    assert copy.atk == 10 and copy.max_health == 10
+    # Takes double damage: hit for 3 lands as 6.
+    game.queue_actions(p1.hero, [Hit(copy, 3)])
+    assert copy.damage == 6
+    # The original is unaffected by the double-damage marker.
+    game.queue_actions(p1.hero, [Hit(orig, 3)])
+    assert orig.damage == 3
+
+
+def test_hallucination_no_protoss_minion_does_nothing():
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    # Only a non-Protoss minion on board -> nothing to copy.
+    p1.summon("CS2_182")  # Chillwind Yeti (not Protoss)
+    pre = len(p1.field)
+    p1.give("SC_757").play()
+    assert len(p1.field) == pre
+
+
+# SC_762 — Mothership (12/10/10): Taunt. Battlecry and Deathrattle: Get two
+# random Protoss minions.
+def test_mothership_battlecry_and_deathrattle_get_protoss():
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    mothership = p1.give("SC_762")
+    mothership.cost = 0
+    pre_with_card = len(p1.hand)
+    mothership.play()  # battlecry: +2 protoss minions
+    assert len(p1.hand) == pre_with_card - 1 + 2  # mothership left hand, +2
+    for c in p1.hand:
+        assert _cards.db[c.id].tags.get(GameTag.PROTOSS)
+        assert c.type == CardType.MINION
+    assert mothership.taunt
+    # Deathrattle: another two Protoss minions.
+    hand_before_death = len(p1.hand)
+    mothership.destroy()
+    assert len(p1.hand) == hand_before_death + 2
+
+
+# SC_764 — Sentry (2/2/2): Lifesteal. Deathrattle: Your Protoss minions cost
+# (1) less this game.
+def test_sentry_deathrattle_protoss_discount():
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    sentry = p1.summon("SC_764")
+    assert sentry.lifesteal
+    assert p1.protoss_cost_reduction == 0
+    sentry.destroy()
+    assert p1.protoss_cost_reduction == 1
+    # A Protoss card in hand now costs (1) less.
+    coil = p1.give("SC_762")  # base 12
+    assert coil.cost == 12 - 1

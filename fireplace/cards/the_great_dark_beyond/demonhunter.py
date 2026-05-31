@@ -98,6 +98,66 @@ class _StarConverge(TargetedAction):
         hand.extend(cards)
 
 
+class _LurkerStrike(TargetedAction):
+    """Lurker — after a friendly minion attacks, deal 1 damage to a random
+    enemy, or 2 if the attacking minion is a Zerg. ATTACKER arrives via
+    Attack.ATTACKER (a list, CardArg semantics)."""
+
+    TARGET = ActionArg()
+    ATTACKER = ActionArg()
+
+    def do(self, source, target, attacker):
+        if isinstance(attacker, (list, tuple)):
+            attacker = attacker[0] if attacker else None
+        if attacker is None:
+            return
+        # Faction tags live on the data card, not the runtime tags dict.
+        is_zerg = bool(
+            getattr(attacker, "data", None)
+            and attacker.data.tags.get(GameTag.ZERG, 0)
+        )
+        amount = 2 if is_zerg else 1
+        enemies = (ENEMY_CHARACTERS).eval(source.game, source)
+        if enemies:
+            victim = source.game.random.choice(enemies)
+            source.game.cheat_action(source, [Hit(victim, amount)])
+
+
+class _MutaliskSplash(TargetedAction):
+    """Mutalisk — when it attacks, also damage the minions next to its target
+    (and the enemy hero if a neighbor slot is missing). DEFENDER arrives via
+    Attack.DEFENDER (a list, CardArg semantics)."""
+
+    TARGET = ActionArg()
+    DEFENDER = ActionArg()
+
+    def do(self, source, target, defender):
+        if isinstance(defender, (list, tuple)):
+            defender = defender[0] if defender else None
+        if defender is None or defender.zone != Zone.PLAY:
+            return
+        if defender.type != CardType.MINION:
+            return
+        field = defender.controller.field
+        if defender not in field:
+            return
+        amount = source.atk
+        if amount <= 0:
+            return
+        enemy_hero = (ENEMY_HERO).eval(source.game, source)
+        hero = enemy_hero[0] if enemy_hero else None
+        idx = field.index(defender)
+        left = field[idx - 1] if idx > 0 else None
+        right = field[idx + 1] if idx + 1 < len(field) else None
+        extras = []
+        # Missing neighbor -> the enemy hero takes the splash instead.
+        extras.append(left if left is not None else hero)
+        extras.append(right if right is not None else hero)
+        for e in extras:
+            if e is not None:
+                source.game.cheat_action(source, [Hit(e, amount)])
+
+
 ##
 # Minions
 
@@ -147,6 +207,24 @@ class GDB_471:
     events = OWN_TURN_END.on(_GiveRandomCrewmate(SELF))
 
 
+class SC_009:
+    """Lurker"""
+
+    # After a friendly minion attacks, deal 1 damage to a random enemy (or 2
+    # if your minion is a Zerg).
+    events = Attack(FRIENDLY + MINION).after(
+        _LurkerStrike(SELF, Attack.ATTACKER)
+    )
+
+
+class SC_022:
+    """Mutalisk"""
+
+    # Also damages minions next to whomever this attacks (and the enemy hero
+    # if a neighbor is missing).
+    events = Attack(SELF).after(_MutaliskSplash(SELF, Attack.DEFENDER))
+
+
 ##
 # Spells
 
@@ -185,6 +263,18 @@ class GDB_902:
         PlayReq.REQ_MINION_TARGET: 0,
     }
     play = Hit(ALL_MINIONS - TARGET, 3)
+
+
+class SC_011:
+    """Creep Tumor"""
+
+    # Your Zerg minions have +1 Attack and Rush. Lasts 3 turns. The card is an
+    # OBJECTIVE/OBJECTIVE_AURA (data) that stays in play for 3 turns; its
+    # update aura is refreshed each tick (cf. Field of Strife, AV_661).
+    update = (
+        Refresh(FRIENDLY_MINIONS + ZERG, {GameTag.ATK: 1}),
+        Refresh(FRIENDLY_MINIONS + ZERG, {GameTag.RUSH: True}),
+    )
 
 
 ##

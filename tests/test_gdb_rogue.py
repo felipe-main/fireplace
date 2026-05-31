@@ -392,3 +392,100 @@ def test_pressure_points_deals_3_and_discounts_combo_in_hand():
     # Combo card in hand cost reduced by (1); non-Combo unchanged.
     assert combo_card.cost == 2 - 1
     assert plain.cost == 4
+
+
+# SC_752 — Dark Templar (6/5/3): Stealth. Battlecry: Destroy an enemy minion.
+# Play another Templar to merge into an Archon!
+def test_dark_templar_destroys_and_is_stealthed():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    victim = p2.summon("CS2_182")  # 4/5
+    dt = p1.give("SC_752")
+    dt.cost = 0
+    dt.play(target=victim)
+    assert victim.dead
+    assert dt.stealthed
+    assert dt.id == "SC_752"  # no merge with only one Templar
+
+
+# SC_765 — High Templar (6/3/5): Battlecry: Deal 2 damage to all enemies.
+# Play another Templar to merge into an Archon!
+def test_high_templar_aoe():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    e1 = p2.summon("CS2_182")  # 4/5
+    e1.max_health = 80
+    e1.damage = 0
+    ht = p1.give("SC_765")
+    ht.cost = 0
+    ht.play()
+    assert e1.damage == 2
+    assert p2.hero.health == 30 - 2
+    assert ht.id == "SC_765"  # no merge alone
+
+
+# SC_752 + SC_765 — playing a second Templar while you control one merges both
+# into an Archon (SC_671t1).
+def test_two_templars_merge_into_archon():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    # First Templar on board (no enemy minion needed; Dark Templar battlecry
+    # only fires when played from hand — summon bypasses it).
+    first = p1.summon("SC_765")  # High Templar 3/5
+    assert [m.id for m in p1.field] == ["SC_765"]
+    # Play the second Templar: its battlecry resolves, then both merge.
+    second = p1.give("SC_765")
+    second.cost = 0
+    second.play()
+    ids = [m.id for m in p1.field]
+    assert ids == ["SC_671t1"]  # exactly one Archon, both Templars gone
+    archon = p1.field[0]
+    assert archon.atk == 8 and archon.max_health == 8
+
+
+def test_archon_end_of_turn_damage():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    enemy = p2.summon("CS2_182")  # 4/5
+    enemy.max_health = 80
+    enemy.damage = 0
+    p1.summon("SC_671t1")
+    game.end_turn()
+    # End of your turn: 8 to enemy hero, 2 to enemy minions.
+    assert p2.hero.health == 30 - 8
+    assert enemy.damage == 2
+
+
+# SC_761 — Blink (spell, 2): Draw a Protoss minion. Combo: It costs (2) less.
+def test_blink_draws_protoss_minion_no_combo():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    # Stock the deck with exactly one Protoss minion + some non-Protoss noise.
+    proto = p1.give("SC_762")  # Mothership
+    proto.zone = Zone.DECK
+    noise = p1.give("CS2_182")
+    noise.zone = Zone.DECK
+    p1.combo = False
+    blink = p1.give("SC_761")
+    blink.play()
+    # The Protoss minion is drawn into hand; no combo -> full cost.
+    drawn = [c for c in p1.hand if c.id == "SC_762"]
+    assert len(drawn) == 1
+    assert drawn[0].cost == 12
+
+
+def test_blink_combo_discounts_drawn_minion():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.current_player
+    proto = p1.give("SC_762")  # Mothership, base 12
+    proto.zone = Zone.DECK
+    p1.combo = True  # a card was already played this turn
+    blink = p1.give("SC_761")
+    blink.play()
+    drawn = [c for c in p1.hand if c.id == "SC_762"]
+    assert len(drawn) == 1
+    assert drawn[0].cost == 12 - 2  # Combo: (2) less

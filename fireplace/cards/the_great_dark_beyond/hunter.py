@@ -44,6 +44,22 @@ class _LaserBarrage(TargetedAction):
                 source.game.cheat_action(source, [Hit(nb, amount)])
 
 
+class _HydraliskBarrage(TargetedAction):
+    """Hydralisk — deal 2 damage to a random enemy, then repeat once for each
+    OTHER Zerg minion you control (count fixed at battlecry time)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        others = len((FRIENDLY_MINIONS + ZERG - SELF).eval(source.game, source))
+        for _ in range(others + 1):
+            enemies = (ENEMY_CHARACTERS).eval(source.game, source)
+            if not enemies:
+                break
+            victim = source.game.random.choice(enemies)
+            source.game.cheat_action(source, [Hit(victim, 2)])
+
+
 ##
 # Minions
 
@@ -99,6 +115,23 @@ class GDB_846:
     play = Summon(CONTROLLER, "GDB_846hp")
 
 
+class SC_008:
+    """Hydralisk"""
+
+    # Battlecry: Deal 2 damage to a random enemy. Repeat for each other Zerg
+    # minion you control.
+    play = _HydraliskBarrage(SELF)
+
+
+class SC_012:
+    """Roach"""
+
+    # When you draw this, get a copy of it. Battlecry: If you control another
+    # Zerg minion, gain +1/+2.
+    draw = Give(CONTROLLER, ExactCopy(SELF))
+    play = (Count(FRIENDLY_MINIONS + ZERG - SELF) >= 1) & Buff(SELF, "SC_012e")
+
+
 ##
 # Weapons
 
@@ -148,6 +181,17 @@ class GDB_845:
     play = _LaserBarrage(TARGET)
 
 
+class SC_021:
+    """Evolution Chamber"""
+
+    # Give your minions +1 Attack. Give your Zerg an extra +1/+1. Non-Zerg
+    # get SC_021e2 (+1 Attack); Zerg get the combined SC_021e (+2/+1).
+    play = (
+        Buff(FRIENDLY_MINIONS - ZERG, "SC_021e2"),
+        Buff(FRIENDLY_MINIONS + ZERG, "SC_021e"),
+    )
+
+
 ##
 # Tokens
 
@@ -182,3 +226,18 @@ class GDB_844e:
 class GDB_843e2:
     # Angular Immunity — your hero is Immune this turn.
     tags = {GameTag.CANT_BE_DAMAGED: True}
+
+
+class SC_012e:
+    # Adaptive Plating — +1/+2. (Data ships the enchant with no stat tags.)
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 2}
+
+
+class SC_021e:
+    # Perfect Evolution — +2/+1 (the combined buff for your Zerg).
+    tags = {GameTag.ATK: 2, GameTag.HEALTH: 1}
+
+
+class SC_021e2:
+    # Primal Evolution — +1 Attack (for non-Zerg minions).
+    tags = {GameTag.ATK: 1}

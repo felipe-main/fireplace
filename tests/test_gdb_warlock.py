@@ -327,3 +327,98 @@ def test_archimonde_ignores_demons_that_started_in_deck():
     arch.play()
     # No deck-origin Demon is resummoned.
     assert not [m for m in p1.field if m.id == "EX1_598"]
+
+
+# SC_019 — Ultralisk Cavern (Location): Deal 1 damage to all enemies.
+# Deathrattle: Summon an 8/8 Ultralisk with Rush.
+def test_ultralisk_cavern_activate_hits_all_enemies():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    p2.hero.max_health = 80
+    p2.hero._max_health = 80
+    enemy_minion = p2.summon(TARGET_DUMMY)
+    enemy_minion.max_health = 80
+    enemy_minion._max_health = 80
+    loc = p1.give("SC_019")
+    loc.play()
+    assert loc.type == CardType.LOCATION
+    loc.turn_played = -5
+    loc.cooldown = 0
+    loc.use()
+    # Deal 1 to every enemy: hero and minion.
+    assert p2.hero.damage == 1
+    assert enemy_minion.damage == 1
+
+
+def test_ultralisk_cavern_deathrattle_summons_ultralisk():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    loc = p1.give("SC_019")
+    loc.play()
+    # Drain its durability so destroying it fires the deathrattle.
+    loc.destroy()
+    game.process_deaths()
+    ultras = [m for m in p1.field if m.id == "SC_006"]
+    assert len(ultras) == 1
+    ultra = ultras[0]
+    assert (ultra.atk, ultra.max_health) == (8, 8)
+    assert ultra.rush
+
+
+# SC_020 — Consume: Remove 1 Durability from a friendly location to restore 8
+# Health to your hero.
+def test_consume_removes_durability_and_heals_8():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    p1.hero.max_health = 80
+    p1.hero._max_health = 80
+    p1.hero.damage = 20
+    loc = p1.give("SC_019")
+    loc.play()
+    dur_before = loc.durability
+    spell = p1.give("SC_020")
+    spell.play()
+    # One durability removed; hero restored by 8 (20 -> 12 damage).
+    assert loc.durability == dur_before - 1
+    assert p1.hero.damage == 12
+
+
+def test_consume_no_location_no_heal():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    p1.hero.max_health = 80
+    p1.hero._max_health = 80
+    p1.hero.damage = 20
+    spell = p1.give("SC_020")
+    spell.play()
+    # No friendly location -> nothing happens.
+    assert p1.hero.damage == 20
+
+
+# SC_023 — Spine Crawler: Taunt. Can't attack. Has +3 Attack if you control a
+# location.
+def test_spine_crawler_gains_attack_with_location():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    crawler = p1.summon("SC_023")  # 1/6 Taunt, can't attack
+    assert crawler.taunt
+    assert crawler.cant_attack
+    # No location yet -> base 1 Attack.
+    assert crawler.atk == 1
+    loc = p1.give("SC_019")
+    loc.play()
+    # Controlling a location -> +3 Attack = 4.
+    assert crawler.atk == 4
+
+
+def test_spine_crawler_loses_attack_when_location_gone():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    crawler = p1.summon("SC_023")
+    loc = p1.give("SC_019")
+    loc.play()
+    assert crawler.atk == 4
+    loc.destroy()
+    game.process_deaths()
+    # Location gone -> back to base 1 Attack.
+    assert crawler.atk == 1

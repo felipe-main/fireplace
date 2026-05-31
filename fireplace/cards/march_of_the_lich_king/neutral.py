@@ -597,7 +597,7 @@ class RLK_955(ManathirstCardtextMixin):
 
 
 class RLK_957:
-	"""Banshee"""
+	"""Wailing Banshee"""
 
 	# Deathrattle: Give a random friendly Undead +2/+1.
 	deathrattle = Buff(

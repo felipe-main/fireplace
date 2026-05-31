@@ -372,3 +372,81 @@ def test_orbital_satellite_double_discover_with_adjacent_play():
         p1.choice.choose(p1.choice.cards[0])
     assert n == 2  # adjacent play -> two Discovers
     assert len(p1.hand) == pre_hand + 2
+
+
+# ===========================================================================
+# Heroes of StarCraft — Terran (Paladin)
+# ===========================================================================
+from fireplace.actions import LaunchStarship
+
+
+def _build_and_launch(game, p1):
+    """Bank one piece (GDB_100) into a Starship, then launch it. Leaves
+    p1._last_launched_ship set so "if you launched a Starship this game"
+    conditions are satisfied."""
+    p1.summon("GDB_100").destroy()
+    game.process_deaths()
+    assert p1.is_building_starship
+    game.queue_actions(p1.hero, [LaunchStarship(p1)])
+    assert not p1.is_building_starship
+    assert p1._last_launched_ship is not None
+
+
+# SC_405 — Ultra-Capacitor: Starship Piece. Battlecry: Gain +1/+1 for each
+# other friendly minion. Also triggers on launch.
+def test_ultra_capacitor_battlecry_buffs_per_other_minion():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    p1.summon("CS2_182")  # two other friendly minions
+    p1.summon("CS2_182")
+    uc = p1.give("SC_405")  # base 1/1
+    uc.play()
+    # +1/+1 for each of the two other minions -> 3/3.
+    assert (uc.atk, uc.max_health) == (3, 3)
+
+
+def test_ultra_capacitor_no_other_minions_no_buff():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    uc = p1.give("SC_405")
+    uc.play()
+    assert (uc.atk, uc.max_health) == (1, 1)
+
+
+# SC_412 — Hellion: Your other minions have +1 Attack. (Transforms into Hellbat
+# if you launched a Starship this game — that aura is +2 Attack and Rush.)
+def test_hellion_aura_plus_one_attack_no_launch():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    ally = p1.summon("CS2_182")  # 4/5
+    hellion = p1.give("SC_412")
+    hellion.play()
+    field_ids = [m.id for m in p1.field]
+    assert "SC_412" in field_ids and "SC_412t" not in field_ids  # no transform
+    assert ally.atk == 5  # +1 from Hellion's aura
+    assert not ally.rush  # Hellion grants only +1 Attack, not Rush
+
+
+def test_hellion_transforms_into_hellbat_when_launched():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    _build_and_launch(game, p1)
+    ally = p1.summon("CS2_182")  # 4/5
+    hellion = p1.give("SC_412")
+    hellion.play()
+    field_ids = [m.id for m in p1.field]
+    assert "SC_412t" in field_ids and "SC_412" not in field_ids  # transformed
+    assert ally.atk == 6  # +2 from Hellbat's aura
+    assert ally.rush  # Hellbat grants Rush too
+
+
+# SC_404 — Salvage the Bunker: Summon two 2/2 Marines with Taunt. Your next
+# Starship launch costs (2) less.
+def test_salvage_the_bunker_summons_marines_and_discounts_launch():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    p1.give("SC_404").play()
+    marines = [m for m in p1.field if m.id == "SC_403t"]
+    assert len(marines) == 2
+    assert all((m.atk, m.max_health) == (2, 2) and m.taunt for m in marines)
+    assert p1.starship_launch_discount == 2

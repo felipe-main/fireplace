@@ -297,3 +297,67 @@ def test_assimilating_blight_summons_discovered_minion_with_reborn():
     assert summoned.cost == 3
     assert summoned.has_deathrattle
     assert summoned.reborn
+
+
+# SC_001 — Baneling Barrage: Get a 1/1 Baneling that explodes. If you control
+# a Zerg minion, get another Baneling.
+def test_baneling_barrage_no_zerg_one_token():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    spell = p1.give("SC_001")
+    spell.play()
+    banelings = [c for c in p1.hand if c.id == "SC_019t"]
+    assert len(banelings) == 1
+
+
+def test_baneling_barrage_with_zerg_two_tokens():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.summon("SC_006")  # an 8/8 Zerg Ultralisk in play
+    spell = p1.give("SC_001")
+    spell.play()
+    banelings = [c for c in p1.hand if c.id == "SC_019t"]
+    assert len(banelings) == 2
+
+
+# SC_002 — Infestor: Deathrattle: Your Zerg minions have +1/+1 for the rest of
+# the game.
+def test_infestor_deathrattle_buffs_current_and_future_zerg():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    existing = p1.summon("SC_006")  # 8/8 Zerg already on board
+    infestor = p1.summon("SC_002")
+    assert (existing.atk, existing.health) == (8, 8)
+    infestor.destroy()
+    game.process_deaths()
+    # Existing Zerg gets +1/+1.
+    assert (existing.atk, existing.health) == (9, 9)
+    # A Zerg summoned AFTER the deathrattle also gets +1/+1 (rest of game aura).
+    later = p1.summon("SC_006")
+    assert (later.atk, later.health) == (9, 9)
+
+
+# SC_018 — Viper: Battlecry: Summon a minion from your opponent's hand. Your
+# other Zerg minions gain Reborn and attack it.
+def test_viper_summons_from_opponent_hand_and_other_zerg_reborn_attack():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1, p2 = game.player1, game.player2
+    p2.discard_hand()
+    # The only minion in p2's hand is the target; give it big health so it
+    # survives the attack and we can read the damage exactly.
+    victim_card = p2.give(TARGET_DUMMY)  # 0/4 Taunt
+    victim_card.max_health = 80
+    # One friendly Zerg minion already in play (the "other" that attacks).
+    ally = p1.summon("SC_006")  # 8/8 Zerg
+    assert not ally.reborn
+    viper = p1.give("SC_018")
+    viper.play()
+    # The opponent's minion was summoned to p2's board (left their hand).
+    assert victim_card.zone == Zone.PLAY
+    assert victim_card.controller is p2
+    # The other Zerg gained Reborn...
+    assert ally.reborn
+    # ...and attacked the summoned minion: the 8-atk Ultralisk dealt exactly 8.
+    assert victim_card.damage == 8

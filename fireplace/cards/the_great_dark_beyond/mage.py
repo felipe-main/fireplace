@@ -104,6 +104,51 @@ class _BlazingAccretion(TargetedAction):
                 card.zone = Zone.GRAVEYARD
 
 
+class _ColossusBlast(TargetedAction):
+    """Colossus — deal damage to all enemies, twice, where the amount equals
+    the number of Protoss spells you've cast this game."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        amount = source.controller.protoss_spells_cast_this_game
+        if amount <= 0:
+            return
+        source.game.cheat_action(source, [Hit(ENEMY_CHARACTERS, amount)])
+        source.game.cheat_action(source, [Hit(ENEMY_CHARACTERS, amount)])
+
+
+class _ArmShieldBattery(TargetedAction):
+    """Shield Battery — your next Protoss spell costs (2) less."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.next_protoss_spell_discount += 2
+
+
+class _GiveRandomProtossSpell(TargetedAction):
+    """Resonance Coil — get a random Protoss spell."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from .. import db as _db
+
+        pool = [
+            cid
+            for cid, c in _db.items()
+            if c.collectible
+            and c.type == CardType.SPELL
+            and c.tags.get(GameTag.PROTOSS, 0)
+        ]
+        if not pool:
+            return
+        source.game.cheat_action(
+            source, [Give(source.controller, source.game.random.choice(pool))]
+        )
+
+
 ##
 # Minions
 
@@ -212,6 +257,36 @@ class GDB_456:
             yield Hit(self.target, 4)
         else:
             yield Hit(RANDOM(ENEMY_CHARACTERS), 4)
+
+
+##
+# Heroes of StarCraft — Protoss (Mage)
+
+
+class SC_758:
+    """Colossus"""
+
+    # Battlecry: Deal @ damage to all enemies, twice. (@ = the number of
+    # Protoss spells you've cast this game.)
+    play = _ColossusBlast(SELF)
+
+
+class SC_759:
+    """Shield Battery"""
+
+    # Gain 6 Armor. Your next Protoss spell costs (2) less.
+    play = GainArmor(FRIENDLY_HERO, 6), _ArmShieldBattery(SELF)
+
+
+class SC_760:
+    """Resonance Coil"""
+
+    # Deal $5 damage to a minion. Get a random Protoss spell.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Hit(TARGET, 5), _GiveRandomProtossSpell(SELF)
 
 
 ##

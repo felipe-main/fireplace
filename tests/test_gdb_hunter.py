@@ -309,3 +309,79 @@ def test_eggburster_token_stats():
     t = game.player1.summon("GDB_840t")
     assert (t.atk, t.max_health) == (3, 5)
     assert Race.BEAST in t.races
+
+
+# SC_008 — Hydralisk: Battlecry: Deal 2 damage to a random enemy. Repeat for
+# each other Zerg minion you control.
+def test_hydralisk_no_other_zerg_deals_2_once():
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1, p2 = game.player1, game.player2
+    # Lone enemy target so the random enemy is deterministic.
+    p2.hero.max_health = 80
+    p2.hero._max_health = 80
+    hydra = p1.give("SC_008")
+    hydra.play()
+    # No other Zerg -> exactly one 2-damage hit.
+    assert p2.hero.damage == 2
+
+
+def test_hydralisk_repeats_per_other_zerg():
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1, p2 = game.player1, game.player2
+    p2.hero.max_health = 80
+    p2.hero._max_health = 80
+    # Two OTHER Zerg minions already in play.
+    p1.summon("SC_006")  # Zerg
+    p1.summon("SC_006")  # Zerg
+    hydra = p1.give("SC_008")
+    hydra.play()
+    # 1 base + 2 repeats = 3 hits of 2 = 6 damage to the lone enemy hero.
+    assert p2.hero.damage == 6
+
+
+# SC_012 — Roach: When you draw this, get a copy of it. Battlecry: If you
+# control another Zerg minion, gain +1/+2.
+def test_roach_draw_makes_a_copy():
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.give("SC_012").shuffle_into_deck()
+    roach = next(c for c in p1.deck if c.id == "SC_012")
+    roach.draw()
+    copies = [c for c in p1.hand if c.id == "SC_012"]
+    # The drawn Roach plus a fresh copy = two in hand.
+    assert len(copies) == 2
+
+
+def test_roach_battlecry_buffs_with_another_zerg():
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.summon("SC_006")  # another Zerg in play
+    roach = p1.give("SC_012")
+    roach.play()
+    # 2/2 base + 1/2 = 3/4.
+    assert (roach.atk, roach.max_health) == (3, 4)
+
+
+def test_roach_battlecry_no_buff_without_another_zerg():
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    roach = p1.give("SC_012")
+    roach.play()
+    # No other Zerg -> stays 2/2.
+    assert (roach.atk, roach.max_health) == (2, 2)
+
+
+# SC_021 — Evolution Chamber: Give your minions +1 Attack. Give your Zerg an
+# extra +1/+1.
+def test_evolution_chamber_buffs_minions_and_extra_for_zerg():
+    game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    zerg = p1.summon("SC_006")  # 8/8 Zerg
+    nonzerg = p1.summon(WISP)   # 1/1 non-Zerg
+    spell = p1.give("SC_021")
+    spell.play()
+    # Non-Zerg: +1 Attack only.
+    assert (nonzerg.atk, nonzerg.max_health) == (2, 1)
+    # Zerg: +1 Attack (all) + extra +1/+1 = +2/+1 total.
+    assert (zerg.atk, zerg.max_health) == (10, 9)

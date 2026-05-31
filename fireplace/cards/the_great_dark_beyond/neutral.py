@@ -826,3 +826,368 @@ class GDB_878e:
     # MRGLGIGA BRAIN — Deathrattle: Draw a card.
     tags = {GameTag.DEATHRATTLE: True}
     deathrattle = Draw(CONTROLLER)
+
+
+##
+# Heroes of StarCraft (SC_) — NEUTRAL-file cards
+#
+# (Multi-class cards are filed here by the work split; class assignment is
+# organizational only. Faction membership — PROTOSS / TERRAN / ZERG — is a
+# GameTag, matched by the selectors of the same name.)
+
+
+# The five Terran Starship Pieces a Starport / Lift Off can produce. SC_403e is
+# an enchantment, not a Piece, so it is intentionally absent.
+_STARPORT_PIECES = ["SC_403a", "SC_403b", "SC_403c", "SC_403d", "SC_403f"]
+
+# Launched-ship board tokens (per-class building/launched Starship + the Terran
+# Battlecruiser). Jim Raynor reads these to find ships launched this game.
+_LAUNCHED_SHIP_IDS = (
+    "GDB_100t2",
+    "GDB_100t4",
+    "GDB_100t5",
+    "GDB_100t6",
+    "GDB_100t7",
+    "GDB_100t8",
+    "GDB_100t9",
+    "SC_999t",
+)
+
+
+class _SummonStarportPiece(TargetedAction):
+    """Starport / Lift Off — summon a random 2/1 Terran Starship Piece with an
+    effect when launched."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choice = source.game.random.choice(_STARPORT_PIECES)
+        source.game.cheat_action(source, [Summon(source.controller, choice)])
+
+
+class _StarshipLaunchDiscount(TargetedAction):
+    """SCV — "Your next Starship launch costs (N) less." Bumps the player attr
+    the Launch Starship button (GDB_905) consumes."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        target.starship_launch_discount += amount
+
+
+class _NextProtossMinionDiscount(TargetedAction):
+    """Warp Gate — "Your next Protoss minion costs (N) less." Bumps the player
+    attr Card.cost consumes for the next Protoss minion."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        target.next_protoss_minion_discount += amount
+
+
+class _ProtossCostReduction(TargetedAction):
+    """Photon Cannon / Artanis — "Your Protoss minions cost (N) less this game."
+    Permanent, minion-scoped reduction read by Card.cost."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        target.protoss_cost_reduction += amount
+
+
+class _DrawFactionCards(TargetedAction):
+    """Draw N cards of a given faction GameTag from your deck (Lift Off,
+    Chrono Boost). The faction GameTag and count are fixed at construction."""
+
+    TARGET = ActionArg()
+
+    def __init__(self, target, faction, count):
+        super().__init__(target)
+        self._faction = faction
+        self._count = count
+
+    def do(self, source, target):
+        for _ in range(self._count):
+            pool = [
+                c
+                for c in source.controller.deck
+                if c.data.tags.get(self._faction, 0)
+            ]
+            if not pool:
+                break
+            card = source.game.random.choice(pool)
+            source.game.cheat_action(source, [ForceDraw(card)])
+
+
+class _NydusWorm(TargetedAction):
+    """Nydus Worm — draw two Zerg cards; they cost (1) less."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        drawn = []
+        for _ in range(2):
+            pool = [
+                c for c in source.controller.deck if c.data.tags.get(GameTag.ZERG, 0)
+            ]
+            if not pool:
+                break
+            card = source.game.random.choice(pool)
+            source.game.cheat_action(source, [ForceDraw(card)])
+            drawn.append(card)
+        for card in drawn:
+            if card.zone == Zone.HAND:
+                source.game.cheat_action(source, [Buff(card, "SC_015e3")])
+
+
+class _Grunty(TargetedAction):
+    """Grunty — summon four random Murlocs, then shoot them at enemy minions
+    (each Murloc deals its Attack to an enemy minion)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from .. import db as _db
+
+        ctrl = source.controller
+        pool = [
+            cid
+            for cid, c in _db.items()
+            if c.collectible
+            and c.type == CardType.MINION
+            and Race.MURLOC in getattr(c, "races", [])
+        ]
+        murlocs = []
+        for _ in range(4):
+            if ctrl.minion_slots <= 0 or not pool:
+                break
+            cid = source.game.random.choice(pool)
+            before = set(ctrl.field)
+            source.game.cheat_action(source, [Summon(ctrl, cid)])
+            # The directly-summoned Murloc (ignore any tokens its own battlecry
+            # may have spawned — "shoot THEM" means the four summoned Murlocs).
+            new = [m for m in ctrl.field if m not in before and m.id == cid]
+            if new:
+                murlocs.append(new[0])
+        # Shoot each summoned Murloc at an enemy minion. "You pick the targets"
+        # — with no interactive picker available, fire at a random enemy minion;
+        # each shot deals that Murloc's Attack as damage.
+        for murloc in murlocs:
+            enemies = [
+                m for m in ENEMY_MINIONS.eval(source.game, source) if not m.dead
+            ]
+            if not enemies:
+                break
+            victim = source.game.random.choice(enemies)
+            source.game.cheat_action(source, [Hit(victim, murloc.atk)])
+
+
+class _GhostDestroyLowestCost(TargetedAction):
+    """Ghost — destroy the lowest-Cost card in your opponent's hand."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        hand = list(source.controller.opponent.hand)
+        if not hand:
+            return
+        victim = min(hand, key=lambda c: c.cost)
+        source.game.cheat_action(source, [Destroy(victim)])
+
+
+class _JimRaynorRelaunch(TargetedAction):
+    """Jim Raynor — relaunch every Starship that you launched this game. Each
+    launched ship currently on your board re-fires its banked launch effects."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        ships = [
+            m
+            for m in ctrl.field
+            if m.id in _LAUNCHED_SHIP_IDS
+            and getattr(m, "_starship_spellbursts", None)
+        ]
+        for ship in ships:
+            for spellburst in ship._starship_spellbursts:
+                actions = spellburst
+                if callable(actions):
+                    actions = actions(ship, None)
+                if not isinstance(actions, (list, tuple)):
+                    actions = [actions]
+                source.game.cheat_action(ship, list(actions))
+
+
+##
+# Zerg
+
+
+class SC_000:
+    """Spawning Pool"""
+
+    # Location. Get a 1/1 Zergling. Deathrattle: Your Zerg minions have Rush
+    # this turn.
+    activate = Give(CONTROLLER, "SC_010")
+    deathrattle = SetTags(FRIENDLY_MINIONS + ZERG, {GameTag.RUSH: True})
+
+
+class SC_003:
+    """Brood Queen"""
+
+    # At the end of your turn, get a Larva that transforms into random Zerg
+    # minions.
+    events = OWN_TURN_END.on(Give(CONTROLLER, "SC_003t"))
+
+
+class SC_004:
+    """Kerrigan, Queen of Blades"""
+
+    # Hero. Battlecry: Summon two 2/5 Brood Queens. Deal 3 damage to all
+    # enemies. (The 2/5 Brood Queen is SC_003.)
+    play = (
+        Summon(CONTROLLER, "SC_003") * 2,
+        Hit(ENEMY_CHARACTERS, 3),
+    )
+
+
+class SC_010:
+    """Zergling"""
+
+    # Battlecry: Summon a copy of this.
+    play = Summon(CONTROLLER, ExactCopy(SELF))
+
+
+class SC_013:
+    """Grunty"""
+
+    # Battlecry: Summon four random Murlocs, then shoot them at enemy minions.
+    # (You pick the targets!)
+    play = _Grunty(SELF)
+
+
+class SC_015:
+    """Nydus Worm"""
+
+    # Draw two Zerg cards. They cost (1) less.
+    play = _NydusWorm(SELF)
+
+
+##
+# Terran
+
+
+class SC_400:
+    """Jim Raynor"""
+
+    # Hero. Battlecry: Relaunch every Starship that you launched this game.
+    play = _JimRaynorRelaunch(SELF)
+
+
+class SC_401:
+    """SCV"""
+
+    # Battlecry: Your next Starship launch costs (2) less.
+    play = _StarshipLaunchDiscount(CONTROLLER, 2)
+
+
+class SC_403:
+    """Starport"""
+
+    # Location. Summon a 2/1 Starship Piece with an effect when launched.
+    activate = _SummonStarportPiece(SELF)
+
+
+class SC_408:
+    """Ghost"""
+
+    # Stealth (data). Battlecry: If you're building a Starship, destroy the
+    # lowest-Cost card in your opponent's hand.
+    play = BUILDING_STARSHIP(CONTROLLER) & _GhostDestroyLowestCost(SELF)
+
+
+class SC_410:
+    """Lift Off"""
+
+    # Draw 2 Terran cards. Summon a 2/1 Starship Piece with an effect when
+    # launched.
+    play = (
+        _DrawFactionCards(SELF, GameTag.TERRAN, 2),
+        _SummonStarportPiece(SELF),
+    )
+
+
+##
+# Protoss
+
+
+class SC_750:
+    """Chrono Boost"""
+
+    # Draw 2 Protoss cards. Summon a 3/4 Zealot with Charge. (SC_751t = Zealot.)
+    play = (
+        _DrawFactionCards(SELF, GameTag.PROTOSS, 2),
+        Summon(CONTROLLER, "SC_751t"),
+    )
+
+
+class SC_751:
+    """Warp Gate"""
+
+    # Location. Your next Protoss minion costs (3) less.
+    activate = _NextProtossMinionDiscount(CONTROLLER, 3)
+
+
+class SC_753:
+    """Photon Cannon"""
+
+    # Deal 3 damage. If this kills a minion, your Protoss minions cost (1) less
+    # this game.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Hit(TARGET, 3).then(
+        Dead(TARGET) & _ProtossCostReduction(CONTROLLER, 1)
+    )
+
+
+class SC_754:
+    """Artanis"""
+
+    # Hero. Battlecry: Summon two 3/4 Zealots with Charge. Your Protoss minions
+    # cost (2) less this game. (SC_751t = Zealot.)
+    play = (
+        Summon(CONTROLLER, "SC_751t") * 2,
+        _ProtossCostReduction(CONTROLLER, 2),
+    )
+
+
+class SC_783:
+    """Void Ray"""
+
+    # Rush, Divine Shield (data). Battlecry: If this costs (0), gain +2/+2.
+    # Gate on the effective play cost (Attr _played_cost), not the raw COST tag,
+    # so a Void Ray made free by Warp Gate / Construct Pylons counts. SC_783e
+    # ('Prismatic Alignment') carries no stat tags in this build — supply +2/+2
+    # via the buff kwargs.
+    play = (Attr(SELF, "_played_cost") == 0) & Buff(
+        SELF, "SC_783e", atk=2, max_health=2
+    )
+
+
+##
+# Enchantments
+
+
+@custom_card
+class SC_015e3:
+    # Nydus Worm — the drawn Zerg card costs (1) less.
+    tags = {
+        GameTag.CARDNAME: "Nydus Worm",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -1,
+    }

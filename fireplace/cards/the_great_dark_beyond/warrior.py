@@ -108,6 +108,95 @@ class _DwarfPlanet(TargetedAction):
                 )
 
 
+def _launched_starship_this_game(player):
+    """Heroes of StarCraft — "if you launched a Starship this game". The engine
+    records the most-recently-launched ship on the player and never clears it
+    during a game, so a non-None value is a faithful flag."""
+
+    return getattr(player, "_last_launched_ship", None) is not None
+
+
+class _StarshipLaunchDiscount(TargetedAction):
+    """Heroes of StarCraft — "Your next Starship launch costs (N) less." Bumps
+    the player attr the Launch Starship button (GDB_905) consumes."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        target.starship_launch_discount += amount
+
+
+class _Thor(TargetedAction):
+    """Thor — Battlecry: deal 5 damage to the target. If you launched a Starship
+    this game, transform into Thor, Explosive Payload first and run ITS
+    battlecry instead (deal 5 to the target, then repeat 5 at a random enemy for
+    each Starship you've launched this game)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        game = source.game
+        if _launched_starship_this_game(source.controller):
+            game.cheat_action(source, [Morph(source, "SC_414t")])
+            if target is not None and not target.dead:
+                game.cheat_action(source, [Hit(target, 5)])
+            launched = getattr(source.controller, "_sc_starships_launched", 0)
+            for _ in range(max(0, launched)):
+                enemies = [
+                    c
+                    for c in ENEMY_CHARACTERS.eval(game, source)
+                    if not c.dead
+                ]
+                if not enemies:
+                    break
+                game.cheat_action(
+                    source, [Hit(game.random.choice(enemies), 5)]
+                )
+        else:
+            if target is not None and not target.dead:
+                game.cheat_action(source, [Hit(target, 5)])
+
+
+##
+# Heroes of StarCraft — Terran (Warrior)
+
+
+class SC_406:
+    """Yamato Cannon"""
+
+    # Starship Piece. Battlecry: Destroy a random enemy minion. Also triggers on
+    # launch.
+    play = Destroy(RANDOM(ENEMY_MINIONS))
+    spellburst = Destroy(RANDOM(ENEMY_MINIONS))
+
+
+class SC_411:
+    """Concussive Shells"""
+
+    # Deal $2 damage and gain 2 Armor. Your next Starship launch costs (2) less.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+    }
+    play = (
+        Hit(TARGET, 2),
+        GainArmor(FRIENDLY_HERO, 2),
+        _StarshipLaunchDiscount(CONTROLLER, 2),
+    )
+
+
+class SC_414:
+    """Thor"""
+
+    # Battlecry: Deal 5 damage.
+    # (Transforms into Thor, Explosive Payload if you launched a Starship this
+    # game.)
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+    }
+    play = _Thor(TARGET)
+
+
 ##
 # Minions
 

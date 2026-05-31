@@ -53,6 +53,60 @@ class _LibramReturn(TargetedAction):
         target.controller._librams_to_return.append(target)
 
 
+def _launched_starship_this_game(player):
+    """Heroes of StarCraft — "if you launched a Starship this game". The engine
+    records the most-recently-launched ship on the player; it is set the moment
+    a Starship launches and never cleared during a game, so a non-None value is
+    a faithful "you have launched at least one Starship this game" flag."""
+
+    return getattr(player, "_last_launched_ship", None) is not None
+
+
+class _StarshipLaunchDiscount(TargetedAction):
+    """Heroes of StarCraft — "Your next Starship launch costs (N) less." Bumps
+    the player attr the Launch Starship button (GDB_905) consumes."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        target.starship_launch_discount += amount
+
+
+class _UltraCapacitor(TargetedAction):
+    """Ultra-Capacitor — gain +1/+1 for each OTHER friendly minion. Runs both as
+    a Battlecry (source is the played minion) and on launch (source is the
+    assembled Starship); in both cases ``source`` is the minion to buff and the
+    "other friendly minions" are everything its controller owns except it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        others = [
+            m
+            for m in source.controller.field
+            if m is not target and not m.dead
+        ]
+        n = len(others)
+        if n:
+            source.game.cheat_action(
+                source, [Buff(target, "SC_405e", atk=n, max_health=n)]
+            )
+
+
+class _TransformIfLaunched(TargetedAction):
+    """Heroes of StarCraft — "Transforms if you launched a Starship this game."
+    On play, morph the minion into its upgraded token when the controller has
+    already launched a Starship this game."""
+
+    TARGET = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, card):
+        if _launched_starship_this_game(source.controller):
+            source.game.cheat_action(source, [Morph(target, card)])
+
+
 class _CelestialAura(TargetedAction):
     """Celestial Aura — attach a continuous 2-turn aura host to the caster's
     hero. While its controller has exactly one minion, that minion is set to
@@ -64,6 +118,39 @@ class _CelestialAura(TargetedAction):
     def do(self, source, target):
         hero = source.controller.hero
         source.buff(hero, "GDB_140host", _celestial_turns_left=2)
+
+
+##
+# Heroes of StarCraft — Terran (Paladin)
+
+
+class SC_405:
+    """Ultra-Capacitor"""
+
+    # Starship Piece. Battlecry: Gain +1/+1 for each other friendly minion.
+    # Also triggers on launch.
+    play = _UltraCapacitor(SELF)
+    spellburst = _UltraCapacitor(SELF)
+
+
+class SC_412:
+    """Hellion"""
+
+    # Your other minions have +1 Attack.
+    # (Transforms into Hellbat if you launched a Starship this game.)
+    update = Refresh(FRIENDLY_MINIONS - SELF, {GameTag.ATK: 1})
+    play = _TransformIfLaunched(SELF, "SC_412t")
+
+
+class SC_404:
+    """Salvage the Bunker"""
+
+    # Summon two 2/2 Marines with Taunt. Your next Starship launch costs (2)
+    # less.
+    play = (
+        Summon(CONTROLLER, "SC_403t") * 2,
+        _StarshipLaunchDiscount(CONTROLLER, 2),
+    )
 
 
 ##

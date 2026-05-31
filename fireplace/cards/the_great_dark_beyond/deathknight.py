@@ -76,6 +76,25 @@ class _DestroyDecksKeepTop8(TargetedAction):
                 card.zone = Zone.GRAVEYARD
 
 
+class _ViperSwarm(TargetedAction):
+    """Viper — your other Zerg minions gain Reborn and attack the minion just
+    summoned from the opponent's hand."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # target is the minion summoned from the opponent's hand.
+        zerg = [
+            m
+            for m in (FRIENDLY_MINIONS + ZERG - SELF).eval(source.game, source)
+        ]
+        for m in zerg:
+            source.game.cheat_action(source, [SetTags(m, {GameTag.REBORN: True})])
+        for m in zerg:
+            if m.zone == Zone.PLAY and target.zone == Zone.PLAY:
+                source.game.cheat_action(source, [Attack(m, target)])
+
+
 ##
 # Minions
 
@@ -126,6 +145,25 @@ class GDB_477:
     # Battlecry: Destroy both players' decks EXCEPT the 8 highest Cost cards
     # in each.
     play = _DestroyDecksKeepTop8(SELF)
+
+
+class SC_002:
+    """Infestor"""
+
+    # Deathrattle: Your Zerg minions have +1/+1 for the rest of the game.
+    # SC_002e is a player-hosted aura host (declared below) whose update
+    # refreshes every friendly Zerg minion with SC_002e2 (+1/+1).
+    deathrattle = Buff(CONTROLLER, "SC_002e")
+
+
+class SC_018:
+    """Viper"""
+
+    # Battlecry: Summon a minion from your opponent's hand. Your other Zerg
+    # minions gain Reborn and attack it.
+    play = Summon(OPPONENT, RANDOM(ENEMY_HAND + MINION)).then(
+        _ViperSwarm(Summon.CARD)
+    )
 
 
 ##
@@ -188,6 +226,18 @@ class GDB_478:
     )
 
 
+class SC_001:
+    """Baneling Barrage"""
+
+    # Get a 1/1 Baneling that explodes. If you control a Zerg minion, get
+    # another Baneling. The Baneling token (SC_019t) has the "explode"
+    # Deathrattle (damage equal to its Attack to all enemy minions).
+    play = (
+        Give(CONTROLLER, "SC_019t"),
+        (Count(FRIENDLY_MINIONS + ZERG) >= 1) & Give(CONTROLLER, "SC_019t"),
+    )
+
+
 ##
 # Tokens
 
@@ -205,3 +255,14 @@ class GDB_113t:
 class GDB_113e:
     # Breached Air — give your hero +5 Health.
     tags = {GameTag.HEALTH: 5}
+
+
+class SC_002e:
+    # For the Swarm — player-hosted aura: for the rest of the game, every
+    # friendly Zerg minion has +1/+1 (refreshed via SC_002e2).
+    update = Refresh(FRIENDLY_MINIONS + ZERG, buff="SC_002e2")
+
+
+class SC_002e2:
+    # For the Swarm! — +1/+1 (per-minion).
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}

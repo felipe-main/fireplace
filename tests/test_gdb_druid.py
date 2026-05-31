@@ -347,3 +347,68 @@ def test_distress_signal_summons_two_2cost_and_refreshes_mana():
         assert _cards.db[m.id].type == CardType.MINION
     # Paid `cost`, then Refresh 2 Mana Crystals restores 2.
     assert p1.mana == (10 - cost) + 2
+
+
+# SC_755 — Construct Pylons (spell, 1): Your next Protoss card this turn costs
+# (2) less.
+def test_construct_pylons_discounts_next_protoss_card():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    p1.max_mana = 10
+    p1.used_mana = 0
+    spell = p1.give("SC_755")
+    spell.play()
+    assert p1.next_protoss_card_discount == 2
+    # The next Protoss card (Carrier, base cost 12) is now 10.
+    carrier = p1.give("SC_756")
+    assert carrier.cost == 12 - 2
+
+
+# SC_756 — Carrier (12/2/14): At the end of your turn, summon four 4/1
+# Interceptors that attack random enemies.
+def test_carrier_summons_four_interceptors_that_attack():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    p2 = game.players[1]
+    # Single enemy target with huge HP absorbs all four 4-damage swings.
+    dummy = p2.summon("CS2_182")  # Chillwind Yeti 4/5
+    dummy.max_health = 80
+    dummy.damage = 0
+    p1.summon("SC_756")
+    game.end_turn()  # OWN_TURN_END fires for p1
+    # Four 4/1 Interceptors are summoned and each swings at the lone enemy.
+    # The enemy (4 Attack) hits back for 4, killing every 1-Health Interceptor,
+    # so all four damage ticks land (4 x 4 = 16) and none survive on board.
+    assert dummy.damage == 16
+    assert [m.id for m in p1.field if m.id == "SC_756t"] == []
+
+
+# SC_763 — Immortal (7/5/8): Taunt, Divine Shield. Battlecry: Spend 4 Mana to
+# double this minion's stats.
+def test_immortal_doubles_stats_when_mana_available():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    p1.max_mana = 10
+    p1.used_mana = 0
+    immortal = p1.give("SC_763")
+    # Cost the card down to 0 so the 4-Mana "spend" has room within 10 mana
+    # (the card's printed cost is paid before its battlecry runs).
+    immortal.cost = 0
+    immortal.play()
+    assert immortal.atk == 10 and immortal.max_health == 16
+    assert immortal.taunt and immortal.divine_shield
+    # Played for 0, then spent 4 Mana for the double.
+    assert p1.mana == 10 - 4
+
+
+def test_immortal_no_double_without_mana():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    # Only 3 Mana available — the 4-Mana spend can't happen, so no double.
+    immortal = p1.give("SC_763")
+    immortal.cost = 0
+    p1.max_mana = 3
+    p1.used_mana = 0
+    immortal.play()
+    assert immortal.atk == 5 and immortal.max_health == 8
+    assert p1.mana == 3  # nothing spent

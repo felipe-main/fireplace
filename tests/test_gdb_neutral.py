@@ -931,3 +931,369 @@ def test_braingill_gives_murlocs_draw_deathrattle():
     assert any(c.id == WISP for c in p1.hand)
     # Non-Murloc did NOT receive the deathrattle buff.
     assert not any(b.id == "GDB_878e" for b in nonmurloc.buffs)
+
+
+# ===========================================================================
+# Heroes of StarCraft (SC_) — NEUTRAL-file collectible cards
+# ===========================================================================
+
+from fireplace.actions import LaunchStarship
+
+
+# ---------------------------------------------------------------------------
+# SC_000 — Spawning Pool (Location): Get a 1/1 Zergling. Deathrattle: Your Zerg
+# minions have Rush this turn.
+# ---------------------------------------------------------------------------
+def test_spawning_pool_activate_gives_zergling_and_deathrattle_rush():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    pool = p1.give("SC_000")
+    pool.play()
+    assert p1.location is pool
+    game.end_turn(); game.end_turn()  # location ready
+    pool.use()
+    # Activate: a 1/1 Zergling joins your hand.
+    zerglings = [c for c in p1.hand if c.id == "SC_010"]
+    assert len(zerglings) == 1
+    # Deathrattle: a friendly Zerg minion in play gains Rush.
+    zerg = p1.summon("SC_010")
+    assert not zerg.rush
+    nonzerg = p1.summon(WISP)
+    pool.destroy()
+    game.process_deaths()
+    assert zerg.rush
+    assert not nonzerg.rush
+
+
+# ---------------------------------------------------------------------------
+# SC_003 — Brood Queen (2/5): At the end of your turn, get a Larva that
+# transforms into random Zerg minions.
+# ---------------------------------------------------------------------------
+def test_brood_queen_end_of_turn_gives_larva():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    queen = p1.summon("SC_003")
+    assert (queen.atk, queen.max_health) == (2, 5)
+    if game.current_player is not p1:
+        game.end_turn()
+    for c in list(p1.hand):
+        c.discard()
+    game.end_turn()  # ends p1's turn -> Brood Queen fires
+    larvae = [c for c in p1.hand if c.id == "SC_003t"]
+    assert len(larvae) == 1
+
+
+# ---------------------------------------------------------------------------
+# SC_004 — Kerrigan, Queen of Blades (Hero): Battlecry: Summon two 2/5 Brood
+# Queens. Deal 3 damage to all enemies.
+# ---------------------------------------------------------------------------
+def test_kerrigan_summons_two_brood_queens_and_aoe():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    if game.current_player is not p1:
+        game.end_turn()
+    enemy = p2.summon("CS2_182")  # 4/5 Chillwind Yeti -> survives 3
+    enemy.max_health = 80; enemy.damage = 0
+    p2.hero.damage = 0
+    kerrigan = p1.give("SC_004")
+    kerrigan.play()
+    queens = [m for m in p1.field if m.id == "SC_003"]
+    assert len(queens) == 2
+    assert all((q.atk, q.max_health) == (2, 5) for q in queens)
+    assert enemy.damage == 3
+    assert p2.hero.damage == 3
+    # Hero power swapped to Ravage.
+    assert p1.hero.power.id == "SC_004hp"
+
+
+# ---------------------------------------------------------------------------
+# SC_010 — Zergling (1/1): Battlecry: Summon a copy of this.
+# ---------------------------------------------------------------------------
+def test_zergling_summons_a_copy():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    zergling = p1.give("SC_010")
+    zergling.play()
+    zerglings = [m for m in p1.field if m.id == "SC_010"]
+    assert len(zerglings) == 2
+    assert all((z.atk, z.max_health) == (1, 1) for z in zerglings)
+
+
+# ---------------------------------------------------------------------------
+# SC_013 — Grunty (3/4): Battlecry: Summon four random Murlocs, then shoot
+# them at enemy minions. (You pick the targets!)
+# ---------------------------------------------------------------------------
+def test_grunty_summons_four_murlocs_and_shoots_them():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    # Single beefy enemy minion soaks every shot, so the total damage equals
+    # the summoned Murlocs' combined Attack.
+    boss = p2.summon("CS2_182")
+    boss.max_health = 200; boss.damage = 0
+    grunty = p1.give("SC_013")
+    grunty.play()
+    murlocs = [m for m in p1.field if Race.MURLOC in m.races]
+    # Exactly four Murlocs were summoned (some may spawn their own tokens, but
+    # at least the four directly summoned exist).
+    assert len(murlocs) >= 4
+    # Every directly-summoned Murloc shot the boss; total damage > 0 and the
+    # boss absorbed it all (still alive).
+    assert boss.damage > 0
+    assert not boss.dead
+
+
+# ---------------------------------------------------------------------------
+# SC_015 — Nydus Worm (Spell): Draw two Zerg cards. They cost (1) less.
+# ---------------------------------------------------------------------------
+def test_nydus_worm_draws_two_zerg_discounted():
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    # Seed the deck with exactly two Zerglings (cost 1).
+    z1 = p1.give("SC_010"); z1.zone = Zone.DECK
+    z2 = p1.give("SC_010"); z2.zone = Zone.DECK
+    worm = p1.give("SC_015")
+    worm.play()
+    drawn = [c for c in p1.hand if c.id == "SC_010"]
+    assert len(drawn) == 2
+    # Base cost 1, discounted by 1 -> 0.
+    assert all(c.cost == 0 for c in drawn)
+    assert p1.deck == []
+
+
+# ---------------------------------------------------------------------------
+# SC_400 — Jim Raynor (Hero): Battlecry: Relaunch every Starship that you
+# launched this game.
+# ---------------------------------------------------------------------------
+def test_jim_raynor_relaunches_launched_starships():
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    if game.current_player is not p1:
+        game.end_turn()
+    boss = p2.summon("CS2_182")
+    boss.max_health = 200; boss.damage = 0
+    p2.hero.damage = 0
+    # Build + launch a Banshee ship (launch effect: 5 damage to a random enemy,
+    # banked onto the ship as its launch/spellburst effect).
+    piece = p1.summon("SC_403d")  # Banshee Starship Piece
+    piece.destroy()
+    game.process_deaths()
+    game.queue_actions(p1.hero, [LaunchStarship(p1)])
+    game.process_deaths()
+    ship = [m for m in p1.field if getattr(m, "_starship_spellbursts", None)]
+    assert len(ship) == 1
+    dmg_before_jim = p2.hero.damage + boss.damage
+    # Jim Raynor relaunches the launched ship -> its banked launch effect (5
+    # damage to a random enemy) fires again. The lone beefy boss soaks it.
+    jim = p1.give("SC_400")
+    jim.play()
+    game.process_deaths()
+    assert (p2.hero.damage + boss.damage) == dmg_before_jim + 5
+    assert p1.hero.power.id == "SC_400p"
+
+
+# ---------------------------------------------------------------------------
+# SC_401 — SCV (1/3): Battlecry: Your next Starship launch costs (2) less.
+# ---------------------------------------------------------------------------
+def test_scv_discounts_next_starship_launch():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    assert p1.starship_launch_discount == 0
+    scv = p1.give("SC_401")
+    scv.play()
+    assert p1.starship_launch_discount == 2
+    # The Launch Starship button (GDB_905, base 5) is discounted.
+    launch = p1.give("GDB_905")
+    assert launch.cost == 3
+
+
+# ---------------------------------------------------------------------------
+# SC_403 — Starport (Location): Summon a 2/1 Starship Piece with an effect when
+# launched.
+# ---------------------------------------------------------------------------
+def test_starport_summons_a_starship_piece():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    starport = p1.give("SC_403")
+    starport.play()
+    game.end_turn(); game.end_turn()
+    starport.use()
+    pieces = [
+        m
+        for m in p1.field
+        if m.id in ("SC_403a", "SC_403b", "SC_403c", "SC_403d", "SC_403f")
+    ]
+    assert len(pieces) == 1
+    assert (pieces[0].atk, pieces[0].max_health) == (2, 1)
+    assert _cards.db[pieces[0].id].tags.get(GameTag.STARSHIP_PIECE, 0)
+
+
+# ---------------------------------------------------------------------------
+# SC_408 — Ghost (6/2): Stealth. Battlecry: If you're building a Starship,
+# destroy the lowest-Cost card in your opponent's hand.
+# ---------------------------------------------------------------------------
+def test_ghost_destroys_lowest_cost_when_building_starship():
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    for c in list(p2.hand):
+        c.discard()
+    low = p2.give("SC_010")   # cost 1
+    high = p2.give("SC_013")  # cost 8
+    # Build a Starship: a Starship Piece dies and banks into the building ship.
+    bank_piece = p1.summon("GDB_100")
+    bank_piece.destroy()
+    game.process_deaths()
+    assert p1.is_building_starship
+    ghost = p1.give("SC_408")
+    ghost.play()
+    assert ghost.stealthed
+    assert low.zone == Zone.GRAVEYARD
+    assert high.zone == Zone.HAND
+
+
+def test_ghost_no_destroy_when_not_building_starship():
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    for c in list(p2.hand):
+        c.discard()
+    low = p2.give("SC_010")
+    assert not p1.is_building_starship
+    ghost = p1.give("SC_408")
+    ghost.play()
+    assert low.zone == Zone.HAND
+
+
+# ---------------------------------------------------------------------------
+# SC_410 — Lift Off (Spell): Draw 2 Terran cards. Summon a 2/1 Starship Piece
+# with an effect when launched.
+# ---------------------------------------------------------------------------
+def test_lift_off_draws_two_terran_and_summons_piece():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    s1 = p1.give("SC_401"); s1.zone = Zone.DECK  # SCV, Terran
+    s2 = p1.give("SC_401"); s2.zone = Zone.DECK
+    liftoff = p1.give("SC_410")
+    liftoff.play()
+    assert len([c for c in p1.hand if c.id == "SC_401"]) == 2
+    assert p1.deck == []
+    pieces = [
+        m
+        for m in p1.field
+        if m.id in ("SC_403a", "SC_403b", "SC_403c", "SC_403d", "SC_403f")
+    ]
+    assert len(pieces) == 1
+    assert (pieces[0].atk, pieces[0].max_health) == (2, 1)
+
+
+# ---------------------------------------------------------------------------
+# SC_750 — Chrono Boost (Spell): Draw 2 Protoss cards. Summon a 3/4 Zealot
+# with Charge.
+# ---------------------------------------------------------------------------
+def test_chrono_boost_draws_two_protoss_and_summons_zealot():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    v1 = p1.give("SC_783"); v1.zone = Zone.DECK  # Void Ray, Protoss
+    v2 = p1.give("SC_783"); v2.zone = Zone.DECK
+    chrono = p1.give("SC_750")
+    chrono.play()
+    assert len([c for c in p1.hand if c.id == "SC_783"]) == 2
+    assert p1.deck == []
+    zealots = [m for m in p1.field if m.id == "SC_751t"]
+    assert len(zealots) == 1
+    assert (zealots[0].atk, zealots[0].max_health) == (3, 4)
+    assert zealots[0].charge
+
+
+# ---------------------------------------------------------------------------
+# SC_751 — Warp Gate (Location): Your next Protoss minion costs (3) less.
+# ---------------------------------------------------------------------------
+def test_warp_gate_discounts_next_protoss_minion():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    gate = p1.give("SC_751")
+    gate.play()
+    game.end_turn(); game.end_turn()
+    gate.use()
+    assert p1.next_protoss_minion_discount == 3
+    # A Protoss minion in hand reads the discount (Void Ray base 3 -> 0).
+    voidray = p1.give("SC_783")
+    assert voidray.cost == 0
+
+
+# ---------------------------------------------------------------------------
+# SC_753 — Photon Cannon (Spell): Deal 3 damage. If this kills a minion, your
+# Protoss minions cost (1) less this game.
+# ---------------------------------------------------------------------------
+def test_photon_cannon_deals_3_and_discounts_on_kill():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    victim = p2.summon("CS2_182")
+    victim.max_health = 3; victim.damage = 0  # exactly 3 health -> dies
+    cannon = p1.give("SC_753")
+    cannon.play(target=victim)
+    game.process_deaths()
+    assert victim.dead
+    assert p1.protoss_cost_reduction == 1
+    # A Protoss minion in hand now costs (1) less (Void Ray base 3 -> 2).
+    voidray = p1.give("SC_783")
+    assert voidray.cost == 2
+
+
+def test_photon_cannon_no_discount_without_kill():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    victim = p2.summon("CS2_182")  # 4/5, survives 3
+    cannon = p1.give("SC_753")
+    cannon.play(target=victim)
+    game.process_deaths()
+    assert victim.damage == 3
+    assert not victim.dead
+    assert p1.protoss_cost_reduction == 0
+
+
+# ---------------------------------------------------------------------------
+# SC_754 — Artanis (Hero): Battlecry: Summon two 3/4 Zealots with Charge. Your
+# Protoss minions cost (2) less this game.
+# ---------------------------------------------------------------------------
+def test_artanis_summons_two_zealots_and_discounts_protoss():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    if game.current_player is not p1:
+        game.end_turn()
+    artanis = p1.give("SC_754")
+    artanis.play()
+    zealots = [m for m in p1.field if m.id == "SC_751t"]
+    assert len(zealots) == 2
+    assert all((z.atk, z.max_health) == (3, 4) and z.charge for z in zealots)
+    assert p1.protoss_cost_reduction == 2
+    assert p1.hero.power.id == "SC_754p"
+    # Void Ray base 3 -> 1.
+    voidray = p1.give("SC_783")
+    assert voidray.cost == 1
+
+
+# ---------------------------------------------------------------------------
+# SC_783 — Void Ray (3/1): Rush, Divine Shield. Battlecry: If this costs (0),
+# gain +2/+2.
+# ---------------------------------------------------------------------------
+def test_void_ray_no_buff_at_full_cost():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    voidray = p1.give("SC_783")
+    assert voidray.cost == 3
+    voidray.play()
+    assert (voidray.atk, voidray.max_health) == (3, 1)
+    assert voidray.rush
+    assert voidray.divine_shield
+
+
+def test_void_ray_gains_2_2_when_free():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    voidray = p1.give("SC_783")
+    p1.next_protoss_minion_discount = 3  # makes Void Ray cost 0
+    assert voidray.cost == 0
+    voidray.play()
+    # 3/1 base + 2/2 -> 5/3.
+    assert (voidray.atk, voidray.max_health) == (5, 3)
+    assert voidray.rush
+    assert voidray.divine_shield

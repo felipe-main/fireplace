@@ -294,3 +294,77 @@ def test_spontaneous_combustion_targeted_after_elemental():
     spell.play(target=enemy)
     assert enemy.damage == 4
     assert p2.hero.damage == 0
+
+
+# SC_758 — Colossus (12/9/4): Battlecry: Deal @ damage to all enemies, twice.
+# @ = the number of Protoss spells you've cast this game.
+def test_colossus_scales_with_protoss_spells_cast():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    p1.max_mana = 10
+    p1.used_mana = 0
+    # Cast two Protoss spells (Shield Battery is a 2-cost Protoss spell) to set
+    # the counter to 2.
+    for _ in range(2):
+        p1.give("SC_759").play()
+    assert p1.protoss_spells_cast_this_game == 2
+    # Lone enemy minion with plenty of HP absorbs both 2-damage waves.
+    dummy = p2.summon("CS2_182")  # 4/5
+    dummy.max_health = 80
+    dummy.damage = 0
+    colossus = p1.give("SC_758")
+    colossus.cost = 0
+    colossus.play()
+    # Deal 2 to all enemies, twice -> enemy hero 4, enemy minion 4.
+    assert p2.hero.health == 30 - 4
+    assert dummy.damage == 4
+
+
+def test_colossus_no_damage_without_protoss_spells():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    colossus = p1.give("SC_758")
+    colossus.cost = 0
+    colossus.play()
+    assert p2.hero.health == 30  # 0 damage when no Protoss spells cast
+
+
+# SC_759 — Shield Battery (spell, 2): Gain 6 Armor. Your next Protoss spell
+# costs (2) less.
+def test_shield_battery_armor_and_discount():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    p1.max_mana = 10
+    p1.used_mana = 0
+    assert p1.hero.armor == 0
+    p1.give("SC_759").play()
+    assert p1.hero.armor == 6
+    assert p1.next_protoss_spell_discount == 2
+    # Next Protoss spell (Resonance Coil, base 3) is now 1.
+    coil = p1.give("SC_760")
+    assert coil.cost == 3 - 2
+
+
+# SC_760 — Resonance Coil (spell, 3): Deal $5 damage to a minion. Get a random
+# Protoss spell.
+def test_resonance_coil_damage_and_get_spell():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.current_player
+    p2 = p1.opponent
+    p1.max_mana = 10
+    p1.used_mana = 0
+    target = p2.summon("CS2_182")  # 4/5
+    target.max_health = 80
+    target.damage = 0
+    coil = p1.give("SC_760")
+    pre_hand = len(p1.hand)  # includes the coil itself
+    coil.play(target=target)
+    assert target.damage == 5
+    # Coil leaves hand (-1) and exactly one Protoss spell is added (+1).
+    assert len(p1.hand) == pre_hand
+    assert all(
+        _cards.db[c.id].tags.get(GameTag.PROTOSS) and c.type == CardType.SPELL
+        for c in p1.hand
+    )

@@ -159,6 +159,68 @@ class _CosmonautPick(TargetedAction):
             source.game.cheat_action(source, [Buff(real, "GDB_443e")])
 
 
+def _launched_starship_this_game(player):
+    """Heroes of StarCraft — "if you launched a Starship this game". The engine
+    records the most-recently-launched ship on the player and never clears it
+    during a game, so a non-None value is a faithful flag."""
+
+    return getattr(player, "_last_launched_ship", None) is not None
+
+
+class _SiegeTank(TargetedAction):
+    """Siege Tank — Battlecry: deal 10 damage to a random enemy minion. If you
+    launched a Starship this game, transform into Siege Tank, Deployed first and
+    run ITS battlecry instead (10 to a random enemy minion, excess to the enemy
+    hero)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        game = source.game
+        if _launched_starship_this_game(source.controller):
+            game.cheat_action(source, [Morph(target, "SC_413t")])
+            # The deployed form's battlecry: 10 damage, excess to the hero.
+            enemies = [
+                m for m in ENEMY_MINIONS.eval(game, source) if not m.dead
+            ]
+            if not enemies:
+                return
+            victim = game.random.choice(enemies)
+            game.cheat_action(
+                source, [Hit(ENEMY_HERO, HitExcessDamage(victim, 10))]
+            )
+        else:
+            enemies = [
+                m for m in ENEMY_MINIONS.eval(game, source) if not m.dead
+            ]
+            if not enemies:
+                return
+            victim = game.random.choice(enemies)
+            game.cheat_action(source, [Hit(victim, 10)])
+
+
+##
+# Heroes of StarCraft — Terran (Shaman)
+
+
+class SC_409:
+    """Missile Pod"""
+
+    # Starship Piece. Battlecry: Deal 1 damage to all enemies. Also triggers on
+    # launch.
+    play = Hit(ENEMY_CHARACTERS, 1)
+    spellburst = Hit(ENEMY_CHARACTERS, 1)
+
+
+class SC_413:
+    """Siege Tank"""
+
+    # Battlecry: Deal 10 damage to a random enemy minion.
+    # (Transforms into Siege Tank, Deployed if you launched a Starship this
+    # game.)
+    play = _SiegeTank(SELF)
+
+
 ##
 # Minions
 

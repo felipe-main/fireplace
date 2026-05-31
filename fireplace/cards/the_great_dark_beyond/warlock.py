@@ -116,6 +116,25 @@ class _Archimonde(TargetedAction):
                 source.game.cheat_action(source, [Summon(ctrl, card.id)])
 
 
+class _Consume(TargetedAction):
+    """Consume — remove 1 Durability from a friendly location, then restore 8
+    Health to your hero. (No effect if you control no location.)"""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        locations = (IN_PLAY + FRIENDLY + LOCATION_CARD).eval(source.game, source)
+        if not locations:
+            return
+        loc = locations[0]
+        # Spend one durability; destroy the location if it runs out.
+        loc.damage += 1
+        if loc.durability <= 0:
+            source.game.cheat_action(source, [Destroy(loc)])
+        source.game.cheat_action(source, [Heal(ctrl.hero, 8)])
+
+
 ##
 # Minions
 
@@ -149,6 +168,29 @@ class GDB_128:
     # Battlecry: Summon every Demon you played this game that didn't start in
     # your deck.
     play = _Archimonde(SELF)
+
+
+class SC_023:
+    """Spine Crawler"""
+
+    # Taunt, Can't attack (both in data). Has +3 Attack if you control a
+    # location.
+    update = (Count(IN_PLAY + FRIENDLY + LOCATION_CARD) >= 1) & Refresh(
+        SELF, {GameTag.ATK: 3}
+    )
+
+
+##
+# Locations
+
+
+class SC_019:
+    """Ultralisk Cavern"""
+
+    # Deal 1 damage to all enemies. Deathrattle: Summon an 8/8 Ultralisk with
+    # Rush (SC_006).
+    activate = Hit(ENEMY_CHARACTERS, 1)
+    deathrattle = Summon(CONTROLLER, "SC_006")
 
 
 ##
@@ -200,6 +242,14 @@ class GDB_126:
 
     # Destroy all minions except Demons.
     play = Destroy(ALL_MINIONS - DEMON)
+
+
+class SC_020:
+    """Consume"""
+
+    # Remove 1 Durability from a friendly location to restore 8 Health to your
+    # hero.
+    play = _Consume(SELF)
 
 
 ##

@@ -317,3 +317,21 @@ def test_goldpetal_drake_imbues_on_play_and_death():
     drake.destroy()
     game.process_deaths()  # Deathrattle imbue
     assert p1.imbues_this_game == 2
+
+
+def test_emerald_portal_casts_when_drawn_summons_dragon():
+    # Regression (soak crash): Emerald Portal (EDR_445pt3) is a CASTS_WHEN_DRAWN
+    # spell whose effect is a generator `draw` method. Drawing it must summon a
+    # Dragon and not raise (generator += tuple in the casts-when-drawn branch).
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    portal = p1.card("EDR_445pt3")
+    portal._portal_dragon_cost = 4
+    portal.zone = Zone.DECK
+    pre = len(p1.field)
+    p1.draw()
+    # Portal cast itself (consumed) and summoned exactly one Dragon.
+    summoned = p1.field[pre:]
+    assert len(summoned) == 1
+    assert Race.DRAGON in summoned[0].races
+    assert portal.zone == Zone.GRAVEYARD

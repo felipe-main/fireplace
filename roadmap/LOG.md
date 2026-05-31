@@ -26,4 +26,6 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 2:Into the Emerald Dream | P7 soak | 1000/1000 succeeded, 0 failed. SET #2 DONE (7df40d77)
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P0/P1 | bump 219197->219846.1 (Patch 32.2); 38 FIR_ Firelands cards, CardSet=EMERALD_DREAM; no data-bump regressions (small bump); novel=Smoldering; 039fff
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P2 engine | _smolder.py helper (_SmolderTick + smolder_level); reuses Dark Gift/Imbue/Corpses
-- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P3 cards | workflow wf_d7df8ca2 (12 agents, 1/class, new test_fir_<class>.py); implement->verify
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P3 cards+gate | wf_d7df8ca2: 38 FIR_ cards + Smoldering; gate GREEN; full suite 3364 passed; commit e398ef1b
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P4 audit | wf_09b1bd88 (finders+refute): 7 rows survived = 6 approx + 1 once-over, 0 REAL BUGS -> all watch; review.csv 25 fixed/25 watch/0 open
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P7 soak | first run 999/1000: latent GDB bug (Attr SELF _played_cost crash on indirect cast) -> default _played_cost=0 in PlayableCard.__init__; re-soak running

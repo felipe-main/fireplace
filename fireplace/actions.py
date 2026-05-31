@@ -2369,7 +2369,11 @@ class Draw(TargetedAction):
             self.broadcast(source, EventListener.ON, target, card, source)
             if source.game.step > Step.BEGIN_MULLIGAN:
                 # Proc the draw script, but only if we are past mulligan
-                actions = card.get_actions("draw")
+                # Materialize to a list: a card may define `draw` as a
+                # generator method (def draw: yield ...) — e.g. Emerald Portal
+                # EDR_445pt3 — and the casts-when-drawn branch below appends a
+                # tuple, which a generator does not support (`gen += tuple`).
+                actions = list(card.get_actions("draw"))
                 if card.casts_when_drawn and card.type == CardType.SPELL:
                     # "Cast When Drawn" SPELLS: cast for free, then draw a
                     # replacement. MINIONS with CASTS_WHEN_DRAWN are

@@ -1,6 +1,7 @@
 from ..utils import *
 
 from hearthstone.enums import CardType as _CardType
+from hearthstone.enums import CardClass as _CardClass
 
 from .neutral import _GiveDarkGift
 
@@ -281,3 +282,110 @@ class EDR_471e:
 
     # +1 Attack.
     tags = {GameTag.ATK: 1}
+
+
+##
+# Emerald Dream mini-set (Firelands, FIR_) — WARRIOR collectibles.
+
+
+# FIR_928 — Keeper of Flame (4/5/5 minion)
+# Battlecry: Give all minions in your hand +3/+3. They are discarded in 3 turns.
+#
+# Each buffed minion gets the data +3/+3 enchant (FIR_928e) plus a "Burning Up"
+# timer enchant (FIR_928e2) that, while the host sits in hand, counts the
+# controller's turns and discards the host once it has been held for
+# KEEPER_DISCARD_AFTER (3) of your turns. The {discard-after} value is the
+# printed "in 3 turns" so it is exact, not an approximation.
+KEEPER_DISCARD_AFTER = 3
+
+
+class _KeeperBurnTick(TargetedAction):
+    """Bump a Burning Up host's held-turn counter; discard the host once it has
+    been held for KEEPER_DISCARD_AFTER of the controller's turns."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # `target` is the host minion-card (selected via OWNER from the timer
+        # enchant's Hand.events).
+        held = getattr(target, "_keeper_burn_turns", 0) + 1
+        target._keeper_burn_turns = held
+        if held >= KEEPER_DISCARD_AFTER:
+            target.discard()
+
+
+class _KeeperBattlecry(TargetedAction):
+    """Give every minion in the controller's hand +3/+3 and start its 3-turn
+    Burning Up discard timer."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        actions = []
+        for card in list(source.controller.hand):
+            if card.type != _CardType.MINION:
+                continue
+            card._keeper_burn_turns = 0
+            actions.append(Buff(card, "FIR_928e"))
+            actions.append(Buff(card, "FIR_928e2"))
+        if actions:
+            return source.game.cheat_action(source, actions)
+
+
+class FIR_928:
+    """Keeper of Flame"""
+
+    play = _KeeperBattlecry(SELF)
+
+
+class FIR_928e:
+    """Blazing Strength"""
+
+    # +3/+3.
+    tags = {GameTag.ATK: 3, GameTag.HEALTH: 3}
+
+
+class FIR_928e2:
+    """Burning Up"""
+
+    # This card is on fire! — the 3-turn discard timer. Lives on the host while
+    # it is in hand; OWNER selects the host minion-card to tick / discard.
+    class Hand:
+        events = OWN_TURN_BEGIN.on(_KeeperBurnTick(OWNER))
+
+
+# FIR_939 — Shadowflame Suffusion (3 mana spell)
+# Deal 3 damage. Discover a Warrior minion with a Dark Gift.
+class FIR_939:
+    """Shadowflame Suffusion"""
+
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+    }
+    play = Hit(TARGET, 3), Discover(
+        CONTROLLER, RandomMinion(card_class=_CardClass.WARRIOR)
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
+
+
+# FIR_956 — Dragon Turtle (4/3/6 minion)
+# Battlecry: If you're holding a minion with a Dark Gift, give your hero
+# +3 Attack this turn and 6 Armor.
+class FIR_956:
+    """Dragon Turtle"""
+
+    def play(self):
+        holding_dark_gift = any(
+            card.type == _CardType.MINION and getattr(card, "_dark_gifts", None)
+            for card in self.controller.hand
+        )
+        if holding_dark_gift:
+            yield Buff(FRIENDLY_HERO, "FIR_956e")
+            yield GainArmor(FRIENDLY_HERO, 6)
+
+
+class FIR_956e:
+    """Turtle Maw"""
+
+    # +3 Attack this turn. The data enchant already carries TAG_ONE_TURN_EFFECT
+    # (tag 338); declare both so the buff expires at end of turn.
+    tags = {GameTag.ATK: 3, GameTag.TAG_ONE_TURN_EFFECT: True}

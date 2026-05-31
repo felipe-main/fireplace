@@ -458,3 +458,139 @@ class EDR_003:
 
     class Deck:
         update = _FalricResetDoubling(CONTROLLER)
+
+
+##
+# Firelands mini-set (FIR_) — DEATHKNIGHT
+#
+#   * Cremate (FIR_900): Discover a minion with a Dark Gift; it costs (2) less.
+#     The Dark Gift is granted through the shared set-wide `_GiveDarkGift`
+#     helper (a random keyword Bonus Effect from the Nightmare pool), matching
+#     every other Emerald Dream Dark-Gift card — the true per-gift pool is not
+#     enumerated in the card data, so this is the agreed faithful-shape
+#     approximation. The (2)-less discount is a permanent COST: -2 enchant.
+#   * Frostburn Matriarch (FIR_901): Battlecry that checks for a held minion
+#     "with a Dark Gift" via the shared `_dark_gifts` marker.
+#   * Volcoross (FIR_951): Rush/Taunt, Battlecry — choose to spend 10/20/30
+#     Corpses to gain that many stats (presented via a Corpse-gated GenericChoice
+#     of three marker options).
+
+
+def _holding_dark_gift_minion(controller):
+    """True if the controller is holding a minion that carries a Dark Gift
+    (detected via the shared `_dark_gifts` marker set by `_GiveDarkGift`)."""
+    return any(
+        c.type == CardType.MINION and getattr(c, "_dark_gifts", None)
+        for c in controller.hand
+    )
+
+
+class _FrostburnMatriarch(TargetedAction):
+    """Frostburn Matriarch battlecry: if you're holding a minion with a Dark
+    Gift, summon two 4/4 Dragons with Taunt (FIR_901t)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        controller = source.controller
+        if _holding_dark_gift_minion(controller):
+            source.game.cheat_action(
+                source, [Summon(controller, "FIR_901t") * 2]
+            )
+
+
+class _VolcorossChoice(Choice):
+    """Volcoross battlecry choice: pick one of the three Corpse-spend options.
+    Choosing an option spends that many Corpses and grants Volcoross that many
+    +Attack/+Health. The marker cards are never zoned to hand — choosing one
+    resolves the gain directly."""
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise InvalidAction(
+                "%r is not a valid choice (one of %r)" % (card, self.cards)
+            )
+        self.player.choice = None
+        amount = card._volcoross_amount
+        volcoross = self.source
+        controller = volcoross.controller
+        self.source.game.cheat_action(
+            volcoross,
+            [
+                SpendCorpses(controller, amount),
+                Buff(volcoross, "FIR_951e", atk=amount, max_health=amount),
+            ],
+        )
+        # Marker cards are never zoned (they stay in SETASIDE) so nothing
+        # leaks into hand/play — no cleanup needed.
+        self.trigger_choice_callback()
+
+
+class _VolcorossBattlecry(TargetedAction):
+    """Build the Volcoross choice: offer each of 10/20/30 Corpses that the
+    controller can currently afford. Affordable-only mirrors the printed card,
+    which only presents options you have the Corpses for."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        controller = source.controller
+        markers = []
+        for amount in (10, 20, 30):
+            if controller.corpses >= amount:
+                marker = controller.card("FIR_951e", source=source)
+                marker._volcoross_amount = amount
+                markers.append(marker)
+        if not markers:
+            return
+        source.game.queue_actions(source, [_VolcorossChoice(controller, markers)])
+
+
+class FIR_900:
+    """Cremate"""
+
+    # Discover a minion with a Dark Gift. It costs (2) less.
+    play = Discover(CONTROLLER, RandomMinion()).then(
+        Give(CONTROLLER, Discover.CARD).then(
+            _GiveDarkGift(Give.CARD), Buff(Give.CARD, "FIR_900e")
+        )
+    )
+
+
+@custom_card
+class FIR_900e:
+    # Cremate — the discovered minion costs (2) less. Not present in card data,
+    # so registered as an engine-internal cost enchant.
+    tags = {
+        GameTag.CARDNAME: "Cremate",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
+
+
+class FIR_901:
+    """Frostburn Matriarch"""
+
+    # Battlecry: If you're holding a minion with a Dark Gift, summon two 4/4
+    # Dragons with Taunt.
+    play = _FrostburnMatriarch(SELF)
+
+
+class FIR_901t:
+    """Frostburn Broodling"""
+
+    # 4/4 Dragon with Taunt (Taunt comes from data).
+
+
+class FIR_951:
+    """Volcoross"""
+
+    # Rush, Taunt (from data). Battlecry: Choose to spend 10, 20, or 30
+    # Corpses to gain that many stats.
+    play = _VolcorossBattlecry(SELF)
+
+
+class FIR_951e:
+    """Voracious Appetite"""
+
+    # Increased Stats. (Atk/Health set dynamically by the chosen Corpse amount.)

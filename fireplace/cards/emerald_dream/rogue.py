@@ -314,3 +314,86 @@ class EDR_525e1:
     # marker is correct and will clear automatically once the engine includes
     # weapons in that sweep. (Engine-owned gap; see test for details.)
     tags = {GameTag.POISONOUS: True, GameTag.TAG_ONE_TURN_EFFECT: True}
+
+
+##
+# Emerald Dream mini-set (Firelands, FIR_) — ROGUE
+#
+# Reuses the set-wide Dark Gift mechanic: a minion "with a Dark Gift" carries a
+# non-empty `_dark_gifts` list (set by `_GiveDarkGift` in neutral.py). Because
+# that marker is a plain Python attribute (not a GameTag) it can't be expressed
+# by the normal Selector DSL, so Cindersword's "holding a minion with a Dark
+# Gift" check is done in a small custom action below.
+
+
+class _CinderswordGiftBuff(TargetedAction):
+    """Cindersword — Battlecry: if you're holding a minion with a Dark Gift,
+    gain +3 Attack. A Dark Gift is the set-wide `_dark_gifts` marker placed by
+    `_GiveDarkGift`; only hand minions are inspected (excluding the weapon
+    itself, which is never a minion anyway)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        holding_gifted = any(
+            c.type == CardType.MINION and getattr(c, "_dark_gifts", None)
+            for c in ctrl.hand
+        )
+        if holding_gifted:
+            source.game.cheat_action(source, [Buff(source, "FIR_922e", atk=3)])
+
+
+##
+# Minions
+
+
+class FIR_919:
+    """Everburning Phoenix"""
+
+    # Costs (1) less for each card you've played this turn.
+    # Deathrattle: Return this to your hand.
+    cost_mod = -Attr(CONTROLLER, GameTag.NUM_CARDS_PLAYED_THIS_TURN)
+    deathrattle = Bounce(SELF)
+
+
+##
+# Spells
+
+
+class FIR_920:
+    """Smoke Bomb"""
+
+    # Discover a Combo, Battlecry, or Stealth minion with a Dark Gift.
+    #
+    # The discover pool is any collectible minion carrying the COMBO,
+    # BATTLECRY, or STEALTH keyword; the chosen minion is then given a Dark
+    # Gift through the shared set-wide `_GiveDarkGift` helper (consistent with
+    # every other EDR Dark-Gift card). The exact Dark Gift pool is the set-wide
+    # approximation flagged in neutral.py.
+    play = Discover(
+        CONTROLLER,
+        RandomMinion(
+            custom_filter=lambda c: bool(
+                c.tags.get(GameTag.COMBO)
+                or c.tags.get(GameTag.BATTLECRY)
+                or c.tags.get(GameTag.STEALTH)
+            )
+        ),
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
+
+
+##
+# Weapons
+
+
+class FIR_922:
+    """Cindersword"""
+
+    # Battlecry: If you're holding a minion with a Dark Gift, gain +3 Attack.
+    play = _CinderswordGiftBuff(SELF)
+
+
+class FIR_922e:
+    # Fiery — +3 Attack (data enchant; ATK supplied via the buff call).
+    tags = {GameTag.ATK: 3}

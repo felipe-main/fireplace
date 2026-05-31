@@ -1658,6 +1658,18 @@ class Damage(TargetedAction):
     def do(self, source, target, amount=None):
         if not amount:
             amount = target.predamage
+        # Emerald Dream (Firelands) — Fyrakk the Blazing: "Immune to Fire
+        # spells." A minion flagged `_immune_to_fire_spells` takes no damage
+        # from a Fire-school spell source (its own Fire-spell barrage and any
+        # opponent Fire spell pass straight through it).
+        if (
+            amount
+            and getattr(target, "_immune_to_fire_spells", False)
+            and getattr(source, "type", None) == CardType.SPELL
+            and getattr(source, "spell_school", None) == SpellSchool.FIRE
+        ):
+            target.predamage = 0
+            return
         # Perils in Paradise — Aranna, Thrill Seeker: damage the controller's
         # hero would take on the controller's turn is REDIRECTED (pre-damage)
         # to a random enemy, so the hero never takes it (armor untouched, no

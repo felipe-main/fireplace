@@ -272,3 +272,61 @@ class EDR_840t2:
     # Taunt, Lifesteal. Dormant for 3 turns.
     tags = {GameTag.DORMANT: True}
     dormant_turns = 3
+
+
+##
+# Firelands (FIR_) — Emerald Dream mini-set additions
+
+
+# Random picker over Fel spells (collectible). Used by Scorchreaver's
+# battlecry Discover.
+RandomFelSpell = lambda **kw: RandomSpell(
+    custom_filter=lambda c: c.spell_school == SpellSchool.FEL, **kw
+)
+
+
+class FIR_902:
+    """Sigil of Cinder"""
+
+    # At the start of your next turn, deal $6 damage randomly split among all
+    # enemies. A Sigil lingers in the SECRET zone after being cast (engine
+    # routes the SIGIL tag there), so it receives OWN_TURN_BEGIN on the
+    # controller's next turn. Six individual 1-damage shots, each re-picking a
+    # random living enemy (hero or minion), matching "randomly split".
+    events = OWN_TURN_BEGIN.on(Hit(RANDOM(ENEMY_CHARACTERS), 1) * 6, Destroy(SELF))
+
+
+class FIR_904:
+    """Felfire Blaze"""
+
+    # After you cast a Fel spell, destroy this and deal 2 damage to all enemies.
+    events = OWN_SPELL_PLAY.after(
+        (Find(Play.CARD + FEL_SPELL))
+        & (Hit(ENEMY_CHARACTERS, 2), Destroy(SELF))
+    )
+
+
+class FIR_952:
+    """Scorchreaver"""
+
+    # Battlecry: Discover a Fel spell. Reduce the Cost of Fel spells in your
+    # hand by (1).
+    # The cost reduction is applied FIRST: the trailing Discover sets
+    # ``player.choice`` and suspends the battlecry's action block, so an action
+    # queued after it would be dropped. Discounting the hand before the Discover
+    # also matches the printed snapshot ("Fel spells in your hand"), which
+    # excludes the about-to-be-discovered card.
+    play = (
+        Buff(FRIENDLY_HAND + FEL_SPELL, "FIR_952e"),
+        DISCOVER(RandomFelSpell()),
+    )
+
+
+@custom_card
+class FIR_952e:
+    # Scorchreaver — reduce the Cost of a Fel spell in hand by (1).
+    tags = {
+        GameTag.CARDNAME: "Scorchreaver",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -1,
+    }

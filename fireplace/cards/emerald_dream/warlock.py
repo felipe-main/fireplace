@@ -318,3 +318,41 @@ class EDR_654:
 class EDR_654e:
     # Overgrown Horror — Dark Gift minion costs (2) less.
     tags = {GameTag.COST: -2}
+
+
+##
+# Firelands mini-set (FIR_) — Warlock collectibles.
+
+
+class FIR_924:
+    """Shadowflame Stalker"""
+
+    # Battlecry: Discover a Demon with a Dark Gift. Get a copy of it.
+    # Discover offers a copy of three random Demons; the chosen one is added to
+    # hand (Discover already grants a copy) and then receives a random Dark Gift
+    # (shared EDR keyword approximation via `_GiveDarkGift`).
+    play = Discover(
+        CONTROLLER,
+        RandomMinion(race=Race.DEMON),
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
+
+
+class FIR_954:
+    """Conflagrate"""
+
+    # Deal $5 damage to a minion. Its owner draws a card.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Hit(TARGET, 5), Draw(TARGET_PLAYER)
+
+
+class FIR_955:
+    """Emberroot Destroyer"""
+
+    # Whenever your hero takes damage on your turn, deal 3 damage to a random
+    # enemy minion.
+    events = Damage(FRIENDLY_HERO).on(
+        Find(CURRENT_PLAYER + CONTROLLER) & Hit(RANDOM(ENEMY_MINIONS), 3)
+    )

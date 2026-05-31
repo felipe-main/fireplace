@@ -291,3 +291,54 @@ class EDR_234e2:
 
     # Emerald Bounty — "Can't be played for 2 turns" (data enchant). The
     # lockout is cosmetic-only in this engine (no play-lock lifetime).
+
+
+##
+# Firelands mini-set (FIR_ prefix) — SHAMAN
+
+
+class FIR_778:
+    """Avatar of Destruction"""
+
+    # Taunt. Deathrattle: Deal 9 damage to all enemy minions.
+    deathrattle = Hit(ENEMY_MINIONS, 9)
+
+
+class FIR_923:
+    """Flames of the Firelord"""
+
+    # Deal 4 damage to a random enemy minion. If you're holding a card that
+    # costs (8) or more, deal 8 instead.
+    play = Find(FRIENDLY_HAND + (COST >= 8)) & Hit(RANDOM_ENEMY_MINION, 8) | Hit(
+        RANDOM_ENEMY_MINION, 4
+    )
+
+
+class FIR_927:
+    """Emberscarred Whelp"""
+
+    # Battlecry: Discover a 5-Cost card. Gain 1 Mana Crystal next turn only.
+    # The "next turn only" Mana rider is applied first: a Discover opens a
+    # choice that halts the action queue, so any action queued *after* it in a
+    # flat tuple is dropped (see CLAUDE.md "Choice sequencing"). The Mana buff
+    # doesn't depend on the Discover, so it runs cleanly before it.
+    play = (
+        Buff(FRIENDLY_HERO, "FIR_927e"),
+        DISCOVER(RandomCollectible(cost=5)),
+    )
+
+
+##
+# Firelands enchantments
+
+
+@custom_card
+class FIR_927e:
+    # Emberscarred Whelp — gain 1 Mana Crystal next turn only. Not in card
+    # data, so registered here. At the controller's next turn-begin it grants
+    # +1 temporary Mana (spent that turn only), then tears itself down.
+    tags = {
+        GameTag.CARDNAME: "Emberscarred Whelp",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    events = OWN_TURN_BEGIN.on(ManaThisTurn(CONTROLLER, 1), Destroy(SELF))

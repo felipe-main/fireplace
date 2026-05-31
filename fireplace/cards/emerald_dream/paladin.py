@@ -1,5 +1,7 @@
 from ..utils import *
 
+from ._smolder import _SmolderTick, smolder_level
+
 
 ##
 # Custom actions
@@ -290,3 +292,97 @@ class EDR_259host:
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
     events = OWN_TURN_END.on(_UrsolTick(SELF))
+
+
+##
+# Firelands mini-set (FIR_) — Paladin
+##
+
+
+class FIR_914:
+    """Smoldering Strength"""
+
+    # Give a friendly minion +{0}/+{0}. (Upgrades each turn, but discards
+    # after {1}!)
+    #
+    # Smoldering: while held, {0} rises by 1 at the start of each of your
+    # turns and the card is discarded after a few turns. The exact {0}/{1}
+    # values are server-resolved (not in CardXML) — we use the package
+    # default (base 1, +1 per turn, discard after 3). Flagged as an
+    # approximation (same class as the other Smoldering cards).
+    #
+    # The CardXML ships no target requirement for this spell (the
+    # "friendly minion" target is server-resolved), so declare it here.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_FRIENDLY_TARGET: 0,
+    }
+
+    class Hand:
+        events = OWN_TURN_BEGIN.on(_SmolderTick(SELF))
+
+    def play(self):
+        n = smolder_level(self, base=1)
+        yield Buff(self.target, "FIR_914e", atk=n, max_health=n)
+
+
+class FIR_941:
+    """Searing Reflection"""
+
+    # Draw a minion. Summon an 8/8 copy of it with Divine Shield.
+    play = Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION)).then(
+        Summon(CONTROLLER, Buff(ExactCopy(Draw.CARD), "FIR_941e2")).then(
+            SetTag(Summon.CARD, GameTag.DIVINE_SHIELD)
+        )
+    )
+
+
+class _AshleafBattlecry(TargetedAction):
+    """Ashleaf Pixie — if you're holding a spell that costs (5) or more, give
+    the Pixie Divine Shield and Lifesteal. A plain ``Find(FRIENDLY_HAND + SPELL
+    + (COST >= 5))`` gate leaks here: the composed selector drops the SPELL
+    term and matches any 5+ Cost card (including minions), so we check the
+    hand explicitly."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        holding = any(
+            c.type == CardType.SPELL and c.cost >= 5
+            for c in source.controller.hand
+        )
+        if holding:
+            source.game.cheat_action(
+                source,
+                [SetTags(target, {
+                    GameTag.DIVINE_SHIELD: True,
+                    GameTag.LIFESTEAL: True,
+                })],
+            )
+
+
+class FIR_961:
+    """Ashleaf Pixie"""
+
+    # Battlecry: If you're holding a spell that costs (5) or more, gain
+    # Divine Shield and Lifesteal.
+    play = _AshleafBattlecry(SELF)
+
+
+##
+# Firelands enchantments
+##
+
+
+@custom_card
+class FIR_941e2:
+    # Engine-internal: set a Searing Reflection copy's stats to 8/8.
+    # (FIR_941e1 ships in data but carries no fixed stat value — the 8/8 is
+    # server-resolved — so we register an explicit SET(8) enchant.)
+    tags = {
+        GameTag.CARDNAME: "Searing Reflection",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    atk = SET(8)
+    max_health = SET(8)

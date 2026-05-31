@@ -459,3 +459,107 @@ class EDR_004:
         CONTROLLER,
         RandomMinion(race=Race.BEAST),
     ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
+
+
+##
+# Emerald Dream mini-set (Firelands, FIR_ prefix) — neutral collectibles.
+
+
+class FIR_921:
+    """Petal Picker"""
+
+    # Battlecry: If you've Imbued your Hero Power twice, draw 2 cards.
+    # Gate on the per-game `imbues_this_game` counter (Resplendent Dreamweaver
+    # EDR_860 / Malorne EDR_888 idiom).
+    def play(self):
+        if self.controller.imbues_this_game >= 2:
+            yield Draw(CONTROLLER)
+            yield Draw(CONTROLLER)
+
+
+class FIR_929:
+    """Living Flame"""
+
+    # Deathrattle: Draw a Fire spell.
+    # Pull a random Fire-school spell from your deck (the Buttons VAC_437 idiom).
+    deathrattle = Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + SPELL + FIRE_SPELL))
+
+
+class _ZaqaliReduceCosts(TargetedAction):
+    """Zaqali Flamemancer — if every card in the controller's hand is of a
+    distinct Cost, reduce every hand card's Cost by (2)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # Zaqali is resolving its battlecry from PLAY, so `hand` is exactly the
+        # OTHER cards. "every card in your hand is of a different Cost" ->
+        # all current Costs distinct.
+        hand = list(source.controller.hand)
+        costs = [c.cost for c in hand]
+        if hand and len(set(costs)) == len(costs):
+            for c in hand:
+                source.game.cheat_action(source, [Buff(c, "FIR_940e")])
+
+
+class FIR_940:
+    """Zaqali Flamemancer"""
+
+    # Battlecry: If every card in your hand is of a different Cost,
+    # reduce their Costs by (2).
+    play = _ZaqaliReduceCosts(SELF)
+
+
+@custom_card
+class FIR_940e:
+    # Zaqali Flamemancer — reduced hand card costs (2) less.
+    tags = {
+        GameTag.CARDNAME: "Zaqali Flamemancer",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
+
+
+class FIR_958:
+    """Tindral Sageswift"""
+
+    # Deathrattle: Deal 1 damage to all enemies. If it's your opponent's turn,
+    # deal 4 damage instead.
+    def deathrattle(self):
+        amount = 1 if self.controller.current_player else 4
+        yield Hit(ENEMY_CHARACTERS, amount)
+
+
+class FIR_959:
+    """Fyrakk the Blazing"""
+
+    # Immune to Fire spells. Battlecry: Cast 20 Mana worth of Fire spells at
+    # random enemies. The immunity is wired via the engine: Minion._set_zone
+    # reads this marker to set `_immune_to_fire_spells`, which actions.Damage.do
+    # honors (a Fire-school spell deals no damage to Fyrakk).
+    _grants_fire_immunity = True
+
+    # Cast random collectible Fire spells whose Cost fits the remaining budget
+    # at random enemies (the Rune of the Archmage AV_283 idiom). Only costed
+    # (>0) spells are eligible so the loop terminates; 1-Cost Fire spells always
+    # exist, so the budget drains to exactly 0 (total Mana spent == 20).
+    def play(self):
+        budget = 20
+        for _ in range(20):  # safety bound (at most 20 one-Cost casts)
+            if budget <= 0:
+                return
+            candidates = [
+                cid for cid, c in db.items()
+                if (
+                    c.collectible
+                    and c.type == CardType.SPELL
+                    and getattr(c, "spell_school", None) == SpellSchool.FIRE
+                    and c.cost is not None
+                    and 0 < c.cost <= budget
+                )
+            ]
+            if not candidates:
+                return
+            pick = self.game.random.choice(candidates)
+            budget -= db[pick].cost
+            yield CastSpellTargetsEnemiesIfPossible(pick)

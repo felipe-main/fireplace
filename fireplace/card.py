@@ -1426,6 +1426,12 @@ class Character(LiveEntity):
             self.damage = 0
         if zone == Zone.PLAY:
             self._titan_ability_index = 0
+            # Emerald Dream (Firelands) — Fyrakk the Blazing: a minion whose
+            # script declares `_grants_fire_immunity` is "Immune to Fire
+            # spells" while in play (read in actions.Damage.do). Set however
+            # the minion enters PLAY (played from hand or summoned).
+            if getattr(self.data.scripts, "_grants_fire_immunity", False):
+                self._immune_to_fire_spells = True
         return super()._set_zone(zone)
 
     @property

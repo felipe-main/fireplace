@@ -158,3 +158,54 @@ class EDR_853:
     # After you cast a spell, summon a random Animal Companion.
     entourage = ["NEW1_032", "NEW1_033", "NEW1_034"]
     events = OWN_SPELL_PLAY.after(Summon(CONTROLLER, RandomEntourage()))
+
+
+##
+# Firelands mini-set (FIR_) — HUNTER collectible cards.
+
+
+class _MagmaHoundSplit(TargetedAction):
+    """Magma Hound — after this attacks a minion and survives, deal this
+    minion's Attack damage split among all enemies.
+
+    Fires from Attack(SELF, MINION).after(...). We gate on the attacker
+    still being alive (it must have *survived* the exchange) and only then
+    distribute its current Attack as one-damage darts among all living
+    enemy characters (HS distributes the split randomly)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # target is the attacker (SELF). Must still be on the board.
+        if target.zone != Zone.PLAY or target.dead:
+            return
+        amount = target.atk
+        if amount <= 0:
+            return
+        source.game.cheat_action(
+            source, [Hit(RANDOM(ENEMY_CHARACTERS - DEAD), 1) * amount]
+        )
+
+
+class FIR_953:
+    """Magma Hound"""
+
+    # Rush. After this attacks a minion and survives, deal this minion's
+    # Attack damage split among all enemies.
+    events = Attack(SELF, MINION).after(_MagmaHoundSplit(SELF))
+
+
+class FIR_909:
+    """Bursting Shot"""
+
+    # Deal $2 damage to three random enemies.
+    # "Enemies" = enemy characters (minions or hero); each dart picks a
+    # fresh random living enemy.
+    play = Hit(RANDOM(ENEMY_CHARACTERS - DEAD), 2) * 3
+
+
+class FIR_960:
+    """Tending Dragonkin"""
+
+    # Battlecry: Copy the lowest Cost Beast in your hand.
+    play = Give(CONTROLLER, ExactCopy(LOWEST_COST(FRIENDLY_HAND + BEAST)))

@@ -1,6 +1,8 @@
 from ..utils import *
 
-from hearthstone.enums import GameTag
+from hearthstone.enums import CardType, GameTag
+
+from ._smolder import _SmolderTick, smolder_level
 
 
 ##
@@ -219,3 +221,90 @@ class EDR_970e:
     # -2 Attack until your next turn.
     tags = {GameTag.ATK: -2}
     events = OWN_TURN_BEGIN.on(Destroy(SELF))
+
+
+##
+# Emerald Dream mini-set (Firelands, FIR_) — PRIEST collectibles.
+#
+# FIR_777 Spirit of the Kaldorei — Taunt/Lifesteal, +2/+2 battlecry gated on
+#   having used your Hero Power this turn.
+# FIR_916 Smoldering Ascent — board-clear Smoldering spell (see _smolder.py).
+# FIR_918 Light of the New Moon — +3/+3 buff that bounces back to hand once it
+#   is your 4th-or-later spell of the game.
+
+
+class _UsedHeroPowerThisTurnBuff(TargetedAction):
+    """Spirit of the Kaldorei — if the controller has activated their Hero
+    Power this turn, buff the target (the just-played minion) +2/+2."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        power = source.controller.hero.power
+        if power is not None and getattr(power, "activations_this_turn", 0) >= 1:
+            source.game.cheat_action(source, [Buff(target, "FIR_777e")])
+
+
+@custom_card
+class FIR_777e:
+    """Kaldorei Spirit"""
+
+    # +2/+2. Not present in CardXML for this build, so registered as a custom
+    # enchantment.
+    tags = {
+        GameTag.CARDNAME: "Kaldorei Spirit",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 2,
+        GameTag.HEALTH: 2,
+    }
+
+
+class FIR_777:
+    """Spirit of the Kaldorei"""
+
+    # Taunt, Lifesteal. Battlecry: If you used your Hero Power this turn, gain
+    # +2/+2. (Taunt + Lifesteal come from data.)
+    play = _UsedHeroPowerThisTurnBuff(SELF)
+
+
+class FIR_916:
+    """Smoldering Ascent"""
+
+    # Deal ${0} damage to all enemy minions. (Upgrades each turn, but discards
+    # after {1}!)  The {0} start/step and {1} discard threshold are
+    # server-resolved (absent from CardXML) — best-fidelity defaults from
+    # _smolder.py: base 1, +1 per held turn, discarded after 3 of your turns.
+    class Hand:
+        events = OWN_TURN_BEGIN.on(_SmolderTick(SELF))
+
+    def play(self):
+        yield Hit(ENEMY_MINIONS, smolder_level(self, base=1))
+
+
+class FIR_918:
+    """Light of the New Moon"""
+
+    # Give a minion +3/+3. (Cast 4 spells to return this to your hand when
+    # played.)  Play.do bumps spells_played_this_game AFTER queueing this
+    # spell's actions, so the 4th-or-later spell sees the counter at >= 3.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Buff(TARGET, "FIR_918e"), (
+        Attr(CONTROLLER, "spells_played_this_game") >= 3
+    ) & Give(CONTROLLER, "FIR_918")
+
+
+@custom_card
+class FIR_918e:
+    """Lunar Blessing"""
+
+    # +3/+3. Not present in CardXML for this build, so registered as a custom
+    # enchantment.
+    tags = {
+        GameTag.CARDNAME: "Lunar Blessing",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 3,
+        GameTag.HEALTH: 3,
+    }

@@ -23,4 +23,7 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 2:Into the Emerald Dream | P4 audit | wf_8dc8a391 finders+3-vote refute (247 agents); 43 rows survived -> review.csv (13 real bugs, 24 approx, 6 once-overs)
 - 2026-05-31 | 2:Into the Emerald Dream | P5 tierfix | wf_20ecc2f2 (12 agents): 20 cards fixed (e625ae56) + engine pass (3d845eff) closed 5 real bugs needing engine: Bounce-broadcasts-AFTER+Hand.events (Harbinger), weapon one-turn sweep (Barbed Thorn), REQ_TARGET_WITH_CARD_NAME (Divination), _GiveDarkGift records gifts (Wallow/Overgrown). Suite 3288 passed
 - 2026-05-31 | 2:Into the Emerald Dream | P5 ledger | review.csv EDR closed: 25 fixed, 18 watch, 0 open (e27b4549). All 13 real bugs fixed; 18 watch = genuine @-scaling/Dark-Gift-pool/Temporary/Morph-Play-pipeline engine limits
-- 2026-05-31 | 2:Into the Emerald Dream | P7 soak | 1000-game soak launched (10 workers)
+- 2026-05-31 | 2:Into the Emerald Dream | P7 soak | 1000/1000 succeeded, 0 failed. SET #2 DONE (7df40d77)
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P0/P1 | bump 219197->219846.1 (Patch 32.2); 38 FIR_ Firelands cards, CardSet=EMERALD_DREAM; no data-bump regressions (small bump); novel=Smoldering; 039fff
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P2 engine | _smolder.py helper (_SmolderTick + smolder_level); reuses Dark Gift/Imbue/Corpses
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P3 cards | workflow wf_d7df8ca2 (12 agents, 1/class, new test_fir_<class>.py); implement->verify

@@ -393,3 +393,147 @@ class EDR_273e:
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
         GameTag.COST: -1,
     }
+
+
+##
+# Emerald Dream mini-set (Firelands, FIR_) — DRUID
+#
+# Custom actions for the FIR_ trio.
+
+
+class _OverheatDiscard(TargetedAction):
+    """Overheat (FIR_906) — discard a random Nature spell from hand; only if one
+    was actually discarded, give your minions +1/+1 MORE (a second FIR_906e).
+    The extra buff is conditional on a Nature spell existing, so it must run
+    after the discard resolves — hence a custom action, not a flat tuple."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        player = source.controller
+        nature_spells = [
+            c
+            for c in player.hand
+            if c.type == CardType.SPELL
+            and c.spell_school is not None
+            and int(c.spell_school) == int(SpellSchool.NATURE)
+        ]
+        if not nature_spells:
+            return
+        victim = source.game.random.choice(nature_spells)
+        source.game.cheat_action(
+            source,
+            [Discard(victim), Buff(FRIENDLY_MINIONS, "FIR_906e")],
+        )
+
+
+class _CharredChameleonBattlecry(TargetedAction):
+    """Charred Chameleon (FIR_908) — Battlecry: if the controller has used their
+    Hero Power this turn, give the chosen friendly minion +1/+2 and Rush.
+
+    "Used your Hero Power this turn" is read from the Hero Power card's per-turn
+    `activations_this_turn` counter (bumped in HeroPower.do, reset each turn).
+    FIR_908e3 in data carries only visual tags, so the +1/+2 comes from the
+    locally-declared FIR_908e3 stat enchant; Rush is granted via SetTags."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        player = source.controller
+        hp = player.hero_power
+        if hp is None or hp.activations_this_turn <= 0:
+            return
+        if isinstance(target, (list, tuple)):
+            target = target[0] if target else None
+        if target is None:
+            return
+        source.game.cheat_action(
+            source,
+            [Buff(target, "FIR_908e3"), SetTags(target, {GameTag.RUSH: True})],
+        )
+
+
+class _AmirdrassilUse(TargetedAction):
+    """Amirdrassil (FIR_907) — location activate. Each use is one level higher
+    than the last ("Improves each use!"): level N summons a random N-Cost
+    minion, gains N Armor, draws N cards, and refreshes N Mana Crystals. The
+    per-use level counter lives on the location card (`_amir_uses`), starting at
+    1 on the first use.
+
+    NOTE: the printed @ values are server-resolved (not in CardXML). Modelled as
+    level = number-of-times-used. Flagged as a best-fidelity approximation."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        location = source
+        level = getattr(location, "_amir_uses", 0) + 1
+        location._amir_uses = level
+        player = location.controller
+        source.game.cheat_action(
+            location,
+            [
+                Summon(player, RandomMinion(cost=level)),
+                GainArmor(player.hero, level),
+                Draw(player) * level,
+                ManaThisTurn(player, level),
+            ],
+        )
+
+
+##
+# Spells
+
+
+class FIR_906:
+    """Overheat"""
+
+    # Give your minions +1/+1. Discard a random Nature spell to give them
+    # +1/+1 more.
+    play = (
+        Buff(FRIENDLY_MINIONS, "FIR_906e"),
+        _OverheatDiscard(SELF),
+    )
+
+
+##
+# Locations
+
+
+class FIR_907:
+    """Amirdrassil"""
+
+    # Summon a @-Cost minion. Gain @ Armor. Draw @ card(s). Refresh @ Mana
+    # Crystal. (Improves each use!)
+    activate = _AmirdrassilUse(SELF)
+
+
+##
+# Minions
+
+
+class FIR_908:
+    """Charred Chameleon"""
+
+    # Battlecry: If you've used your Hero Power this turn, give a friendly
+    # minion +1/+2 and Rush.
+    requirements = {PlayReq.REQ_TARGET_IF_AVAILABLE: 0}
+    play = _CharredChameleonBattlecry(TARGET)
+
+
+##
+# FIR_ enchantments
+#
+# FIR_906e and FIR_908e3 exist in data but carry only visual tags (no
+# ATK/HEALTH), so declare them with explicit stat tags — the merge code grafts
+# these onto the data cards (no @custom_card needed for in-data enchants).
+
+
+class FIR_906e:
+    # Overheated — +1/+1 (applied once or twice by Overheat).
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
+
+
+class FIR_908e3:
+    # Spreading Flames — +1/+2.
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 2}

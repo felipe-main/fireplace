@@ -28,4 +28,5 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P2 engine | _smolder.py helper (_SmolderTick + smolder_level); reuses Dark Gift/Imbue/Corpses
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P3 cards+gate | wf_d7df8ca2: 38 FIR_ cards + Smoldering; gate GREEN; full suite 3364 passed; commit e398ef1b
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P4 audit | wf_09b1bd88 (finders+refute): 7 rows survived = 6 approx + 1 once-over, 0 REAL BUGS -> all watch; review.csv 25 fixed/25 watch/0 open
-- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P7 soak | first run 999/1000: latent GDB bug (Attr SELF _played_cost crash on indirect cast) -> default _played_cost=0 in PlayableCard.__init__; re-soak running
+- 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P7 soak | run1 999/1000 (_played_cost crash -> default 0); run2 999/1000 (Emerald Portal casts-when-drawn generator -> list()); run3 1000/1000, 0 failed. SET #3 DONE. README->Patch 32.2.219846
+- 2026-05-31 | MILESTONE | 3 of 8 sets DONE | #1 StarCraft, #2 Emerald Dream, #3 Firelands mini all green+audited+soaked. Next: #4 The Shrouded City (THE_LOST_CITY, build TBD ~225xxx+)

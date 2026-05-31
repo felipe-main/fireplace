@@ -1,0 +1,214 @@
+C:\Users\winz\AppData\Local\Programs\Python\Python312\Lib\site-packages\hearthstone_data\__init__.py:2: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[fireplace.__init__]: Initializing card database
+[fireplace.__init__]: Merged 32605 cards
+=== CardSet EMERALD_DREAM: 145 collectible (0 implemented, 145 NEW) ===
+
+--- NEW (unimplemented) cards ---
+EDR_000        MINION  9/4/12    NEUTRAL       Ysera, Emerald Aspect              | [x]<b>Start of Game:</b> Increase both players'maximum Mana by 5. <b>Battlecry:</b> Gain 3 Mana Crystals.
+EDR_001        MINION  3/3/3     NEUTRAL       Hopeful Dryad                      | <b>Battlecry:</b> Get a random Dream card.
+EDR_014        MINION  5/4/7     HUNTER        Verdant Dreamsaber                 | <b>Battlecry:</b> If this costs (3) or less, attack two random enemy minions.
+EDR_031        MINION  9/5/11    SHAMAN        Ohn'ahra                           | At the end of your turn, play the top 3 cards from_your deck.
+EDR_060        SPELL   5         DRUID         Ward of Earth                      | Gain 5 Armor. Summon a random 5-Cost minion and give it <b>Taunt</b>.
+EDR_102        MINION  4/5/4     NEUTRAL       Treacherous Tormentor              | <b>Battlecry:</b> <b>Discover</b> a <b>Legendary</b> minion with a <b>Dark Gift</b>.
+EDR_105        MINION  2/1/2     NEUTRAL       Creature of Madness                | <b>Battlecry:</b> <b>Discover</b> a 3-Cost minion with a <b>Dark_Gift.</b>
+EDR_110        MINION  5/1/5     NEUTRAL       Sporegnasher                       | <b>Poisonous</b> <b>Deathrattle:</b> Deal 1 damage to a random enemy minion.
+EDR_209        MINION  10/5/8    DRUID         Forest Lord Cenarius               | [x]<b>Choose Thrice -</b> Give your other minions +1/+3; or Summon a 5/5 Ancient with <b>Taunt</b>.
+EDR_226        MINION  2/2/2     HUNTER        Exotic Houndmaster                 | <b>Battlecry:</b> Draw a Beast. <b>Imbue</b> your Hero Power.
+EDR_227        MINION  4/5/2     HUNTER        Umbraclaw                          | <b>Rush</b> <b>Deathrattle:</b> <b>Imbue</b> your Hero Power.
+EDR_230        MINION  5/4/4     SHAMAN        Beanstalk Brute                    | <b>Battlecry:</b> Give +4/+4 to_the top 3 minions in_your deck.
+EDR_231        SPELL   2         SHAMAN        Aspect's Embrace                   | [x]Restore #4 Health. Draw a card. <b>Imbue</b> your Hero Power.
+EDR_232        SPELL   10        SHAMAN        Typhoon                            | Each minion gets shuffled into a random player's deck.
+EDR_233        SPELL   5         SHAMAN        Spirits of the Forest              | <b>Choose One -</b> Summon three 2/3 Wolves with <b>Taunt</b>; or Summon two 4/3 Falcons with <b>Windfury</b>.
+EDR_234        SPELL   2         SHAMAN        Emerald Bounty                     | Draw 2 cards. You can't play them for 2 turns.
+EDR_238        MINION  6/4/4     SHAMAN        Merithra                           | [x]<b>Battlecry:</b> Resurrect all different friendly minions that cost (8) or more.
+EDR_251        SPELL   1         PALADIN       Dragonscale Armaments              | Draw a spell that started in your deck and one that didn't.
+EDR_252        SPELL   2         PALADIN       Mark of Ursol                      | [x]Choose a minion. If it's an enemy, set its stats to 1/1. If it's friendly, set its stats to 3/3 instead.
+EDR_253        WEAPON  4/4/0     PALADIN       Ursine Maul                        | After your hero attacks, draw your highest Cost_card.
+EDR_254        MINION  3/1/4     NEUTRAL       Animated Moonwell                  | After you cast a spell, gain Attack equal to its Cost.
+EDR_255        SPELL   7         PALADIN       Renewing Flames                    | <b>Lifesteal</b>. Deal $5 damage to the lowest Health enemy, twice.
+EDR_256        MINION  4/3/4     PALADIN       Dreamwarden                        | [x]<b>Taunt</b>. <b>Battlecry:</b> If there is a card in your deck that didn't start there, draw it and gain +2/+2.
+EDR_257        MINION  4/3/3     PALADIN       Lightmender                        | [x]<b><b>Taunt</b>.</b> <b>Choose One -</b> +3 Attack and <b>Divine Shield</b>; _or +3 Health and <b>Lifesteal</b>.
+EDR_258        MINION  5/3/4     PALADIN       Toreth the Unbreaking              | [x]<b>Divine Shield</b>, <b>Taunt</b> Your <b><b>Divine Shield</b>s</b> take three hits to break.
+EDR_259        MINION  8/9/7     PALADIN       Ursol                              | [x]<b>Battlecry:</b> Cast the highest Cost spell from your hand as _an Aura that lasts @ turns.
+EDR_260        MINION  4/4/5     NEUTRAL       Illusory Greenwing                 | [x]<b>Taunt</b>. <b>Deathrattle:</b> Shuffle two 4/5 Dragons with <b>Taunt</b> into your deck. They're ___<b>Summoned When Drawn</b>.
+EDR_261        SPELL   3         HUNTER        Amphibian's Spirit                 | [x]Give a minion +2/+2 and "<b>Deathrattle:</b> Give a friendly minion +2/+2 and this <b>Deathrattle</b>."
+EDR_262        SPELL   3         HUNTER        Spirit Bond                        | Deal $3 damage to a minion. If that kills it, summon a 3/2 Wolf with <b>Rush</b>.
+EDR_263        SPELL   4         HUNTER        Grace of the Greatwolf             | [x]<b>Choose One -</b> Deal $4 damage to the enemy hero; or Summon two 3/2 Wolves with <b>Rush</b>.
+EDR_264        SPELL   1         PALADIN       Aegis of Light                     | Summon a random 1-Cost minion and give it <b>Taunt</b>. <b>Imbue</b> your Hero Power.
+EDR_270        SPELL   2         DRUID         Horn of Plenty                     | [x]<b>Discover</b> a Nature spell. It costs (2) less.
+EDR_271        MINION  5/3/6     DRUID         Grove Shaper                       | [x]After you cast a Nature spell, summon a 2/2 Treant with "<b>Deathrattle:</b> Get a copy of that spell."
+EDR_272        MINION  6/6/7     DRUID         Evergreen Stag                     | <b>Elusive</b> <b>Lifesteal</b> <b>Taunt</b>
+EDR_273        SPELL   1         DRUID         Symbiosis                          | [x]<b>Discover</b> a <b>Choose One</b> card from another class. It costs (1) less.
+EDR_416        WEAPON  3/3/0     HUNTER        Shepherd's Crook                   | After your hero attacks, summon a 3/3 Sheep that's <b>Dormant</b> for 2 turns.
+EDR_421        MINION  10/6/12   DEMONHUNTER   Omen                               | [x]<b>Rush</b>, <b>Windfury</b> <b>Deathrattle:</b> Deal @ damage to all enemies. <i>(Improves after this attacks!)</i>
+EDR_430        MINION  8/6/8     MAGE          Aessina                            | [x]<b>Battlecry:</b> If 20 friendly minions have died this game, deal 20 damage split among all enemies.@ <i>({0} left!)</i>@ <i>(Ready!)</i>
+EDR_449        MINION  2/3/2     PRIEST        Lunarwing Messenger                | <b>Lifesteal</b> <b>Battlecry:</b> <b>Imbue</b> your Hero_Power.
+EDR_451        MINION  3/3/4     PALADIN       Goldpetal Drake                    | [x]<b>Battlecry and Deathrattle:</b> <b>Imbue</b> your Hero Power.
+EDR_453        MINION  10/12/7   NEUTRAL       Briarspawn Drake                   | [x]At the end of your turn, attack a random enemy minion <i>(excess damage hits the enemy hero)</i>.
+EDR_454        LOCATION 2         WARRIOR       Clutch of Corruption               | [x]Choose a friendly Dragon. Summon a 0/2 Egg that hatches into a copy of it.
+EDR_455        SPELL   3         WARRIOR       Succumb to Madness                 | <b>Discover</b> a friendly Dragon that died this game. Resummon it.
+EDR_456        MINION  1/1/1     WARRIOR       Darkrider                          | <b>Battlecry:</b> If you're holding a Dragon, <b>Discover</b> a Dragon with a <b>Dark Gift</b>.
+EDR_457        MINION  2/2/3     WARRIOR       Brood Keeper                       | <b>Battlecry:</b> If you're holding a Dragon, equip a 2/2 Sword.
+EDR_459        MINION  4/6/6     WARRIOR       Afflicted Devastator               | [x]<b>Battlecry:</b> Deal 3 damage to all other friendly minions. <b>Deathrattle:</b> Deal 3 damage to all enemy minions.
+EDR_460        SPELL   3         PRIEST        Wish of the New Moon               | Deal $6 damage to a minion. <i>(Cast @ |4(spell, spells) to gain <b>Lifesteal</b>.)</i>
+EDR_461        SPELL   5         PRIEST        Ritual of the New Moon             | [x]Summon two random 3-Cost minions. <i>(Cast @ |4(spell, spells) to summon 6-Cost minions instead.)</i>
+EDR_462        MINION  4/3/6     PRIEST        Selenic Drake                      | [x]<b>Elusive</b> At the end of your turn, get a random Dragon.
+EDR_463        SPELL   2         PRIEST        Twilight Influence                 | <b>Choose One -</b> Destroy a minion with 3 or less Attack; or Summon a random 2-Cost minion.
+EDR_464        MINION  7/5/7     PRIEST        Tyrande                            | <b>Battlecry:</b> The next 3 spells you play cast twice.
+EDR_465        MINION  7/8/5     WARRIOR       Ysondre                            | [x]<b>Taunt</b>. <b>Deathrattle:</b> Summon a random Dragon for each time Ysondre has died this game.
+EDR_468        MINION  4/3/5     WARRIOR       Eggbasher                          | <b>Battlecry:</b> Deal 1 damage to a minion and give it +4 Attack.
+EDR_469        MINION  1/3/3     NEUTRAL       Slumbering Sprite                  | [x]Starts <b>Dormant</b>. After you use your Hero Power, this awakens.
+EDR_470        MINION  2/2/2     NEUTRAL       Barkshield Sentinel                | [x]<b>Taunt</b> After you use your Hero Power, gain +2 Health.
+EDR_471        MINION  10/1/30   WARRIOR       Tortolla                           | [x]<b>Taunt</b>, <b>Elusive</b> After this takes damage, gain 1 Armor and give this minion +1 Attack.
+EDR_472        MINION  3/3/3     PRIEST        Weaver of the Cycle                | <b>Battlecry:</b> If you're holding a spell that costs (5) or more, deal 3 damage.
+EDR_476        SPELL   7         PRIEST        Moonwell                           | Deal $4 damage to all enemy characters. Restore #4 Health to all friendly characters.
+EDR_477        MINION  6/6/6     SHAMAN        Glowroot Lure                      | [x]<b>Taunt</b>. Costs (1) less for each time you used your Hero_Power this game.
+EDR_480        MINION  9/9/9     HUNTER        Goldrinn                           | <b>Rush</b> Friendly Beasts deal double damage.
+EDR_481        MINION  4/3/4     HUNTER        Mythical Runebear                  | <b>Taunt</b>. <b>Battlecry:</b> If this has 4 or more Attack, summon a copy of this.
+EDR_482        SPELL   2         WARLOCK       Rotten Apple                       | Restore #12 Health to your hero. For the next 2 turns, deal $3 damage to your hero.
+EDR_483        SPELL   2         WARLOCK       Fractured Power                    | Destroy one of your Mana Crystals. In 2 turns, gain two.
+EDR_484        MINION  7/2/7     NEUTRAL       Scavenging Flytrap                 | After a minion dies, gain its Attack.
+EDR_485        MINION  1/1/1     WARLOCK       Rotheart Dryad                     | <b>Deathrattle:</b> Draw a minion that costs (7) or more.
+EDR_486        MINION  9/7/9     NEUTRAL       Scorching Observer                 | <b>Rush</b> <b>Lifesteal</b>
+EDR_487        MINION  7/6/6     WARLOCK       Wallow, the Wretched               | While this is in your hand or deck, it gains a copy of every <b>Dark Gift</b> given to your minions.
+EDR_488        SPELL   2         WARLOCK       Avant-Gardening                    | [x]<b>Discover</b> a <b>Deathrattle</b> minion with a <b>Dark Gift</b>.
+EDR_489        MINION  10/8/9    WARLOCK       Agamaggan                          | [x]<b>Battlecry:</b> The next card you play costs your OPPONENT'S Health instead of Mana <i>(up to 10)</i>.
+EDR_490        SPELL   5         WARLOCK       Sleep Paralysis                    | [x]<b>Choose One - </b>Summon two 3/6 Demons with <b>Taunt</b> that can't attack; or Destroy an enemy minion.
+EDR_491        MINION  2/3/2     WARLOCK       Archdruid of Thorns                | <b>Battlecry:</b> Gain the <b>Deathrattles</b> of your minions that died this turn.
+EDR_492        MINION  4/2/3     NEUTRAL       Mother Duck                        | <b>Battlecry:</b> Summon three 1/1 Ducklings with <b>Rush</b>.
+EDR_493        MINION  5/5/5     DEMONHUNTER   Alara'shi                          | [x]<b>Battlecry:</b> Transform minions in your hand into random Demons. <i>(They keep their __original stats and Cost.)</I>
+EDR_494        MINION  8/6/7     WARLOCK       Hungering Ancient                  | [x]At the end of your turn, eat a minion in your deck and gain its stats. <b>Deathrattle:</b> ______Add them to your hand._____
+EDR_495        MINION  2/2/2     NEUTRAL       Twisted Treant                     | <b>Deathrattle:</b> Give a random minion in each player's hand -2 Attack.
+EDR_517        MINION  3/3/4     MAGE          Q'onzu                             | <b>Battlecry:</b> <b>Discover</b> a spell. Choose to keep it or put it on top of your opponent's deck.
+EDR_518        MINION  3/2/4     SHAMAN        Living Garden                      | [x]<b>Battlecry:</b> <b>Imbue</b> your Hero Power. Reduce the Cost of a _minion in your hand by (1).
+EDR_519        MINION  5/4/4     MAGE          Wisprider                          | <b>Battlecry:</b> <b>Imbue</b> your Hero Power, then trigger it.
+EDR_520        LOCATION 1         MAGE          Forbidden Shrine                   | [x]Spend all your Mana. Cast a random spell that costs that much.
+EDR_521        MINION  3/4/3     ROGUE         Tricky Satyr                       | <b>Battlecry:</b> Get a copy of the lowest Cost card in your opponent's hand.
+EDR_522        SPELL   1         ROGUE         Mimicry                            | Your opponent draws 2 cards. You get copies of them.
+EDR_523        SPELL   2         ROGUE         Web of Deception                   | Return a friendly minion to your hand to summon a 4/4 Spider with <b>Stealth</b>.
+EDR_524        MINION  4/3/5     ROGUE         Shadowcloaked Assailant            | [x]<b>Battlecry:</b> If you're holding one of the same cards as your opponent, shuffle theirs into their deck.
+EDR_525        WEAPON  3/1/0     ROGUE         Barbed Thorn                       | [x]<b>Choose One -</b> Gain <b>Poisonous</b> this turn; or Gain "<b>Deathrattle:</b> Deal 2 damage to all enemies."
+EDR_526        MINION  3/3/3     ROGUE         Renferal, the Malignant            | [x]<b>Battlecry:</b> Trap @ random |4(card, cards) in your opponent's hand for a turn. <i>(Improved for each time you've played this.)</i>
+EDR_527        MINION  9/7/7     ROGUE         Ashamane                           | [x]<b>Battlecry:</b> Fill your hand with copies of cards from your opponent's deck. They cost (3) less.
+EDR_528        SPELL   1         ROGUE         Nightmare Fuel                     | <b>Discover</b> a copy of a minion in your opponent's deck. <b>Combo:</b> With a <b>Dark Gift</b>.
+EDR_529        MINION  1/1/2     SHAMAN        Plucky Podling                     | [x]If this would transform into a minion, it transforms into one that costs (2) more.
+EDR_530        MINION  2/0/4     NEUTRAL       Daydreaming Pixie                  | At the end of your turn, get a random Nature spell.
+EDR_531        SPELL   1         WARRIOR       Siphoning Growth                   | Destroy a friendly minion to gain 8 Armor.
+EDR_540        MINION  1/1/3     ROGUE         Twisted Webweaver                  | [x]Whenever you play another minion you've already played, draw a card.
+EDR_570        SPELL   1         WARRIOR       Ominous Nightmares                 | [x]<b>Choose One - </b>Deal $1 damage to all minions; or Give a damaged minion +2/+2.
+EDR_571        MINION  3/2/4     NEUTRAL       Fae Trickster                      | <b>Deathrattle:</b> Draw a spell that costs (5) or more.
+EDR_572        MINION  5/5/5     NEUTRAL       Tormented Dreadwing                | <b>Deathrattle:</b> Draw 2 Dragons. Reduce their Costs by (1).
+EDR_598        MINION  3/5/1     NEUTRAL       Dream Rager                        | <b>Elusive</b>
+EDR_654        MINION  5/4/6     WARLOCK       Overgrown Horror                   | [x]<b>Taunt</b> <b>Battlecry:</b> Reduce the Cost of minions in your hand with <b>Dark Gifts</b> by (2).
+EDR_780        MINION  3/2/4     NEUTRAL       Bloodthistle Illusionist           | [x]<b>Battlecry:</b> Summon a copy of this. One secretly dies when it takes damage.
+EDR_781        MINION  2/2/3     ROGUE         Harbinger of the Blighted          | [x]Whenever this enters your hand from the battlefield, summon two random 2-Cost minions.
+EDR_800        MINION  4/4/4     NEUTRAL       Flutterwing Guardian               | <b><b>Taunt</b>, Divine Shield</b> <b>Battlecry:</b> <b>Imbue</b> your Hero_Power.
+EDR_804        SPELL   2         MAGE          Divination                         | Destroy a friendly Wisp to draw 3 cards.
+EDR_810        MINION  6/3/5     DEATHKNIGHT   Hideous Husk                       | [x]Your Leeches steal 1 more Health from their victims. <b>Battlecry:</b> Summon two 0/2 Leeches.
+EDR_811        SPELL   1         DEATHKNIGHT   Rite of Atrocity                   | <b>Discover</b> an Undead. Spend 2 <b>Corpses</b> to give it a <b>Dark Gift</b>.
+EDR_812        WEAPON  2/2/0     DEATHKNIGHT   Grotesque Runeblade                | [x]<b>Battlecry:</b> If the last card you played had an Unholy rune, gain +1 Attack. Repeat for ____Blood and +1 Durability.
+EDR_813        SPELL   1         DEATHKNIGHT   Morbid Swarm                       | <b>Choose One -</b> Summon two 1/1 Ants; or Spend 2 <b>Corpses</b> to deal $4_damage to a minion.
+EDR_814        SPELL   2         DEATHKNIGHT   Infested Breath                    | Deal $2 damage. Summon a 0/2 Leech.
+EDR_815        MINION  3/0/5     DEATHKNIGHT   Corpse Flower                      | After your opponent summons a minion, spend 2 <b>Corpses</b> to deal 3 damage to it.
+EDR_816        MINION  1/1/2     DEATHKNIGHT   Monstrous Mosquito                 | At the end of your turn, give your other minions +1_Attack.
+EDR_817        SPELL   4         DEATHKNIGHT   Sanguine Infestation               | Draw 2 cards. Summon two 0/2 Leeches.
+EDR_818        MINION  7/7/7     DEATHKNIGHT   Nythendra                          | [x]<b>Taunt</b>. <b>Deathrattle:</b> Split into 1/1 Beetles. At the start of your turn, reform with any remaining.
+EDR_819        MINION  9/6/14    DEATHKNIGHT   Ursoc                              | <b>Battlecry:</b> Attack ALL other minions. <b>Deathrattle:</b> Resurrect any this killed.
+EDR_820        SPELL   3         DEMONHUNTER   Wyvern's Slumber                   | <b>Choose One -</b> Summon two <b>Dormant</b> Dreadseeds; or Deal $2 damage to all minions.
+EDR_840        SPELL   2         DEMONHUNTER   Grim Harvest                       | Draw a card. Summon a random <b>Dormant</b> Dreadseed.
+EDR_841        MINION  4/4/4     DEMONHUNTER   Dreadsoul Corrupter                | [x]<b>Battlecry and Deathrattle:</b> Summon a random <b>Dormant</b> Dreadseed.
+EDR_842        WEAPON  4/2/0     DEMONHUNTER   Defiled Spear                      | [x]After your hero attacks an  enemy, deal your hero's Attack damage to another random enemy.
+EDR_843        SPELL   2         DRUID         Reforestation                      | [x]<b>Choose One -</b> Draw a spell; or Draw a minion. <i>(Hold this for @ |4(turn, turns) to do_both!)</i>
+EDR_844        MINION  7/7/7     NEUTRAL       Naralex, Herald of the Flights     | Your Dragons cost (1).
+EDR_845        MINION  5/5/6     DRUID         Hamuul Runetotem                   | [x]<b>Start of Game:</b> If each spell in your deck is Nature, <b>Imbue</b> your Hero Power. Repeat this  every 2 spells you cast.
+EDR_846        SPELL   7         NEUTRAL       Shaladrassil                       | [x]Get all 5 Dream cards. If you've played a higher Cost card while holding this, corrupt them!
+EDR_847        MINION  3/3/3     DRUID         Dreambound Disciple                | <b>Battlecry and Deathrattle:</b> Your next Hero Power costs (0).
+EDR_848        SPELL   3         DRUID         Photosynthesis                     | Restore #6 Health. Get 3 random Druid spells.
+EDR_849        MINION  1/2/1     NEUTRAL       Dreambound Raptor                  | After you play a minion, give it a random <b>Bonus Effect</b>.
+EDR_852        MINION  2/2/3     NEUTRAL       Bitterbloom Knight                 | <b>Battlecry:</b> <b>Imbue</b> your Hero Power.
+EDR_853        MINION  5/3/5     HUNTER        Broll Bearmantle                   | After you cast a spell, summon a random Animal Companion.
+EDR_856        MINION  4/4/4     NEUTRAL       Nightmare Lord Xavius              | <b>Battlecry:</b> <b>Discover</b> a minion from your deck. Give it a <b>Dark Gift</b>.
+EDR_860        MINION  4/4/4     NEUTRAL       Resplendent Dreamweaver            | [x]<b>Lifesteal</b> <b>Battlecry:</b> If you've <b>Imbued</b> your Hero Power twice, deal 4 damage to a minion.
+EDR_861        MINION  2/2/2     NEUTRAL       Tranquil Treant                    | <b>Deathrattle:</b> Both players gain an empty Mana Crystal.
+EDR_871        MINION  2/2/1     MAGE          Spirit Gatherer                    | <b>Battlecry:</b> Get a Wisp. <b>Imbue</b> your Hero Power.
+EDR_872        SPELL   1         MAGE          Spark of Life                      | <b>Choose One - </b><b>Discover</b> a Mage spell; or <b>Discover</b> a Druid spell.
+EDR_873        MINION  4/3/6     NEUTRAL       Envoy of the Glade                 | [x]<b>Battlecry:</b> Transform all Neutral cards in your deck _into random Druid ones.
+EDR_874        SPELL   2         MAGE          Stellar Balance                    | Get a Moonfire and a Starfire. Give them <b>Spell Damage +1</b>.
+EDR_882        SPELL   2         DEMONHUNTER   Jumpscare!                         | <b>Discover</b> a Demon that costs (5) or more with a <b>Dark Gift</b>. Shuffle the other two into your deck.
+EDR_888        MINION  8/8/6     NEUTRAL       Malorne the Waywatcher             | [x]<b>Battlecry:</b> <b>Discover</b> a <b>Legendary</b> Wild God. If you've <b>Imbued</b> your Hero Power 4 times, set its Cost to (1).
+EDR_889        MINION  2/1/4     NEUTRAL       Petal Peddler                      | [x]At the end of your turn, give another random _friendly Dragon +1/+1.
+EDR_890        MINION  3/4/2     DEMONHUNTER   Nightmare Dragonkin                | <b>Deathrattle:</b> Reduce the Cost of the right-most card in your hand by (2).
+EDR_891        MINION  5/5/3     DEMONHUNTER   Ravenous Felhunter                 | <b>Deathrattle:</b> Resurrect a friendly <b>Deathrattle</b> minion that costs (4) or less. Summon a copy of it.
+EDR_892        MINION  7/7/5     DEMONHUNTER   Ferocious Felbat                   | [x]<b>Deathrattle:</b> Resurrect a different friendly <b>Deathrattle</b> minion that costs (5) or more. Summon a copy of it.
+EDR_895        MINION  9/7/11    PRIEST        Aviana, Elune's Chosen             | [x]<b>Battlecry:</b> Start a three turn lunar cycle. When the Full_Moon rises, your cards cost (1) this game.
+EDR_940        MINION  4/3/6     MAGE          Merry Moonkin                      | [x]At the end of your turn, gain @ Armor. <i>(Improved by Wisps you control!)</i>
+EDR_941        SPELL   3         MAGE          Starsurge                          | Deal $@ damage to a minion. <i>(Improved by each friendly minion that died this game.)</i>
+EDR_942        MINION  4/3/5     NEUTRAL       Curious Cumulus                    | [x]At the end of your turn, give your hero <b>Divine Shield</b>.
+EDR_970        MINION  3/3/3     PRIEST        Kaldorei Priestess                 | [x]<b>Battlecry:</b> Give all enemy minions -2 Attack until your next turn. <b>Imbue</b> your Hero Power.
+EDR_971        MINION  1/2/2     NEUTRAL       Critter Caretaker                  | At the end of your turn, restore #3 Health to both_heroes.
+EDR_978        MINION  8/6/11    NEUTRAL       Meadowstrider                      | <b>Taunt</b>. <b>Deathrattle:</b> Put a Meadowstrider on the bottom of your deck. It costs (1).
+EDR_979        MINION  5/5/5     NEUTRAL       Ancient of Yore                    | [x]<b>Dormant</b> for 2 turns. While <b>Dormant</b>, gain 5 Armor and draw a card at the end of your turn.
+EDR_999        MINION  1/1/1     NEUTRAL       Gnawing Greenfin                   | <b>Battlecry:</b> Get a random Murloc.
+
+--- GameTag histogram over NEW cards ---
+  145  COST
+  145  CARD_SET
+  145  CLASS
+  145  CARDTYPE
+  145  RARITY
+  145  COLLECTIBLE
+  103  HEALTH
+   99  ATK
+   52  CARDRACE
+   48  BATTLECRY
+   40  HAS_SIGNATURE_QUALITY
+   27  ELITE
+   23  TRIGGER_VISUAL
+   21  SPELL_SCHOOL
+   21  DEATHRATTLE
+   16  CARES_ABOUT_IMBUE_CARDS
+   15  1724
+   14  DISCOVER
+   14  TAUNT
+   11  4065
+   11  CHOOSE_ONE
+    8  TAG_SCRIPT_DATA_NUM_1
+    8  FACTION
+    7  USE_DISCOVER_VISUALS
+    5  LIFESTEAL
+    5  COST_BLOOD
+    5  COST_UNHOLY
+    4  HAS_DIAMOND_QUALITY
+    4  RUSH
+    4  AURA
+    4  ELUSIVE
+    3  CORPSE_SPENDER
+    2  START_OF_GAME_KEYWORD
+    2  2936
+    2  4050
+    2  DIVINE_SHIELD
+    2  542
+    2  2537
+    2  PLAYER_TAG_THRESHOLD_TAG_ID
+    2  PLAYER_TAG_THRESHOLD_VALUE
+    2  1652
+    2  2831
+    1  POISONOUS
+    1  QUEST_PROGRESS_TOTAL
+    1  4110
+    1  WINDFURY
+    1  COMBO
+    1  2542
+    1  2523
+    1  ENTITY_TAG_THRESHOLD_TAG_ID
+    1  ENTITY_TAG_THRESHOLD_VALUE
+    1  2165
+
+--- Race histogram over NEW minions ---
+   23  BEAST
+   13  DRAGON
+   11  DEMON
+    4  ELEMENTAL
+    4  UNDEAD
+    1  MURLOC

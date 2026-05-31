@@ -14,3 +14,4 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 1:Heroes of StarCraft | soak | 1000/1000 succeeded, 0 failed (SC_ cards clean in random pools)
 - 2026-05-31 | 1:Heroes of StarCraft | P5 tierfix | 8 fixed (654056da: Spawning Pool one-turn rush, launch-channel x3, Larva re-roll, Hallucination ExactCopy, Dark Templar req, Thor) + 4 watch; 0 open
 - 2026-05-31 | 1:Heroes of StarCraft | P6 docs + re-soak | README->31.4, memory bumped, soak 1000/1000; SET #1 DONE
+- 2026-05-31 | 2:Into the Emerald Dream | P0+P1 | bump 214839->219197.1; 145 EDR_ cards; novel mechanic=Imbue (hero-power upgrade, 6 Imbued HPs); manifest written

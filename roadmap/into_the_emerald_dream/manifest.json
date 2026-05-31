@@ -1,0 +1,24 @@
+{
+  "set": "Into the Emerald Dream",
+  "cardset": "EMERALD_DREAM",
+  "prefix": "EDR_",
+  "build": "219197.1",
+  "kind": "expansion",
+  "new_package": "fireplace/cards/emerald_dream",
+  "card_count": 145,
+  "class_breakdown": {"DEATHKNIGHT":10,"DEMONHUNTER":10,"DRUID":10,"HUNTER":10,"MAGE":10,"PALADIN":10,"PRIEST":10,"ROGUE":10,"SHAMAN":10,"WARLOCK":10,"WARRIOR":10,"NEUTRAL":35},
+  "novel_mechanic": {
+    "name": "Imbue",
+    "summary": "'Imbue your Hero Power' replaces the player's Hero Power with the class's Imbued Hero Power and increments a per-game imbue count; the Imbued HP's effect scales with how many times it has been imbued (the @ placeholders are level-dependent). Payoffs read the count ('If you've Imbued your Hero Power twice / 4 times').",
+    "imbued_hero_powers": {"PALADIN":"EDR_445p Blessing of the Dragon","SHAMAN":"EDR_448p Blessing of the Wind","PRIEST":"EDR_449p Blessing of the Moon","DRUID":"EDR_847p Blessing of the Golem","HUNTER":"EDR_850p Blessing of the Wolf","MAGE":"EDR_851p Blessing of the Wisp"},
+    "engine_needs": [
+      "player.imbues_this_game counter (per-game, never reset) + a per-HP imbue LEVEL on the hero power",
+      "Imbue(player) action: look up the class's Imbued HP token; on first imbue replace hero.power with it; on subsequent imbues bump its level; always bump imbues_this_game",
+      "Imbued HP effects scale by level — the @ values are level-dependent (e.g. Blessing of the Wisp: summon @ Wisps + deal @ damage; @ grows with level). Confirm exact scaling from data TAG_SCRIPT_DATA_NUM / level tags",
+      "classes without an Imbued HP (DK/DH/Rogue/Warlock/Warrior): only 6 HPs exist; decide no-op-but-count vs class-locked — confirm from data how neutral Imbue cards behave off-class",
+      "'Imbue your Hero Power, then trigger it' (EDR_519 Wisprider); 'Battlecry and Deathrattle: Imbue' (EDR_451); Start-of-Game imbue (EDR_845 Hamuul)"
+    ],
+    "other_signals": ["SPELL_SCHOOL (21) Nature-heavy", "DISCOVER (14)", "CHOOSE_ONE (11)", "FACTION (8) - investigate", "Wild Gods legendaries (Malorne etc.)"]
+  },
+  "notes": "New expansion -> new package fireplace/cards/emerald_dream/ (scaffold __init__.py + 12 per-class files + tokens.py; auto-discovered via iter_modules). Imbue is the sequential-neck engine primitive; pin scaling from data before card fan-out. Reference dump: roadmap/emerald_dump.txt."
+}

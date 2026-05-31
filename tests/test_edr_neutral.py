@@ -609,3 +609,18 @@ def test_gnawing_greenfin():
     fin.play()
     assert len(p1.hand) == 1
     assert Race.MURLOC in p1.hand[0].races
+
+
+def test_sharp_eyed_lookout_draws_and_discounts():
+    # EDR_950 (collectible since build 223542): Battlecry - draw a card; it
+    # costs (1) less this turn.
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    for c in list(p1.hand):
+        c.discard()
+    fireball = p1.card("CS2_029")  # Fireball, cost 4
+    fireball.zone = Zone.DECK
+    base = fireball.data.cost
+    p1.give("EDR_950").play()
+    assert fireball.zone == Zone.HAND
+    assert fireball.cost == base - 1

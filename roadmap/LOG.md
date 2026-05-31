@@ -29,4 +29,7 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P3 cards+gate | wf_d7df8ca2: 38 FIR_ cards + Smoldering; gate GREEN; full suite 3364 passed; commit e398ef1b
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P4 audit | wf_09b1bd88 (finders+refute): 7 rows survived = 6 approx + 1 once-over, 0 REAL BUGS -> all watch; review.csv 25 fixed/25 watch/0 open
 - 2026-05-31 | 3:Emerald Dream mini-set (FIR_) | P7 soak | run1 999/1000 (_played_cost crash -> default 0); run2 999/1000 (Emerald Portal casts-when-drawn generator -> list()); run3 1000/1000, 0 failed. SET #3 DONE. README->Patch 32.2.219846
-- 2026-05-31 | MILESTONE | 3 of 8 sets DONE | #1 StarCraft, #2 Emerald Dream, #3 Firelands mini all green+audited+soaked. Next: #4 The Shrouded City (THE_LOST_CITY, build TBD ~225xxx+)
+- 2026-05-31 | MILESTONE | 3 of 8 sets DONE | #1 StarCraft, #2 Emerald Dream, #3 Firelands mini all green+audited+soaked.
+- 2026-05-31 | 4:The Shrouded City / Lost City of Un'Goro (TLC_) | P0/P1 | bump 219846->223542.1 (Patch 33.0); 145 TLC_ cards; novel=Kindred (matching minion-type/spell-school played PREVIOUS turn). Fixed 2 data-bump regressions (Flickering Lightbot cost 3->5; King Plush rework). 4b5b01c0
+- 2026-05-31 | 4:Lost City (TLC_) | P2 engine | Kindred: player.races/schools_played_{this,last}_turn + Play.do record + _begin_turn rollover; Kindred evaluator + kindred_active() + KindredCost LazyNum; test_tlc_engine.py 4 tests green
+- 2026-05-31 | 4:Lost City (TLC_) | P3 cards | new package the_lost_city/ scaffolded; workflow wf_98003509 (12 agents, 1/class, 145 cards, new test_tlc_<class>.py); implement->verify

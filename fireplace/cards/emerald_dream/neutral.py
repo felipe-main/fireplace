@@ -563,3 +563,21 @@ class FIR_959:
             pick = self.game.random.choice(candidates)
             budget -= db[pick].cost
             yield CastSpellTargetsEnemiesIfPossible(pick)
+
+
+##
+# Became collectible at build 223542 (Patch 33.0) — implemented in the set#4
+# data bump rather than the original EDR pass.
+
+
+class EDR_950:
+    """Sharp-Eyed Lookout"""
+
+    # Battlecry: Draw a card. It costs (1) less this turn.
+    play = Draw(CONTROLLER).then(Buff(Draw.CARD, "EDR_950e", cost=-1))
+
+
+class EDR_950e:
+    # Sharp-Eyed Lookout — the drawn card costs (1) less this turn. The in-data
+    # enchant carries no COST tag, so supply it via the Buff(cost=-1) kwarg.
+    tags = {GameTag.TAG_ONE_TURN_EFFECT: True}

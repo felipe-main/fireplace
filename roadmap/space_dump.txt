@@ -1,0 +1,136 @@
+C:\Users\winz\AppData\Local\Programs\Python\Python312\Lib\site-packages\hearthstone_data\__init__.py:2: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[fireplace.__init__]: Initializing card database
+[fireplace.__init__]: Merged 31951 cards
+=== CardSet SPACE: 194 collectible (124 implemented, 70 NEW) ===
+
+--- NEW (unimplemented) cards ---
+GDB_101        MINION  2/2/2     NEUTRAL       Dimensional Core                   | <b>Divine Shield</b> <b>Starship Piece</b>
+GDB_104        MINION  3/2/4     WARLOCK       Felfire Thrusters                  | [x]<b><b>Spellburst</b>:</b> Deal this minion's Attack damage to 2 random enemy minions. <b>Starship Piece</b>
+GDB_105        MINION  3/2/4     DEMONHUNTER   Shattershard Turret                | <b>Rush</b>, <b>Windfury</b> <b>Starship Piece</b>
+GDB_106        MINION  2/3/2     DEATHKNIGHT   Guiding Figure                     | [x]<b><b>Spellburst</b>:</b> Trigger a random friendly minion's <b>Deathrattle</b>. <b>Starship Piece</b>
+GDB_109        MINION  2/3/2     WARLOCK       Heart of the Legion                | <b>Lifesteal</b> <b>Starship Piece</b>
+GDB_116        MINION  1/1/3     DEMONHUNTER   Eldritch Being                     | <b>Outcast and <b>Spellburst</b>:</b> Shuffle your hand.
+GDB_127        MINION  3/3/3     WARLOCK       K'ara, the Dark Star               | [x]<b><b>Spellburst</b>:</b> Steal 2 Health from a random enemy. <i>(Shadow spells don't remove this <b>Spellburst</b>.)</i>
+GDB_143        MINION  3/3/3     NEUTRAL       Nexus-Prince Shaffar               | <b><b>Spellburst</b>:</b> Give a minion in your hand +3/+3 and this <b>Spellburst</b>.
+GDB_234        MINION  6/6/7     WARRIOR       Spore Empress Moldara              | <b>Start of Game:</b> Shuffle 7 Replicating Spores into your deck.
+GDB_310        MINION  4/2/3     NEUTRAL       Ethereal Oracle                    | <b>Spell Damage +1</b> <b><b>Spellburst</b>:</b> Draw 2 spells.
+GDB_311        MINION  3/2/4     NEUTRAL       Deep Space Curator                 | <b><b>Spellburst</b>:</b> Get a random minion of the spell's Cost. Set its Cost to (0).
+GDB_322        MINION  6/6/6     NEUTRAL       Lightfused Manasaber               | <b>Rush</b> <b><b>Spellburst</b>:</b> Gain <b>Divine Shield</b>.
+GDB_330        MINION  3/5/1     NEUTRAL       Ur'zul Rager                       | <b>Lifesteal</b>  <b><b>Spellburst</b>:</b> Attack a random enemy minion.
+GDB_343        MINION  3/2/5     NEUTRAL       Perplexing Anomaly                 | <b>Rush</b>, <b>Taunt</b>, <b>...<b>Stealth</b>?</b>
+GDB_442        MINION  3/3/3     PRIEST        K'ure, the Light Beyond            | [x]<b><b>Spellburst</b>:</b> Summon a random 3-Cost minion. <i>(Holy spells don't remove this <b>Spellburst</b>.)</i>
+GDB_452        MINION  6/4/8     PRIEST        Shield of Askara                   | <b>Taunt</b> <b>Divine Shield</b> <b>Lifesteal</b>
+GDB_463        MINION  2/2/1     NEUTRAL       Troubled Mechanic                  | [x]<b>Divine Shield</b> <b><b>Spellburst</b>:</b> Draw a Draenei.
+GDB_466        MINION  5/5/4     ROGUE         The Gravitational Displacer        | [x]<b>Starship Piece</b> When this is launched, summon a copy of the <b>Starship</b>.
+GDB_855        MINION  8/8/8     DRUID         Star Grazer                        | <b>Elusive, Taunt</b> <b>Spellburst:</b> Give your hero +8 Attack this turn and gain 8 Armor.
+GDB_860        MINION  5/4/7     NEUTRAL       Starscale Constellar               | <b><b>Spellburst</b>:</b> Double this minion's Attack.
+GDB_870        MINION  2/1/3     ROGUE         Eredar Skulker                     | [x]<b>Combo and <b>Spellburst</b>:</b> Gain +2 Attack and <b>Stealth</b>.
+SC_000         LOCATION 1         NEUTRAL       Spawning Pool                      | [x]Get a 1/1 Zergling. <b>Deathrattle:</b> Your Zerg minions have <b>Rush</b> this turn.
+SC_001         SPELL   1         DEATHKNIGHT   Baneling Barrage                   | [x]Get a 1/1 Baneling that explodes. If you control a Zerg minion, get another Baneling.
+SC_002         MINION  3/3/2     DEATHKNIGHT   Infestor                           | [x]<b>Deathrattle:</b> Your Zerg minions have +1/+1 for the rest of the game.
+SC_003         MINION  3/2/5     NEUTRAL       Brood Queen                        | [x]At the end of your turn, get a Larva that transforms into random Zerg minions.
+SC_004         HERO    7         NEUTRAL       Kerrigan, Queen of Blades          | [x]<b>Battlecry:</b> Summon two 2/5 Brood Queens. Deal 3 damage to all enemies.
+SC_008         MINION  3/4/2     HUNTER        Hydralisk                          | [x]<b>Battlecry:</b> Deal 2 damage to a random enemy. Repeat for each other Zerg minion you control.
+SC_009         MINION  4/2/6     DEMONHUNTER   Lurker                             | [x]After a friendly minion attacks, deal 1 damage to a random enemy <i>(or 2 if your minion is a Zerg)</i>.
+SC_010         MINION  1/1/1     NEUTRAL       Zergling                           | <b>Battlecry:</b> Summon a copy of this.
+SC_011         SPELL   2         DEMONHUNTER   Creep Tumor                        | Your Zerg minions have +1 Attack and <b>Rush</b>. Lasts 3 turns.
+SC_012         MINION  2/2/2     HUNTER        Roach                              | When you draw this, get a copy of it. <b>Battlecry:</b> If you control another Zerg minion, gain +1/+2.
+SC_013         MINION  8/3/4     NEUTRAL       Grunty                             | [x]<b>Battlecry:</b> Summon four random Murlocs, then shoot them at enemy minions. _<i>(You pick the targets!)</i>
+SC_015         SPELL   3         NEUTRAL       Nydus Worm                         | Draw two Zerg cards. They cost (1) less.
+SC_018         MINION  4/5/3     DEATHKNIGHT   Viper                              | [x]<b>Battlecry:</b> Summon a minion from your opponent's hand. Your other Zerg minions gain <b>Reborn</b> and attack it.
+SC_019         LOCATION 3         WARLOCK       Ultralisk Cavern                   | [x]Deal 1 damage to all enemies. <b>Deathrattle:</b> Summon an 8/8 Ultralisk with <b>Rush</b>.
+SC_020         SPELL   1         WARLOCK       Consume                            | [x]Remove 1 Durability from a friendly location to restore #8 Health to your hero.
+SC_021         SPELL   2         HUNTER        Evolution Chamber                  | Give your minions +1_Attack. Give your Zerg an extra +1/+1.
+SC_022         MINION  4/5/2     DEMONHUNTER   Mutalisk                           | [x]Also damages minions next to whomever this attacks <i>(and the enemy hero if a neighbor is missing)</i>.
+SC_023         MINION  2/1/6     WARLOCK       Spine Crawler                      | [x]<b>Taunt</b>. Can't attack. Has +3 Attack if you control a location.
+SC_400         HERO    7         NEUTRAL       Jim Raynor                         | [x]<b>Battlecry:</b> Relaunch every <b>Starship</b> that you launched this game.
+SC_401         MINION  1/1/3     NEUTRAL       SCV                                | <b>Battlecry:</b> Your next <b>Starship</b> launch costs (2) less.
+SC_403         LOCATION 2         NEUTRAL       Starport                           | [x]Summon a 2/1 <b>Starship_Piece</b> with an effect when launched.
+SC_404         SPELL   3         PALADIN       Salvage the Bunker                 | Summon two 2/2 Marines with <b>Taunt</b>. Your next <b>Starship</b> launch costs (2) less.
+SC_405         MINION  2/1/1     PALADIN       Ultra-Capacitor                    | [x]<b>Starship Piece</b> <b>Battlecry:</b> Gain +1/+1 for __each other friendly minion.__ Also triggers on launch.
+SC_406         MINION  4/3/3     WARRIOR       Yamato Cannon                      | [x]<b>Starship Piece</b> <b>Battlecry:</b> Destroy a random enemy minion. Also triggers on launch.
+SC_407         SPELL   1         SHAMAN        Lock On                            | Set a minion’s Health to 1. Your next <b>Starship</b> launch costs (2) less.
+SC_408         MINION  4/6/2     NEUTRAL       Ghost                              | [x]<b>Stealth</b>. <b>Battlecry:</b> If you're building a <b>Starship</b>, destroy the lowest-Cost card in your opponent's hand.
+SC_409         MINION  2/1/3     SHAMAN        Missile Pod                        | [x]<b>Starship Piece</b> <b>Battlecry:</b> Deal 1 damage to all enemies. Also triggers on launch.
+SC_410         SPELL   3         NEUTRAL       Lift Off                           | Draw 2 Terran cards. Summon a 2/1 <b>Starship Piece</b> with an effect when launched.
+SC_411         SPELL   1         WARRIOR       Concussive Shells                  | Deal $2 damage and gain 2 Armor. Your next <b>Starship</b> launch costs (2) less.
+SC_412         MINION  4/4/4     PALADIN       Hellion                            | [x]Your other minions have +1 Attack. <i>(Transforms if you launched a <b>Starship</b> this game.)</i>
+SC_413         MINION  5/5/5     SHAMAN        Siege Tank                         | [x]<b>Battlecry:</b> Deal 10 damage to a random enemy minion. <i>(Transforms if you launched a <b>Starship</b> this game.)</i>
+SC_414         MINION  8/8/8     WARRIOR       Thor                               | [x]<b>Battlecry:</b> Deal 5 damage. <i>(Transforms if you launched a <b>Starship</b> this game.)</i>
+SC_750         SPELL   4         NEUTRAL       Chrono Boost                       | Draw 2 Protoss cards. Summon a 3/4 Zealot with <b>Charge</b>.
+SC_751         LOCATION 4         NEUTRAL       Warp Gate                          | Your next Protoss minion costs (3) less.
+SC_752         MINION  6/5/3     ROGUE         Dark Templar                       | [x]<b>Stealth</b>. <b>Battlecry:</b> Destroy an enemy minion. <i>Play another Templar to merge into an Archon!</i>
+SC_753         SPELL   2         NEUTRAL       Photon Cannon                      | Deal $3 damage. If this kills a minion, your Protoss minions cost (1) less this game.
+SC_754         HERO    7         NEUTRAL       Artanis                            | [x]<b>Battlecry:</b> Summon two 3/4 Zealots with <b>Charge</b>. Your Protoss minions cost (2) less this game.
+SC_755         SPELL   0         DRUID         Construct Pylons                   | Your next Protoss card this turn costs (2) less.
+SC_756         MINION  12/2/14   DRUID         Carrier                            | [x]At the end of your turn, summon four 4/1 Interceptors that attack random enemies.
+SC_757         SPELL   1         PRIEST        Hallucination                      | Summon a copy of a friendly Protoss minion. It takes double damage.
+SC_758         MINION  12/9/4    MAGE          Colossus                           | [x]<b>Battlecry:</b> Deal @ damage to all enemies, twice. <i>(Improved by Protoss spells you cast this game!)</i>
+SC_759         SPELL   2         MAGE          Shield Battery                     | Gain 6 Armor. Your next Protoss spell costs (2) less.
+SC_760         SPELL   3         MAGE          Resonance Coil                     | Deal $5 damage to a minion. Get a random Protoss spell.
+SC_761         SPELL   2         ROGUE         Blink                              | [x]Draw a Protoss minion. <b>Combo:</b> It costs (2) less.
+SC_762         MINION  12/10/10  PRIEST        Mothership                         | [x]<b>Taunt</b> <b>Battlecry and Deathrattle:</b> Get two random Protoss minions.
+SC_763         MINION  7/5/8     DRUID         Immortal                           | [x]<b>Taunt</b>, <b>Divine Shield</b> <b>Battlecry:</b> Spend 4 Mana to double this minion's stats.
+SC_764         MINION  2/2/2     PRIEST        Sentry                             | <b>Lifesteal</b>. <b>Deathrattle:</b> Your Protoss minions cost (1) less this game.
+SC_765         MINION  6/3/5     ROGUE         High Templar                       | [x]<b>Battlecry:</b> Deal 2 damage to all enemies. <i>Play another Templar to merge into an Archon!</i>
+SC_783         MINION  3/3/1     NEUTRAL       Void Ray                           | <b>Rush</b>, <b>Divine Shield</b> <b>Battlecry:</b> If this costs (0), gain +2/+2.
+
+--- GameTag histogram over NEW cards ---
+   70  CARD_SET
+   70  CARDTYPE
+   70  RARITY
+   70  COLLECTIBLE
+   69  COST
+   55  CLASS
+   54  HEALTH
+   49  MINI_SET
+   48  1724
+   47  ATK
+   22  CARDRACE
+   21  BATTLECRY
+   17  ZERG
+   17  PROTOSS
+   15  MULTIPLE_CLASSES
+   14  SPELLBURST
+   14  TERRAN
+   12  HAS_SIGNATURE_QUALITY
+    9  STARSHIP_PIECE
+    9  3684
+    9  ELITE
+    8  TRIGGER_VISUAL
+    6  TAUNT
+    5  DIVINE_SHIELD
+    5  DEATHRATTLE
+    4  RUSH
+    4  LIFESTEAL
+    3  STEALTH
+    3  ARMOR
+    3  HERO_POWER
+    3  EMOTECHARACTER
+    3  KEEP_HERO_CLASS
+    2  COMBO
+    2  TAG_SCRIPT_DATA_NUM_1
+    2  STARSHIP_LAUNCH_TRIGGER
+    1  WINDFURY
+    1  OUTCAST
+    1  2936
+    1  SPELLPOWER
+    1  ELUSIVE
+    1  QUEST_PROGRESS_TOTAL
+    1  OBJECTIVE
+    1  OBJECTIVE_AURA
+    1  HAS_DIAMOND_QUALITY
+    1  TARGETING_ARROW_TYPE
+    1  ImmuneToSpellpower
+    1  CANT_ATTACK
+    1  AURA
+
+--- Race histogram over NEW minions ---
+   13  MECHANICAL
+    2  BEAST
+    2  DEMON
+    2  DRAENEI
+    1  ELEMENTAL
+    1  DRAGON
+    1  MURLOC

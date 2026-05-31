@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "branch": "feature/heroes-to-cataclysm",
+    "policy": "flag-and-continue",
+    "publish": "local-only; ask before push",
+    "audit": "full-adversarial",
+    "started": "2026-05-31",
+    "phases_order": ["pending", "data", "dump", "engine", "cards", "audit", "tierfix", "docs", "soak", "done"]
+  },
+  "sets": [
+    {"idx": 1, "name": "Heroes of StarCraft", "cardset": "SPACE", "prefix": "SC_", "kind": "miniset", "parent_pkg": "the_great_dark_beyond", "build": "214839.1", "phase": "engine", "status": "in-progress", "attempts": 0, "assumptions": ["factions = GameTags PROTOSS/TERRAN/ZERG (not Races)"], "openRows": null, "card_count": 49, "notes": "P0 data bump + P1 dump done. 49 SC_ cards. Faction model pinned (see manifest). Next: P2 engine faction primitives."},
+    {"idx": 2, "name": "Into the Emerald Dream", "cardset": "EMERALD_DREAM", "prefix": null, "kind": "expansion", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": "resolve build + prefix at dump"},
+    {"idx": 3, "name": "Emerald Dream mini-set", "cardset": "EMERALD_DREAM", "prefix": null, "kind": "miniset", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": "folds into Emerald Dream package"},
+    {"idx": 4, "name": "The Shrouded City", "cardset": "THE_LOST_CITY", "prefix": null, "kind": "expansion", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": "resolve build + prefix at dump"},
+    {"idx": 5, "name": "Shrouded City mini-set", "cardset": "THE_LOST_CITY", "prefix": null, "kind": "miniset", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": ""},
+    {"idx": 6, "name": "Across the Timeways", "cardset": "TIME_TRAVEL", "prefix": null, "kind": "expansion", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": "resolve build + prefix at dump"},
+    {"idx": 7, "name": "Across the Timeways mini-set", "cardset": "TIME_TRAVEL", "prefix": null, "kind": "miniset", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": ""},
+    {"idx": 8, "name": "Cataclysm", "cardset": "CATACLYSM", "prefix": null, "kind": "expansion", "parent_pkg": null, "build": null, "phase": "pending", "status": "pending", "attempts": 0, "assumptions": [], "openRows": null, "notes": "newest; resolve build (<=242566.1) + also check PET set"}
+  ]
+}

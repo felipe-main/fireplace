@@ -1,0 +1,39 @@
+{
+  "set": "Heroes of StarCraft",
+  "cardset": "SPACE",
+  "prefix": "SC_",
+  "build": "214839.1",
+  "parent_pkg": "the_great_dark_beyond",
+  "new_card_count": 49,
+  "faction_model": {
+    "tags": ["PROTOSS", "TERRAN", "ZERG"],
+    "modeling": "GameTag on card (NOT a Race). Need tag-based selectors PROTOSS/TERRAN/ZERG mirroring how keyword selectors test card.tags.",
+    "novel_mechanics": [
+      "per-game faction minion discount: 'Your Protoss minions cost (X) less this game' (mirror libram_discount, faction-scoped) -> player.protoss_cost_reduction",
+      "one-shot next-faction discounts: next Protoss minion / next Protoss card this turn / next Protoss spell costs (N) less (mirror next_draenei_discount; variants: minion-only, any-card-this-turn, spell-only)",
+      "starship launch discount: 'Your next Starship launch costs (2) less' -> player.starship_launch_discount consumed by LaunchStarship cost",
+      "faction-filtered draw: 'Draw 2 Terran/Protoss cards', 'Draw a Protoss minion', 'Draw two Zerg cards (cost 1 less)' -> Draw filtered by faction tag",
+      "Protoss-spells-cast-this-game counter (Colossus SC_758 scales) -> player.protoss_spells_cast_this_game",
+      "Zerg-count payoffs: 'Repeat for each other Zerg minion you control', 'if you control a Zerg', 'your Zerg minions have +X' -> ZERG selector + Count",
+      "Templar merge: Dark Templar SC_752 + High Templar SC_765 -> Archon when 2nd Templar played (per-game flag + transform)",
+      "conditional transform minions: Hellion SC_412 / Siege Tank SC_413 / Thor SC_414 transform if you launched a Starship this game (data choose/related token - inspect)",
+      "Larva -> random Zerg transform; Baneling explode token; Zergling self-copy; Interceptors; Marines; Replicating Spores; Ultralisk; Zealot; Archon tokens"
+    ],
+    "reused_engine": ["STARSHIP_PIECE banking", "LaunchStarship", "SPELLBURST", "next_draenei_discount pattern", "libram_discount pattern", "Reborn", "Location/ReopenLocation"]
+  },
+  "classes": {
+    "deathknight": ["SC_001", "SC_002", "SC_018"],
+    "demonhunter": ["SC_009", "SC_011", "SC_022"],
+    "druid": ["SC_755", "SC_756", "SC_763"],
+    "hunter": ["SC_008", "SC_012", "SC_021"],
+    "mage": ["SC_758", "SC_759", "SC_760"],
+    "paladin": ["SC_404", "SC_405", "SC_412"],
+    "priest": ["SC_757", "SC_762", "SC_764"],
+    "rogue": ["SC_752", "SC_761", "SC_765"],
+    "shaman": ["SC_409", "SC_413"],
+    "warlock": ["SC_019", "SC_020", "SC_023"],
+    "warrior": ["SC_406", "SC_411", "SC_414"],
+    "neutral": ["SC_000", "SC_003", "SC_004", "SC_010", "SC_013", "SC_015", "SC_400", "SC_401", "SC_403", "SC_408", "SC_410", "SC_750", "SC_751", "SC_753", "SC_754", "SC_783"]
+  },
+  "notes": "Class assignment from dump's card_class; MULTIPLE_CLASSES cards (15) placed by primary listed class. Tokens (Zergling/Baneling/Larva/Marine/Interceptor/Zealot/Archon/Ultralisk/ReplicatingSpore + SC_ starship pieces) go in tokens.py. Verify exact token ids + transform/choose links at impl time from data."
+}

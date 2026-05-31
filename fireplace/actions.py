@@ -1057,6 +1057,14 @@ class Play(GameAction):
             player.outcasts_played_this_game += 1
         player.cards_played_this_turn += 1
         player.cards_played_this_game.append(card)
+        # The Lost City of Un'Goro — Kindred: record this card's minion type(s)
+        # and spell school so a Kindred card of a matching type, played on your
+        # next turn, activates its bonus.
+        for race in getattr(card, "races", []):
+            player.races_played_this_turn.add(race)
+        school = getattr(card, "spell_school", SpellSchool.NONE)
+        if school and school != SpellSchool.NONE:
+            player.schools_played_this_turn.add(school)
         card.turn_played = source.game.turn
         card.choose = None
 

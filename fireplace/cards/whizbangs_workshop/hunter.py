@@ -97,21 +97,22 @@ class _RCRampage(TargetedAction):
 
 
 class _KingPlushReturn(TargetedAction):
-    """King Plush battlecry. Return all minions (friend and foe) with less
-    Attack than King Plush to their owner's decks. Implemented imperatively
-    because no primitive moves minions from PLAY to DECK for both owners."""
+    """King Plush battlecry (reworked in build 223542): if the opponent has 15
+    or less Health, return all OTHER minions (both players) to their owners'
+    decks and King Plush gains Charge. Implemented imperatively because no
+    primitive moves minions from PLAY to DECK for both owners."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        threshold = source.atk
+        if source.controller.opponent.hero.health > 15:
+            return
         victims = []
         for player in source.game.players:
             for minion in list(player.field):
                 if minion is source:
                     continue
-                if minion.atk < threshold:
-                    victims.append(minion)
+                victims.append(minion)
         for minion in victims:
             owner = minion.controller
             if len(owner.deck) >= owner.max_deck_size:
@@ -119,6 +120,8 @@ class _KingPlushReturn(TargetedAction):
                 continue
             minion.zone = Zone.DECK
             minion._summon_index = owner.game.random.randint(0, len(owner.deck))
+        # King Plush gains Charge.
+        source.game.cheat_action(source, [SetTags(source, {GameTag.CHARGE: True})])
 
 
 ##
@@ -172,9 +175,9 @@ class TOY_356:
 class TOY_357:
     """King Plush"""
 
-    # <b>Charge</b> <b>Battlecry:</b> Return all minions with less Attack
-    # than this to their owner's decks.
-    # Charge lives in data.
+    # <b>Battlecry:</b> If your opponent has 15 or less health, return all
+    # other minions to their owner's decks and gain <b>Charge</b>.
+    # (Reworked from an innate-Charge minion in build 223542.)
     play = _KingPlushReturn(SELF)
 
 

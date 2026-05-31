@@ -501,6 +501,12 @@ class BaseGame(Entity):
         player.last_turn = player.turn
         player.turns.append(self.turn)
         player.turn = self.turn
+        # The Lost City of Un'Goro — Kindred: roll this turn's plays into
+        # "last turn" so Kindred cards played this turn check the previous turn.
+        player.races_played_last_turn = player.races_played_this_turn
+        player.races_played_this_turn = set()
+        player.schools_played_last_turn = player.schools_played_this_turn
+        player.schools_played_this_turn = set()
         player.cards_played_this_turn = 0
         player.minions_played_this_turn = 0
         player.minions_killed_this_turn = 0

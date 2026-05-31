@@ -241,39 +241,32 @@ def test_toyrannosaurus_has_rush():
 #   Charge. Battlecry: Return all minions with less Attack than this to
 #   their owner's decks.
 # ---------------------------------------------------------------------------
-def test_king_plush_returns_lower_attack_minions_both_sides():
+def test_king_plush_returns_minions_and_gains_charge_when_opponent_low():
+    # Reworked in build 223542: Battlecry - if opponent has 15 or less health,
+    # return all OTHER minions to owners' decks and King Plush gains Charge.
     game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
-    # King Plush has 6 atk. Set up:
-    low_friend = game.player1.summon("CS2_231")  # Wisp 0... actually 1/1
-    high_friend = game.player1.summon("TOY_356")  # Toyrannosaurus 7 atk (>=6, stays)
-    low_enemy = game.player2.summon("NEW1_034")  # Huffer 4 atk (<6, returns)
-    eq_enemy = game.player2.summon("TOY_356")  # 7 atk enemy (stays)
-
-    p1_deck_pre = len(game.player1.deck)
-    p2_deck_pre = len(game.player2.deck)
-
-    plush = game.player1.give("TOY_357")
+    p1, p2 = game.player1, game.player2
+    p2.hero.damage = p2.hero.max_health - 15  # set opponent to 15 health
+    friendly = p1.summon("CS2_172")   # other friendly minion
+    enemy = p2.summon("CS2_172")      # enemy minion
+    plush = p1.give("TOY_357")
     plush.play()
-
-    # Plush atk is 6. Minions with atk < 6 get returned.
-    field_ids_p1 = [m.id for m in game.player1.field]
-    field_ids_p2 = [m.id for m in game.player2.field]
-
-    assert "CS2_231" not in field_ids_p1  # 1 atk returned
-    assert "TOY_356" in field_ids_p1       # 7 atk stays
-    assert "NEW1_034" not in field_ids_p2  # 4 atk returned
-    assert "TOY_356" in field_ids_p2       # 7 atk stays
-
-    assert len(game.player1.deck) == p1_deck_pre + 1
-    assert len(game.player2.deck) == p2_deck_pre + 1
-    # King Plush itself stays on board.
-    assert plush in game.player1.field
-
-
-def test_king_plush_has_charge():
-    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
-    plush = game.player1.summon("TOY_357")
+    # All other minions bounced to their owners' decks; King Plush stays.
+    assert friendly.zone == Zone.DECK
+    assert enemy.zone == Zone.DECK
+    assert plush.zone == Zone.PLAY
     assert plush.charge
+
+
+def test_king_plush_does_nothing_when_opponent_healthy():
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1, p2 = game.player1, game.player2
+    assert p2.hero.health == 30
+    friendly = p1.summon("CS2_172")
+    plush = p1.give("TOY_357")
+    plush.play()
+    assert friendly.zone == Zone.PLAY
+    assert not plush.charge
 
 
 # ---------------------------------------------------------------------------

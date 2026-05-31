@@ -1,0 +1,216 @@
+=== CardSet THE_LOST_CITY: 145 collectible (0 implemented, 145 NEW) ===
+
+--- NEW (unimplemented) cards ---
+TLC_100        MINION  4/3/5     NEUTRAL       Elise the Navigator                | <b>Battlecry:</b> If your deck started with 10 cards of different Costs, craft a custom location.
+TLC_101        MINION  3/2/3     NEUTRAL       Undercover Cultist                 | <b>Taunt</b>, <b>Reborn</b> Has +3 Attack while damaged.
+TLC_102        MINION  4/2/7     NEUTRAL       Torga                              | <b>Battlecry:</b> Draw a <b>Kindred</b> card and another card that activates it.
+TLC_106        MINION  7/6/6     NEUTRAL       Endbringer Umbra                   | [x]<b>Battlecry:</b> Trigger the <b>Deathrattles</b> of 5 friendly minions that died this game.
+TLC_107        MINION  5/3/6     NEUTRAL       Stormbrewer                        | Whenever this attacks, deal 3 damage to the target first. <b>Kindred:</b> Gain <b>Rush</b>.
+TLC_109        MINION  3/3/3     NEUTRAL       Relic Miner                        | [x]<b>Battlecry:</b> Destroy the top card of your deck. <b>Discover</b> a card of the same Rarity.
+TLC_110        MINION  6/5/7     NEUTRAL       City Chief Esho                    | [x]<b>Battlecry:</b> If every minion in your deck shares a minion type, give your other minions +2/+2 <i>(wherever they are)</i>.
+TLC_220        MINION  4/4/5     MAGE          Windswept Pageturner               | [x]After you summon an Elemental, deal 3 damage to a random enemy.
+TLC_221        SPELL   6         SHAMAN        Sizzling Swarm                     | Deal $3 damage. Summon that many 2/1 Sizzling Cinders.
+TLC_222        SPELL   3         SHAMAN        Flight of the Firehawk             | Draw two minions of different minion types. Give them +2/+2.
+TLC_223        MINION  3/2/3     SHAMAN        Volcanic Thrasher                  | <b>Battlecry:</b> Draw a Fire spell. <b>Kindred:</b> Give it <b>Spell Damage +2</b>.
+TLC_224        MINION  4/2/5     SHAMAN        Mechanized Magma                   | Whenever you play a Fire spell, gain stats equal to its Cost.
+TLC_225        MINION  2/1/2     SHAMAN        Cinderfin                          | <b>Deathrattle:</b> Summon a 2/1 Sizzling Cinder.
+TLC_226        MINION  3/2/2     MAGE          Conjured Bookkeeper                | <b>Deathrattle:</b> Draw a spell. <b>Kindred:</b> Summon a copy of this.
+TLC_227        SPELL   3         SHAMAN        Lava Flow                          | Deal $2 damage to the lowest Health enemy, three times. <b>Overload:</b> (1)
+TLC_228        MINION  3/1/5     SHAMAN        Bralma Searstone                   | Your Elementals deal 1 extra damage.
+TLC_229        SPELL   1         SHAMAN        Spirit of the Mountain             | <b>Quest:</b> Play 7 minions of unique types. <b>Reward:</b> Ashalon.
+TLC_230        SPELL   5         DRUID         TREEEES!!!                         | Choose a minion. Summon four 2/2 Treants that attack it.
+TLC_231        SPELL   2         DRUID         Story of Barnabus                  | Draw a minion. If it has 5 or more Attack, give it +5 Health and gain_5 Armor.
+TLC_232        SPELL   2         DRUID         Ravenous Flock                     | At the start of your next turn, summon three 2/1 Hatchlings.
+TLC_233        MINION  3/2/3     DRUID         Hatchery Helper                    | [x]<b>Battlecry:</b> Give your other minions with 2 or less Attack +1/+2 and <b>Taunt</b>.
+TLC_234        MINION  4/5/1     DRUID         Eternal Bloodpetal                 | <b>Deathrattle:</b> Summon a 0/1 Eternal Seedling.
+TLC_235        SPELL   1         DRUID         Life Cycle                         | Destroy a minion. Summon a random minion of the same Cost to replace it.
+TLC_236        SPELL   5         DRUID         Hybridization                      | Draw a 1, 2, 3, and 4-Cost minion. <b>Kindred:</b> They cost (1) less.
+TLC_237        MINION  3/0/2     DRUID         Skyscreamer Eggs                   | <b>Deathrattle:</b> Summon four 2/1 Hatchlings.
+TLC_239        SPELL   1         DRUID         Restore the Wild                   | <b>Quest:</b> Fill your board on 3 of your turns. <b>Reward:</b> The Everbloom.
+TLC_240        MINION  6/6/3     PALADIN       Tyrannogill                        | [x]<b>Rush</b> <b>Deathrattle:</b> Summon three 2/1 Murlocs. Give them each a random <b>Bonus Effect</b>.
+TLC_241        MINION  4/2/7     PALADIN       Ido of the Threshfleet             | [x]While this is alive, you get a 2-Cost Holy spell that gives a minion +2/+2 and <b>Divine Shield</b>.
+TLC_242        MINION  3/1/5     NEUTRAL       Ancient Stegodon                   | <b>Battlecry:</b> Choose to gain <b>Taunt</b>, <b>Poisonous</b>, or +1/+1.
+TLC_243        MINION  9/8/8     NEUTRAL       Whirling Stormdrake                | <b>Rush</b>, <b>Windfury</b> <b>Kindred:</b> Gain <b>Immune</b> this turn.
+TLC_244        MINION  2/3/5     NEUTRAL       Curious Explorer                   | [x]<b>Deathrattle:</b> Reduce the Cost of a minion in your _opponent's hand by (2).
+TLC_245        MINION  2/2/1     NEUTRAL       Ancient Raptor                     | [x]<b>Battlecry:</b> Choose to gain +3 Attack, <b>Divine Shield</b>, or "<b>Deathrattle:</b> Summon two 1/1 Plants."
+TLC_246        MINION  4/4/4     NEUTRAL       Ancient Pterrordax                 | [x]<b>Battlecry:</b> Choose to gain <b>Stealth</b> until your next turn, <b>Elusive</b>, or <b>Windfury</b>.
+TLC_247        MINION  4/5/3     NEUTRAL       Primal Sabretooth                  | [x]<b>Stealth</b> After this attacks and kills a minion, get a copy of it.
+TLC_248        MINION  11/14/28  NEUTRAL       Ultragigasaur                      | 
+TLC_249        MINION  1/2/1     NEUTRAL       Sizzling Cinder                    | <b>Deathrattle:</b> Deal 2 damage randomly split among all enemies.
+TLC_250        MINION  4/5/4     NEUTRAL       Crater Gator                       | [x]<b>Battlecry:</b> Until the start of your next turn, the enemy hero can't be healed.
+TLC_251        MINION  3/3/2     NEUTRAL       Primalfin Challenger               | <b>Battlecry:</b> Your next <b>Kindred</b> triggers twice.
+TLC_252        MINION  3/3/3     NEUTRAL       Dissolving Ooze                    | [x]<b>Battlecry:</b> Destroy a friendly minion. Spit out the Bones of its Attack and Health into your hand.
+TLC_253        MINION  3/5/5     NEUTRAL       Petrified Ogre                     | [x]Starts <b>Dormant. </b>While <b>Dormant</b>, gain +2/+2 at the start of your turn. <i>(50% chance to awaken instead.)</i>
+TLC_254        MINION  2/1/2     NEUTRAL       Tortollan Storyteller              | [x]At the end of your turn, give +1/+1 to each friendly minion of a different type.
+TLC_255        MINION  2/2/2     NEUTRAL       Crystal Tender                     | [x]<b>Tradeable</b> <b>Battlecry:</b> Gain empty Mana Crystals until both players have the same Mana.
+TLC_256        MINION  3/3/3     NEUTRAL       Marshland Thresher                 | After you cast a spell, gain <b>Divine Shield</b>.
+TLC_257        MINION  7/5/5     DRUID         Loh, the Living Legend             | <b>Battlecry:</b> Your minions cost (5) this game.
+TLC_334        SPELL   7         MAGE          Relic of Kings                     | <b>Discover</b> a spell from any class that costs (8) or more. It costs (1).
+TLC_364        SPELL   2         MAGE          Story of the Waygate               | [x]Reduce the Cost of cards in your hand that didn't start in your deck by (1).
+TLC_365        SPELL   3         MAGE          Storage Scuffle                    | Deal $3 damage to a minion. Costs (0) if you've <b>Discovered</b> this turn.
+TLC_366        MINION  6/7/5     HUNTER        Pterrorwing Ravager                | <b>Rush</b> <b>Kindred:</b> Costs (2) less.
+TLC_401        MINION  6/6/3     DEATHKNIGHT   Bonechill Stegodon                 | <b>Deathrattle:</b> Deal 6 damage to three random enemies.
+TLC_426        SPELL   1         PALADIN       Dive the Golakka Depths            | <b>Repeatable Quest:</b> Summon 5 Murlocs. <b>Reward:</b> Murlocs you summon gain +1/+1.
+TLC_427        MINION  2/1/3     NEUTRAL       Rockskipper                        | <b>Battlecry:</b> Get a 1-Cost Rock that deals $3 damage.
+TLC_428        MINION  3/2/4     PALADIN       Hot Spring Glider                  | <b>Battlecry:</b> Your next Murloc costs (2) less. <b>Kindred:</b> And gains <b>Divine Shield</b>.
+TLC_429        MINION  4/4/3     NEUTRAL       Steamfin Thief                     | <b>Kindred:</b> Summon two 1/1 Murlocs with <b>Rush</b>.
+TLC_430        MINION  4/2/5     PALADIN       Creature of the Sacred Cave        | [x]At the end of your turn, recast a random Holy spell you cast this turn <i>(targets this if possible)</i>.
+TLC_432        MINION  4/3/4     DEATHKNIGHT   Dread Raptor                       | <b>Battlecry:</b> Draw a <b>Deathrattle</b> minion that costs (3) or less. <b>Kindred:</b> It costs (0).
+TLC_433        SPELL   1         DEATHKNIGHT   Reanimate the Terror               | [x]<b>Quest:</b> Spend 18 <b>Corpses</b>. <b>Reward:</b> Tyrax, Bone Terror.
+TLC_434        SPELL   3         DEATHKNIGHT   Paleomancy                         | <b>Discover</b> an Undead. Spend 5 <b>Corpses</b> to keep all 3 instead.
+TLC_435        SPELL   1         DEATHKNIGHT   Crypt Map                          | <b>Discover</b> a Frost Rune card. If you play it this turn, also pick one of the others.
+TLC_436        MINION  5/4/3     DEATHKNIGHT   Reanimated Pterrordax              | <b><b>Rush</b>, Lifesteal</b> Costs <b>Corpses</b> instead of Mana.
+TLC_438        MINION  2/1/2     PALADIN       Violet Treasuregill                | [x]<b>Battlecry:</b> Cast a random spell from your deck that costs (2) or less <i>(targets this if possible)</i>.
+TLC_439        SPELL   4         DEATHKNIGHT   Wave of Tar                        | Deal $2 damage to all enemy minions. Enemy minions cost (2) more next turn.
+TLC_440        SPELL   4         DEATHKNIGHT   Cryosleep                          | Deal $4 damage and draw a card. <b>Kindred: </b>Draw another.
+TLC_441        SPELL   3         PALADIN       Ready the Fleet                    | Give +1/+2 to a friendly minion and your other minions that share a type with it.
+TLC_442        SPELL   1         PALADIN       Submerged Map                      | [x]<b>Discover</b> a Murloc. If you play it this turn, also pick one of the others.
+TLC_443        MINION  3/1/1     DEATHKNIGHT   Reluctant Wrangler                 | [x]<b>Reborn</b> <b>Deathrattle:</b> Summon a 2/2 Undead Beast with <b>Taunt</b>.
+TLC_444        SPELL   2         PALADIN       Story of Galvadon                  | Give a minion three random <b>Bonus Effects</b>.
+TLC_446        SPELL   1         WARLOCK       Escape the Underfel                | <b>Quest:</b> Play 6 <b>Temporary</b> cards. <b>Reward:</b> Underfel Rift.
+TLC_447        SPELL   4         WARLOCK       Caustic Fumes                      | Destroy an enemy minion. <b>Kindred:</b> Deal $2 damage to all minions.
+TLC_449        LOCATION 1         WARLOCK       Bloodpetal Biome                   | <b>Discover</b> a <b>Temporary</b> 1-Cost minion.
+TLC_450        MINION  2/2/3     WARLOCK       Spelunker                          | <b>Battlecry:</b> Your next <b>Temporary</b> card costs (2) less.
+TLC_451        SPELL   0         WARLOCK       Cursed Catacombs                   | <b>Discover</b> a minion from your deck. Make it <b>Temporary</b>.
+TLC_452        MINION  7/7/7     MAGE          Titanographer Osk                  | Gains a random <b>Titan</b> ability in your hand that changes each turn.
+TLC_454        MINION  6/3/6     NEUTRAL       Scalehide Kodo                     | [x]<b>Battlecry:</b> Destroy the lowest Attack enemy minion. <b>Kindred:</b> The highest Attack instead.
+TLC_460        SPELL   1         MAGE          The Forbidden Sequence             | [x]<b>Quest:</b> <b>Discover</b> 8 cards. <b>Reward:</b> The Origin Stone.
+TLC_461        MINION  1/1/1     MAGE          Scrappy Scavenger                  | [x]<b>Battlecry:</b> <b>Discover</b> a card with Cost equal to your remaining Mana Crystals.
+TLC_462        SPELL   2         MAGE          Unearthed Artifacts                | [x]Summon a random 2-Cost minion. If you've <b><b>Discover</b>ed</b> this turn, summon a random 4-Cost minion instead.
+TLC_463        MINION  4/7/7     WARLOCK       Razidir                            | [x]<b>Battlecry:</b> Discard a random card from your hand. <b>Kindred:</b> Your opponent's hand instead.
+TLC_464        SPELL   1         SHAMAN        Mountain Map                       | [x]<b>Discover</b> a minion with a type you haven't played. If you play it this turn, also pick one of the others.
+TLC_465        MINION  3/3/2     NEUTRAL       Stranglevine                       | <b>Deathrattle:</b> Give a random friendly minion a random <b>Bonus Effect</b> and this <b>Deathrattle</b>.
+TLC_466        SPELL   7         WARLOCK       Story of Lakkari                   | [x]At the end of your turn, discard a card and fill your board with 3/2 Imps. Lasts 3 turns.
+TLC_467        MINION  5/0/8     WARLOCK       Whispering Stone                   | [x]<b>Taunt</b> <b>Deathrattle:</b> Get 2 random Fel spells. They cost Health instead of Mana.
+TLC_468        MINION  4/2/4     NEUTRAL       Blob of Tar                        | [x]<b>Poisonous</b>, <b>Taunt</b> <b>Deathrattle:</b> Summon a 1/2 Blob with <b>Poisonous</b> and a 1/2 Blob with <b>Taunt</b>.
+TLC_469        MINION  3/4/3     WARLOCK       Tunnel Terror                      | <b>Deathrattle:</b> Get two random <b>Temporary</b> 2-Cost minions.
+TLC_477        SPELL   5         PALADIN       Threshrider's Blessing             | Give a friendly minion +4/+4 and "<b>Deathrattle:</b> Summon a random 4-Cost minion."
+TLC_478        WEAPON  3/2/0     WARRIOR       Axe of the Forefathers             | After your hero attacks, deal 1 damage to all minions.
+TLC_479        MINION  6/2/8     WARLOCK       Deathrot Maw                       | <b>Taunt</b> <b>Deathrattle:</b> Summon a random Fel Beast.
+TLC_480        MINION  9/8/7     NEUTRAL       Krog, Crater King                  | [x]At the end of your turn, set the Attack and Health of all enemy minions to 1.
+TLC_482        MINION  5/3/4     SHAMAN        Slagclaw                           | [x]<b>Battlecry:</b> Summon two 2/1 Sizzling Cinders. <b>Kindred:</b> Trigger your Sizzling Cinders' <b>Deathrattles.</b>
+TLC_483        MINION  3/2/4     MAGE          Vault Breaker                      | After you <b>Discover</b> a card, reduce its Cost by (1).
+TLC_513        SPELL   1         ROGUE         Lie in Wait                        | [x]<b>Quest:</b> Shuffle cards into your deck, 5 times. <b>Reward: </b>Master Dusk.
+TLC_514        MINION  1/1/2     ROGUE         Merchant of Legend                 | <b>Battlecry:</b> <b>Discover</b> a <b>Legendary</b> minion. Shuffle the other two into_your deck.
+TLC_515        SPELL   2         ROGUE         Cultist Map                        | <b>Discover</b> a card from your deck. If you play it this turn, also pick one of the others.
+TLC_516        MINION  4/5/4     ROGUE         Neferset Weaponsmith               | [x]<b>Battlecry:</b> Get a random weapon from another class. <b>Combo:</b> Give it +2 Attack.
+TLC_517        SPELL   1         ROGUE         Knockback                          | [x]Deal $@ damage to a minion <i>(improved for each time you've shuffled cards into your deck)</i>.
+TLC_518        SPELL   2         ROGUE         Interrogation                      | Shuffle three 3/3 Ninjas with <b>Stealth</b> into your deck that are <b>Summoned When Drawn</b>.
+TLC_519        SPELL   3         ROGUE         Ambush Predators                   | Summon a 1/1 Spitter with <b>Stealth</b> and <b>Poisonous</b>. <b>Kindred:</b> Do it again.
+TLC_520        MINION  7/5/5     ROGUE         Underbrush Tracker                 | [x]<b>Rush</b> Costs (1) less for each time you've shuffled cards into your deck.
+TLC_521        MINION  2/2/3     ROGUE         Eyes in the Sky                    | [x]<b>Battlecry:</b> Look at 3 cards in your enemy's deck. Pick one to put on top.
+TLC_522        MINION  6/6/4     ROGUE         Opu the Unseen                     | <b>Battlecry, Combo, and Deathrattle:</b> Cast 'Fan of Knives'.
+TLC_600        MINION  8/6/6     WARRIOR       Windpeak Wyrm                      | [x]<b>Battlecry:</b> Deal 5 damage and gain 5 Armor. <b>Kindred:</b> Costs (3) less.
+TLC_601        SPELL   4         WARRIOR       Shellnado                          | Spend up to 5 Armor. For each spent, deal 1 damage to all minions.
+TLC_602        SPELL   1         WARRIOR       Enter the Lost City                | [x]<b>Quest:</b> Survive 10 turns. <b>Reward: </b>Latorvius, Gaze of the City.
+TLC_603        MINION  1/1/2     NEUTRAL       Platysaur                          | <b>Battlecry:</b> Draw a card. <b>Deathrattle:</b> Discard it.
+TLC_605        MINION  8/1/12    NEUTRAL       Tar Tyrant                         | [x]<b>Taunt</b>, <b>Lifesteal</b> Has +6 Attack during your opponent's turn.
+TLC_606        MINION  3/3/3     WARRIOR       Latorvian Armorer                  | <b>Battlecry:</b> Deal 2 damage to an enemy minion. If it dies, gain 5 Armor.
+TLC_620        SPELL   3         WARRIOR       Fortify                            | [x]Gain 3 Armor. Deal damage equal to your Armor to an enemy minion.
+TLC_621        MINION  4/4/7     NEUTRAL       Willful Watcher                    | [x]<b>Taunt</b> <b>Deathrattle:</b> Destroy the _top 3 cards of your deck.
+TLC_622        SPELL   4         WARRIOR       City Defenses                      | Summon two 0/6 Security with <b>Taunt</b>. They gain +1 Attack when damaged.
+TLC_623        MINION  2/1/4     WARRIOR       Stonecarver                        | At the end of your turn, give a random friendly damaged minion +2/+2.
+TLC_624        MINION  6/5/7     WARRIOR       Nablya, the Watcher                | [x]<b>Battlecry:</b> Summon copies  of your damaged minions. Give the copies <b>Rush</b>.
+TLC_630        MINION  6/2/8     DEMONHUNTER   Gorishi Wasp                       | Whenever this takes damage, get a 1-Cost Gorishi Stinger.
+TLC_631        SPELL   1         DEMONHUNTER   Unleash the Colossus               | <b>Quest:</b> Deal exactly 2 damage to an enemy on your turn, 15 times. <b>Reward:</b> Gorishi Colossus.
+TLC_632        SPELL   5         WARRIOR       Story of Sulfuras                  | [x]Swap your Hero Power to "Deal 8 damage to a random enemy." After 2 uses, swap back.
+TLC_633        MINION  4/5/3     DEMONHUNTER   Bugsquasher                        | <b>Battlecry:</b> Deal 6 damage to an enemy minion with a minion type.
+TLC_810        MINION  8/8/6     DEATHKNIGHT   High Cultist Herenn                | [x]<b>Battlecry:</b> Summon two <b>Deathrattle</b> minions from your deck. They fight!
+TLC_811        MINION  3/1/6     PRIEST        Archaios                           | [x]Whenever another friendly minion attacks, set its Health equal to this minion's Health.
+TLC_814        MINION  3/3/4     PRIEST        Twilight Mender                    | <b>Deathrattle:</b> Get a random Holy and Shadow spell.
+TLC_815        SPELL   4         PRIEST        Gravedawn Voidbulb                 | Summon a random 4-Cost minion and give it <b>Taunt</b>. <b>Kindred:</b> Do it again.
+TLC_816        SPELL   4         PRIEST        Gravedawn Sunbloom                 | Draw 2 cards. <b>Kindred:</b> This costs (2) less.
+TLC_817        SPELL   1         PRIEST        Reach Equilibrium                  | [x]<b>Quest:</b> Cast 5 Holy spells <b>Reward:</b> Life's Breath. <b>Quest:</b> Cast 5 Shadow spells. <b>Reward:</b> Death's Touch.
+TLC_818        SPELL   5         PRIEST        Resuscitate                        | Resurrect a 1, 2, and 3-Cost minion. Give them <b>Reborn</b>.
+TLC_819        MINION  6/4/7     PRIEST        Gladesong Siren                    | <b>Lifesteal</b> Costs (1) if you've played a Holy and Shadow spell this turn.
+TLC_820        MINION  1/2/1     PRIEST        Glade Ecologist                    | [x]<b>Deathrattle:</b> Get a 1-Cost Holy spell that gives a minion +2 or -2 Health.
+TLC_821        MINION  7/7/7     PRIEST        Wilted Shadow                      | [x]<b>Lifesteal</b> Whenever you heal an enemy, this attacks it.
+TLC_822        MINION  2/2/3     HUNTER        Dinositter                         | [x]At the end of your turn, reduce the Cost of a random Beast in your hand by (1).
+TLC_823        SPELL   2         HUNTER        Cower in Fear                      | Deal $3 damage to a minion. The next Beast you play this turn costs (2) less.
+TLC_824        SPELL   1         HUNTER        Odd Map                            | [x]<b>Discover</b> an odd-Attack Beast. If you play it this turn, also pick one of the others.
+TLC_825        MINION  4/5/4     HUNTER        Ravasaur Matriarch                 | [x]<b>Kindred:</b> Deal damage to an enemy minion equal to this minion's Attack.
+TLC_826        SPELL   2         HUNTER        Story of Carnassa                  | Shuffle ten 1-Cost 3/2 Raptors into your deck with "<b>Battlecry:</b> Draw a card."
+TLC_827        MINION  3/0/5     HUNTER        Grazing Stegodon                   | At the end of your turn, gain +1 Attack <i>(even while in hand or deck)</i>.
+TLC_828        SPELL   5         HUNTER        Supreme Dinomancy                  | Give +2/+2 to all Beasts in your hand, deck, and battlefield.
+TLC_829        MINION  7/3/3     NEUTRAL       Ravenous Devilsaur                 | [x]<b>Battlecry:</b> Destroy a minion. <b>Kindred:</b> Gain its stats.
+TLC_830        SPELL   1         HUNTER        The Food Chain                     | <b>Quest:</b> Play a 1, 3, 5, and 7-Attack Beast. <b>Reward:</b> Shokk.
+TLC_831        MINION  3/0/3     NEUTRAL       Pterrordax Egg                     | [x]<b>Deathrattle:</b> Summon a 3/3 Pterrordax that steals 1 Health from all other minions.
+TLC_833        WEAPON  3/2/0     DEMONHUNTER   Insect Claw                        | After your hero attacks, summon a 2/1 Grub with <b>Rush</b>.
+TLC_835        SPELL   10        PRIEST        Story of Amara                     | Set your hero's Health to 40.
+TLC_836        MINION  3/2/5     HUNTER        Niri of the Crater                 | [x]Whenever you play a 1-Cost minion, double its stats. Whenever you cast a 1-Cost spell, cast it twice.
+TLC_840        MINION  3/2/4     DEMONHUNTER   Gorishi Tunneler                   | <b>Stealth</b> After this attacks, deal 2 damage to the enemy hero.
+TLC_841        MINION  9/7/7     DEMONHUNTER   Entomologist Toru                  | [x]<b>Battlecry:</b> Put each minion  in your hand into 0/1 Jars _that cost (1). Break them __to release the minions!
+TLC_888        MINION  4/4/3     NEUTRAL       Cloud Serpent                      | [x]<b>Battlecry:</b> Get a copy of another Elemental or Dragon in your hand.
+TLC_900        SPELL   1         DEMONHUNTER   Hive Map                           | [x]<b>Discover</b> a Fel spell. If you play it this turn, also pick one of the others.
+TLC_901        SPELL   2         DEMONHUNTER   Fumigate                           | Deal $3 damage to a minion and all others of the same minion type.
+TLC_902        SPELL   2         DEMONHUNTER   Infestation                        | [x]Get two 1-Cost Gorishi Stingers. Each one deals $2 damage and summons a 2/1 Grub with <b>Rush</b>.
+TLC_903        MINION  5/5/2     DEMONHUNTER   Silithid Queen                     | <b>Rush</b> <b>Kindred</b>: Give your hero +5 Attack this turn.
+TLC_987        MINION  2/3/2     NEUTRAL       Questing Assistant                 | [x]<b>Battlecry:</b> If you played a <b>Quest</b> this game, deal 2 damage.
+
+--- GameTag histogram over NEW cards ---
+  145  CARD_SET
+  145  CLASS
+  145  CARDTYPE
+  145  RARITY
+  145  COLLECTIBLE
+  144  COST
+   91  HEALTH
+   86  ATK
+   46  CARDRACE
+   38  BATTLECRY
+   27  ELITE
+   25  HAS_SIGNATURE_QUALITY
+   22  TRIGGER_VISUAL
+   21  KINDRED
+   20  DEATHRATTLE
+   19  COLLECTION_RELATED_CARD_DATABASE_ID
+   19  SPELL_SCHOOL
+   13  DISCOVER
+   13  FACTION
+   12  USE_DISCOVER_VISUALS
+   12  QUEST_PROGRESS_TOTAL
+   11  QUEST
+   11  DONT_PICK_FROM_SUBSETS
+   11  839
+   11  QUEST_REWARD_DATABASE_ID
+   11  3674
+    6  TAUNT
+    6  RUSH
+    5  2542
+    5  COST_FROST
+    4  HAS_DIAMOND_QUALITY
+    4  COST_UNHOLY
+    3  2523
+    3  LIFESTEAL
+    2  REBORN
+    2  2536
+    2  AURA
+    2  OBJECTIVE
+    2  STEALTH
+    1  ENRAGED
+    1  2534
+    1  2539
+    1  OVERLOAD
+    1  WINDFURY
+    1  1652
+    1  4296
+    1  TRADEABLE
+    1  DECK_ACTION_COST
+    1  REPEATABLE
+    1  COST_BLOOD
+    1  CARD_ALTERNATE_COST
+    1  POISONOUS
+    1  TAG_SCRIPT_DATA_NUM_1
+    1  1724
+    1  4310
+    1  DISPLAY_CARD_ON_MOUSEOVER
+
+--- Race histogram over NEW minions ---
+   27  BEAST
+   13  ELEMENTAL
+    7  MURLOC
+    4  UNDEAD
+    4  DRAGON
+    1  MECHANICAL
+    1  DEMON
+    1  NAGA

@@ -372,10 +372,11 @@ def test_flickering_lightbot_cost_and_gigantify():
     game = prepare_game(CardClass.PALADIN, CardClass.MAGE)
     p1 = game.player1
     bot = p1.give("MIS_918")
-    assert bot.cost == 3
+    base = bot.data.cost  # rebalanced to 5 in build 223542
+    assert bot.cost == base
     p1.give("CS2_089").play(target=p1.hero)
     p1.give("CS2_089").play(target=p1.hero)
-    assert bot.cost == 1  # 3 - 2 Holy spells
+    assert bot.cost == base - 2  # -1 per Holy spell cast (2 cast)
     _clear_hand(p1)
     bot2 = p1.give("MIS_918")
     bot2.play()

@@ -122,6 +122,16 @@ class Player(Entity, TargetableByAuras):
         # Azerite Giant is still in the deck (not yet in hand).
         self.azerite_elemental_streak = 0
         self.elemental_played_last_turn = 0
+        # The Lost City of Un'Goro — Kindred: a card's bonus activates if you
+        # played a card of a matching minion type OR spell school on your
+        # PREVIOUS turn. We accumulate the types/schools played from hand each
+        # turn, and roll *_this_turn -> *_last_turn at the start of your turn.
+        self.races_played_this_turn = set()
+        self.races_played_last_turn = set()
+        self.schools_played_this_turn = set()
+        self.schools_played_last_turn = set()
+        # Primalfin Challenger — "your next Kindred triggers twice".
+        self.next_kindred_double = 0
         self.cards_drawn_this_turn = 0
         self.cards_played_this_turn = 0
         self.cards_played_this_game = CardList()

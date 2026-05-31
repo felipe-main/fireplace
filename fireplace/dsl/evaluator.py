@@ -207,6 +207,41 @@ class EvenCost(Evaluator):
         return True
 
 
+def kindred_active(card):
+    """The Lost City of Un'Goro — Kindred condition.
+
+    True if `card` shares a minion type OR spell school with a card its
+    controller played on the PREVIOUS turn. Dual-type minions need only one
+    matching type.
+    """
+    player = getattr(card, "controller", None)
+    if player is None:
+        return False
+    races = set(getattr(card, "races", []) or [])
+    if races & getattr(player, "races_played_last_turn", set()):
+        return True
+    from hearthstone.enums import SpellSchool
+
+    school = getattr(card, "spell_school", SpellSchool.NONE)
+    if school and school != SpellSchool.NONE:
+        if school in getattr(player, "schools_played_last_turn", set()):
+            return True
+    return False
+
+
+class Kindred(Evaluator):
+    """The Lost City of Un'Goro — Kindred. Evaluates True when the source card's
+    Kindred condition is met (see `kindred_active`). Use as a play-script gate:
+    ``play = base, Kindred() & bonus``."""
+
+    def __init__(self, selector=None):
+        super().__init__()
+        self.selector = selector
+
+    def check(self, source):
+        return kindred_active(source)
+
+
 class OddCost(Evaluator):
     """
     Evaluates to True if the cost of \a selector are all odd cost.

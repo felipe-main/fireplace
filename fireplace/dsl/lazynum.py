@@ -95,6 +95,25 @@ class LazyNumEvaluator(Evaluator):
         return self.cmp(num, other)
 
 
+class KindredCost(LazyNum):
+    """The Lost City of Un'Goro — a cost-reducing Kindred (e.g. Pterrorwing
+    Ravager "Kindred: Costs (2) less"). Returns `amount` while the source card's
+    Kindred condition is met (active even in hand), else 0. Use as a cost_mod:
+    ``cost_mod = -KindredCost(2)``."""
+
+    def __init__(self, amount):
+        super().__init__()
+        self.amount = amount
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.amount)
+
+    def evaluate(self, source):
+        from .evaluator import kindred_active
+
+        return self.num(self.amount if kindred_active(source) else 0)
+
+
 class Count(LazyNum):
     """
     Lazily count the matches in a selector

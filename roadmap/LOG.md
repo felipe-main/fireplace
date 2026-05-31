@@ -7,3 +7,4 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | init | seed | progress.json + LOG.md created on branch feature/heroes-to-cataclysm
 - 2026-05-31 | 1:Heroes of StarCraft | P0 data + P1 dump | bumped 213852->214839; pinned 49 SC_ cards, faction=GameTag PROTOSS/TERRAN/ZERG; manifest written
 - 2026-05-31 | 1:Heroes of StarCraft | P2 engine | faction selectors+cost attrs+launch discount+protoss-spell counter; fixed Card.classes for MULTIPLE_CLASSES bitmask; 14 engine tests green
+- 2026-05-31 | 1:Heroes of StarCraft | P3 launch | card workflow wf_0ca370a1-c5f launched (token-broker -> neutral/zerg/protoss/terran impl -> verify); 49 collectibles + ~20 token minions/hero-powers; partition race-free (factions split classes disjointly)

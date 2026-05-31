@@ -1,0 +1,206 @@
+C:\Users\winz\AppData\Local\Programs\Python\Python312\Lib\site-packages\hearthstone_data\__init__.py:2: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+SC_000         COLL LOCATION  1         fac=['ZERG']                   cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=['DEATHRATTLE']
+    Spawning Pool | [x]Get a 1/1 Zergling. <b>Deathrattle:</b> Your Zerg minions have <b>Rush</b> this turn.
+SC_000te       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Zerg Rush | Your Zerg minions have <b>Rush</b> this turn.
+SC_000te2      tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Zerg Rush! | Granted <b>Rush</b> this turn from Spawning Pool.
+SC_001         COLL SPELL     1         fac=['ZERG']                   cls=['DEATHKNIGHT'] kw=[]
+    Baneling Barrage | [x]Get a 1/1 Baneling that explodes. If you control a Zerg minion, get another Baneling.
+SC_002         COLL MINION    3/3/2     fac=['ZERG']                   cls=['DEATHKNIGHT'] kw=['DEATHRATTLE']
+    Infestor | [x]<b>Deathrattle:</b> Your Zerg minions have +1/+1 for the rest of the game.
+SC_002e        tok  ENCHANTMENT 0         fac=[]                         cls=['DEATHKNIGHT'] kw=[]
+    For the Swarm | For the rest of the game, your Zerg have +1/+1.
+SC_002e2       tok  ENCHANTMENT 0         fac=[]                         cls=['DEATHKNIGHT'] kw=[]
+    For the Swarm! | +1/+1.
+SC_003         COLL MINION    3/2/5     fac=['ZERG']                   cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=[]
+    Brood Queen | [x]At the end of your turn, get a Larva that transforms into random Zerg minions.
+SC_003t        tok  MINION    1/1/1     fac=['ZERG']                   cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=[]
+    Larva | [x]Each turn this is in your hand, transform it into a random Zerg minion.
+SC_003te       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Transforming Larva | Transforming into random Zerg minions.
+SC_004         COLL HERO      7         fac=['ZERG']                   cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=['BATTLECRY']
+    Kerrigan, Queen of Blades | [x]<b>Battlecry:</b> Summon two 2/5 Brood Queens. Deal 3 damage to all enemies.
+SC_004hp       tok  HERO_POWER 2         fac=[]                         cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=[]
+    Ravage | [x]Deal $@ damage randomly split among all enemies. <i>(Improved by Zerg minions you control!)</i>
+SC_006         tok  MINION    8/8/8     fac=['ZERG']                   cls=['WARLOCK'] kw=['RUSH']
+    Ultralisk | <b>Rush</b>
+SC_008         COLL MINION    3/4/2     fac=['ZERG']                   cls=['HUNTER'] kw=['BATTLECRY']
+    Hydralisk | [x]<b>Battlecry:</b> Deal 2 damage to a random enemy. Repeat for each other Zerg minion you control.
+SC_009         COLL MINION    4/2/6     fac=['ZERG']                   cls=['DEMONHUNTER'] kw=[]
+    Lurker | [x]After a friendly minion attacks, deal 1 damage to a random enemy <i>(or 2 if your minion is a Zerg)</i>.
+SC_010         COLL MINION    1/1/1     fac=['ZERG']                   cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=['BATTLECRY']
+    Zergling | <b>Battlecry:</b> Summon a copy of this.
+SC_011         COLL SPELL     2         fac=['ZERG']                   cls=['DEMONHUNTER'] kw=[]
+    Creep Tumor | Your Zerg minions have +1 Attack and <b>Rush</b>. Lasts 3 turns.
+SC_011e        tok  ENCHANTMENT 0         fac=[]                         cls=['DEMONHUNTER'] kw=[]
+    On Creep | Creep Tumor grants +1 Attack and <b>Rush</b>.
+SC_012         COLL MINION    2/2/2     fac=['ZERG']                   cls=['HUNTER'] kw=['BATTLECRY']
+    Roach | When you draw this, get a copy of it. <b>Battlecry:</b> If you control another Zerg minion, gain +1/+2.
+SC_012e        tok  ENCHANTMENT 0         fac=[]                         cls=['HUNTER'] kw=[]
+    Adaptive Plating | +1/+2.
+SC_013         COLL MINION    8/3/4     fac=[]                         cls=['NEUTRAL'] kw=['BATTLECRY']
+    Grunty | [x]<b>Battlecry:</b> Summon four random Murlocs, then shoot them at enemy minions. _<i>(You pick the targets!)</i>
+SC_015         COLL SPELL     3         fac=['ZERG']                   cls=['DEATHKNIGHT', 'HUNTER', 'WARLOCK', 'DEMONHUNTER'] kw=[]
+    Nydus Worm | Draw two Zerg cards. They cost (1) less.
+SC_015e        tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Nydus Network | Gives your hero +2 Attack this turn if played this turn.
+SC_015e2       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Nydus Jaws | +2 Attack this turn.
+SC_018         COLL MINION    4/5/3     fac=['ZERG']                   cls=['DEATHKNIGHT'] kw=['BATTLECRY']
+    Viper | [x]<b>Battlecry:</b> Summon a minion from your opponent's hand. Your other Zerg minions gain <b>Reborn</b> and attack it.
+SC_019         COLL LOCATION  3         fac=['ZERG']                   cls=['WARLOCK'] kw=['DEATHRATTLE']
+    Ultralisk Cavern | [x]Deal 1 damage to all enemies. <b>Deathrattle:</b> Summon an 8/8 Ultralisk with <b>Rush</b>.
+SC_019t        tok  MINION    1/1/1     fac=['ZERG']                   cls=['DEATHKNIGHT'] kw=['DEATHRATTLE']
+    Baneling | <b>Deathrattle:</b> Deal damage equal to this minion's Attack to all enemy minions.
+SC_020         COLL SPELL     1         fac=['ZERG']                   cls=['WARLOCK'] kw=[]
+    Consume | [x]Remove 1 Durability from a friendly location to restore #8 Health to your hero.
+SC_020e        tok  ENCHANTMENT 0         fac=[]                         cls=['WARLOCK'] kw=[]
+    Consumed | +10 Health.
+SC_021         COLL SPELL     2         fac=['ZERG']                   cls=['HUNTER'] kw=[]
+    Evolution Chamber | Give your minions +1_Attack. Give your Zerg an extra +1/+1.
+SC_021e        tok  ENCHANTMENT 0         fac=[]                         cls=['HUNTER'] kw=[]
+    Perfect Evolution | +2/+1.
+SC_021e2       tok  ENCHANTMENT 0         fac=[]                         cls=['HUNTER'] kw=[]
+    Primal Evolution | +1 Attack.
+SC_022         COLL MINION    4/5/2     fac=['ZERG']                   cls=['DEMONHUNTER'] kw=[]
+    Mutalisk | [x]Also damages minions next to whomever this attacks <i>(and the enemy hero if a neighbor is missing)</i>.
+SC_023         COLL MINION    2/1/6     fac=['ZERG']                   cls=['WARLOCK'] kw=['TAUNT']
+    Spine Crawler | [x]<b>Taunt</b>. Can't attack. Has +3 Attack if you control a location.
+SC_400         COLL HERO      7         fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['BATTLECRY']
+    Jim Raynor | [x]<b>Battlecry:</b> Relaunch every <b>Starship</b> that you launched this game.
+SC_400e        tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Stimpack Boost | +2 Attack.
+SC_400p        tok  HERO_POWER 2         fac=[]                         cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=[]
+    Stimpack | [x]Summon a 2/2 Marine with <b>Taunt</b>. Give your Terran minions +2_Attack.
+SC_401         COLL MINION    1/1/3     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['BATTLECRY']
+    SCV | <b>Battlecry:</b> Your next <b>Starship</b> launch costs (2) less.
+SC_403         COLL LOCATION  2         fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=[]
+    Starport | [x]Summon a 2/1 <b>Starship_Piece</b> with an effect when launched.
+SC_403a        tok  MINION    1/2/1     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STARSHIP_PIECE']
+    Viking | <b>Starship Piece</b> When this is launched, gain 7 Armor.
+SC_403ae       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Viking | When this is launched, gain 7 Armor.
+SC_403b        tok  MINION    1/2/1     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STARSHIP_PIECE']
+    Liberator | [x]<b>Starship Piece</b> When this is launched, deal 2 damage to all enemies.
+SC_403be       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Liberator | When this is launched, deal 2 damage to all enemies.
+SC_403c        tok  MINION    1/2/1     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STARSHIP_PIECE']
+    Raven | [x]<b>Starship Piece</b> When this is launched, gain 3 random <b>Bonus Effects</b>.
+SC_403ce       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Raven | When this is launched, gain 3 random <b>Bonus Effects</b>
+SC_403d        tok  MINION    1/2/1     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STARSHIP_PIECE']
+    Banshee | <b>Starship Piece</b> When this is launched, deal 5 damage to a random enemy.
+SC_403de       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Banshee | When this is launched, deal 5 damage to a random enemy.
+SC_403f        tok  MINION    1/2/1     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STARSHIP_PIECE']
+    Medivac | [x]<b>Starship Piece</b> When this is launched, summon two 2/2 Marines with <b>Taunt</b>.
+SC_403fe       tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Medivac | When this is launched, summon two 2/2 Marines with <b>Taunt</b>.
+SC_403t        tok  MINION    2/2/2     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['TAUNT']
+    Marine | <b>Taunt</b>
+SC_404         COLL SPELL     3         fac=['TERRAN']                 cls=['PALADIN'] kw=[]
+    Salvage the Bunker | Summon two 2/2 Marines with <b>Taunt</b>. Your next <b>Starship</b> launch costs (2) less.
+SC_405         COLL MINION    2/1/1     fac=['TERRAN']                 cls=['PALADIN'] kw=['BATTLECRY', 'STARSHIP_PIECE']
+    Ultra-Capacitor | [x]<b>Starship Piece</b> <b>Battlecry:</b> Gain +1/+1 for __each other friendly minion.__ Also triggers on launch.
+SC_405e        tok  ENCHANTMENT 0         fac=[]                         cls=['PALADIN'] kw=[]
+    Self Replicating | +1/+1.
+SC_405te       tok  ENCHANTMENT 0         fac=[]                         cls=['PALADIN'] kw=[]
+    Ultra-Capacitor | <b>Battlecry:</b> Gain +1/+1 for each other friendly minion. Also triggers on launch.
+SC_406         COLL MINION    4/3/3     fac=['TERRAN']                 cls=['WARRIOR'] kw=['BATTLECRY', 'STARSHIP_PIECE']
+    Yamato Cannon | [x]<b>Starship Piece</b> <b>Battlecry:</b> Destroy a random enemy minion. Also triggers on launch.
+SC_406e        tok  ENCHANTMENT 0         fac=[]                         cls=['WARRIOR'] kw=[]
+    Yamato Cannon | <b>Battlecry:</b> Destroy a random enemy minion. Also triggers on launch.
+SC_407         COLL SPELL     1         fac=['TERRAN']                 cls=['SHAMAN'] kw=[]
+    Lock On | Set a minion’s Health to 1. Your next <b>Starship</b> launch costs (2) less.
+SC_407e        tok  ENCHANTMENT 0         fac=[]                         cls=['SHAMAN'] kw=[]
+    Locked On | Health set to 1.
+SC_408         COLL MINION    4/6/2     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STEALTH', 'BATTLECRY']
+    Ghost | [x]<b>Stealth</b>. <b>Battlecry:</b> If you're building a <b>Starship</b>, destroy the lowest-Cost card in your opponent's hand.
+SC_409         COLL MINION    2/1/3     fac=['TERRAN']                 cls=['SHAMAN'] kw=['BATTLECRY', 'STARSHIP_PIECE']
+    Missile Pod | [x]<b>Starship Piece</b> <b>Battlecry:</b> Deal 1 damage to all enemies. Also triggers on launch.
+SC_409e        tok  ENCHANTMENT 0         fac=[]                         cls=['SHAMAN'] kw=[]
+    Missile Pod | <b>Battlecry:</b> Deal 1 damage to all enemies. Also triggers on launch.
+SC_410         COLL SPELL     3         fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=[]
+    Lift Off | Draw 2 Terran cards. Summon a 2/1 <b>Starship Piece</b> with an effect when launched.
+SC_411         COLL SPELL     1         fac=['TERRAN']                 cls=['WARRIOR'] kw=[]
+    Concussive Shells | Deal $2 damage and gain 2 Armor. Your next <b>Starship</b> launch costs (2) less.
+SC_412         COLL MINION    4/4/4     fac=['TERRAN']                 cls=['PALADIN'] kw=[]
+    Hellion | [x]Your other minions have +1 Attack. <i>(Transforms if you launched a <b>Starship</b> this game.)</i>
+SC_412e1       tok  ENCHANTMENT 0         fac=[]                         cls=['PALADIN'] kw=[]
+    Smart Servos | +1 Attack.
+SC_412e2       tok  ENCHANTMENT 0         fac=[]                         cls=['PALADIN'] kw=[]
+    Smarter Servos | +2 Attack and <b>Rush</b>.
+SC_412t        tok  MINION    4/4/4     fac=['TERRAN']                 cls=['PALADIN'] kw=[]
+    Hellbat | Your other minions have +2 Attack and <b>Rush</b>.
+SC_413         COLL MINION    5/5/5     fac=['TERRAN']                 cls=['SHAMAN'] kw=['BATTLECRY']
+    Siege Tank | [x]<b>Battlecry:</b> Deal 10 damage to a random enemy minion. <i>(Transforms if you launched a <b>Starship</b> this game.)</i>
+SC_413t        tok  MINION    5/5/5     fac=['TERRAN']                 cls=['SHAMAN'] kw=['BATTLECRY']
+    Siege Tank, Deployed | <b>Battlecry:</b> Deal 10 damage to a random enemy minion. Excess damage hits the enemy hero.
+SC_414         COLL MINION    8/8/8     fac=['TERRAN']                 cls=['WARRIOR'] kw=['BATTLECRY']
+    Thor | [x]<b>Battlecry:</b> Deal 5 damage. <i>(Transforms if you launched a <b>Starship</b> this game.)</i>
+SC_414t        tok  MINION    8/8/8     fac=['TERRAN']                 cls=['WARRIOR'] kw=['BATTLECRY']
+    Thor, Explosive Payload | [x]<b>Battlecry:</b> Deal 5 damage. __Repeat at a random enemy__ for each <b>Starship</b> you've launched this game.@ <i>(@)</i>
+SC_500         tok  MINION    4/4/3     fac=[]                         cls=['NEUTRAL'] kw=['DEATHRATTLE', 'BATTLECRY']
+    Wayward Probe | [x]<b>Battlecry and Deathrattle:</b> Get a random <b>Starship Piece</b>.
+SC_671t1       tok  MINION    8/8/8     fac=['PROTOSS']                cls=['ROGUE'] kw=[]
+    Archon | [x]At the end of your turn, deal 8 damage to the enemy hero and 2 damage to their minions.
+SC_750         COLL SPELL     4         fac=['PROTOSS']                cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=[]
+    Chrono Boost | Draw 2 Protoss cards. Summon a 3/4 Zealot with <b>Charge</b>.
+SC_751         COLL LOCATION  4         fac=['PROTOSS']                cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=[]
+    Warp Gate | Your next Protoss minion costs (3) less.
+SC_751e        tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Warp Conduit | Your next Protoss minion costs (3) less.
+SC_751t        tok  MINION    3/3/4     fac=['PROTOSS']                cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=['CHARGE']
+    Zealot | <b>Charge</b>
+SC_752         COLL MINION    6/5/3     fac=['PROTOSS']                cls=['ROGUE'] kw=['STEALTH', 'BATTLECRY']
+    Dark Templar | [x]<b>Stealth</b>. <b>Battlecry:</b> Destroy an enemy minion. <i>Play another Templar to merge into an Archon!</i>
+SC_753         COLL SPELL     2         fac=['PROTOSS']                cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=[]
+    Photon Cannon | Deal $3 damage. If this kills a minion, your Protoss minions cost (1) less this game.
+SC_754         COLL HERO      7         fac=['PROTOSS']                cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=['BATTLECRY']
+    Artanis | [x]<b>Battlecry:</b> Summon two 3/4 Zealots with <b>Charge</b>. Your Protoss minions cost (2) less this game.
+SC_754e        tok  ENCHANTMENT 0         fac=['PROTOSS']                cls=['NEUTRAL'] kw=[]
+    Twin Blades | +1 Attack this turn.
+SC_754p        tok  HERO_POWER 2         fac=[]                         cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=[]
+    Twin Blades | [x]Give a friendly minion and your hero +1 Attack this turn and <b>Divine Shield</b>.
+SC_755         COLL SPELL     0         fac=['PROTOSS']                cls=['DRUID'] kw=[]
+    Construct Pylons | Your next Protoss card this turn costs (2) less.
+SC_755e        tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Psionic Power | Your Protoss minions cost (1) less this game.
+SC_755e2       tok  ENCHANTMENT 0         fac=[]                         cls=['DRUID'] kw=[]
+    Psionic Matrix | Your next Protoss card this turn costs (2) less.
+SC_756         COLL MINION    12/2/14   fac=['PROTOSS']                cls=['DRUID'] kw=[]
+    Carrier | [x]At the end of your turn, summon four 4/1 Interceptors that attack random enemies.
+SC_756t        tok  MINION    2/4/1     fac=['PROTOSS']                cls=['DRUID'] kw=[]
+    Interceptor | 
+SC_757         COLL SPELL     1         fac=['PROTOSS']                cls=['PRIEST'] kw=[]
+    Hallucination | Summon a copy of a friendly Protoss minion. It takes double damage.
+SC_757e        tok  ENCHANTMENT 0         fac=[]                         cls=['PRIEST'] kw=[]
+    Hallucination | Takes double damage.
+SC_758         COLL MINION    12/9/4    fac=['PROTOSS']                cls=['MAGE'] kw=['BATTLECRY']
+    Colossus | [x]<b>Battlecry:</b> Deal @ damage to all enemies, twice. <i>(Improved by Protoss spells you cast this game!)</i>
+SC_759         COLL SPELL     2         fac=['PROTOSS']                cls=['MAGE'] kw=[]
+    Shield Battery | Gain 6 Armor. Your next Protoss spell costs (2) less.
+SC_759e        tok  ENCHANTMENT 0         fac=[]                         cls=['NEUTRAL'] kw=[]
+    Khalai Ingenuity | Your next Protoss spell costs (2) less.
+SC_760         COLL SPELL     3         fac=['PROTOSS']                cls=['MAGE'] kw=[]
+    Resonance Coil | Deal $5 damage to a minion. Get a random Protoss spell.
+SC_761         COLL SPELL     2         fac=['PROTOSS']                cls=['ROGUE'] kw=['COMBO']
+    Blink | [x]Draw a Protoss minion. <b>Combo:</b> It costs (2) less.
+SC_762         COLL MINION    12/10/10  fac=['PROTOSS']                cls=['PRIEST'] kw=['TAUNT', 'DEATHRATTLE', 'BATTLECRY']
+    Mothership | [x]<b>Taunt</b> <b>Battlecry and Deathrattle:</b> Get two random Protoss minions.
+SC_763         COLL MINION    7/5/8     fac=['PROTOSS']                cls=['DRUID'] kw=['TAUNT', 'DIVINE_SHIELD', 'BATTLECRY']
+    Immortal | [x]<b>Taunt</b>, <b>Divine Shield</b> <b>Battlecry:</b> Spend 4 Mana to double this minion's stats.
+SC_763e        tok  ENCHANTMENT 0         fac=[]                         cls=['DRUID'] kw=[]
+    Plasma Shields | Stats doubled.
+SC_764         COLL MINION    2/2/2     fac=['PROTOSS']                cls=['PRIEST'] kw=['DEATHRATTLE', 'LIFESTEAL']
+    Sentry | <b>Lifesteal</b>. <b>Deathrattle:</b> Your Protoss minions cost (1) less this game.
+SC_765         COLL MINION    6/3/5     fac=['PROTOSS']                cls=['ROGUE'] kw=['BATTLECRY']
+    High Templar | [x]<b>Battlecry:</b> Deal 2 damage to all enemies. <i>Play another Templar to merge into an Archon!</i>
+SC_783         COLL MINION    3/3/1     fac=['PROTOSS']                cls=['DRUID', 'MAGE', 'PRIEST', 'ROGUE'] kw=['DIVINE_SHIELD', 'BATTLECRY', 'RUSH']
+    Void Ray | <b>Rush</b>, <b>Divine Shield</b> <b>Battlecry:</b> If this costs (0), gain +2/+2.
+SC_783e        tok  ENCHANTMENT 0         fac=[]                         cls=['PALADIN'] kw=[]
+    Prismatic Alignment | +2/+2.
+SC_999t        tok  MINION    0/0/0     fac=['TERRAN']                 cls=['PALADIN', 'SHAMAN', 'WARRIOR'] kw=['STARSHIP']
+    Battlecruiser | <b>Starship</b> <i>(Costs (5) Mana to launch.)</i>@<b>Starship</b> <i>(Made of {0} |4(piece, pieces).)</i>

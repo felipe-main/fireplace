@@ -8,7 +8,7 @@ Driver: disk-state loop in `roadmap/` (`progress.json` + `LOG.md` + per-set `man
 | # | Set | Status | Cards | Suite | Soak | Audit |
 |---|-----|--------|-------|-------|------|-------|
 | 1 | **Heroes of StarCraft** (mini-set, `SC_`) | ✅ **DONE** | 49/49 + tokens | 3060 pass / 2 skip | 1000/1000 | 8 fixed / 4 watch / **0 open** |
-| 2 | **Into the Emerald Dream** (expansion, `EDR_`) | 🟡 **needs-human** | 145/145 + Imbue engine | gate green; 14 non-EDR data-bump fails | crash fixed (re-soaking) | not run |
+| 2 | **Into the Emerald Dream** (expansion, `EDR_`) | 🟡 **needs-human** | 145/145 + Imbue engine | gate green; 14 non-EDR data-bump fails | 600/600 ✅ | not run |
 | 3–8 | Emerald Dream mini-set → Cataclysm | ⛔ **not started** | — | — | — | — |
 
 I **stopped after set #2** rather than rushing sets #3–8. Reasoning at the bottom.

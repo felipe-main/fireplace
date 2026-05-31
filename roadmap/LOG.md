@@ -17,3 +17,4 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 2:Into the Emerald Dream | P0+P1 | bump 214839->219197.1; 145 EDR_ cards; novel mechanic=Imbue (hero-power upgrade, 6 Imbued HPs); manifest written
 - 2026-05-31 | 2:Into the Emerald Dream | cards+engine | 145 EDR_ + Imbue (workflow wf_79cf7ebb + 2 hand-added); gate GREEN; weapon engine bug fixed; soak Give-crash fixed
 - 2026-05-31 | 2:Into the Emerald Dream | needs-human | 14 non-EDR data-bump test regressions + Imbue scaling/Dark Gift approximations + audit pending; STOPPED before sets #3-8 (see REPORT.md)
+- 2026-05-31 | 2:Into the Emerald Dream | soak | 600/600 succeeded, 0 failed (after Give-crash fix); engine stable

@@ -1326,3 +1326,16 @@ def test_void_ray_gains_2_2_when_free():
     assert (voidray.atk, voidray.max_health) == (5, 4)
     assert voidray.rush
     assert voidray.divine_shield
+
+
+def test_played_cost_defaults_to_zero_for_unplayed_cards():
+    # Regression (soak crash): battlecries that gate on Attr(SELF, "_played_cost")
+    # — Void Ray SC_783, the Paladin Librams — must not raise AttributeError when
+    # the card reaches its effect via a non-play path (e.g. cast/copied by another
+    # card). PlayableCard.__init__ defaults _played_cost to 0; Play.do overwrites
+    # it with the real effective cost when the card is actually played.
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    card = game.player1.give("SC_783")  # in hand, never played
+    assert card._played_cost == 0
+    spell = game.player1.give("GDB_136")  # a Paladin Libram spell
+    assert spell._played_cost == 0

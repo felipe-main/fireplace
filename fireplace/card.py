@@ -375,6 +375,11 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         self.corrupt_card = data.corrupt_card
         self.turn_drawn = -1
         self.turn_played = -1
+        # The Great Dark Beyond — effective cost snapshot at play time (set in
+        # Play.do). Default 0 so battlecries that gate on Attr(SELF,
+        # "_played_cost") never crash when the card reaches their effect via a
+        # non-play path (e.g. a Libram cast/copied by another card).
+        self._played_cost = 0
         self.cast_on_friendly_characters = False
         self.cast_on_friendly_minions = False
         self.play_left_most = False

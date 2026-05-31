@@ -10,7 +10,9 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 31.4.214839](https://hearthstone.wiki.gg/wiki/Patch_31.4.214839)
+Now updated to [Patch 32.2.219846](https://hearthstone.wiki.gg/wiki/Patch_32.2.219846)
+* **100%** Emerald Dream mini-set / Firelands (38 of 38 cards) — adds the Smoldering keyword (upgrade-each-turn-then-discard); reuses Dark Gift, Imbue, and Corpses
+* **100%** Into the Emerald Dream (145 of 145 cards) — adds Imbue (Hero Power upgrades) and Dark Gift
 * **100%** Heroes of StarCraft mini-set (49 of 49 cards) — adds the Protoss / Terran / Zerg factions, faction cost-reductions, and immediate Starship launch effects
 * **100%** The Great Dark Beyond (145 of 145 cards) — adds Starships (Piece banking + Launch assembly) and the Draenei tribe
 * **100%** Perils in Paradise (145 of 145 cards) — adds Tourist (cross-class deckbuilding), Drinks, and reopening Locations

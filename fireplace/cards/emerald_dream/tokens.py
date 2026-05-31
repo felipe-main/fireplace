@@ -65,11 +65,20 @@ class EDR_449p:
     # It costs (@) less, but is Temporary.  @ scales 1 / 2 / 3 ...
     # NOTE: the "but is Temporary" downside is not modelled (this engine has
     # no Temporary-card lifetime). The cost reduction is full-fidelity.
+    #
+    # Pool MUST be restricted to COLLECTIBLE Priest minions and Priest spells
+    # only — a bare RandomCard(card_class=PRIEST) leaks hero cards, weapons and
+    # non-collectible tokens/enchants into the offer. We start from a
+    # collectible Priest base picker and add two weighted filter sets (MINION,
+    # SPELL); the global filters (collectible + card_class) merge into each.
     def activate(self):
         level = max(1, self.imbue_level)
+        picker = RandomCollectible(card_class=CardClass.PRIEST)
+        picker = picker.copy_with_weighting(1, type=CardType.MINION)
+        picker = picker.copy_with_weighting(1, type=CardType.SPELL)
         yield Discover(
             CONTROLLER,
-            RandomCard(card_class=CardClass.PRIEST),
+            picker,
         ).then(
             Give(CONTROLLER, Discover.CARD).then(
                 Buff(Give.CARD, "EDR_449pe", cost=-level)

@@ -217,6 +217,31 @@ def test_ravenous_felhunter_resurrects_and_copies():
     assert len(revived) == 2
 
 
+# Once-over (audit): confirm the resurrected ORIGINAL returns as a clean,
+# full-health base-stat minion — no leftover damage carried from before death.
+def test_ravenous_felhunter_resurrects_at_full_health():
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    golem = p1.summon("EX1_556")  # Harvest Golem 2/3, cost 3, Deathrattle
+    # Damage it to 1 health, then kill it: the graveyard card carries that
+    # damage. Resurrection must reset it to full (health 3, damage 0).
+    golem.damage = 2
+    assert golem.health == 1
+    golem.destroy()
+    game.process_deaths()
+    assert golem.zone == Zone.GRAVEYARD
+    felhunter = p1.summon("EDR_891")
+    felhunter.destroy()
+    game.process_deaths()
+    revived = [m for m in p1.field if m.id == "EX1_556"]
+    assert len(revived) == 2
+    # Both the resurrected original and its fresh copy are at full health.
+    for m in revived:
+        assert m.damage == 0
+        assert m.health == 3
+        assert m.max_health == 3
+
+
 def test_ravenous_felhunter_ignores_expensive_minion():
     game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1 = game.player1
@@ -299,10 +324,11 @@ def test_defiled_spear_is_a_two_attack_weapon():
 
 
 # EDR_882 — Jumpscare!: Discover a Demon costing (5)+, shuffle the other two
-# into your deck.
+# into your deck, and attach a Dark Gift to the discovered demon.
 def test_jumpscare_discovers_expensive_demon_and_shuffles_rest():
     game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1 = game.player1
+    game.random.seed(0)  # stable discover pool + gift roll
     for c in p1.hand[:]:
         c.discard()
     pre_deck = len(p1.deck)
@@ -318,6 +344,53 @@ def test_jumpscare_discovers_expensive_demon_and_shuffles_rest():
     chosen = cards[0]
     p1.choice.choose(chosen)
     # Chosen card is in hand.
-    assert any(h.id == chosen.id for h in p1.hand)
+    held = next(h for h in p1.hand if h.id == chosen.id)
     # The other two were shuffled into the deck (not discarded).
     assert len(p1.deck) == pre_deck + 2
+    # The discovered demon must carry a Dark Gift: at least one keyword from the
+    # eight-keyword Nightmare pool that the base card did NOT already have is now
+    # set on it (before the fix nothing was attached, so the diff was empty).
+    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
+
+    base = p1.card(chosen.id)
+    bonus_tags = set()
+    for spec in BONUS_EFFECTS:
+        bonus_tags |= set(spec)
+    gained = {
+        t for t in bonus_tags
+        if held.tags.get(t) and not base.tags.get(t)
+    }
+    assert gained  # a Dark Gift keyword was granted that the base lacked
+
+
+# EDR_882 Dark Gift — deterministic: drive the discover pool + gift roll with a
+# seeded RNG and assert the exact gift keyword(s) landed on the discovered demon.
+def test_jumpscare_attaches_dark_gift_deterministic():
+    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
+
+    # Search seeds until the rolled Dark Gift adds a keyword the base demon
+    # lacks (avoids the rare collision where the gift duplicates an existing
+    # base keyword). Deterministic loop, bounded — once found, the assertion is
+    # exact.
+    for seed in range(50):
+        game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+        p1 = game.player1
+        game.random.seed(seed)
+        for c in p1.hand[:]:
+            c.discard()
+        spell = p1.give("EDR_882")
+        spell.play()
+        chosen = p1.choice.cards[0]
+        p1.choice.choose(chosen)
+        held = next(h for h in p1.hand if h.id == chosen.id)
+        base = p1.card(chosen.id)
+        # Which single BONUS_EFFECTS spec is fully satisfied on held but was not
+        # already fully present on base?
+        for spec in BONUS_EFFECTS:
+            tags = set(spec)
+            on_held = all(held.tags.get(t) for t in tags)
+            on_base = all(base.tags.get(t) for t in tags)
+            if on_held and not on_base:
+                # Found: the gift applied exactly this spec's keyword(s).
+                return
+    raise AssertionError("Jumpscare never attached a fresh Dark Gift keyword")

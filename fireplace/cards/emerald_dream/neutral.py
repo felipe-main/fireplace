@@ -115,9 +115,10 @@ class EDR_260t:
     """Illusion"""
 
     # Summoned When Drawn. Taunt. (4/5 Dragon — stats in data.)
-    def draw(self):
-        yield Summon(CONTROLLER, ExactCopy(SELF))
-        yield Reveal(SELF)
+    # Summon SELF straight onto the board: Summon moves this card's zone from
+    # HAND to PLAY, so exactly one 4/5 Taunt Dragon enters play and no leftover
+    # copy stays in hand (matches Frost Tyrant TTN_083t's idiom).
+    draw = Summon(CONTROLLER, SELF)
 
 
 class EDR_453:
@@ -341,9 +342,12 @@ class EDR_873:
     """Envoy of the Glade"""
 
     # Battlecry: Transform all Neutral cards in your deck into random Druid ones.
+    # "Druid ones" means random COLLECTIBLE Druid cards — RandomCollectible
+    # injects collectible=True so the pool can't roll non-collectible Druid
+    # tokens / hero powers / enchants.
     play = Morph(
         FRIENDLY_DECK + NEUTRAL,
-        RandomCard(card_class=CardClass.DRUID),
+        RandomCollectible(card_class=CardClass.DRUID),
     )
 
 

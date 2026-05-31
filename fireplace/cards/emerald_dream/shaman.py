@@ -83,6 +83,28 @@ class _ResurrectExpensiveDifferent(TargetedAction):
             source.game.cheat_action(source, [Summon(ctrl, cid)])
 
 
+class _LockDrawnCard(TargetedAction):
+    """Emerald Bounty — stamp a freshly drawn card with the 2-turn play-lock.
+
+    The engine's `unplayable_next_turn` counter (card.py:756) is decremented
+    once at the controller's begin_turn (game.py:593). "Can't play for 2 turns"
+    means the card is locked for the controller's next two turns, so we set the
+    counter to 3:
+      drawn on turn T (no tick)         -> locked
+      controller turn T+1 begin: 3 -> 2 -> locked (turn 1 of the 2-turn lock)
+      controller turn T+2 begin: 2 -> 1 -> locked (turn 2 of the 2-turn lock)
+      controller turn T+3 begin: 1 -> 0 -> playable
+    The cosmetic "Still Growing" enchant (EDR_234e2) still rides along for the
+    card-text marker.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if hasattr(target, "unplayable_next_turn"):
+            target.unplayable_next_turn = 3
+
+
 class _TyphoonShuffle(TargetedAction):
     """Typhoon — each minion (both boards) gets shuffled into a random
     player's deck."""
@@ -208,10 +230,15 @@ class EDR_234:
     """Emerald Bounty"""
 
     # Draw 2 cards. You can't play them for 2 turns.
-    # NOTE: the "can't be played for 2 turns" lockout is not modelled (this
-    # engine has no per-card play-lock lifetime). The draw is full-fidelity;
-    # the drawn cards carry the cosmetic "Still Growing" marker.
-    play = Draw(CONTROLLER).then(Buff(Draw.CARD, "EDR_234e2")) * 2
+    # The 2-turn play-lock is modelled via the engine's `unplayable_next_turn`
+    # counter (set to 3 = locked for the controller's next two turns; see
+    # _LockDrawnCard). The "Still Growing" enchant (EDR_234e2) is the card-text
+    # marker.
+    play = (
+        Draw(CONTROLLER)
+        .then(Buff(Draw.CARD, "EDR_234e2"))
+        .then(_LockDrawnCard(Draw.CARD))
+    ) * 2
 
 
 ##

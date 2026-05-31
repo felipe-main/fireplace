@@ -253,6 +253,33 @@ def test_grove_shaper_summons_treant_and_copies_spell():
     assert len(p1.hand) == pre_hand + 1
 
 
+def test_grove_shaper_summons_treant_for_discover_nature_spell():
+    # Regression: casting a Nature spell that itself opens a Discover (Horn of
+    # Plenty, EDR_270) must STILL summon a Treant. The old `.after` trigger was
+    # skipped because the Discover suspended the action queue before the AFTER
+    # broadcast ran, so no Treant appeared.
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.player1
+    p1.summon("EDR_271")
+    assert not any(m.id == "EDR_271t" for m in p1.field)
+    horn = p1.give("EDR_270")  # Horn of Plenty — a Nature spell that Discovers
+    horn.play()
+    # The Discover popped up; resolve it.
+    assert p1.choice is not None
+    _resolve_choices(p1)
+    treants = [m for m in p1.field if m.id == "EDR_271t"]
+    assert len(treants) == 1
+    treant = treants[0]
+    assert treant.atk == 2 and treant.max_health == 2
+    # Its deathrattle copies the exact spell that summoned it (Horn of Plenty).
+    pre = len(p1.hand)
+    treant.destroy()
+    game.process_deaths()
+    copies = [c for c in p1.hand if c.id == "EDR_270"]
+    assert len(copies) == 1
+    assert len(p1.hand) == pre + 1
+
+
 def test_grove_shaper_ignores_non_nature_spell():
     game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
     p1 = game.player1

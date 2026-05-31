@@ -269,6 +269,48 @@ def test_aviana_full_moon_persists_after_death():
 
 
 # ---------------------------------------------------------------------------
+# EDR_449p — Blessing of the Moon (Priest Imbued Hero Power): Choose a Priest
+# minion or Priest spell to add to your hand. It costs (@) less.
+#
+# Regression: the discover pool must be COLLECTIBLE Priest minions and spells
+# only. A bare RandomCard(card_class=PRIEST) leaked hero cards, weapons and
+# non-collectible tokens/enchants. Assert every offered card is a collectible
+# Priest MINION or SPELL.
+# ---------------------------------------------------------------------------
+def test_blessing_of_the_moon_pool_is_collectible_minions_and_spells():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    # Imbue installs EDR_449p as the Hero Power.
+    p1.give("EDR_449").play()
+    assert p1.hero.power.id == "EDR_449p"
+    # Fire the imbued power 30 times, inspecting every Discover offer.
+    seen = 0
+    for _ in range(30):
+        p1.used_mana = 0
+        p1.hero.power.activations_this_turn = 0
+        p1.hero.power.use()
+        choice = p1.choice
+        assert choice is not None
+        assert len(choice.cards) == 3
+        for card in choice.cards:
+            data = _cards.db[card.id]
+            assert data.collectible, f"{card.id} is not collectible"
+            assert data.type in (CardType.MINION, CardType.SPELL), (
+                f"{card.id} is type {data.type} (not minion/spell)"
+            )
+            # Priest by primary class OR multiclass membership (e.g. Rally!).
+            classes = getattr(data, "classes", None) or [data.card_class]
+            assert CardClass.PRIEST in classes, (
+                f"{card.id} classes {classes} (not Priest)"
+            )
+            seen += 1
+        # Resolve the choice and refresh the power for the next iteration.
+        choice.choose(choice.cards[0])
+        p1.hero.power.activations_this_turn = 0
+    assert seen == 90
+
+
+# ---------------------------------------------------------------------------
 # EDR_970 — Kaldorei Priestess: Battlecry: Give all enemy minions -2 Attack
 # until your next turn. Imbue your Hero Power.
 # ---------------------------------------------------------------------------

@@ -14,6 +14,9 @@ from ..utils import *
 
 from hearthstone.enums import GameTag, CardType, Zone, Race
 
+# Shared set-wide Dark Gift granter (random Nightmare keyword Bonus Effect).
+from .neutral import _GiveDarkGift
+
 
 ##
 # Custom actions / helpers
@@ -72,13 +75,32 @@ class _GrotesqueRuneblade(TargetedAction):
 
 class _NythendraTrackHealth(TargetedAction):
     """Stamp Nythendra's remaining Health whenever it takes damage, so the
-    deathrattle can split into the right number of Beetles (a dying minion's
-    `damage` is reset to 0 before the deathrattle runs)."""
+    deathrattle can split into the right number of Beetles.
+
+    SELF_DAMAGE fires from Damage.do *after* `target._hit(amount)` has already
+    been applied, so on a lethal blow `source.health` is already <= 0 and would
+    stamp 0 Beetles. Instead we reconstruct the Health Nythendra had *before*
+    this blow landed (`current health + amount`, clamped to its max Health):
+    that is the "remaining Health when it died" the printed card refers to
+    (e.g. killed while at 3 Health -> 3 Beetles), and it is unaffected by
+    overkill. The amount is read live from the Damage broadcast arg."""
 
     TARGET = ActionArg()
+    AMOUNT = IntArg()
 
-    def do(self, source, target):
-        source._nyth_remaining = max(0, source.health)
+    def do(self, source, target, amount=0):
+        # A non-lethal hit leaves `source.health` at the real post-hit value
+        # (e.g. 7 -> 3), which is the Health to stamp. A *lethal* hit has
+        # already driven `source.health` <= 0, so we instead recover the
+        # Health Nythendra was sitting at right before the killing blow
+        # (`health + amount`), which is the "Health it died at" the printed
+        # card splits on (e.g. killed while at 3 Health -> 3 Beetles). Either
+        # way the stamp is clamped to [0, max Health] and is overkill-proof.
+        if source.health > 0:
+            remaining = source.health
+        else:
+            remaining = source.health + (amount or 0)
+        source._nyth_remaining = max(0, min(remaining, source.max_health))
 
 
 class _NythendraSplit(TargetedAction):
@@ -149,28 +171,32 @@ class _UrsocAttackAll(TargetedAction):
             if entity.dead or entity.zone != Zone.PLAY:
                 continue
             cid = entity.id
-            ctrl = entity.controller
             source.game.cheat_action(source, [Attack(source, entity)])
             source.game.cheat_action(source, [Deaths()])
             if entity.dead or entity.zone == Zone.GRAVEYARD:
-                source._ursoc_killed.append((cid, ctrl))
+                source._ursoc_killed.append(cid)
 
 
 class _UrsocResurrect(TargetedAction):
-    """Ursoc deathrattle: resurrect every minion it killed with its battlecry,
-    each under its original controller."""
+    """Ursoc deathrattle: resurrect every minion it killed with its battlecry.
+    Resurrection summons under Ursoc's OWN controller (the resurrector), as all
+    Hearthstone resurrect effects do — not the minion's original owner."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        for cid, ctrl in getattr(source, "_ursoc_killed", []):
-            source.game.cheat_action(source, [Summon(ctrl, cid)])
+        controller = source.controller
+        for cid in getattr(source, "_ursoc_killed", []):
+            source.game.cheat_action(source, [Summon(controller, cid)])
 
 
 class _RiteDarkGift(TargetedAction):
     """Rite of Atrocity — if you have 2+ Corpses, spend them and give the
-    Discovered Undead a Dark Gift (approximated as a +2/+2 enchant; the real
-    Dark Gift pool is a server-side neutral mechanic not modelled here)."""
+    Discovered Undead a Dark Gift. The Dark Gift is granted through the shared
+    set-wide `_GiveDarkGift` helper (a random keyword Bonus Effect from the
+    Nightmare pool), matching every other EDR Dark-Gift card; the true Dark
+    Gift pool is not enumerated in the card data, so this is the agreed
+    faithful-shape approximation rather than a bespoke flat +2/+2 enchant."""
 
     TARGET = ActionArg()
 
@@ -178,7 +204,7 @@ class _RiteDarkGift(TargetedAction):
         controller = source.controller
         if controller.corpses >= 2:
             source.game.cheat_action(source, [SpendCorpses(controller, 2)])
-            source.game.cheat_action(source, [Buff(target, "EDR_811e")])
+            source.game.cheat_action(source, [_GiveDarkGift(target)])
 
 
 ##
@@ -225,7 +251,7 @@ class EDR_818:
 
     # Taunt (in data). Deathrattle: Split into 1/1 Beetles. At the start of
     # your turn, reform with any remaining.
-    events = SELF_DAMAGE.on(_NythendraTrackHealth(SELF))
+    events = SELF_DAMAGE.on(_NythendraTrackHealth(SELF, Damage.AMOUNT))
     deathrattle = _NythendraSplit(SELF)
 
 
@@ -381,30 +407,54 @@ _CORPSE_SPENDER = FuncSelector(
 )
 
 
-class _FalricDouble(TargetedAction):
-    """Falric enters: corpse gains are doubled while it's in play."""
+def _falric_count(controller):
+    """Number of Falrics (CORE_EDR_003) currently in the controller's play."""
+    return sum(1 for m in controller.field if m.id == "CORE_EDR_003")
+
+
+class _FalricSyncDoubling(TargetedAction):
+    """Reconcile `controller.corpses_doubled` to the live number of Falrics in
+    play, each refresh.
+
+    Falric's "You gain twice as many Corpses" is a passive while-in-play aura.
+    Modelling it as a deathrattle was doubly broken: (1) the data card carries
+    no DEATHRATTLE tag, so `has_deathrattle` is False and the undo never fired
+    on death either, leaving the doubling stuck on permanently; (2) even with a
+    tag, a deathrattle would not undo on silence / bounce / transform.
+
+    Driving it from the `update` aura hook fixes both: `refresh_auras` runs this
+    every refresh for each Falric still in PLAY, so the count tracks the live
+    board and is torn down the instant a Falric leaves by ANY means."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        target.corpses_doubled += 1
+        target.corpses_doubled = _falric_count(target)
 
 
-class _FalricUndouble(TargetedAction):
-    """Falric leaves: undo the corpse-doubling."""
+class _FalricResetDoubling(TargetedAction):
+    """Hand/Deck-side companion: while a Falric sits in the controller's hand
+    or deck (i.e. NOT in play), force `corpses_doubled` back to the live
+    in-play Falric count. This closes the only window the in-play `update`
+    can't cover — when the *last* Falric leaves play, its own `update` no
+    longer runs, so a hand/deck Falric (there is one whenever Falric was
+    bounced) re-zeroes the stale value on the next refresh."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        target.corpses_doubled = max(0, target.corpses_doubled - 1)
+        target.corpses_doubled = _falric_count(target)
 
 
 class EDR_003:
     """Falric"""
 
     # You gain twice as many Corpses. Battlecry: Draw a card that spends Corpses.
-    play = (
-        _FalricDouble(CONTROLLER),
-        ForceDraw(RANDOM(FRIENDLY_DECK + _CORPSE_SPENDER)),
-    )
-    deathrattle = _FalricUndouble(CONTROLLER)
+    play = ForceDraw(RANDOM(FRIENDLY_DECK + _CORPSE_SPENDER))
+    update = _FalricSyncDoubling(CONTROLLER)
+
+    class Hand:
+        update = _FalricResetDoubling(CONTROLLER)
+
+    class Deck:
+        update = _FalricResetDoubling(CONTROLLER)

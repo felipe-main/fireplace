@@ -1,5 +1,7 @@
 from ..utils import *
 
+from .neutral import _GiveDarkGift
+
 
 ##
 # Custom helpers / actions
@@ -17,7 +19,8 @@ class FixedCard(LazyValue):
 
 class _CopyLowestCostInEnemyHand(TargetedAction):
     """Tricky Satyr — get a copy of the lowest Cost card in the opponent's
-    hand (ties resolved leftmost, deterministically)."""
+    hand. When several cards tie for lowest cost, Hearthstone picks one at
+    random, so resolve ties via game.random rather than leftmost."""
 
     TARGET = ActionArg()
 
@@ -27,7 +30,8 @@ class _CopyLowestCostInEnemyHand(TargetedAction):
         if not opp_hand:
             return
         lowest = min(c.cost for c in opp_hand)
-        chosen = next(c for c in opp_hand if c.cost == lowest)
+        tied = [c for c in opp_hand if c.cost == lowest]
+        chosen = source.game.random.choice(tied)
         source.game.cheat_action(source, [Give(ctrl, Copy(FixedCard(chosen)))])
 
 
@@ -227,24 +231,20 @@ class EDR_528:
 
     # Discover a copy of a minion in your opponent's deck.
     # Combo: With a Dark Gift.
+    #
+    # The Combo half attaches a Dark Gift through the shared set-wide helper
+    # (_GiveDarkGift in neutral.py) so it is consistent with every other EDR
+    # Dark-Gift card (Jumpscare, Avant-Gardening, Treacherous Tormentor, ...)
+    # instead of a one-off flat +1/+1. The genuine Dark Gift pool is not
+    # enumerated in the card data (a single EDR_102t "Dark Gift" spell that
+    # "executes nightmare bonus" script-side), so the helper's random-keyword
+    # Bonus Effect remains a faithful-shape approximation, not the exact pool.
     play = Choice(CONTROLLER, RANDOM(DeDuplicate(ENEMY_DECK + MINION)) * 3).then(
         Give(CONTROLLER, Copy(Choice.CARD))
     )
     combo = Choice(CONTROLLER, RANDOM(DeDuplicate(ENEMY_DECK + MINION)) * 3).then(
-        Give(CONTROLLER, Copy(Choice.CARD)).then(Buff(Give.CARD, "EDR_528e"))
+        Give(CONTROLLER, Copy(Choice.CARD)).then(_GiveDarkGift(Give.CARD))
     )
-
-
-@custom_card
-class EDR_528e:
-    # Nightmare Fuel (Combo) — Dark Gift. Full Dark Gift support (the random
-    # gift pool) is not in the engine; approximate the gift as a +1/+1 boost.
-    tags = {
-        GameTag.CARDNAME: "Dark Gift",
-        GameTag.CARDTYPE: CardType.ENCHANTMENT,
-        GameTag.ATK: 1,
-        GameTag.HEALTH: 1,
-    }
 
 
 class EDR_523:

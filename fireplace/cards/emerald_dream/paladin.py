@@ -140,8 +140,13 @@ class EDR_257:
     # Taunt. Choose One - +3 Attack and Divine Shield; or +3 Health and
     # Lifesteal.
     choose = ("EDR_257a", "EDR_257b")
+    # Each Choose-Both branch must be a SINGLE action: trigger_actions iterates
+    # the branch tuple and any element lacking ``.trigger`` (a bare nested
+    # tuple) is silently dropped, which previously discarded the whole Holy Bond
+    # half. Chain the +3 Attack buff and the Divine Shield SetTag via ``.then()``
+    # so branch A resolves both as one action.
     play = ChooseBoth(CONTROLLER) & (
-        (Buff(SELF, "EDR_257ae"), SetTag(SELF, GameTag.DIVINE_SHIELD)),
+        Buff(SELF, "EDR_257ae").then(SetTag(SELF, GameTag.DIVINE_SHIELD)),
         Buff(SELF, "EDR_257be"),
     )
 

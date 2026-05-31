@@ -129,7 +129,9 @@ class EDR_480:
     # Modelled as an aura doubling friendly Beasts' Attack (the dominant
     # source of a Beast's damage); triggered-ability damage is not doubled
     # by this engine (no source-side damage hook is exposed to scripts).
-    update = Refresh(FRIENDLY_MINIONS + BEAST - SELF, buff="EDR_480e")
+    # The printed text reads "Friendly Beasts" with no "other", so Goldrinn
+    # (itself a Beast) is included — its own Attack doubles too.
+    update = Refresh(FRIENDLY_MINIONS + BEAST, buff="EDR_480e")
 
 
 @custom_card

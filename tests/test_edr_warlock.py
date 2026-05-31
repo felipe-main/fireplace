@@ -155,6 +155,44 @@ def test_avant_gardening_discovers_deathrattle_minion():
     assert len(p1.hand) == pre_hand + 1
 
 
+# The eight-keyword Dark Gift (Bonus Effect) pool. Avant-Gardening must grant
+# exactly one of these to the discovered minion.
+_GIFT_TAGS = (
+    GameTag.TAUNT,
+    GameTag.WINDFURY,
+    GameTag.DIVINE_SHIELD,
+    GameTag.POISONOUS,
+    GameTag.CANT_BE_TARGETED_BY_SPELLS,
+    GameTag.RUSH,
+    GameTag.LIFESTEAL,
+    GameTag.REBORN,
+)
+
+
+def test_avant_gardening_grants_dark_gift_to_discovered_minion():
+    # The discovered Deathrattle minion must arrive with a Dark Gift: exactly
+    # one keyword from the Bonus Effect pool that the base card data does NOT
+    # carry. Reseed the game RNG so both the Discover pick and the gift roll are
+    # deterministic, then assert the precise keyword that was granted.
+    from random import Random
+
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    game.random = Random(0)
+    p1 = game.player1
+    spell = p1.give("EDR_488")
+    spell.play()
+    chosen = p1.choice.cards[0]
+    base_tags = {t for t in _GIFT_TAGS if chosen.data.tags.get(t)}
+    p1.choice.choose(chosen)
+    assert chosen.zone == Zone.HAND
+
+    live_tags = {t for t in _GIFT_TAGS if chosen.tags.get(t)}
+    granted = live_tags - base_tags
+    # Seed 0 deterministically discovers WW_397 and rolls Reborn as its gift.
+    assert chosen.id == "WW_397"
+    assert granted == {GameTag.REBORN}
+
+
 # ---------------------------------------------------------------------------
 # EDR_489 — Agamaggan: Battlecry: The next card you play costs your OPPONENT'S
 # Health instead of Mana (up to 10). (10/8/9)
@@ -206,6 +244,30 @@ def test_sleep_paralysis_destroy_enemy_minion():
     spell = p1.give("EDR_490")
     spell.play(choose="EDR_490b", target=target)
     assert target.zone == Zone.GRAVEYARD
+
+
+def test_sleep_paralysis_choose_both_destroys_chosen_target():
+    # Under a Choose-Both effect the spell plays both halves: it summons two
+    # 3/6 Demons AND destroys the player-CHOSEN enemy minion (not a random one).
+    # Five enemy minions are on board; only the targeted one must die.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    enemies = [p2.summon(CHILLWIND) for _ in range(5)]
+    target = enemies[2]
+    p1.next_choose_one_combined = 1
+
+    spell = p1.give("EDR_490")
+    spell.play(target=target)
+
+    # Both halves fired: exactly two demons summoned.
+    demons = [m for m in p1.field if m.id == "EDR_490t"]
+    assert len(demons) == 2
+
+    # Exactly the chosen enemy died; the other four survive.
+    assert target.zone == Zone.GRAVEYARD
+    survivors = [e for e in enemies if e is not target]
+    assert all(e.zone == Zone.PLAY for e in survivors)
+    assert len([m for m in p2.field if m.id == CHILLWIND]) == 4
 
 
 # ---------------------------------------------------------------------------

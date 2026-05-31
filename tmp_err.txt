@@ -1,0 +1,80 @@
+C:\Users\winz\AppData\Local\Programs\Python\Python312\Lib\site-packages\hearthstone_data\__init__.py:2: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[fireplace.__init__]: Initializing card database
+[fireplace.__init__]: Merged 32622 cards
+[fireplace.utils]: Initializing a new game with empty decks
+[fireplace.entity]: Setting up game BaseTestGame(players=(Player(name='Player1', hero=None), Player(name='Player2', hero=None)))
+[fireplace.entity]: Tossing the coin... Player2 wins!
+[fireplace.actions]: Player(name='Player1', hero=None) triggering <TargetedAction: Summon(<Summon.CARD>=<Hero ('Illidan Stormrage')>)> targeting [Player(name='Player1', hero=None)]
+[fireplace.actions]: Player1 summons [<Hero ('Illidan Stormrage')>]
+[fireplace.card]: <Hero ('Illidan Stormrage')> moves from <Zone.SETASIDE: 6> to <Zone.PLAY: 1>
+[fireplace.actions]: Player(name='Player1', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Summon(<Summon.CARD>=<HeroPower ('Demon Claws')>)> targeting [Player(name='Player1', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player1 summons [<HeroPower ('Demon Claws')>]
+[fireplace.card]: <HeroPower ('Demon Claws')> moves from <Zone.SETASIDE: 6> to <Zone.PLAY: 1>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: Player(name='Player2', hero=None) triggering <TargetedAction: Summon(<Summon.CARD>=<Hero ('Illidan Stormrage')>)> targeting [Player(name='Player2', hero=None)]
+[fireplace.actions]: Player2 summons [<Hero ('Illidan Stormrage')>]
+[fireplace.card]: <Hero ('Illidan Stormrage')> moves from <Zone.SETASIDE: 6> to <Zone.PLAY: 1>
+[fireplace.actions]: Player(name='Player2', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Summon(<Summon.CARD>=<HeroPower ('Demon Claws')>)> targeting [Player(name='Player2', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player2 summons [<HeroPower ('Demon Claws')>]
+[fireplace.card]: <HeroPower ('Demon Claws')> moves from <Zone.SETASIDE: 6> to <Zone.PLAY: 1>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: Game start
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Player1 gets The Coin (GAME_005)
+[fireplace.actions]: Player(name='Player1', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Give(<Give.CARD>='GAME_005')> targeting [Player(name='Player1', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Giving [<Spell ('The Coin')>] to Player1
+[fireplace.card]: <Spell ('The Coin')> moves from <Zone.SETASIDE: 6> to <Zone.HAND: 3>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Player2 begins turn 1
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Player2 is now at 1 mana crystals
+[fireplace.actions]: Player(name='Player2', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Draw()> targeting [Player(name='Player2', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player(name='Player2', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Fatigue()> targeting [Player(name='Player2', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player2 can't fatigue and does not take damage
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Player2 is now at 10 mana crystals
+[fireplace.entity]: Player1 is now at 10 mana crystals
+[fireplace.actions]: Player(name='Player2', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Give(<Give.CARD>='EDR_842')> targeting [Player(name='Player2', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Giving [<Weapon ('Defiled Spear')>] to Player2
+[fireplace.card]: <Weapon ('Defiled Spear')> moves from <Zone.SETASIDE: 6> to <Zone.HAND: 3>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: Player2 plays <Weapon ('Defiled Spear')> (target=None, index=None)
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: SpendMana(<SpendMana.AMOUNT>=4)> targeting [Player(name='Player2', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player2 pays 4 mana
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.card]: <Weapon ('Defiled Spear')> moves from <Zone.HAND: 3> to <Zone.PLAY: 1>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Battlecry(<Battlecry.TARGET>=None)> targeting [<Weapon ('Defiled Spear')>]
+[fireplace.actions]: Activating <Weapon ('Defiled Spear')> action targeting None
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: Player(name='Player1', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Summon(<Summon.CARD>=<Minion ('War Golem')>)> targeting [Player(name='Player1', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player1 summons [<Minion ('War Golem')>]
+[fireplace.card]: <Minion ('War Golem')> moves from <Zone.SETASIDE: 6> to <Zone.PLAY: 1>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: Player(name='Player1', hero=<Hero ('Illidan Stormrage')>) triggering <TargetedAction: Summon(<Summon.CARD>=<Minion ('War Golem')>)> targeting [Player(name='Player1', hero=<Hero ('Illidan Stormrage')>)]
+[fireplace.actions]: Player1 summons [<Minion ('War Golem')>]
+[fireplace.card]: <Minion ('War Golem')> moves from <Zone.SETASIDE: 6> to <Zone.PLAY: 1>
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+[fireplace.actions]: <Hero ('Illidan Stormrage')> attacks <Minion ('War Golem')>
+[fireplace.actions]: <Hero ('Illidan Stormrage')> triggering <TargetedAction: Hit(<Hit.AMOUNT>=2)> targeting [<Minion ('War Golem')>]
+[fireplace.actions]: <Hero ('Illidan Stormrage')> triggering <TargetedAction: Predamage(<Predamage.AMOUNT>=2)> targeting [<Minion ('War Golem')>]
+[fireplace.actions]: <Hero ('Illidan Stormrage')> triggering <TargetedAction: Damage()> targeting [<Minion ('War Golem')>]
+[fireplace.actions]: <Minion ('War Golem')> triggering <TargetedAction: Hit(<Hit.AMOUNT>=7)> targeting [<Hero ('Illidan Stormrage')>]
+[fireplace.actions]: <Minion ('War Golem')> triggering <TargetedAction: Predamage(<Predamage.AMOUNT>=7)> targeting [<Hero ('Illidan Stormrage')>]
+[fireplace.actions]: <Minion ('War Golem')> triggering <TargetedAction: Damage()> targeting [<Hero ('Illidan Stormrage')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggers off <Action: Attack(<Attack.ATTACKER>=<Hero ('Illidan Stormrage')>, <Attack.DEFENDER>=<Minion ('War Golem')>)> from <Hero ('Illidan Stormrage')>
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Hit(<Hit.AMOUNT>=1)> targeting [<Weapon ('Defiled Spear')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Predamage(<Predamage.AMOUNT>=1)> targeting [<Weapon ('Defiled Spear')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Damage()> targeting [<Weapon ('Defiled Spear')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggers off <Action: Attack(<Attack.ATTACKER>=<Hero ('Illidan Stormrage')>, <Attack.DEFENDER>=<Minion ('War Golem')>)> from <Hero ('Illidan Stormrage')>
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: _DefiledSpearStrike()> targeting [<Weapon ('Defiled Spear')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Hit(<Hit.AMOUNT>=2)> targeting [<Hero ('Illidan Stormrage')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Predamage(<Predamage.AMOUNT>=2)> targeting [<Hero ('Illidan Stormrage')>]
+[fireplace.actions]: <Weapon ('Defiled Spear')> triggering <TargetedAction: Damage()> targeting [<Hero ('Illidan Stormrage')>]
+[fireplace.entity]: Empty stack, refreshing auras and processing deaths
+XYZRESULT hero_atk=2 defender=2 other=0 enemyhero=2 weapon_dur=2

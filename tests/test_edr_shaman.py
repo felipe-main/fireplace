@@ -148,6 +148,47 @@ def test_emerald_bounty_draws_two():
     assert len(drawn) == 2
 
 
+# EDR_234 — Emerald Bounty: the 2-turn play-lock. Drawn cards must be
+# unplayable for the controller's next TWO turns, then become playable.
+def test_emerald_bounty_drawn_cards_locked_for_two_turns():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    p1.cant_fatigue = True
+    p2.cant_fatigue = True
+    p1.deck = []
+    p2.deck = []
+    for _ in range(2):
+        _put_on_top(p1, WISP)
+    p1.give("EDR_234").play()
+    drawn = [c for c in p1.hand if c.id == WISP]
+    assert len(drawn) == 2
+    # Stamped with the 3-tick lock (= controller's next two turns).
+    for c in drawn:
+        assert c.unplayable_next_turn == 3
+        assert not c.is_playable()
+
+    # p1 -> p2 -> p1's turn 1 of lock: ticks 3 -> 2, still locked.
+    game.end_turn()  # p1 -> p2
+    game.end_turn()  # p2 -> p1 (begin_turn ticks p1's hand cards)
+    for c in drawn:
+        assert c.unplayable_next_turn == 2
+        assert not c.is_playable()
+
+    # p1's turn 2 of lock: ticks 2 -> 1, still locked.
+    game.end_turn()  # p1 -> p2
+    game.end_turn()  # p2 -> p1
+    for c in drawn:
+        assert c.unplayable_next_turn == 1
+        assert not c.is_playable()
+
+    # p1's third turn: ticks 1 -> 0, now playable.
+    game.end_turn()  # p1 -> p2
+    game.end_turn()  # p2 -> p1
+    for c in drawn:
+        assert c.unplayable_next_turn == 0
+        assert c.is_playable()
+
+
 # EDR_238 — Merithra: Battlecry: Resurrect all different friendly minions that
 # cost (8) or more.
 def test_merithra_resurrects_different_expensive_minions():

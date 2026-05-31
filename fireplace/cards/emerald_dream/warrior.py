@@ -2,6 +2,8 @@ from ..utils import *
 
 from hearthstone.enums import CardType as _CardType
 
+from .neutral import _GiveDarkGift
+
 
 ##
 # Into the Emerald Dream — WARRIOR collectible cards.
@@ -108,52 +110,30 @@ class EDR_457t:
 # EDR_456 — Darkrider (1/1/1 minion)
 # Battlecry: If you're holding a Dragon, Discover a Dragon with a Dark Gift.
 #
-# Dark Gift is a shared cross-class mechanic that grants the chosen minion a
-# random "Dark Gift" enchantment from the EDR_100t* pool. The full gift system
-# (all 13 transform-spells) is owned by the engine/neutral stage and is not yet
-# built, so this card discovers a Dragon faithfully (gated on HOLDING_DRAGON)
-# and attaches a representative Dark Gift (+2/+2) to the discovered card. See
-# uncertainties.
-class _DarkriderDiscover(TargetedAction):
-    """Discover a Dragon and give it a Dark Gift (representative +2/+2)."""
-
-    TARGET = ActionArg()
-
-    def do(self, source, target):
-        return source.game.cheat_action(
-            source,
-            [
-                Discover(target, RandomMinion(race=Race.DRAGON)).then(
-                    Give(CONTROLLER, Discover.CARD).then(
-                        Buff(Give.CARD, "EDR_456e")
-                    )
-                )
-            ],
-        )
-
-
+# Dark Gift is the set-wide Nightmare keyword shared across EDR. Rather than a
+# bespoke fixed +2/+2 rider, Darkrider now routes through the same
+# `_GiveDarkGift` helper as every other EDR Dark-Gift card (neutral.py): the
+# discovered Dragon receives a random keyword Bonus Effect (always granted,
+# random, strict upgrade). The exact gift-pool identity remains the set-wide
+# Dark Gift approximation flagged in neutral.py.
 class EDR_456:
     """Darkrider"""
 
-    play = HOLDING_DRAGON & _DarkriderDiscover(CONTROLLER)
-
-
-@custom_card
-class EDR_456e:
-    # Dark Gift — representative +2/+2 enchant for the discovered Dragon.
-    tags = {
-        GameTag.CARDNAME: "Dark Gift",
-        GameTag.CARDTYPE: CardType.ENCHANTMENT,
-        GameTag.ATK: 2,
-        GameTag.HEALTH: 2,
-    }
+    play = HOLDING_DRAGON & Discover(
+        CONTROLLER, RandomMinion(race=Race.DRAGON)
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
 
 
 # EDR_454 — Clutch of Corruption (2 mana, Location, 2 durability)
 # Choose a friendly Dragon. Summon a 0/2 Egg that hatches into a copy of it.
+#
+# Targeting is restricted to friendly DRAGONS (REQ_TARGET_WITH_RACE), and the
+# egg hatches into a full snapshot copy of the chosen Dragon — including any
+# buffs / enchantments it carried at cast time — by stashing an ExactCopy card
+# object on the egg rather than re-summoning a fresh base-stat minion by id.
 class _ClutchHatch(TargetedAction):
-    """Summon a 0/2 Egg that hatches into a copy of the chosen friendly
-    Dragon (stored by id on the egg for its deathrattle)."""
+    """Summon a 0/2 Egg that snapshots an exact copy of the chosen friendly
+    Dragon (stored on the egg for its deathrattle)."""
 
     TARGET = ActionArg()
 
@@ -162,7 +142,12 @@ class _ClutchHatch(TargetedAction):
         if chosen is None:
             return
         egg = source.controller.card("EDR_454t", source=source)
-        egg._hatch_id = chosen.id
+        # Snapshot the chosen Dragon now (with its current buffs/stats) so the
+        # later hatch reproduces it faithfully even if the original changes/dies.
+        # ExactCopy.copy(source, entity) clones the live entity including buffs
+        # and silenceable stats; it ignores the selector arg (pass SELF as a
+        # placeholder).
+        egg._hatch_card = ExactCopy(SELF).copy(source, chosen)
         return source.game.cheat_action(source, [Summon(CONTROLLER, egg)])
 
 
@@ -173,6 +158,7 @@ class EDR_454:
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_FRIENDLY_TARGET: 0,
+        PlayReq.REQ_TARGET_WITH_RACE: Race.DRAGON,
     }
     activate = _ClutchHatch(CONTROLLER)
 
@@ -184,11 +170,11 @@ class EDR_454t:
     # script below is never collected.
     tags = {GameTag.DEATHRATTLE: True}
 
-    # Deathrattle: Summon the stored Dragon.
+    # Deathrattle: Summon the stored Dragon snapshot.
     def deathrattle(self):
-        hatch_id = getattr(self, "_hatch_id", None)
-        if hatch_id:
-            yield Summon(CONTROLLER, hatch_id)
+        hatch_card = getattr(self, "_hatch_card", None)
+        if hatch_card is not None:
+            yield Summon(CONTROLLER, hatch_card)
 
 
 # EDR_455 — Succumb to Madness (3 mana spell)

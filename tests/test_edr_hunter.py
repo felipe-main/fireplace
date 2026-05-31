@@ -201,10 +201,11 @@ def test_goldrinn_doubles_friendly_beast_attack():
     assert beast.atk == 3
     goldrinn = p1.summon("EDR_480")
     assert goldrinn.rush
-    # Friendly Beast attack doubled; non-Beast untouched; Goldrinn is a Beast.
+    # Friendly Beast attack doubled; non-Beast untouched; Goldrinn is a Beast,
+    # and printed "Friendly Beasts" has no "other" — so Goldrinn doubles too.
     assert beast.atk == 6
     assert non_beast.atk == 4
-    assert goldrinn.atk == 9  # Goldrinn excludes itself from the aura
+    assert goldrinn.atk == 18  # 9 base, doubled by its own aura (includes self)
     # Aura ends when Goldrinn leaves.
     goldrinn.destroy()
     game.process_deaths()

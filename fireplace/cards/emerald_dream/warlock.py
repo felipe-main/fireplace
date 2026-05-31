@@ -2,6 +2,8 @@ from ..utils import *
 
 from hearthstone.enums import CardType, GameTag, Race
 
+from .neutral import _GiveDarkGift
+
 
 ##
 # Custom actions
@@ -171,10 +173,13 @@ class EDR_488:
     """Avant-Gardening"""
 
     # Discover a Deathrattle minion with a Dark Gift.
-    # NOTE: the "with a Dark Gift" attachment is not modelled (the Dark Gift
-    # pool lives outside this class file). The Deathrattle-minion Discover is
-    # full-fidelity.
-    play = DISCOVER(RandomMinion(deathrattle=True))
+    # The discovered minion is given a random Dark Gift (shared EDR keyword
+    # mechanic — modelled by `_GiveDarkGift` as a random Nightmare Bonus
+    # Effect, the same approximation every sibling Dark-Gift card uses).
+    play = Discover(
+        CONTROLLER,
+        RandomMinion(deathrattle=True),
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
 
 
 class EDR_490:
@@ -188,9 +193,12 @@ class EDR_490:
         PlayReq.REQ_ENEMY_TARGET: 0,
     }
     choose = ("EDR_490a", "EDR_490b")
+    # Under a Choose-Both effect the destroy half hits the player-chosen TARGET
+    # (the parent's REQ_TARGET_IF_AVAILABLE carries the selection through), so a
+    # combined cast destroys the chosen enemy minion rather than a random one.
     play = ChooseBoth(CONTROLLER) & (
         Summon(CONTROLLER, "EDR_490t") * 2,
-        Destroy(RANDOM(ENEMY_MINIONS)),
+        Destroy(TARGET),
     )
 
 

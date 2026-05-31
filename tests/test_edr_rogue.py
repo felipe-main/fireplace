@@ -54,6 +54,28 @@ def test_tricky_satyr_copies_lowest_cost_in_enemy_hand():
     assert {c.id for c in p2.hand} == {high.id, low.id}
 
 
+def test_tricky_satyr_breaks_cost_tie_randomly():
+    # Two distinct cards tie for lowest cost (both 0). The old impl always took
+    # the leftmost (Wisp). With RNG tie-breaking, seed 0 selects the rightmost
+    # of the tied pair (random.choice([a, b]) == b), which a leftmost-only impl
+    # could never produce.
+    import random as _random
+
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p2.discard_hand()
+    p1.discard_hand()
+    a = p2.give("CS2_231")  # Wisp — 0 cost (leftmost)
+    b = p2.give("ICC_023")  # Snowflipper Penguin — 0 cost (rightmost)
+    assert a.cost == b.cost == 0
+    satyr = p1.give("EDR_521")
+    # game.random.choice over the tied list [a, b]; seed 0 -> picks b.
+    game.random = _random.Random(0)
+    satyr.play()
+    assert len(p1.hand) == 1
+    assert p1.hand[0].id == b.id  # rightmost tied card — proves non-leftmost RNG
+
+
 # EDR_522 — Mimicry | SPELL 1:
 # Your opponent draws 2 cards. You get copies of them.
 def test_mimicry_opponent_draws_two_you_copy():
@@ -113,6 +135,27 @@ def test_shadowcloaked_shuffles_matching_card_into_enemy_deck():
     assert opp_other.zone == Zone.HAND
     assert [c.id for c in p2.hand] == ["CS2_186"]
     assert [c.id for c in p2.deck] == ["CS2_182"]
+
+
+def test_shadowcloaked_shuffles_all_matching_copies():
+    # Once-over (audit watch): wording "shuffle theirs" is ambiguous on count.
+    # The accepted reading shuffles every opponent copy that matches a card in
+    # your hand. Defensive test pins that behaviour: opponent holds two Yetis,
+    # both go to deck when you hold a Yeti.
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p1.discard_hand()
+    p2.discard_hand()
+    p1.give("CS2_182")              # I hold one Yeti
+    m1 = p2.give("CS2_182")         # opponent holds two Yetis
+    m2 = p2.give("CS2_182")
+    other = p2.give("CS2_186")      # War Golem — not shared
+    assassin = p1.give("EDR_524")
+    assassin.play()
+    assert m1.zone == Zone.DECK
+    assert m2.zone == Zone.DECK
+    assert other.zone == Zone.HAND
+    assert sorted(c.id for c in p2.deck) == ["CS2_182", "CS2_182"]
 
 
 def test_shadowcloaked_no_match_does_nothing():
@@ -249,9 +292,35 @@ def test_nightmare_fuel_combo_grants_dark_gift():
     assert p1.choice is not None
     p1.choice.choose(p1.choice.cards[0])
     held = next(c for c in p1.hand if c.id == "CS2_182")
-    # Dark Gift approximation: +1/+1.
-    assert held.atk == base_atk + 1
-    assert held.health == base_health + 1
+    # Combo attaches a Dark Gift via the shared set-wide _GiveDarkGift helper
+    # (random keyword Bonus Effect, applied with SetTags), NOT the old one-off
+    # flat +1/+1. Stats are unchanged; exactly one Bonus Effect is granted.
+    assert held.atk == base_atk
+    assert held.health == base_health
+    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
+
+    granted = [spec for spec in BONUS_EFFECTS
+               if all(held.tags.get(tag) for tag in spec)]
+    # roll_bonus_effects(rng, 1) merges exactly one of the eight specs.
+    assert len(granted) == 1
+
+
+def test_nightmare_fuel_no_combo_no_dark_gift():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p1.discard_hand()
+    _to_deck(p2, "CS2_182")
+    base_atk = p1.card("CS2_182").atk
+    base_health = p1.card("CS2_182").health
+    spell = p1.give("EDR_528")
+    spell.play()  # no card played before -> no Combo
+    assert p1.choice is not None
+    p1.choice.choose(p1.choice.cards[0])
+    held = next(c for c in p1.hand if c.id == "CS2_182")
+    # Plain copy: base stats, no keyword Dark Gift.
+    assert held.atk == base_atk
+    assert held.health == base_health
+    assert not held.taunt and not held.divine_shield and not held.rush
 
 
 # EDR_540 — Twisted Webweaver | MINION 1/1/3:

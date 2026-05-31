@@ -174,6 +174,23 @@ def test_lightmender_embrace_health_and_lifesteal():
     assert not lm.divine_shield
 
 
+def test_lightmender_choose_both_gets_every_half():
+    # Under a Choose-Both effect both branches must resolve. The Holy Bond
+    # branch is a +3 Attack buff chained (.then) to a Divine Shield SetTag;
+    # the previous nested-tuple form was silently dropped, leaving only the
+    # Embrace half. Assert the minion ends with ALL four effects.
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    p1.next_choose_one_combined = 1  # arm a one-shot Choose-Both
+    lm = p1.give("EDR_257")
+    lm.play()  # no `choose` arg -> ChooseBoth path
+    assert lm.taunt
+    assert lm.atk == 6        # base 3 + 3 (Holy Bond)
+    assert lm.max_health == 6  # base 3 + 3 (Embrace)
+    assert lm.divine_shield    # Holy Bond
+    assert lm.lifesteal        # Embrace
+
+
 # ---------------------------------------------------------------------------
 # EDR_258 — Toreth the Unbreaking: Divine Shield, Taunt. Your Divine Shields
 # take three hits to break.

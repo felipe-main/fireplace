@@ -1,5 +1,9 @@
 from ..utils import *
 
+# Shared Dark Gift helper (random Nightmare bonus). Lives in neutral.py; not
+# exported by ``*`` because of its leading underscore, so import it explicitly.
+from .neutral import _GiveDarkGift
+
 
 # Random picker over the three Dormant Dreadseed tokens (defined at the
 # bottom of this file).
@@ -227,12 +231,12 @@ class EDR_882:
 
     # Discover a Demon that costs (5) or more with a Dark Gift. Shuffle the
     # other two into your deck.
-    # Note: the "Dark Gift" attachment is a cross-class mechanic handled
-    # elsewhere; this script performs the Discover (Demon, Cost 5+) and the
-    # shuffle-the-rest behaviour.
+    # The discovered demon receives a random Dark Gift via the shared
+    # `_GiveDarkGift` helper (same modelling as the other EDR Dark-Gift cards);
+    # the un-chosen two are shuffled back by `_JumpscareDiscover.choose`.
     play = _JumpscareDiscover(
         CONTROLLER, RandomDemon(custom_filter=lambda c: (c.cost or 0) >= 5)
-    ).then(Give(CONTROLLER, Discover.CARD))
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
 
 
 ##

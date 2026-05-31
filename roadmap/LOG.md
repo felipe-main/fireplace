@@ -19,4 +19,6 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 2:Into the Emerald Dream | needs-human | 14 non-EDR data-bump test regressions + Imbue scaling/Dark Gift approximations + audit pending; STOPPED before sets #3-8 (see REPORT.md)
 - 2026-05-31 | 2:Into the Emerald Dream | soak | 600/600 succeeded, 0 failed (after Give-crash fix); engine stable
 - 2026-05-31 | RESUME | user override "do all, don't stop" | resuming autonomous run: finish set#2 cleanup (14 regressions + audit) then drive sets #3-8. Local commits only.
-- 2026-05-31 | 2:Into the Emerald Dream | databump-fix launch | workflow wf_933351f9 (9 agents, 1 per failing test file) to green the 14 regressions
+- 2026-05-31 | 2:Into the Emerald Dream | databump-fix | wf_933351f9 worktrees branched STALE (1af5c0ee, no merge-back); re-applied via wf_96deef4d (no isolation, direct writes); 14 fixed; full suite 3266 passed/0 failed; commit b2735609
+- 2026-05-31 | 2:Into the Emerald Dream | P4 audit | wf_8dc8a391 finders+3-vote refute (247 agents); 43 rows survived -> review.csv (13 real bugs, 24 approx, 6 once-overs)
+- 2026-05-31 | 2:Into the Emerald Dream | P5 tierfix | wf_20ecc2f2 (12 agents, 1/class) fixing 13 real bugs + fixable approximations; unmodellable -> watch

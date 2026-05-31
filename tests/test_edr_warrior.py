@@ -131,11 +131,14 @@ def test_brood_keeper_no_sword_without_dragon():
 
 # EDR_456 — Darkrider: Battlecry: If you're holding a Dragon, Discover a Dragon
 # with a Dark Gift.
-def test_darkrider_discovers_dragon_when_holding_dragon():
+#
+# Dark Gift now routes through the set-wide `_GiveDarkGift` helper (random
+# keyword Bonus Effect, always granted, strict upgrade) — same as every other
+# EDR Dark-Gift card — instead of a bespoke fixed +2/+2 enchant.
+def test_darkrider_discovers_dragon_with_dark_gift_when_holding_dragon():
     game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1 = game.current_player
     p1.give(DRAGON_VANILLA)  # holding a Dragon -> battlecry fires
-    pre_hand = len(p1.hand)
     rider = p1.give("EDR_456")
     rider.play()
     # A Discover should be open over three Dragons.
@@ -145,13 +148,39 @@ def test_darkrider_discovers_dragon_when_holding_dragon():
         assert Race.DRAGON in card.races
     chosen = p1.choice.cards[0]
     chosen_id = chosen.id
-    base_atk = _cards.db[chosen_id].atk
     p1.choice.choose(chosen)
     assert p1.choice is None
-    # The discovered Dragon is in hand carrying the +2/+2 Dark Gift.
+    # The discovered Dragon is in hand carrying exactly one NEW Dark Gift
+    # keyword from the eight-keyword Nightmare Bonus-Effect pool (relative to
+    # its printed base tags, so a natively-Taunt Dragon isn't double-counted).
     got = next(c for c in p1.hand if c.id == chosen_id)
-    assert any(b.id == "EDR_456e" for b in got.buffs)
-    assert got.atk == base_atk + 2
+    base_tags = _cards.db[chosen_id].tags
+    bonus_keywords = (
+        GameTag.TAUNT,
+        GameTag.WINDFURY,
+        GameTag.DIVINE_SHIELD,
+        GameTag.POISONOUS,
+        GameTag.CANT_BE_TARGETED_BY_SPELLS,
+        GameTag.RUSH,
+        GameTag.LIFESTEAL,
+        GameTag.REBORN,
+    )
+    added = [
+        kw for kw in bonus_keywords
+        if bool(got.tags.get(kw)) and not bool(base_tags.get(kw))
+    ]
+    assert len(added) == 1
+
+
+def test_darkrider_no_discover_without_dragon():
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.current_player
+    for c in list(p1.hand):
+        c.discard()
+    rider = p1.give("EDR_456")
+    rider.play()
+    # Not holding a Dragon -> battlecry does nothing, no Discover opens.
+    assert p1.choice is None
 
 
 # EDR_454 — Clutch of Corruption (Location): Choose a friendly Dragon. Summon a
@@ -174,6 +203,49 @@ def test_clutch_of_corruption_egg_hatches_into_chosen_dragon():
     copies = [m for m in p1.field if m.id == DRAGON_VANILLA]
     # Original dragon + the hatched copy.
     assert len(copies) == 2
+
+
+def test_clutch_of_corruption_only_targets_friendly_dragons():
+    # Real bug: the Location must be restricted to friendly DRAGONS via
+    # REQ_TARGET_WITH_RACE, not any friendly minion.
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.current_player
+    p2 = [p for p in game.players if p is not p1][0]
+    dragon = p1.summon(DRAGON_VANILLA)  # friendly Dragon -> legal
+    non_dragon = p1.summon(YETI)  # friendly non-Dragon -> illegal
+    enemy_dragon = p2.summon(DRAGON_VANILLA)  # enemy Dragon -> illegal (friendly only)
+    loc = p1.give("EDR_454")
+    loc.play()
+    game.end_turn(); game.end_turn()
+    valid = loc.targets
+    assert dragon in valid
+    assert non_dragon not in valid
+    assert enemy_dragon not in valid
+
+
+def test_clutch_of_corruption_hatch_snapshots_buffs():
+    # Significant approximation fix: the egg hatches into an EXACT copy of the
+    # chosen Dragon, preserving buffs/enchantments it carried at cast time —
+    # even if the original is buffed further or destroyed afterwards.
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.current_player
+    dragon = p1.summon(DRAGON_VANILLA)  # 4/7/6
+    base_atk, base_health = dragon.atk, dragon.max_health
+    # Buff the dragon by +4 Attack (Eggbasher's enchant) BEFORE casting.
+    dragon.buff(dragon, "EDR_468e1")  # +4 Attack
+    assert dragon.atk == base_atk + 4
+    loc = p1.give("EDR_454")
+    loc.play()
+    game.end_turn(); game.end_turn()
+    loc.use(target=dragon)
+    # Mutate the original after the snapshot — the egg must NOT track this.
+    dragon.destroy()
+    egg = next(m for m in p1.field if m.id == "EDR_454t")
+    egg.destroy()
+    hatched = next(m for m in p1.field if m.id == DRAGON_VANILLA)
+    # The hatched copy carries the +4 Attack buff snapshotted at cast time.
+    assert hatched.atk == base_atk + 4
+    assert hatched.max_health == base_health
 
 
 # EDR_455 — Succumb to Madness: Discover a friendly Dragon that died this game.

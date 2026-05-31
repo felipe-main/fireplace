@@ -293,7 +293,14 @@ class EDR_271:
 
     # After you cast a Nature spell, summon a 2/2 Treant with
     # "Deathrattle: Get a copy of that spell."
-    events = Play(CONTROLLER, NATURE_SPELL).after(_GroveShaperSummon(SELF, Play.CARD))
+    # NOTE: use the ON phase (not AFTER). When the cast Nature spell itself
+    # opens a Discover/choice (e.g. Horn of Plenty, EDR_270), the play action
+    # suspends the action queue to wait for the choice, and the AFTER-phase
+    # broadcast never runs — so the Treant was silently skipped. The ON-phase
+    # broadcast fires inside the same action block before the queue suspends,
+    # matching the printed "After you cast a Nature spell" for every Nature
+    # spell including the Discover ones.
+    events = Play(CONTROLLER, NATURE_SPELL).on(_GroveShaperSummon(SELF, Play.CARD))
 
 
 class EDR_271t:

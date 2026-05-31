@@ -143,10 +143,22 @@ def test_illusory_greenwing():
     assert illusions[0].atk == 4 and illusions[0].max_health == 5
     assert illusions[0].taunt
     # Summoned When Drawn: drawing one summons it instead of going to hand.
+    # Regression (real bug): exactly ONE 4/5 Taunt enters the board and NO
+    # Illusion is left sitting in hand (the old impl summoned a copy AND kept
+    # the original in hand, doubling the value).
     pre_field = len(p1.field)
+    pre_hand_illusions = sum(1 for c in p1.hand if c.id == "EDR_260t")
     p1.draw()
     assert len(p1.field) == pre_field + 1
-    assert any(m.id == "EDR_260t" for m in p1.field)
+    summoned = [m for m in p1.field if m.id == "EDR_260t"]
+    assert len(summoned) == 1
+    assert summoned[0].atk == 4 and summoned[0].max_health == 5
+    assert summoned[0].taunt
+    # No leftover Illusion card in hand.
+    assert sum(1 for c in p1.hand if c.id == "EDR_260t") == pre_hand_illusions
+    assert not any(c.id == "EDR_260t" for c in p1.hand)
+    # And the deck shrank by one (the drawn Illusion left the deck).
+    assert sum(1 for c in p1.deck if c.id == "EDR_260t") == 1
 
 
 # EDR_453 — Briarspawn Drake: At end of your turn, attack a random enemy
@@ -473,6 +485,11 @@ def test_envoy_of_the_glade():
     assert len(survivors) == 1
     assert CardClass.DRUID in survivors[0].classes
     assert survivors[0].id != "CS2_182"
+    # Regression (real bug): the morphed card must be a COLLECTIBLE Druid card
+    # (not a non-collectible Druid token / hero power / enchant).
+    assert _cards.db[survivors[0].id].collectible
+    assert survivors[0].type == CardType.MINION or \
+        _cards.db[survivors[0].id].type in (CardType.MINION, CardType.SPELL, CardType.WEAPON)
 
 
 # EDR_888 — Malorne the Waywatcher: Battlecry: Discover a Legendary Wild God.

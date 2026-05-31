@@ -73,20 +73,71 @@ def test_rite_of_atrocity_discovers_undead_no_corpses():
 
 
 def test_rite_of_atrocity_spends_corpses_for_dark_gift():
+    # With 2+ Corpses, the discovered Undead is granted a Dark Gift via the
+    # shared set-wide helper (a random keyword Bonus Effect from the Nightmare
+    # pool), matching every other EDR Dark-Gift card — not a bespoke +2/+2.
+    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
+
+    bonus_tags = set()
+    for spec in BONUS_EFFECTS:
+        bonus_tags |= set(spec)
+
+    # Deterministic seed search: find a seed whose rolled gift adds a keyword
+    # the discovered Undead's base card lacked (avoids the rare collision where
+    # the gift duplicates an existing base keyword). Bounded loop.
+    for seed in range(50):
+        game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+        p1 = game.player1
+        p1.discard_hand()
+        p1.corpses = 2
+        game.random.seed(seed)
+        spell = p1.give("EDR_811")
+        spell.play()
+        chosen = p1.choice.cards[0]
+        chosen_id = chosen.id
+        p1.choice.choose(chosen)
+        card = [c for c in p1.hand if c.id == chosen_id][0]
+        # 2 Corpses always spent regardless of which keyword rolled.
+        assert p1.corpses == 0
+        # No flat +2/+2 enchant is applied anymore.
+        assert all(b.id != "EDR_811e" for b in card.buffs)
+        base = p1.card(chosen_id)
+        gained = {
+            t for t in bonus_tags
+            if card.tags.get(t) and not base.tags.get(t)
+        }
+        if gained:
+            assert len(gained) >= 1  # exactly one gift rolled (count=1)
+            break
+    else:
+        raise AssertionError("no seed produced a fresh Dark Gift keyword")
+
+
+def test_rite_of_atrocity_no_corpses_no_dark_gift():
+    # Without 2 Corpses, no gift is granted and no Corpses are spent.
+    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
+
+    bonus_tags = set()
+    for spec in BONUS_EFFECTS:
+        bonus_tags |= set(spec)
+
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
-    p1.corpses = 2
+    p1.corpses = 1
     spell = p1.give("EDR_811")
     spell.play()
     chosen = p1.choice.cards[0]
     chosen_id = chosen.id
     p1.choice.choose(chosen)
     card = [c for c in p1.hand if c.id == chosen_id][0]
-    # 2 Corpses spent, the Undead got a Dark Gift (+2/+2 approximation).
-    assert p1.corpses == 0
-    assert len(card.buffs) == 1
-    assert card.buffs[0].id == "EDR_811e"
+    base = p1.card(chosen_id)
+    assert p1.corpses == 1  # nothing spent
+    gained = {
+        t for t in bonus_tags
+        if card.tags.get(t) and not base.tags.get(t)
+    }
+    assert not gained  # no Dark Gift granted
 
 
 # EDR_812 — Grotesque Runeblade: Battlecry: If the last card you played had an
@@ -243,6 +294,39 @@ def test_nythendra_splits_into_beetles_equal_to_health():
         assert (b.atk, b.max_health) == (1, 1)
 
 
+def test_nythendra_lethal_damage_splits_at_predeath_health():
+    # Regression: a LETHAL damage event (combat/spell) must split into Beetles
+    # equal to the Health Nythendra was sitting at before the killing blow.
+    # Previously the tracker stamped post-hit Health (<= 0 on the lethal blow),
+    # so a real in-game kill produced 0 Beetles.
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    nyth = p1.summon("EDR_818")  # 7/7
+    # Soften to exactly 3 Health, then deal an overkill 9-damage lethal hit.
+    game.cheat_action(p1.hero, [Hit(nyth, 4)])
+    assert nyth.health == 3
+    game.cheat_action(p1.hero, [Hit(nyth, 9)])  # lethal + overkill
+    game.process_deaths()
+    assert nyth.zone == Zone.GRAVEYARD
+    beetles = [m for m in p1.field if m.id == "EDR_818t"]
+    # Killed while at 3 Health -> exactly 3 Beetles (overkill ignored).
+    assert len(beetles) == 3
+    for b in beetles:
+        assert (b.atk, b.max_health) == (1, 1)
+
+
+def test_nythendra_lethal_from_full_splits_at_full_health():
+    # A single lethal blow from full Health splits into max-Health (7) Beetles.
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    nyth = p1.summon("EDR_818")  # 7/7
+    game.cheat_action(p1.hero, [Hit(nyth, 7)])  # exact lethal from full
+    game.process_deaths()
+    assert nyth.zone == Zone.GRAVEYARD
+    beetles = [m for m in p1.field if m.id == "EDR_818t"]
+    assert len(beetles) == 7
+
+
 def test_nythendra_reforms_at_start_of_turn():
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
@@ -276,33 +360,92 @@ def test_ursoc_attacks_all_other_minions_on_battlecry():
     # Wisp died; tank took exactly 6.
     assert weakling.zone == Zone.GRAVEYARD
     assert tank.damage == 6
-    # Ursoc recorded the kill.
-    assert any(cid == WISP for cid, _ in getattr(ursoc, "_ursoc_killed", []))
+    # Ursoc recorded the kill (list of bare card ids).
+    assert WISP in getattr(ursoc, "_ursoc_killed", [])
 
 
-def test_ursoc_deathrattle_resurrects_what_it_killed():
+def test_ursoc_deathrattle_resurrects_under_ursocs_controller():
+    # Regression: resurrection must summon the killed minion under Ursoc's OWN
+    # controller (the resurrector), not the enemy who originally owned it.
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
-    p1, p2 = game.player1, game.player2
-    victim = p2.summon(WISP)  # dies to Ursoc
-    ursoc = p1.summon("EDR_819")  # 6/14 (summon: battlecry does NOT fire)
-    # Manually run the battlecry attack-all by playing a fresh Ursoc instead.
-    ursoc.destroy()
-    game.process_deaths()
-    # The summoned Ursoc had no battlecry kills recorded -> nothing resurrected.
-    # Re-run with a played Ursoc to exercise the full pipeline.
-    game2 = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
-    q1, q2 = game2.player1, game2.player2
-    enemy = q2.summon(WISP)
-    played = q1.give("EDR_819")
+    q1, q2 = game.player1, game.player2
+    enemy = q2.summon(WISP)  # enemy-owned, dies to Ursoc's battlecry
+    played = q1.give("EDR_819")  # Ursoc owned by q1
     played.play()
-    game2.process_deaths()
+    game.process_deaths()
     assert enemy.zone == Zone.GRAVEYARD
-    pre = set(q2.field)
+    q1_pre = set(q1.field)
+    q2_pre = set(q2.field)
     played.destroy()
-    game2.process_deaths()
-    # The Wisp Ursoc killed is resurrected under its original controller (q2).
-    new = [m for m in q2.field if m not in pre and m.id == WISP]
-    assert len(new) == 1
+    game.process_deaths()
+    # The Wisp Ursoc killed is resurrected on q1's board (Ursoc's controller),
+    # not back on q2 (the original owner).
+    new_q1 = [m for m in q1.field if m not in q1_pre and m.id == WISP]
+    new_q2 = [m for m in q2.field if m not in q2_pre and m.id == WISP]
+    assert len(new_q1) == 1
+    assert len(new_q2) == 0
+
+
+# EDR_003 — Falric: You gain twice as many Corpses. Battlecry: Draw a card
+# that spends Corpses.
+#
+# Regression: the doubling is now a while-in-play aura driven by the `update`
+# hook (the data card has NO DEATHRATTLE tag, so the previous deathrattle-based
+# undo NEVER fired — the doubling stayed stuck on permanently after the first
+# Falric). The `update` recomputes `corpses_doubled` to the live Falric count
+# each refresh, so it tracks the board and is torn down when Falric leaves to
+# hand/deck/play. NOTE: when the *last* Falric leaves play straight to the
+# GRAVEYARD (death/transform) with none in hand or deck, no entity is left to
+# re-zero the counter — that residual cleanup needs an engine leave-play hook
+# (see review.csv watch row) and is deliberately NOT asserted here.
+def test_falric_doubles_corpse_gain_while_in_play():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.corpses = 0
+    p1.summon("CORE_EDR_003")
+    game.refresh_auras()
+    # While Falric is in play, the doubling aura is active.
+    assert p1.corpses_doubled == 1
+    # A friendly minion death now grants 2 Corpses instead of 1.
+    victim = p1.summon(WISP)
+    victim.destroy()
+    game.process_deaths()
+    assert p1.corpses == 2  # doubled
+
+
+def test_falric_doubling_tracks_live_count_two_falrics():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    a = p1.summon("CORE_EDR_003")
+    p1.summon("CORE_EDR_003")
+    game.refresh_auras()
+    assert p1.corpses_doubled == 2  # tracks the live Falric count
+    # One Falric leaving play drops the count back to 1 (other is still up).
+    a.destroy()
+    game.process_deaths()
+    game.refresh_auras()
+    assert p1.corpses_doubled == 1
+
+
+def test_falric_stops_doubling_when_bounced_to_hand():
+    # Bounce cleanup: the deathrattle approach could never have undone this, but
+    # the Hand-side `update` re-zeroes the counter once Falric leaves play.
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.corpses = 0
+    falric = p1.summon("CORE_EDR_003")
+    game.refresh_auras()
+    assert p1.corpses_doubled == 1
+    # Bounce Falric back to hand (no other Falric in play).
+    falric.zone = Zone.HAND
+    game.refresh_auras()
+    assert p1.corpses_doubled == 0  # doubling torn down
+    # A subsequent friendly minion death grants the normal single Corpse.
+    pre = p1.corpses
+    victim = p1.summon(WISP)
+    victim.destroy()
+    game.process_deaths()
+    assert p1.corpses == pre + 1  # not doubled
 
 
 # EDR_817 — Sanguine Infestation: Draw 2 cards. Summon two 0/2 Leeches.

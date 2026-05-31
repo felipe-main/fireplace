@@ -21,4 +21,6 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | RESUME | user override "do all, don't stop" | resuming autonomous run: finish set#2 cleanup (14 regressions + audit) then drive sets #3-8. Local commits only.
 - 2026-05-31 | 2:Into the Emerald Dream | databump-fix | wf_933351f9 worktrees branched STALE (1af5c0ee, no merge-back); re-applied via wf_96deef4d (no isolation, direct writes); 14 fixed; full suite 3266 passed/0 failed; commit b2735609
 - 2026-05-31 | 2:Into the Emerald Dream | P4 audit | wf_8dc8a391 finders+3-vote refute (247 agents); 43 rows survived -> review.csv (13 real bugs, 24 approx, 6 once-overs)
-- 2026-05-31 | 2:Into the Emerald Dream | P5 tierfix | wf_20ecc2f2 (12 agents, 1/class) fixing 13 real bugs + fixable approximations; unmodellable -> watch
+- 2026-05-31 | 2:Into the Emerald Dream | P5 tierfix | wf_20ecc2f2 (12 agents): 20 cards fixed (e625ae56) + engine pass (3d845eff) closed 5 real bugs needing engine: Bounce-broadcasts-AFTER+Hand.events (Harbinger), weapon one-turn sweep (Barbed Thorn), REQ_TARGET_WITH_CARD_NAME (Divination), _GiveDarkGift records gifts (Wallow/Overgrown). Suite 3288 passed
+- 2026-05-31 | 2:Into the Emerald Dream | P5 ledger | review.csv EDR closed: 25 fixed, 18 watch, 0 open (e27b4549). All 13 real bugs fixed; 18 watch = genuine @-scaling/Dark-Gift-pool/Temporary/Morph-Play-pipeline engine limits
+- 2026-05-31 | 2:Into the Emerald Dream | P7 soak | 1000-game soak launched (10 workers)

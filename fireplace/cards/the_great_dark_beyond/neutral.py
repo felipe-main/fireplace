@@ -267,9 +267,10 @@ class _LunarTrailblazer(TargetedAction):
 
 
 class _KiljaedenPortal(TargetedAction):
-    """Kil'jaeden — replace your deck with an endless portal of Demons that
-    gain +2/+2 each turn. (Approximation: fills the deck with random Demons and
-    arms an escalating buff via the hero. Tracked in review.csv.)"""
+    """Kil'jaeden — replace your deck with an endless portal of Demons. The
+    portal never runs dry (Draw conjures fresh Demons; see Draw.get_target_args)
+    and the Demons gain an additional +2/+2 at the start of each of your turns
+    (escalation in game._begin_turn)."""
 
     TARGET = ActionArg()
 
@@ -286,28 +287,93 @@ class _KiljaedenPortal(TargetedAction):
             and c.type == CardType.MINION
             and Race.DEMON in getattr(c, "races", [])
         ]
+        ctrl._kiljaeden_pool = pool
+        ctrl._kiljaeden_active = True
+        ctrl._kiljaeden_bonus = 0
         for _ in range(ctrl.max_deck_size):
             cid = source.game.random.choice(pool)
             new = ctrl.card(cid, source)
             new.controller = ctrl
             new.zone = Zone.DECK
+            new._kiljaeden_demon = True
+        # Marker enchant so the portal status reads on the hero (cosmetic).
         source.game.cheat_action(source, [Buff(ctrl.hero, "GDB_145e")])
 
 
+def _launched_ship(player):
+    """The Starship most recently launched by this player (read by the
+    Protocols, which resolve right after The Exodar's launch)."""
+    ship = getattr(player, "_last_launched_ship", None)
+    if ship is not None and ship.zone == Zone.PLAY:
+        return ship
+    return max(
+        (m for m in player.field if m.id.startswith("GDB_100t")),
+        key=lambda m: m.max_health,
+        default=None,
+    )
+
+
 class _ProtocolArmor(TargetedAction):
-    """The Exodar Protocol — Emergency Repairs: gain Armor equal to the
-    Starship's Health, twice."""
+    """Emergency Repairs — gain Armor equal to the Starship's Health, twice."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ship = max(
-            (m for m in source.controller.field if m.id.startswith("GDB_100t")),
-            key=lambda m: m.max_health,
-            default=None,
-        )
+        ship = _launched_ship(source.controller)
         hp = ship.health if ship is not None else 0
         source.game.cheat_action(source, [GainArmor(source.controller.hero, hp * 2)])
+
+
+class _OffensiveFormation(TargetedAction):
+    """Offensive Formation — deal damage equal to the Starship's Attack,
+    randomly split between all enemies."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ship = _launched_ship(source.controller)
+        amount = ship.atk if ship is not None else 0
+        for _ in range(amount):
+            enemies = [
+                c
+                for c in ENEMY_CHARACTERS.eval(source.game, source)
+                if not c.dead
+            ]
+            if not enemies:
+                break
+            source.game.cheat_action(
+                source, [Hit(source.game.random.choice(enemies), 1)]
+            )
+
+
+class _CrewTransport(TargetedAction):
+    """Crew Transport — get copies of all of the Starship's Pieces and set
+    their Costs to (1)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ship = _launched_ship(source.controller)
+        pieces = list(getattr(ship, "_starship_pieces", [])) if ship else []
+        for info in pieces:
+            source.game.cheat_action(source, [Give(source.controller, info["id"])])
+            copy = source.controller.hand[-1] if source.controller.hand else None
+            if copy is not None:
+                source.game.cheat_action(
+                    source, [Buff(copy, "GDB_100ce", cost=1 - copy.cost)]
+                )
+
+
+class _CastProtocol(TargetedAction):
+    """Run the chosen Protocol spell's effect immediately (the choice cards sit
+    in SETASIDE, so trigger their play script directly rather than handing them
+    to the player)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        actions = target.get_actions("play")
+        source.game.cheat_action(target, actions)
 
 
 ##
@@ -325,11 +391,13 @@ class GDB_120:
     """The Exodar"""
 
     # Battlecry: If you're building a Starship, launch it and choose a Protocol!
-    # (Approximation: launches the Starship; the Protocol choice is simplified
-    # to Emergency Repairs. Tracked in review.csv.)
+    # Launch, then offer the three Protocols (Emergency Repairs / Offensive
+    # Formation / Crew Transport); the chosen one fires immediately.
     play = BUILDING_STARSHIP(CONTROLLER) & (
         LaunchStarship(CONTROLLER),
-        _ProtocolArmor(SELF),
+        Choice(CONTROLLER, ["GDB_100a", "GDB_100b", "GDB_100c"]).then(
+            _CastProtocol(Choice.CARD)
+        ),
     )
 
 
@@ -682,6 +750,18 @@ class GDB_100a:
     play = _ProtocolArmor(SELF)
 
 
+class GDB_100b:
+    """Offensive Formation"""
+
+    play = _OffensiveFormation(SELF)
+
+
+class GDB_100c:
+    """Crew Transport"""
+
+    play = _CrewTransport(SELF)
+
+
 ##
 # Enchantments
 
@@ -698,6 +778,27 @@ class GDB_311e:
         GameTag.CARDNAME: "Deep Space Curator",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
         GameTag.COST: -100,
+    }
+
+
+@custom_card
+class GDB_100ce:
+    # Crew Transport — set a copied Piece's Cost to (1) (delta supplied at run).
+    tags = {
+        GameTag.CARDNAME: "Crew Transport",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: 0,
+    }
+
+
+@custom_card
+class GDB_145de:
+    # Kil'jaeden's Portal — each escalation grants +2/+2 (amount via kwargs).
+    tags = {
+        GameTag.CARDNAME: "Kil'jaeden's Portal",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 0,
+        GameTag.HEALTH: 0,
     }
 
 

@@ -55,6 +55,15 @@ class _GiveOtherClassPiece(TargetedAction):
             )
 
 
+class _ArmComboTwice(TargetedAction):
+    """Lucky Comet — the next Combo minion you play triggers its Combo twice."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target.next_combo_triggers_twice += 1
+
+
 class _ArmComboDiscount(TargetedAction):
     """Spacerock Collector — your next Combo card costs (1) less."""
 
@@ -79,8 +88,12 @@ class GDB_472:
     """Talgath"""
 
     # Undamaged enemy minions take double damage. Combo: Get a Backstab.
-    # (Approximation: the "undamaged take double damage" aura is not modelled;
-    # only the Combo is. Tracked in review.csv.)
+    # Continuous aura: while Talgath is in play, every enemy minion that has
+    # taken no damage carries INCOMING_DAMAGE_MULTIPLIER 1 (the engine left-
+    # shifts the damage by the multiplier, so 1 == double). The instant a
+    # minion is damaged it drops out of (ENEMY_MINIONS - DAMAGED) and the aura
+    # buff is reclaimed, so only the first hit while undamaged is doubled.
+    update = Refresh(ENEMY_MINIONS - DAMAGED, {GameTag.INCOMING_DAMAGE_MULTIPLIER: 1})
     combo = Give(CONTROLLER, "CS2_072")
 
 
@@ -144,10 +157,8 @@ class GDB_873:
     """Lucky Comet"""
 
     # Discover a Combo minion. The next one you play triggers its Combo twice.
-    # (Approximation: the Combo-twice rider is not modelled. Tracked in
-    # review.csv.)
     play = Discover(CONTROLLER, RandomMinion(combo=True)).then(
-        Give(CONTROLLER, Discover.CARD)
+        Give(CONTROLLER, Discover.CARD), _ArmComboTwice(CONTROLLER)
     )
 
 

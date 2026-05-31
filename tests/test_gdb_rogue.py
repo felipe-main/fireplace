@@ -182,6 +182,35 @@ def test_talgath_no_combo_no_backstab():
     assert not any(c.id == "CS2_072" for c in p1.hand)
 
 
+def test_talgath_doubles_damage_to_undamaged_enemy_minions():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p1.summon("GDB_472")  # Talgath aura
+    foe = p2.summon("CS2_201")
+    foe.max_health = 30
+    foe.damage = 0
+    game.refresh_auras()
+    # First hit lands while undamaged -> doubled (3 -> 6).
+    game.queue_actions(p1.hero, [Hit(foe, 3)])
+    assert foe.damage == 6
+    # Now it is damaged, so a second hit is NOT doubled (+3 -> 9, not 12).
+    game.queue_actions(p1.hero, [Hit(foe, 3)])
+    assert foe.damage == 9
+
+
+def test_talgath_does_not_double_friendly_or_damaged():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p1.summon("GDB_472")
+    friendly = p1.summon("CS2_201")
+    friendly.max_health = 30
+    friendly.damage = 0
+    game.refresh_auras()
+    # Talgath only affects ENEMY minions; a friendly takes normal damage.
+    game.queue_actions(p1.hero, [Hit(friendly, 3)])
+    assert friendly.damage == 3
+
+
 # GDB_870 — Eredar Skulker | MINION 2/1/3:
 # Combo and Spellburst: Gain +2 Attack and Stealth.
 def test_eredar_skulker_combo_buffs_and_stealths():
@@ -252,6 +281,38 @@ def test_lucky_comet_discovers_combo_minion():
     chosen_id = p1.choice.cards[0]
     p1.choice.choose(p1.choice.cards[0])
     assert any(c.id == chosen_id for c in p1.hand)
+    # The next Combo minion you play triggers its Combo twice -> counter armed.
+    assert p1.next_combo_triggers_twice == 1
+
+
+def test_lucky_comet_next_combo_minion_triggers_twice():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p1.next_combo_triggers_twice = 1  # as Lucky Comet would arm it
+    foe = p2.summon("CS2_201")
+    foe.max_health = 30
+    foe.damage = 0
+    p1.give(WISP).play()  # arm Combo (a card was played this turn)
+    si7 = p1.give("EX1_134")  # SI:7 Agent, Combo: deal 2 damage
+    si7.play(target=foe)
+    # Combo fired twice -> 2 + 2 = 4 damage, and the charge is consumed.
+    assert foe.damage == 4
+    assert p1.next_combo_triggers_twice == 0
+
+
+def test_lucky_comet_charge_unused_without_combo():
+    game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    p1.next_combo_triggers_twice = 1
+    foe = p2.summon("CS2_201")
+    foe.max_health = 30
+    foe.damage = 0
+    # No card played first -> no Combo, so SI:7's Combo doesn't fire at all.
+    si7 = p1.give("EX1_134")
+    si7.play(target=foe)
+    assert foe.damage == 0
+    # The charge is not consumed (it only spends on an actual Combo trigger).
+    assert p1.next_combo_triggers_twice == 1
 
 
 # GDB_875 — Spacerock Collector | MINION 1/2/1:

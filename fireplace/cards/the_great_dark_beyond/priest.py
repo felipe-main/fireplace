@@ -1,5 +1,7 @@
 from ..utils import *
 
+from hearthstone.enums import SpellSchool
+
 
 ##
 # Custom actions
@@ -14,7 +16,17 @@ class _MystifiedTocha(TargetedAction):
     def do(self, source, target):
         heroes = [p.hero for p in source.game.players]
         if sum(h.health for h in heroes) == 42:
-            source.controller.hero.set_current_health(42)
+            hero = source.controller.hero
+            # "Set Health to 42" can exceed the normal 30 cap, but
+            # SetCurrentHealth clamps to max_health. Raise the hero's max via a
+            # HEALTH enchant for the overflow, then clear damage so current
+            # Health lands exactly on 42.
+            delta = 42 - hero.max_health
+            if delta > 0:
+                source.game.cheat_action(
+                    source, [Buff(hero, "GDB_440e", max_health=delta)]
+                )
+            hero.damage = 0
 
 
 class _AnchoriteExtraHealth(TargetedAction):
@@ -44,6 +56,24 @@ class _ArmAskara(TargetedAction):
             game.cheat_action(played, [Summon(played.controller, played.id)])
 
         source.controller.next_draenei_hooks.append(hook)
+
+
+class _KureSpellburst(TargetedAction):
+    """K'ure, the Light Beyond — Spellburst: summon a random 3-Cost minion.
+    Holy spells don't remove this Spellburst, so re-arm it when the spell that
+    triggered us was Holy."""
+
+    TARGET = ActionArg()
+    SPELL = CardArg()
+
+    def do(self, source, target, spell):
+        source.game.cheat_action(source, [Summon(target.controller, RandomMinion(cost=3))])
+        if (
+            spell is not None
+            and spell.type == CardType.SPELL
+            and int(spell.spell_school) == int(SpellSchool.HOLY)
+        ):
+            target._rearm_spellburst = True
 
 
 class _GravityLapse(TargetedAction):
@@ -85,9 +115,9 @@ class GDB_441:
 class GDB_442:
     """K'ure, the Light Beyond"""
 
-    # Spellburst: Summon a random 3-Cost minion. (Holy spells don't remove this
-    # Spellburst — approximated as a one-shot Spellburst; tracked in review.csv.)
-    spellburst = Summon(CONTROLLER, RandomMinion(cost=3))
+    # Spellburst: Summon a random 3-Cost minion. Holy spells don't remove this
+    # Spellburst (re-armed in _KureSpellburst when the trigger spell is Holy).
+    spellburst = _KureSpellburst(SELF, Spellburst.SPELL)
 
 
 class GDB_454:
@@ -167,6 +197,11 @@ class GDB_464:
 class GDB_439e:
     # Orbiting Halo — +2/+1.
     tags = {GameTag.ATK: 2, GameTag.HEALTH: 1}
+
+
+class GDB_440e:
+    # Mystified — raise the hero's max Health to reach 42 (amount at runtime).
+    tags = {GameTag.HEALTH: 0}
 
 
 class GDB_441e:

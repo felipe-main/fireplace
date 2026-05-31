@@ -152,16 +152,61 @@ def test_farseer_nobundo_deathrattle_opens_galaxys_lens():
     assert lens is not None
     assert lens.id == "GDB_136t"
     assert lens.type == CardType.LOCATION
+    assert lens.has_spellburst
 
 
-# GDB_448 — Murmur: 6/6 Elemental. (Cost-to-(1)/die-on-play Battlecry aura is
-# an accepted approximation — plays as a vanilla 6/6 Elemental.)
-def test_murmur_is_a_six_six_elemental():
+def test_galaxys_lens_absorbs_and_recasts_spell():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    lens = p1.summon("GDB_136t")
+    p2.hero.set_current_health(30)
+    # Cast Fireball (6 to enemy hero) -> the Lens absorbs it.
+    p1.give("CS2_029").play(target=p2.hero)
+    assert p2.hero.health == 24
+    assert lens._absorbed_spell == "CS2_029"
+    # Using the Location re-casts the absorbed Fireball (auto-targeted).
+    lens.use()
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
+    assert p2.hero.health == 18
+
+
+# GDB_448 — Murmur: Your Battlecry minions cost (1), but immediately die after
+# being played.
+def test_murmur_battlecry_minions_cost_one_and_die_after_play():
     game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
     p1 = game.player1
     murmur = p1.summon("GDB_448")
     assert (murmur.atk, murmur.max_health) == (6, 6)
     assert Race.ELEMENTAL in murmur.races
+    game.refresh_auras()
+    # Seed the deck so Novice Engineer's Battlecry (draw a card) has a target.
+    seed = p1.give(WISP)
+    seed.zone = Zone.DECK
+    eng = p1.give("EX1_015")  # Novice Engineer (Battlecry: Draw a card), base 2
+    assert eng.cost == 1  # aura sets Battlecry minions' cost to 1
+    eng.play()
+    # Battlecry resolved (the seeded card was drawn) ...
+    assert seed in p1.hand
+    # ... and then the minion died from Murmur's aura.
+    assert eng.zone == Zone.GRAVEYARD
+
+
+def test_murmur_aura_only_affects_battlecry_minions_cost():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    p1.summon("GDB_448")
+    game.refresh_auras()
+    # Wisp has no Battlecry -> cost unchanged (still 0).
+    wisp = p1.give(WISP)
+    assert wisp.cost == 0
+    # Novice Engineer (Battlecry) -> cost set to 1.
+    eng = p1.give("EX1_015")
+    assert eng.cost == 1
+    eng.play()
+    # Non-Battlecry Wisp survives play (the die-after rule is Battlecry-only).
+    wisp.play()
+    assert wisp.zone == Zone.PLAY
 
 
 # GDB_451 — Triangulate: Discover a different spell from your deck. Shuffle 3

@@ -87,15 +87,24 @@ class _DwarfPlanet(TargetedAction):
         ]
         if not pool:
             return
+        # Fill the board first, then have the new minions attack — the printed
+        # card resolves the summons together and only afterwards swings (so a
+        # later summon can't be picked as an earlier one's attack target).
+        summoned = []
         while ctrl.minion_slots > 0:
             cid = source.game.random.choice(pool)
+            before = set(ctrl.field)
             source.game.cheat_action(source, [Summon(ctrl, cid)])
-            summoned = ctrl.field[-1] if ctrl.field else None
-            enemies = (ENEMY_CHARACTERS).eval(source.game, source)
-            if summoned is not None and enemies:
+            summoned.extend(m for m in ctrl.field if m not in before)
+        for minion in summoned:
+            if minion.dead:
+                continue
+            enemies = [e for e in ENEMY_CHARACTERS.eval(source.game, source)
+                       if not e.dead]
+            if enemies:
                 source.game.cheat_action(
                     source,
-                    [Attack(summoned, source.game.random.choice(enemies))],
+                    [Attack(minion, source.game.random.choice(enemies))],
                 )
 
 

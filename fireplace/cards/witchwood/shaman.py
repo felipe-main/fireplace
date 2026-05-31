@@ -50,7 +50,14 @@ class GIL_820:
         for entity in entities:
             yield ExtraBattlecry(entity, None)
             while self.controller.choice:
-                choice = self.game.random.choice(self.controller.choice.cards)
+                cards = self.controller.choice.cards
+                if not cards:
+                    # A repeated Battlecry can leave an empty choice (e.g. a
+                    # Discover whose pool is exhausted). Nothing to pick — clear
+                    # it and move on rather than choosing from an empty list.
+                    self.controller.choice = None
+                    break
+                choice = self.game.random.choice(cards)
                 log.info("Choosing card %r" % (choice))
                 self.controller.choice.choose(choice)
             yield Deaths()

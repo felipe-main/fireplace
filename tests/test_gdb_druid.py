@@ -26,6 +26,27 @@ def test_shatari_cloakfield_stats_and_starship_piece():
     assert bool(cloak.data.tags.get(GameTag.STARSHIP_PIECE))
 
 
+def test_shatari_cloakfield_is_elusive():
+    # Cloakfield's Elusive lives in the unmapped data tag 3684; the script
+    # restores the legacy CANT_BE_TARGETED flags so spells can't target it.
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1, p2 = game.player1, game.player2
+    cloak = p1.summon("GDB_103")
+    decoy = p1.summon(WISP)
+    fireball = p2.give("CS2_029")  # enemy spell
+    assert cloak not in fireball.play_targets  # Elusive -> not targetable
+    assert decoy in fireball.play_targets  # a normal minion is targetable
+
+
+def test_star_grazer_is_elusive():
+    # Star Grazer carries the real ELUSIVE tag in data; honored by targeting.
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1, p2 = game.player1, game.player2
+    grazer = p1.summon("GDB_855")
+    fireball = p2.give("CS2_029")
+    assert grazer not in fireball.play_targets
+
+
 # The discount path itself works when armed (the spell-cost reduction is real),
 # but the in-play arming is wiped out each turn — see the xfail below.
 def test_shatari_cloakfield_discount_machinery_reduces_spell_cost():
@@ -82,14 +103,46 @@ def test_starlight_reactor_ignores_non_arcane_spell():
 
 
 # GDB_854 — Uluu, the Everdrifter (5/6/5 Beast): Each turn this is in your hand,
-# gain two random Choose One choices. (Implemented as a vanilla 6/5 Beast —
-# the dynamic Choose One accumulation is not modelled; tracked in review.csv.)
-def test_uluu_the_everdrifter_vanilla_stats():
+# gain two random Choose One choices; on play, Choose One among them all.
+def test_uluu_the_everdrifter_stats():
     game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
     p1 = game.current_player
     uluu = p1.summon("GDB_854")
     assert uluu.atk == 6 and uluu.max_health == 5
     assert Race.BEAST in uluu.races
+
+
+def test_uluu_accumulates_two_choices_each_turn_in_hand():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    uluu = p1.give("GDB_854")
+    assert getattr(uluu, "_uluu_options", None) is None
+    # One own-turn cycle in hand -> +2 options.
+    game.end_turn()
+    game.end_turn()
+    assert len(uluu._uluu_options) == 2
+    # Another -> +2 more.
+    game.end_turn()
+    game.end_turn()
+    assert len(uluu._uluu_options) == 4
+
+
+def test_uluu_play_offers_choice_and_resolves_chosen_effect():
+    game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.current_player
+    uluu = p1.give("GDB_854")
+    game.end_turn()
+    game.end_turn()
+    # Force a known option set so the assertion is exact.
+    uluu._uluu_options = ["GDB_854o1", "GDB_854o2"]  # Gain 5 Armor / Draw a card
+    p1.hero.armor = 0
+    uluu.play()
+    assert uluu.zone == Zone.PLAY and (uluu.atk, uluu.max_health) == (6, 5)
+    assert p1.choice is not None
+    assert len(p1.choice.cards) == 2
+    armor_option = next(c for c in p1.choice.cards if c.id == "GDB_854o1")
+    p1.choice.choose(armor_option)
+    assert p1.hero.armor == 5  # chose "Gain 5 Armor"
 
 
 # GDB_855 — Star Grazer (8/8/8): Elusive, Taunt. Spellburst: Give your hero +8

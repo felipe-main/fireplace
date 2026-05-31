@@ -68,18 +68,16 @@ def test_orbital_halo_costs_zero_after_adjacent_play():
 def test_mystified_tocha_sets_health_to_42_when_combined_is_42():
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
     p1, p2 = game.player1, game.player2
-    # Combined health == 42 exactly: own hero 12 + enemy 30.
-    # (Own hero's max raised to 42 so the "set to 42" can be observed —
-    # the engine's SetCurrentHealth cannot exceed max_health.)
-    p1.hero.max_health = 42
-    p1.hero.damage = 30         # 12 health
-    p2.hero.max_health = 30
+    # Combined health == 42 exactly: own hero 12 (at the normal 30 max) + 30.
+    p1.hero.damage = 18         # 12 health, max still 30
     p2.hero.damage = 0          # 30 health  -> sum 42
+    assert p1.hero.max_health == 30
     assert p1.hero.health + p2.hero.health == 42
     tocha = p1.give("GDB_440")
     tocha.play()
-    # Own hero's Health set to 42.
+    # The card raises the hero above the normal 30 cap to exactly 42.
     assert p1.hero.health == 42
+    assert p1.hero.max_health == 42
 
 
 def test_mystified_tocha_no_effect_when_combined_not_42():
@@ -155,7 +153,29 @@ def test_kure_spellburst_summons_three_cost_minion():
     assert len(p1.field) == pre + 1
     summoned = [m for m in p1.field if m is not kure][0]
     assert summoned.data.cost == 3
-    # Spellburst is one-shot.
+    # A non-Holy spell removes the Spellburst as usual.
+    assert not kure.has_spellburst
+
+
+def test_kure_holy_spell_does_not_remove_spellburst():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1, p2 = game.player1, game.player2
+    kure = p1.summon("GDB_442")
+    foe = p2.summon("CS2_201")  # a minion target for Holy Smite
+    foe.max_health = 30
+    foe.damage = 0
+    assert kure.has_spellburst
+    pre = len(p1.field)
+    # Holy Smite (CS1_130) is a Holy spell -> Spellburst fires but is kept.
+    p1.give("CS1_130").play(target=foe)
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
+    assert len(p1.field) == pre + 1  # still summoned a 3-Cost minion
+    assert kure.has_spellburst       # Holy spells don't remove it
+    # A subsequent non-Holy spell finally consumes it.
+    p1.give(MOONFIRE).play(target=p1.hero)
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
     assert not kure.has_spellburst
 
 

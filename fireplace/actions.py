@@ -1017,9 +1017,13 @@ class Play(GameAction):
                     source.game.queue_actions(player, [CastSpell(card.id)])
             # Minions AND the weapon can carry Spellburst (e.g. Parallax
             # Cannon), so scan the weapon too — it never sits in player.field.
+            # The Galaxy's Lens (GDB_136t) is a Location with Spellburst, so
+            # include the location as well.
             spellburst_sources = player.field[:]
             if player.weapon is not None:
                 spellburst_sources.append(player.weapon)
+            if player.location is not None:
+                spellburst_sources.append(player.location)
             for entity in spellburst_sources:
                 if getattr(entity, "has_spellburst", False):
                     source.game.queue_actions(card, [Spellburst(entity, card)])
@@ -1843,6 +1847,19 @@ class Battlecry(TargetedAction):
         else:
             extra = 0
 
+        # The Great Dark Beyond — Lucky Comet: the next Combo minion played
+        # triggers its Combo an extra time. One-shot per armed charge, separate
+        # from Spirit of the Shark's standing minion_extra_combos aura.
+        combo_twice = 0
+        if (
+            card.type == CardType.MINION
+            and card.has_combo
+            and player.combo
+            and getattr(player, "next_combo_triggers_twice", 0) > 0
+        ):
+            player.next_combo_triggers_twice -= 1
+            combo_twice = 1
+
         source.game.manager.targeted_action(self, source, card, target)
         source.target = target
         source.game.main_power(source, actions, target)
@@ -1851,6 +1868,9 @@ class Battlecry(TargetedAction):
             source.game.main_power(source, actions, target)
 
         for _ in range(extra):
+            source.game.main_power(source, actions, target)
+
+        for _ in range(combo_twice):
             source.game.main_power(source, actions, target)
 
         if extra:
@@ -1907,6 +1927,10 @@ class LaunchStarship(TargetedAction):
             ship.has_spellburst = True
 
         player.starship = None
+        # Record the just-launched ship so battlecries that fire alongside the
+        # launch (The Exodar's Protocol choice) can read its assembled stats and
+        # banked Pieces.
+        player._last_launched_ship = ship
         source.game.manager.targeted_action(self, source, target)
         source.game.refresh_auras()
         # The Gravitational Displacer — if banked, the launch summons a copy of
@@ -2221,6 +2245,23 @@ class Discover(TargetedAction):
         self.source.game.queue_actions(self.source, [Discovered(self.player, card)])
 
 
+def make_kiljaeden_demon(player):
+    """Create one Demon for Kil'jaeden's endless portal, in the player's deck,
+    carrying the portal's current accumulated +2/+2 bonus."""
+    pool = getattr(player, "_kiljaeden_pool", None)
+    if not pool:
+        return None
+    cid = player.game.random.choice(pool)
+    card = player.card(cid, source=player.hero)
+    card.controller = player
+    card.zone = Zone.DECK
+    card._kiljaeden_demon = True
+    bonus = getattr(player, "_kiljaeden_bonus", 0)
+    if bonus:
+        player.hero.buff(card, "GDB_145de", atk=bonus, max_health=bonus)
+    return card
+
+
 class Draw(TargetedAction):
     """
     Make player targets draw a card from their deck.
@@ -2238,6 +2279,11 @@ class Draw(TargetedAction):
             return [card]
         if target.deck:
             card = target.deck[-1]
+        elif getattr(target, "_kiljaeden_active", False):
+            # Kil'jaeden's endless portal: instead of running dry (and
+            # fatiguing), conjure a fresh Demon carrying the portal's current
+            # escalating +2/+2 bonus.
+            card = make_kiljaeden_demon(target)
         else:
             card = None
         return [card]

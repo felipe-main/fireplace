@@ -44,25 +44,65 @@ def test_dimensional_core():
 
 # ---------------------------------------------------------------------------
 # GDB_120 — The Exodar: Battlecry: If you're building a Starship, launch it and
-# choose a Protocol! (Approx: launches; Protocol -> Emergency Repairs armor.)
+# choose a Protocol! (Emergency Repairs / Offensive Formation / Crew Transport.)
 # ---------------------------------------------------------------------------
-def test_the_exodar_launches_building_starship():
-    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
-    p1 = game.player1
-    # Build a starship by banking one piece (GDB_100, 3/4 Taunt).
+def _exodar_with_ship(game, p1):
+    # Bank one piece (GDB_100, 2/4 Taunt) so a Starship is building.
     p1.summon("GDB_100").destroy()
     game.process_deaths()
     assert p1.is_building_starship
     ship = p1.starship
-    p1.hero.armor = 0
     exodar = p1.give("GDB_120")
     exodar.play()
-    # Starship launched: no longer building, ship is a real attackable minion.
     assert not p1.is_building_starship
     assert not ship.dormant
-    # Emergency Repairs Protocol: gain Armor equal to the ship's Health, twice.
-    # The banked GDB_100 has 4 health -> 4 * 2 = 8 armor.
-    assert p1.hero.armor == 8
+    # All three Protocols are offered.
+    assert p1.choice is not None
+    assert [c.id for c in p1.choice.cards] == ["GDB_100a", "GDB_100b", "GDB_100c"]
+    return ship
+
+
+def test_the_exodar_emergency_repairs_protocol():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    ship = _exodar_with_ship(game, p1)
+    hp = ship.health
+    # Zero armor after the banking (Arkonite's Deathrattle gives +6) so we
+    # measure only the Protocol's contribution.
+    p1.hero.armor = 0
+    p1.choice.choose(p1.choice.cards[0])  # Emergency Repairs
+    # Gain Armor equal to the ship's Health, twice.
+    assert p1.hero.armor == hp * 2
+
+
+def test_the_exodar_offensive_formation_protocol():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    p2.hero.set_current_health(30)
+    foe = p2.summon("CS2_201")
+    foe.max_health = 40
+    foe.damage = 0
+    ship = _exodar_with_ship(game, p1)
+    atk = ship.atk
+    p1.choice.choose(p1.choice.cards[1])  # Offensive Formation
+    # Deal damage equal to the ship's Attack, split among all enemies.
+    assert (30 - p2.hero.health) + foe.damage == atk
+
+
+def test_the_exodar_crew_transport_protocol():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    # Bank two distinct pieces so we can see both copied.
+    p1.summon("GDB_100").destroy()
+    game.process_deaths()
+    p1.summon("GDB_112").destroy()
+    game.process_deaths()
+    assert p1.is_building_starship
+    p1.give("GDB_120").play()
+    p1.choice.choose(p1.choice.cards[2])  # Crew Transport
+    copies = [c for c in p1.hand if c.id in ("GDB_100", "GDB_112")]
+    assert len(copies) == 2
+    assert all(c.cost == 1 for c in copies)
 
 
 def test_the_exodar_does_nothing_without_starship():
@@ -315,7 +355,7 @@ def test_nexus_prince_shaffar_spellburst_propagates():
 
 # ---------------------------------------------------------------------------
 # GDB_145 — Kil'jaeden: Battlecry: Replace your deck with an endless portal of
-# Demons. Each turn, they gain an additional +2/+2. (Approx.)
+# Demons. Each turn, they gain an additional +2/+2.
 # ---------------------------------------------------------------------------
 def test_kiljaeden_fills_deck_with_demons():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
@@ -329,6 +369,39 @@ def test_kiljaeden_fills_deck_with_demons():
     assert len(p1.deck) == p1.max_deck_size
     for c in p1.deck:
         assert Race.DEMON in _cards.db[c.id].races
+    assert p1._kiljaeden_active
+
+
+def test_kiljaeden_portal_never_fatigues():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.give("GDB_145").play()
+    # Empty the deck, then draw: the portal conjures a Demon instead of fatigue.
+    for c in list(p1.deck):
+        c.zone = Zone.SETASIDE
+    hp = p1.hero.health
+    game.queue_actions(p1.hero, [Draw(p1)])
+    assert p1.hero.health == hp  # no fatigue damage
+    drawn = p1.hand[-1]
+    assert Race.DEMON in _cards.db[drawn.id].races
+
+
+def test_kiljaeden_demons_escalate_two_two_each_turn():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.give("GDB_145").play()
+    # Track one specific portal Demon's stats across turns.
+    demon = p1.deck[0]
+    base = (demon.atk, demon.max_health)
+    assert p1._kiljaeden_bonus == 0
+    game.end_turn()
+    game.end_turn()  # one own-turn cycle -> +2/+2
+    assert p1._kiljaeden_bonus == 2
+    assert (demon.atk, demon.max_health) == (base[0] + 2, base[1] + 2)
+    game.end_turn()
+    game.end_turn()  # another -> +4/+4 total
+    assert p1._kiljaeden_bonus == 4
+    assert (demon.atk, demon.max_health) == (base[0] + 4, base[1] + 4)
 
 
 # ---------------------------------------------------------------------------

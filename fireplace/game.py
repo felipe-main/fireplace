@@ -430,6 +430,24 @@ class BaseGame(Entity):
         # MotLK — Silvermoon Arcanist: "Your spells can't target heroes
         # this turn" — one-turn marker, clear on own turn end.
         self.current_player.spells_cant_target_heroes_this_turn = False
+        # The Great Dark Beyond — Libram of Divinity: a Libram cast while it
+        # cost (0) returns to its caster's hand at the end of that turn (the
+        # spell is in the graveyard by now; bounce it back if there's room).
+        for card in list(getattr(self.current_player, "_librams_to_return", [])):
+            if (
+                card.zone == Zone.GRAVEYARD
+                and len(self.current_player.hand) < self.current_player.max_hand_size
+            ):
+                card.zone = Zone.HAND
+        self.current_player._librams_to_return = []
+        # The Great Dark Beyond — Celestial Aura: tick down the 2-turn host
+        # enchant on the caster's hero and tear it down when it expires.
+        if self.current_player.hero:
+            for buff in list(self.current_player.hero.buffs):
+                if getattr(buff, "_celestial_turns_left", None) is not None:
+                    buff._celestial_turns_left -= 1
+                    if buff._celestial_turns_left <= 0:
+                        buff.remove()
         # Throne of the Tides — Submerged Spacerock: cards added with the
         # discards-at-end-of-owner-turn marker are discarded now.
         for hand_card in list(self.current_player.hand):
@@ -503,6 +521,14 @@ class BaseGame(Entity):
         player.spell_mana_spent_this_turn = 0
         # Whizbang mini-set — Holy Glowsticks (MIS_709) per-turn discount.
         player.holy_spells_cast_this_turn = 0
+        # The Great Dark Beyond — Kil'jaeden: each of your turns, the portal's
+        # Demons gain an additional +2/+2. Bump the running bonus (so freshly
+        # conjured Demons catch up) and buff every portal Demon in deck + hand.
+        if getattr(player, "_kiljaeden_active", False):
+            player._kiljaeden_bonus += 2
+            for card in list(player.deck) + list(player.hand):
+                if getattr(card, "_kiljaeden_demon", False):
+                    player.hero.buff(card, "GDB_145de", atk=2, max_health=2)
         # The Great Dark Beyond — adjacency: clear each hand card's per-turn
         # "an adjacent card was played" count.
         for hand_card in player.hand:

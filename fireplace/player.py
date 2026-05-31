@@ -210,6 +210,17 @@ class Player(Entity, TargetableByAuras):
         # The Great Dark Beyond — Spacerock Collector: the next Combo card you
         # play costs this much less.
         self.next_combo_discount = 0
+        # The Great Dark Beyond — Lucky Comet: the next this-many Combo minions
+        # you play trigger their Combo an extra time (consumed in Play.do).
+        self.next_combo_triggers_twice = 0
+        # The Great Dark Beyond — Libram of Divinity: Librams cast while they
+        # cost (0); returned to hand at the end of the turn (game.py cleanup).
+        self._librams_to_return = []
+        # The Great Dark Beyond — Kil'jaeden: while active, the deck is an
+        # endless portal of Demons (Draw refills from it instead of fatiguing)
+        # and the portal Demons gain +2/+2 at the start of each of your turns.
+        self._kiljaeden_active = False
+        self._kiljaeden_bonus = 0
         # The Great Dark Beyond — Bolide Behemoth: your Asteroids deal this much
         # extra damage for the rest of the game.
         self.asteroid_damage_bonus = 0
@@ -237,6 +248,9 @@ class Player(Entity, TargetableByAuras):
         # Starship Pieces banked into it since the last launch are tracked on
         # the entity itself (see actions._bank_starship_piece).
         self.starship = None
+        # The Exodar — the minion produced by the most recent LaunchStarship,
+        # so a launch-time Protocol choice can read its stats / banked Pieces.
+        self._last_launched_ship = None
         # Commander Ulthok: opponent's cards cost Health instead of Mana for
         # this many of THEIR turns (decremented at their begin_turn).
         self.pays_health_for_cards_turns_left = 0

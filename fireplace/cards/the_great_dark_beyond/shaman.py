@@ -25,6 +25,34 @@ def _offer_deck_spells(source):
     return ctrl, [ctrl.card(c.id, source=source) for c in picks]
 
 
+class _LensAbsorb(TargetedAction):
+    """The Galaxy's Lens — absorb the spell you just cast (store it so the
+    Location can re-cast it), and re-arm so it keeps absorbing your spells."""
+
+    TARGET = ActionArg()
+    SPELL = CardArg()
+
+    def do(self, source, target, spell):
+        if spell is not None and spell.type == CardType.SPELL:
+            target._absorbed_spell = spell.id
+        # Keep the Spellburst armed: the Lens absorbs each spell you cast, not
+        # only the first (its "Cast {0}" always shows your latest spell).
+        target._rearm_spellburst = True
+
+
+class _LensCast(TargetedAction):
+    """The Galaxy's Lens — cast a copy of the absorbed spell (auto-targeted)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        sid = getattr(target, "_absorbed_spell", None)
+        if sid:
+            source.game.cheat_action(
+                target, [CastSpellTargetsEnemiesIfPossible(sid)]
+            )
+
+
 class _AsteroidStrike(TargetedAction):
     """Asteroid — when drawn, deal (2 + Bolide bonus) damage to a random
     enemy."""
@@ -171,8 +199,11 @@ class GDB_448:
     """Murmur"""
 
     # Your Battlecry minions cost (1), but immediately die after being played.
-    # (Approximation: the cost-to-(1)/die-on-play aura is not modelled — plays
-    # as a 6/6 Elemental. Tracked in review.csv.)
+    # Continuous aura sets the Cost of your Battlecry minions in hand to 1;
+    # when one is played, the Play trigger destroys it once its Battlecry has
+    # fully resolved.
+    update = Refresh(FRIENDLY_HAND + MINION + BATTLECRY, {GameTag.COST: SET(1)})
+    events = Play(CONTROLLER, MINION + BATTLECRY).after(Destroy(Play.CARD))
 
 
 ##
@@ -236,6 +267,15 @@ class GDB_901:
 
 ##
 # Tokens
+
+
+class GDB_136t:
+    """The Galaxy's Lens"""
+
+    # Spellburst: Absorb the spell's power! (store your latest spell). Use the
+    # Location to cast a copy of the absorbed spell.
+    spellburst = _LensAbsorb(SELF, Spellburst.SPELL)
+    activate = _LensCast(SELF)
 
 
 class GDB_430:

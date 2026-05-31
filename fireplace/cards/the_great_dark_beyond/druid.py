@@ -80,6 +80,57 @@ class _DiscoverArcaneDiscounted(TargetedAction):
             )
 
 
+# Uluu's curated pool of "random Choose One" choices. The exact in-game pool
+# isn't in the card data, so use a soak-safe set of self-resolving 0-Cost
+# effect tokens (no targeting prompts, no nested choices).
+_ULUU_POOL = [
+    "GDB_854o1",
+    "GDB_854o2",
+    "GDB_854o3",
+    "GDB_854o4",
+    "GDB_854o5",
+    "GDB_854o6",
+]
+
+
+class _UluuGainChoices(TargetedAction):
+    """Uluu — each turn it is in hand, gain two more random Choose One choices
+    (accumulated on the card)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if getattr(target, "_uluu_options", None) is None:
+            target._uluu_options = []
+        for _ in range(2):
+            target._uluu_options.append(source.game.random.choice(_ULUU_POOL))
+
+
+class _CastUluuOption(TargetedAction):
+    """Resolve the chosen Uluu option's effect (its play script)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.game.cheat_action(target, target.get_actions("play"))
+
+
+class _UluuChoose(TargetedAction):
+    """Uluu — on play, Choose One among all the accumulated random options."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        opts = getattr(target, "_uluu_options", None)
+        if not opts:
+            return
+        cards = [source.controller.card(oid, source) for oid in opts]
+        source.game.cheat_action(
+            source,
+            [Choice(source.controller, cards).then(_CastUluuOption(Choice.CARD))],
+        )
+
+
 ##
 # Minions
 
@@ -88,6 +139,13 @@ class GDB_103:
     """Sha'tari Cloakfield"""
 
     # Elusive. Your first spell each turn costs (1) less. Starship Piece.
+    # This build's data carries Elusive as the unmapped tag 3684 (python-
+    # hearthstone doesn't know it), so the targeting code never sees it. Restore
+    # it via the legacy split flags that targeting.py honors.
+    tags = {
+        GameTag.CANT_BE_TARGETED_BY_SPELLS: True,
+        GameTag.CANT_BE_TARGETED_BY_HERO_POWERS: True,
+    }
     events = OWN_TURN_BEGIN.on(_ArmFirstSpellDiscount(SELF))
 
 
@@ -104,9 +162,13 @@ class GDB_108:
 class GDB_854:
     """Uluu, the Everdrifter"""
 
-    # Each turn this is in your hand, gain two random Choose One choices.
-    # (Approximation: the dynamic accumulation of random Choose One options is
-    # not modelled — plays as a vanilla 5/6 Beast. Tracked in review.csv.)
+    # Each turn this is in your hand, gain two random Choose One choices; on
+    # play, Choose One among everything accumulated. (Pool curated below — the
+    # real option set isn't in the card data.)
+    class Hand:
+        events = OWN_TURN_BEGIN.on(_UluuGainChoices(SELF))
+
+    play = _UluuChoose(SELF)
 
 
 class GDB_855:
@@ -252,3 +314,83 @@ class GDB_857e:
 class GDB_882e:
     # Phenomenal — +1/+1.
     tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
+
+
+##
+# Uluu Choose-One option tokens (engine-internal; not in card data)
+
+
+@custom_card
+class GDB_854o1:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Bulwark",
+        GameTag.CARDTYPE: CardType.SPELL,
+        GameTag.COST: 0,
+    }
+    # Gain 5 Armor.
+    play = GainArmor(FRIENDLY_HERO, 5)
+
+
+@custom_card
+class GDB_854o2:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Insight",
+        GameTag.CARDTYPE: CardType.SPELL,
+        GameTag.COST: 0,
+    }
+    # Draw a card.
+    play = Draw(CONTROLLER)
+
+
+@custom_card
+class GDB_854o3:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Renewal",
+        GameTag.CARDTYPE: CardType.SPELL,
+        GameTag.COST: 0,
+    }
+    # Restore 6 Health to your hero.
+    play = Heal(FRIENDLY_HERO, 6)
+
+
+@custom_card
+class GDB_854o4:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Strike",
+        GameTag.CARDTYPE: CardType.SPELL,
+        GameTag.COST: 0,
+    }
+    # Deal 3 damage to a random enemy.
+    play = Hit(RANDOM(ENEMY_CHARACTERS), 3)
+
+
+@custom_card
+class GDB_854o5:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Might",
+        GameTag.CARDTYPE: CardType.SPELL,
+        GameTag.COST: 0,
+    }
+    # Give your minions +2/+2.
+    play = Buff(FRIENDLY_MINIONS, "GDB_854oe")
+
+
+@custom_card
+class GDB_854o6:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Swarm",
+        GameTag.CARDTYPE: CardType.SPELL,
+        GameTag.COST: 0,
+    }
+    # Summon two 1/1 Wisps.
+    play = Summon(CONTROLLER, "CS2_231") * 2
+
+
+@custom_card
+class GDB_854oe:
+    tags = {
+        GameTag.CARDNAME: "Cosmic Might",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 2,
+        GameTag.HEALTH: 2,
+    }

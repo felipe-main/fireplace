@@ -43,20 +43,27 @@ class _YrelLibrams(TargetedAction):
             source.game.cheat_action(source, [Give(source.controller, cid)])
 
 
-class _CelestialAura(TargetedAction):
-    """Celestial Aura — while you have exactly one minion, set its Attack and
-    Health to 10. (Applied on cast; the continuous 2-turn aura is approximated
-    — see review.csv.)"""
+class _LibramReturn(TargetedAction):
+    """Libram of Divinity — when cast for (0), mark this spell to return to its
+    caster's hand at the end of the turn (processed in game.end_turn_cleanup)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        field = source.controller.field
-        if len(field) == 1:
-            m = field[0]
-            m.atk = 10
-            m.max_health = 10
-            m.damage = 0
+        target.controller._librams_to_return.append(target)
+
+
+class _CelestialAura(TargetedAction):
+    """Celestial Aura — attach a continuous 2-turn aura host to the caster's
+    hero. While its controller has exactly one minion, that minion is set to
+    10/10; the host is torn down after the controller's second turn-end
+    (game.end_turn_cleanup decrements ``_celestial_turns_left``)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        hero = source.controller.hero
+        source.buff(hero, "GDB_140host", _celestial_turns_left=2)
 
 
 ##
@@ -118,15 +125,15 @@ class GDB_137:
 class GDB_138:
     """Libram of Divinity"""
 
-    # Give a minion +3/+3. If this costs (0), return this to your hand at the
-    # end of your turn. (Approximation: returns a copy immediately when free
-    # instead of at end of turn. Tracked in review.csv.)
+    # Give a minion +3/+3. If this costs (0), return THIS to your hand at the
+    # end of your turn. Gate on the effective play cost (_played_cost), so a
+    # Libram made free by Wayfarer/Starslicer counts.
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
-    play = Buff(TARGET, "GDB_138e"), (Attr(SELF, "_played_cost") == 0) & Give(
-        CONTROLLER, "GDB_138"
+    play = Buff(TARGET, "GDB_138e"), (Attr(SELF, "_played_cost") == 0) & _LibramReturn(
+        SELF
     )
 
 
@@ -199,3 +206,24 @@ class GDB_138e:
 class GDB_144e:
     # Lumia's Protection — Immune.
     tags = {GameTag.CANT_BE_DAMAGED: True}
+
+
+class GDB_140e:
+    # Celestial — the lone minion's Attack and Health are set to 10. Applied
+    # continuously by the GDB_140host aura while you control exactly one minion.
+    atk = SET(10)
+    max_health = SET(10)
+
+
+@custom_card
+class GDB_140host:
+    # Engine-internal host for Celestial Aura's continuous 2-turn aura. Lives on
+    # the caster's hero; while the controller has exactly one minion it refreshes
+    # the GDB_140e set-stat enchant onto it. Not a real card (no data entry).
+    tags = {
+        GameTag.CARDNAME: "Celestial Aura",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    update = (Count(FRIENDLY + MINION + IN_PLAY) == 1) & Refresh(
+        FRIENDLY_MINIONS, buff="GDB_140e"
+    )

@@ -169,17 +169,36 @@ def test_libram_of_divinity_buffs_minion():
     assert not any(c.id == "GDB_138" for c in p1.hand)
 
 
-def test_libram_of_divinity_free_returns_copy():
+def test_libram_of_divinity_free_returns_this_at_end_of_turn():
     game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
     p1 = game.player1
     target = p1.summon("CS2_172")  # 3/2
     spell = p1.give("GDB_138")
-    spell.tags[GameTag.COST] = 0  # the value "If this costs (0)" reads
+    # Make it cost (0) via the Wayfarer/Starslicer discount path (the same
+    # _played_cost gate the card uses), not by overwriting the COST tag.
+    p1.libram_discount = 10
     assert spell.cost == 0
     spell.play(target=target)
     assert target.atk == 6 and target.max_health == 5
-    # Free -> a fresh GDB_138 copy is back in hand.
+    # It does NOT bounce immediately — the printed card returns at end of turn.
+    assert spell.zone == Zone.GRAVEYARD
+    assert spell not in p1.hand
+    game.end_turn()
+    # The SAME spell object is back in hand (returned, not a fresh copy).
+    assert spell.zone == Zone.HAND
+    assert spell in p1.hand
     assert len([c for c in p1.hand if c.id == "GDB_138"]) == 1
+
+
+def test_libram_of_divinity_not_free_does_not_return():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    target = p1.summon("CS2_172")
+    spell = p1.give("GDB_138")
+    assert spell.cost == 4  # not discounted to 0
+    spell.play(target=target)
+    game.end_turn()
+    assert not any(c.id == "GDB_138" for c in p1.hand)
 
 
 # GDB_139 — Libram of Faith: Summon three 3/3 Draenei with Divine Shield. If
@@ -215,8 +234,7 @@ def test_libram_of_faith_free_grants_rush():
 
 
 # GDB_140 — Celestial Aura: While you have exactly 1 minion in play, its Attack
-# and Health are 10. Lasts 2 turns. (Engine approximates as a one-shot set on
-# cast — tracked in review.csv.)
+# and Health are 10. Continuous aura, lasts 2 turns.
 def test_celestial_aura_sets_lone_minion_to_ten_ten():
     game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
     p1 = game.player1
@@ -238,6 +256,42 @@ def test_celestial_aura_no_effect_with_two_minions():
     # More than one minion -> no minion is set to 10/10.
     assert a.atk == 3 and a.max_health == 2
     assert b.atk == 4 and b.max_health == 5
+
+
+def test_celestial_aura_is_continuous_and_reevaluates():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    m = p1.summon("CS2_172")  # 3/2, lone minion
+    p1.give("GDB_140").play()
+    assert (m.atk, m.max_health) == (10, 10)
+    # A second minion breaks the "exactly 1" condition -> back to base stats.
+    n = p1.summon("CS2_182")
+    game.refresh_auras()
+    assert (m.atk, m.max_health) == (3, 2)
+    assert (n.atk, n.max_health) == (4, 5)
+    # Remove it -> lone minion is 10/10 again (continuous aura).
+    n.destroy()
+    game.process_deaths()
+    game.refresh_auras()
+    assert (m.atk, m.max_health) == (10, 10)
+
+
+def test_celestial_aura_expires_after_two_turns():
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    m = p1.summon("CS2_172")
+    p1.give("GDB_140").play()
+    assert (m.atk, m.max_health) == (10, 10)
+    # Survives one full own-turn cycle...
+    game.end_turn()
+    game.end_turn()
+    game.refresh_auras()
+    assert (m.atk, m.max_health) == (10, 10)
+    # ...but expires after the second own-turn end.
+    game.end_turn()
+    game.end_turn()
+    game.refresh_auras()
+    assert (m.atk, m.max_health) == (3, 2)
 
 
 # GDB_141 — Yrel, Beacon of Hope: Rush. Deathrattle: Get three different Librams

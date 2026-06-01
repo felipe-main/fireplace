@@ -1,0 +1,19 @@
+=== PRIEST (10 collectible) ===
+TIME_037        MINION  3/2/2     Disciple of the Dove               [] {BATTLECRY} | <b>Battlecry:</b> Draw a minion. Give minions in your hand +2 Health.
+   token TIME_037e       ENCHANTMENT 0         Dove's Blessing                    [] {} | +2 Health.
+TIME_427        MINION  4/2/3     Cleansing Lightspawn               [ELEMENTAL] {BATTLECRY,LIFESTEAL} | [x]<b>Lifesteal</b> <b>Battlecry:</b> Deal damage to an enemy minion equal ___to this minion's Health.
+TIME_429        MINION  5/5/5     Divine Augur                       [DRAENEI] {BATTLECRY} | [x]<b>Battlecry:</b> Set the Attack and Health of every minion in your hand to the higher of the two stats.
+   token TIME_429e1      ENCHANTMENT 0         Light Intensity                    [] {} | Attack increased.
+   token TIME_429e2      ENCHANTMENT 0         Light Polarity                     [] {} | Health increased.
+TIME_431        MINION  2/1/4     Amber Priestess                    [] {BATTLECRY,TAUNT} | [x]<b>Taunt</b> <b>Battlecry:</b> Restore Health to a character equal to this minion's Health.
+TIME_432        SPELL   3         Intertwined Fate                   [] {DISCOVER} | <b>Discover</b> a copy of a card from your deck and one from your opponent's.
+TIME_433        SPELL   3         Cease to Exist                     [] {REWIND} | <b>Rewind</b> <b>Silence</b> and destroy a random enemy minion.
+TIME_435        MINION  6/6/2     Eternus                            [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> Take control of an enemy minion with this __minion's Health or less.
+TIME_436        LOCATION 7         Past Conflux                       [] {} | [x]Summon a random Dragon that costs (5) or more. <i>Advance to the present!</i>
+   token TIME_436t1      LOCATION 7         Present Conflux                    [] {DISCOVER} | [x]<b>Discover</b> a Dragon that costs (5) or more and summon it. <i>Advance to the future!</i>
+   token TIME_436t2      LOCATION 7         Future Conflux                     [] {DISCOVER} | [x]<b>Discover</b> a Dragon that costs (5) or more and summon it. Also get a copy of it.
+TIME_447        SPELL   2         Power Word: Barrier                [] {} | Give a character <b>Divine Shield</b>. Give minions in your hand +2 Health.
+   token TIME_447e2      ENCHANTMENT 0         Barrier                            [] {} | +2 Health
+TIME_890        MINION  10/7/7    Medivh the Hallowed                [] {BATTLECRY,FABLED} | [x]<b>Fabled</b>. Costs (0) if you control Karazhan. <b>Battlecry:</b> <b>Silence</b> and destroy all other minions.
+   token TIME_890t       WEAPON  10/1/0    Atiesh the Greatstaff              [] {} | [x]Costs (0) if you control Medivh. Double the damage and healing of your spells.
+   token TIME_890t2      LOCATION 10        Karazhan the Sanctum               [] {} | Costs (0) if you're wielding Atiesh. Summon two random 8-Cost minions.

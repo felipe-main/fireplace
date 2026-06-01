@@ -1,0 +1,28 @@
+=== WARLOCK (10 collectible) ===
+TIME_005        MINION  10/10/10  Timethief Rafaam                   [] {BATTLECRY,FABLED_PLUS} | [x]<b>Fabled+</b>. Your deck size is 40, but has 10 Rafaams! <b>Battlecry:</b> If you played the rest, destroy the enemy hero.@ <i>({0} left!)</i>@ <i>(Ready!)</i>
+   token TIME_005t1      MINION  1/1/1     Tiny Rafaam                        [] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Draw a Rafaam.
+   token TIME_005t2      MINION  2/2/2     Green Rafaam                       [] {BATTLECRY} | <b>Battlecry:</b> Give Rafaams in your hand +2/+2.
+   token TIME_005t2e     ENCHANTMENT 0         SUPREME GREENOLOGY!                [] {} | +2/+2.
+   token TIME_005t3      MINION  4/4/4     Explorer Rafaam                    [] {BATTLECRY,DISCOVER} | <b>Battlecry:</b> <b>Discover</b> a Rafaam from your deck.
+   token TIME_005t4      MINION  5/5/5     Warchief Rafaam                    [] {BATTLECRY} | [x]<b>Battlecry:</b> Gain 5 Armor. If you control another Rafaam, gain 5 more.
+   token TIME_005t5      MINION  7/7/7     Mindflayer R'faam                  [] {BATTLECRY,TAUNT} | [x]<b>Taunt</b> <b>Battlecry:</b> If you're holding another Rafaam, summon a copy of this.
+   token TIME_005t6      MINION  6/6/6     Calamitous Rafaam                  [DEMON] {BATTLECRY} | <b>Battlecry:</b> Deal 6 damage to all minions that aren't Rafaam.
+   token TIME_005t7      MINION  8/8/8     Giant Rafaam                       [] {RUSH} | [x]<b>Rush</b>. Costs (1) less for each Rafaam you've played this game.
+   token TIME_005t8      MINION  3/3/3     Murloc Rafaam                      [MURLOC] {BATTLECRY} | <b>Battlecry:</b> The next Rafaam you play costs (3) less.
+   token TIME_005t8e     ENCHANTMENT 0         MRGLEERM MRGLOSLGY!!               [] {} | Your next Rafaam costs (3) less.
+   token TIME_005t9      MINION  9/9/9     Archmage Rafaam                    [] {BATTLECRY} | <b>Battlecry:</b> Transform all minions that aren't Rafaam into 1/1 Sheep.
+   token TIME_005t9t     MINION  1/1/1     Baaaafam                           [BEAST] {} | 
+TIME_008        MINION  3/3/3     Bygone Doomspeaker                 [] {BATTLECRY,REWIND} | [x]<b>Rewind</b> <b>Battlecry:</b> Both players _discard a random card.
+TIME_025        MINION  2/4/4     Twilight Timehopper                [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> Shuffle 2 Shreds of Time into your deck. When drawn, deal 3 damage to your hero.
+   token TIME_025t       SPELL   0         Shred of Time                      [] {} | <b>Casts When Drawn</b> Deal $3 damage to your hero.
+TIME_026        SPELL   1         Entropic Continuity                [] {} | [x]Give your minions +1/+1. Shuffle 2 Shreds of Time into your deck.
+   token TIME_026e       ENCHANTMENT 0         Ruptured Reality                   [] {} | +1/+1.
+TIME_027        SPELL   2         Tachyon Barrage                    [] {} | Deal $6 damage split among all enemies. Shuffle 2 Shreds of Time into your deck.
+TIME_028        MINION  4/4/4     Fatebreaker                        [DRAGON] {BATTLECRY,LIFESTEAL} | [x]<b>Lifesteal</b> <b>Battlecry:</b> Cast a Shred of Time from your deck to gain +3/+3.
+   token TIME_028e       ENCHANTMENT 0         Fate Broken                        [] {} | +3/+3.
+TIME_029        MINION  5/5/5     Ruinous Velocidrake                [DRAGON] {BATTLECRY,RUSH} | [x]<b>Rush</b> <b>Battlecry:</b> Cast a Shred _of Time from your deck to ___summon a copy of this.
+TIME_030        SPELL   5         Divergence                         [] {} | Split a random minion in your hand into two halves.
+   token TIME_030e1      ENCHANTMENT 0         Divergent                          [] {} | Cost split in half.
+   token TIME_030e2      ENCHANTMENT 0         Diverged                           [] {} | Attack and Health split in half.
+TIME_031        SPELL   4         RAFAAM LADDER!!                    [] {} | Draw 3 cards of different Costs.
+TIME_032        MINION  6/6/7     Chronogor                          [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> You draw your 2 highest Cost cards. Your opponent draws your 2 lowest Cost cards.

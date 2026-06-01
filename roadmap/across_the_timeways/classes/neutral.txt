@@ -1,0 +1,58 @@
+=== NEUTRAL (35 collectible) ===
+TIME_002        MINION  5/3/5     Aeon Wizard                        [] {BATTLECRY,REWIND} | [x]<b>Rewind</b> <b>Battlecry:</b> Get 2 random spells from your class.
+TIME_003        MINION  3/2/2     Portal Vanguard                    [DRAGON] {BATTLECRY,REWIND} | [x]<b>Rewind</b> <b>Battlecry:</b> Draw a random minion. Give it +2/+2.
+   token TIME_003e       ENCHANTMENT 0         Guarding Time                      [] {} | +2/+2.
+TIME_004        MINION  7/7/7     Conflux Crasher                    [DRAGON] {BATTLECRY,REWIND} | <b>Rewind</b> <b>Battlecry:</b> Deal 7 damage to a random enemy.
+TIME_024        MINION  9/8/8     Murozond, Unbounded                [DRAGON] {BATTLECRY} | <b>Battlecry:</b> At the start of your next turn, set this minion's Attack to INFINITY!
+   token TIME_024e       ENCHANTMENT 0         INFINITE POWER!                    [] {} | Attack set to INFINITY!
+   token TIME_024e2      ENCHANTMENT 0         Murozond, End of Time              [] {} | At the start of your next turn, set Murozond's Attack to INFINITY!
+TIME_035        MINION  6/6/6     Time Machine                       [MECHANICAL] {DEATHRATTLE,TAUNT} | <b>Taunt</b> <b>Deathrattle:</b> Get a random <b>Rewind</b> card.
+TIME_038        MINION  8/3/3     Mister Clocksworth                 [MECHANICAL] {BATTLECRY,REWIND} | [x]<b>Rewind</b>, <b>Rewind</b> <b>Battlecry:</b> Summon 2 random <b>Legendary</b> minions.
+   token TIME_038t1      MINION  8/3/3     Mister Clocksworth                 [MECHANICAL] {BATTLECRY,REWIND} | [x]<b>Rewind</b>, <b>Rewind</b> <b>Battlecry:</b> Summon 2 random <b>Legendary</b> minions.
+   token TIME_038t2      MINION  8/3/3     Mister Clocksworth                 [MECHANICAL] {BATTLECRY,REWIND} | [x]<b>Rewind</b> <b>Battlecry:</b> Summon 2 random <b>Legendary</b> minions.
+   token TIME_038t3      MINION  8/3/3     Mister Clocksworth                 [MECHANICAL] {BATTLECRY} | [x]<b>Battlecry:</b> Summon 2 random <b>Legendary</b> minions.
+TIME_040        MINION  4/6/3     Fading Memory                      [UNDEAD] {DEATHRATTLE} | <b>Deathrattle:</b> Get a random 5-Cost minion from the past.
+TIME_041        MINION  4/4/4     Futuristic Forefather              [] {BATTLECRY} | [x]<b>Taunt</b>. <b>Battlecry:</b> Look at 3 cards. Guess which one is in your opponent's hand to gain +4 Health.
+   token TIME_041e2      ENCHANTMENT 0         Infiltration                       [] {} | +4 Health.
+TIME_045        MINION  3/1/4     Whelp of the Infinite              [DRAGON] {} | <b>Poisonous</b> <b>Reborn</b>
+TIME_046        MINION  3/3/12    Cyborg Patriarch                   [MECHANICAL,BEAST] {TAUNT} | <b>Dormant</b> for 3 turns. <b>Taunt</b>
+   token TIME_046e       ENCHANTMENT 0         Prime Ape                          [] {} | <b>Dormant</b>. Awaken in @ |4(turn, turns).
+TIME_047        MINION  5/5/3     Devious Coyote                     [BEAST] {STEALTH} | [x]<b>Stealth</b>. Costs (1) less for each time the enemy hero took damage this turn.
+TIME_048        MINION  5/5/1     Clockwork Rager                    [MECHANICAL] {BATTLECRY} | [x]<b>Battlecry:</b> Gain +1 Health for each turn you've taken this game.@ <i>(@ |4(turn, turns))</i>
+   token TIME_048e       ENCHANTMENT 0         Clockwork Rage                     [] {} | Increased Health.
+TIME_049        MINION  2/1/1     Dangerous Variant                  [] {} | At the start of your turn, transform into a random 5-Cost minion.
+TIME_050        MINION  6/4/9     Sentient Hourglass                 [ELEMENTAL] {RUSH} | [x]<b>Rush</b> After this minion survives damage, swap its stats.
+   token TIME_050e       ENCHANTMENT 0         Sand Flow                          [] {} | Attack and Health swapped.
+TIME_051        MINION  5/3/5     Soldier of the Infinite            [DRAGON] {BATTLECRY,RUSH} | <b>Rush</b> <b>Battlecry:</b> Double this minion's Attack.
+   token TIME_051e       ENCHANTMENT 0         Infinite Scales                    [] {} | Doubled Attack.
+TIME_052        MINION  8/4/12    Amber Warden                       [DRAGON] {DEATHRATTLE,TAUNT} | [x]<b>Taunt</b> <b>Deathrattle:</b> Summon a random minion from the past.
+TIME_053        MINION  3/7/2     Sandmaw                            [ELEMENTAL,BEAST] {} | 
+TIME_054        MINION  4/3/4     Time Skipper                       [PIRATE] {} | At the end of each player's turn, give them a Coin.
+   token TIME_054e       ENCHANTMENT 0         Skipping Time                      [] {} | +1/+1.
+TIME_055        MINION  5/4/5     Unknown Voyager                    [] {} | After this survives damage, transform into a random 7-Cost minion.
+TIME_056        MINION  3/4/1     Whelp of the Bronze                [DRAGON] {DIVINE_SHIELD,LIFESTEAL} | <b>Lifesteal</b> <b>Divine Shield</b>
+TIME_057        MINION  4/4/5     Wizened Truthseeker                [DRAENEI] {BATTLECRY} | <b>Battlecry:</b> Set the Cost of every card in both player's hands back to their original Costs.
+   token TIME_057e       ENCHANTMENT 0         True Wisdom                        [] {} | Cost changed.
+TIME_058        MINION  1/1/1     Paltry Flutterwing                 [BEAST] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Summon a random 2-Cost minion that is <b>Dormant</b> for 2 turns.
+   token TIME_058e       ENCHANTMENT 0         Consequences                       [] {} | <b>Dormant</b>. Awaken in @ |4(turn, turns).
+TIME_059        MINION  3/2/1     Living Paradox                     [] {BATTLECRY,ELUSIVE} | <b>Elusive</b> <b>Battlecry:</b> Summon two 2/1 Living Paradoxes with <b>Elusive</b>.
+TIME_060        MINION  3/4/9     Quantum Destabilizer               [MECHANICAL] {} | This minion takes double damage from all sources.
+TIME_061        MINION  2/3/2     Timeless Causality                 [ELEMENTAL] {BATTLECRY} | <b>Battlecry:</b> Reverse the order of your deck.
+TIME_062        MINION  4/3/6     Chronicle Keeper                   [] {BATTLECRY} | <b>Battlecry:</b> If you're holding a Dragon, gain <b>Taunt</b> and <b>Divine Shield</b>.
+TIME_063        MINION  3/8/8     Timelord Nozdormu                  [DRAGON] {RUSH} | [x]<b>Dormant</b> for 5 turns. <b>Rush</b>. After you play a card from the newest expansion, _awaken 1 turn sooner.
+   token TIME_063e1      ENCHANTMENT 0         Lord of Time                       [] {} | <b>Dormant</b>. Awaken in @ |4(turn, turns).
+   token TIME_063e2      ENCHANTMENT 0         Nozdormu Play Enchant              [] {} | After you play a card from the newest expansion, awaken 1 turn sooner.
+TIME_064        MINION  7/4/8     Chrono-Lord Deios                  [] {} | [x]Your <b>Battlecries</b>, <b>Deathrattles</b>, Hero Power, and end of turn effects trigger twice.
+   token TIME_064e       ENCHANTMENT 0         Deios' Influence                   [] {} | Your <b>Battlecries</b>, <b>Deathrattles</b>, Hero Power, and end of turn effects trigger twice.
+TIME_100        MINION  4/2/4     Hourglass Attendant                [] {DIVINE_SHIELD} | [x]<b>Divine Shield</b> At the end of your turn, give all minions in your hand +1/+1.
+   token TIME_100e       ENCHANTMENT 0         Sandy Polish                       [] {} | +1/+1.
+TIME_101        MINION  3/4/3     Misplaced Pyromancer               [] {} | Whenever you <b>Shatter</b> a card, deal 2 damage to all enemy minions.
+TIME_102        MINION  3/2/2     Circadiamancer                     [] {BATTLECRY} | [x]<b>Battlecry:</b> Add a random 8-Cost minion to your hand. At the start of your turns, reduce its Cost by (1).
+   token TIME_102e       ENCHANTMENT 0         Metaphysical                       [] {} | Reduces Cost each turn.
+TIME_103        MINION  6/4/6     Chromie                            [] {DEATHRATTLE} | <b>Deathrattle:</b> Draw another copy of cards you've played this game.@ <i>(@ |4(card,cards))</i>
+TIME_428        MINION  2/3/1     Yesterloc                          [MURLOC] {} | At the end of your turn, give your other minions +1_Health.
+   token TIME_428e       ENCHANTMENT 0         Mrrgls of Yore                     [] {} | +1 Health.
+TIME_434        MINION  3/4/1     Temporal Traveler                  [] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Summon a 4/1 Shadow that attacks a random enemy minion.
+   token TIME_434t       MINION  3/4/1     Temporal Shadow                    [] {} | 
+TIME_720        MINION  5/5/3     Soldier of the Bronze              [DRAGON] {BATTLECRY,TAUNT} | <b>Taunt</b> <b>Battlecry:</b> Double this minion's Health.
+   token TIME_720e       ENCHANTMENT 0         Bronze Scales                      [] {} | Doubled Health.

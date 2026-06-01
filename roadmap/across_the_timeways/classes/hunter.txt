@@ -1,0 +1,19 @@
+=== HUNTER (10 collectible) ===
+TIME_042        MINION  4/5/6     King Maluk                         [BEAST] {BATTLECRY} | <b>Battlecry:</b> Discard your hand. Get an Infinite Banana.
+   token TIME_042t       SPELL   1         Infinite Banana                    [] {} | [x]Give a minion +1/+1. <i>(This stays in your hand.)</i>
+   token TIME_042te      ENCHANTMENT 0         Infinite Banana                    [] {} | +1/+1.
+TIME_600        SPELL   2         Precise Shot                       [] {} | Deal $3 damage. If this is EXACTLY in the center of your hand, deal $5 instead.
+TIME_601        MINION  2/3/1     Arrow Retriever                    [BEAST] {BATTLECRY} | <b>Battlecry:</b> Draw until you have 3 cards.
+TIME_602        SPELL   3         Wormhole                           [] {REWIND} | <b>Rewind</b> Summon a random 3-Cost Beast. It attacks a random enemy.
+TIME_603        MINION  2/1/1     Ticking Timebomb                   [MECHANICAL] {DEATHRATTLE} | <b>Deathrattle:</b> Destroy a random enemy minion.
+TIME_605        MINION  6/3/4     Epoch Stalker                      [BEAST] {BATTLECRY,ELUSIVE,RUSH} | <b>Rush</b>, <b>Elusive</b> <b>Battlecry:</b> Summon a copy of this.
+TIME_606        MINION  1/1/3     Quel'dorei Fletcher                [] {} | Your Hero Power costs (0) while your hand has 3 or less cards.
+   token TIME_606e       ENCHANTMENT 0         Fletching                          [] {} | Your Hero Power costs (0).
+TIME_609        MINION  3/2/4     Ranger General Sylvanas            [] {BATTLECRY,FABLED} | [x]<b>Fabled</b>. <b>Battlecry:</b> Deal 2 damage to all enemies. ____If you've played Alleria or____ __Vereesa, repeat for each.
+   token TIME_609t1      MINION  3/2/4     Ranger Captain Alleria             [] {BATTLECRY,DISCOVER} | [x]<b>Battlecry:</b> <b>Discover</b> a spell. If you've played Sylvanas or Vereesa, repeat for each.
+   token TIME_609t2      MINION  3/2/4     Ranger Initiate Vereesa            [] {BATTLECRY} | [x]<b>Battlecry:</b> Give minions in your deck +1/+1. If you've played Alleria or Sylvanas, repeat for each.
+   token TIME_609t2e     ENCHANTMENT 0         Windrunner's Allegiance            [] {} | +1/+1.
+TIME_620        SPELL   2         Untimely Death                     [] {} | <b>Secret:</b> When a friendly minion dies the turn after being played, resummon it.
+TIME_810        LOCATION 4         Past Silvermoon                    [] {} | [x]Deal 5 damage to a random enemy minion. <i>Advance to the present!</i>
+   token TIME_810t1      LOCATION 4         Present Silvermoon                 [] {} | [x]Deal 5 damage to a random enemy minion. Excess hits the enemy hero. <i>Advance to the future!</i>
+   token TIME_810t2      LOCATION 4         Future Silvermoon                  [] {} | [x]Deal 5 damage to the lowest Health enemy minion. Excess damage hits the enemy hero.

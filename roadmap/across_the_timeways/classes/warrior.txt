@@ -1,0 +1,20 @@
+=== WARRIOR (10 collectible) ===
+TIME_034        MINION  4/3/3     Stadium Announcer                  [DRAGON] {BATTLECRY,REWIND} | [x]<b>Rewind</b> <b>Battlecry:</b> Both players equip a random weapon. Give yours +1/+1.
+   token TIME_034e       ENCHANTMENT 0         Upper Hand                         [] {} | +1/+1.
+TIME_714        MINION  6/7/5     Chrono-Lord Epoch                  [DRAGON] {BATTLECRY} | <b>Battlecry:</b> Destroy all minions that your opponent played last turn.
+TIME_715        SPELL   5         For Glory!                         [] {} | Draw 2 cards. Costs (1) less for each minion your opponent controls.
+TIME_716        SPELL   2         Slow Motion                        [] {} | Your opponent's cards cost (1) more next turn.
+   token TIME_716e       ENCHANTMENT 0         Sloooowwedd Dooowwwnnn             [] {} | Costs (1) more.
+   token TIME_716e3      ENCHANTMENT 0         Slowed Down                        [] {} | Your cards cost (1) more this turn.
+TIME_750        SPELL   2         Precursory Strike                  [] {} | Deal $3 damage. If you're holding a minion that costs (5) or more, draw a minion.
+TIME_850        MINION  7/7/7     Lo'Gosh, Blood Fighter             [] {DEATHRATTLE,FABLED,RUSH} | [x]<b>Fabled</b>, <b>Rush</b>. <b>Deathrattle:</b> Summon a Blood Fighter from your hand. It gains +5/+5 and attacks a random enemy.
+   token TIME_850e       ENCHANTMENT 0         Crimson Blood                      [] {} | +5/+5.
+   token TIME_850t       MINION  7/7/7     Broll, Blood Fighter               [] {DEATHRATTLE,TAUNT} | [x]<b>Taunt</b> <b>Deathrattle:</b> Summon a Blood Fighter from your hand. Give it +5/+5 and <b>Taunt</b>.
+   token TIME_850t1      MINION  7/7/7     Valeera, Blood Fighter             [] {DEATHRATTLE,ELUSIVE} | [x]<b>Elusive</b> <b>Deathrattle:</b> Summon a Blood Fighter from your hand. Give it +5/+5 and <b>Elusive</b>.
+TIME_870        SPELL   5         Gladiatorial Combat                [] {} | [x]Summon a random minion from your deck. Summon a 5/5 Tiger with <b>Stealth</b> for your opponent.
+   token TIME_870t       MINION  5/5/5     Coliseum Tiger                     [BEAST] {STEALTH} | <b>Stealth</b>
+TIME_871        MINION  5/2/6     Heir of Hereafter                  [DRAGON] {BATTLECRY,TAUNT} | [x]<b>Taunt</b> <b>Battlecry:</b> Gain +2/+2 for each damaged minion.
+   token TIME_871e       ENCHANTMENT 0         Bloodthirsty                       [] {} | +2/+2.
+TIME_872        MINION  8/13/13   Undefeated Champion                [] {BATTLECRY,RUSH} | [x]<b>Rush</b>. <b>Battlecry:</b> Fill your opponent's board with __random 1-Cost minions.
+TIME_873        SPELL   1         Unleash the Crocolisks             [] {} | Gain 10 Armor. Summon two 2/3 Beasts for your opponent.
+   token TIME_873t       MINION  2/2/3     Coliseum Crocolisk                 [BEAST] {} | 

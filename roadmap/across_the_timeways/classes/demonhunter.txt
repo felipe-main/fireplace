@@ -1,0 +1,26 @@
+=== DEMONHUNTER (10 collectible) ===
+TIME_020        MINION  2/12/12   Broxigar                           [] {CHARGE,FABLED} | [x]<b>Fabled, Charge</b> <b>Start of Game:</b> Disappear. Kill all 4 Demons from Argus to reappear in hand.
+   token TIME_020t1      WEAPON  3/3/0     Axe of Cenarius                    [] {LIFESTEAL} | [x]<b>Lifesteal</b> After your hero attacks and kills a minion, draw a Portal to Argus.
+   token TIME_020t2      SPELL   0         First Portal to Argus              [] {} | [x]Summon a 1/1 Demon for your opponent. When it dies, draw a card and shuffle the next Portal into your deck.
+   token TIME_020t2t     MINION  1/1/1     Fleeing Ur'zul                     [DEMON] {} | [x]<b>Deathrattle:</b> Your opponent draws a card. Shuffle the Second Portal to Argus into their deck.
+   token TIME_020t3      SPELL   0         Second Portal to Argus             [] {} | [x]Summon a 2/1 Demon for your opponent. When it dies, draw a card and shuffle the next Portal into your deck.
+   token TIME_020t3t     MINION  2/2/1     Fleeing Incubus                    [DEMON] {} | [x]<b>Deathrattle:</b> Your opponent draws a card. Shuffle the Third Portal to Argus into their deck.
+   token TIME_020t4      SPELL   0         Third Portal to Argus              [] {} | [x]Summon a 3/1 Demon for your opponent. When it dies, draw a card and shuffle the next Portal into your deck.
+   token TIME_020t4t     MINION  3/3/1     Fleeing Wrathguard                 [DEMON] {} | [x]<b>Deathrattle:</b> Your opponent draws a card. Shuffle the Final Portal to Argus into their deck.
+   token TIME_020t5      SPELL   0         Final Portal to Argus              [] {} | Summon a 4/1 Demon for your opponent. When it dies, Broxigar reappears in your hand.
+   token TIME_020t5t     MINION  4/4/1     Fleeing Terrorguard                [DEMON] {} | <b>Deathrattle:</b> Broxigar reappears in your opponent's hand.
+TIME_021        MINION  5/5/4     Doomsday Prepper                   [] {OUTCAST} | <b>Outcast:</b> Your hero is <b>Immune</b> until your next turn.
+TIME_022        MINION  8/7/9     Perennial Serpent                  [BEAST] {RUSH} | [x]<b>Rush</b> Costs (4) less if a minion is <b>Dormant</b>.
+TIME_441        SPELL   4         Aeon Rend                          [] {REWIND} | <b>Rewind</b> Deal $4 damage to two random enemies.
+TIME_442        MINION  4/2/6     Timeway Warden                     [] {BATTLECRY,DEATHRATTLE} | [x]<b>Battlecry:</b> Imprison an enemy minion. It goes <b>Dormant</b> for 10,000 turns. ___<b>Deathrattle:</b> Awaken it.
+   token TIME_442e       ENCHANTMENT 0         Eternal Imprisonment               [] {} | <b>Dormant</b>. Awaken in @ |4(turn, turns).
+TIME_443        SPELL   4         Hounds of Fury                     [] {} | [x]Summon two 3/3 Demons. If your deck has no minions, they attack the lowest Health enemy.
+   token TIME_443t       MINION  3/3/3     Sargeran Felhound                  [DEMON] {} | 
+   token TIME_443t2      MINION  3/3/3     Sargeran Felhound                  [DEMON] {} | 
+TIME_444        WEAPON  1/2/0     Time-Lost Glaive                   [] {DEATHRATTLE} | <b>Deathrattle:</b> Get a random Demon from the past.
+TIME_446        LOCATION 6         The Eternal Hold                   [] {} | [x]Get a Demon that costs (5) or more. If your deck has no minions, your next one costs (0).
+   token TIME_446e       ENCHANTMENT 0         Jailbreak                          [] {} | Your next minion costs (0).
+TIME_448        SPELL   2         Solitude                           [] {DISCOVER} | [x]<b>Discover</b> a minion. If your deck has no minions, reduce the Cost of any in your hand by (2).
+TIME_449        SPELL   3         Lasting Legacy                     [] {} | [x]Give your hero +4 Attack this turn. If your deck has no minions, give any in hand +4 Attack.
+   token TIME_449e1      ENCHANTMENT 0         Broxigar's Honor                   [] {} | +4 Attack this turn.
+   token TIME_449e2      ENCHANTMENT 0         Broxigar's Legacy                  [] {} | +4 Attack.

@@ -1,0 +1,17 @@
+=== SHAMAN (10 collectible) ===
+TIME_013        MINION  4/2/6     Farseer Wo                         [] {DISCOVER,ELUSIVE} | [x]<b>Elusive</b> After you cast a spell, <b>Discover</b> a Nature spell from the past.
+TIME_014        SPELL   6         Instant Multiverse                 [] {OVERLOAD,REWIND} | <b>Rewind</b> Summon 12 Mana worth of random minions. <b>Overload:</b> (3)
+TIME_209        MINION  5/3/2     Muradin, High King                 [] {BATTLECRY,DEATHRATTLE,FABLED,RUSH} | [x]<b>Fabled</b>, <b>Rush</b>. <b>Battlecry:</b> Bring the High King's Hammer to ME! <b>Deathrattle:</b> Add it to your hand.
+   token TIME_209e       ENCHANTMENT 0         Hammer of the High King            [] {} | Holding the High King's Hammer. <b>Deathrattle:</b> Add it to your hand.
+   token TIME_209t       WEAPON  6/3/0     High King's Hammer                 [] {DEATHRATTLE} | [x]<b>Windfury</b> <b>Deathrattle:</b> Shuffle this into your deck with +2 _Attack permanently.
+   token TIME_209t2      SPELL   3         Avatar Form                        [] {} | [x]Give a friendly character +2 Attack and "After this attacks, deal 2 damage to all enemies" this turn.
+   token TIME_209t2e     ENCHANTMENT 0         Avatar Form                        [] {} | +2 Attack and After this attacks, deal 2 damage to all enemies this turn.
+TIME_212        SPELL   1         Lightning Rod                      [] {} | Deal $2 damage to a friendly minion to deal $4 damage to a random enemy minion.
+TIME_213        MINION  2/2/3     Primordial Overseer                [] {BATTLECRY} | [x]<b>Battlecry:</b> If you've cast a Nature spell while holding this, gain +1/+1 and draw a card.
+TIME_214        MINION  2/1/4     Flux Revenant                      [ELEMENTAL] {TAUNT} | [x]<b>Taunt</b> Whenever you would damage this with a Nature spell, it gains +2/+1 instead.
+   token TIME_214e       ENCHANTMENT 0         Flux Overcapacity                  [] {} | +2/+1.
+TIME_215        SPELL   2         Thunderquake                       [] {} | [x]Deal $1 damage to all minions. Get a Static Shock.
+TIME_216        SPELL   3         Nascent Bolt                       [] {} | Deal $5 damage to a minion. If it survives, draw 2 cards.
+TIME_217        MINION  5/5/5     Stormrook                          [ELEMENTAL,BEAST] {} | [x]Whenever you would damage this with a Nature spell, summon a random __5-Cost minion instead.
+TIME_218        SPELL   0         Static Shock                       [] {} | Deal $1 damage to a minion. Give your hero +1 Attack this turn.
+   token TIME_218e       ENCHANTMENT 0         Statically Charged                 [] {} | +1 Attack this turn.

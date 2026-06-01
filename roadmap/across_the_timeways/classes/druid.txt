@@ -1,0 +1,22 @@
+=== DRUID (10 collectible) ===
+TIME_023        SPELL   3         Contingency                        [] {} | Draw the bottom two cards from your deck.
+TIME_033        MINION  6/3/5     Druid of Regrowth                  [] {BATTLECRY,REWIND} | <b>Rewind</b> <b>Battlecry:</b> Cast 2 random Nature spells.
+TIME_211        MINION  5/5/5     Lady Azshara                       [] {FABLED} | [x]<b>Fabled</b>. <b>Choose One -</b> Empower Zin-Azshari; or The Well of Eternity. <i>(The __other gets destroyed!)</i>
+   token TIME_211a       SPELL   5         Empower Zin-Azshari                [] {} | [x]The minions summoned by Zin-Azshari will have doubled stats. Destroy The Well of Eternity.
+   token TIME_211b       SPELL   5         Empower the Well                   [] {} | The spells created by The Well of Eternity will cast twice. Destroy Zin-Azshari.
+   token TIME_211t1      LOCATION 4         The Well of Eternity               [] {} | Fill your hand with random <b>Temporary</b> spells.
+   token TIME_211t1t     LOCATION 4         The Well of Eternity               [] {} | [x]Fill your hand with random <b>Temporary</b> spells. They cast twice.
+   token TIME_211t1te    ENCHANTMENT 0         Eternalized                        [] {} | Casts twice.
+   token TIME_211t2      LOCATION 4         Zin-Azshari                        [] {} | Summon a copy of a friendly minion.
+   token TIME_211t2t     LOCATION 4         Zin-Azshari                        [] {} | Summon a copy of a friendly minion with its stats doubled.
+   token TIME_211t2te    ENCHANTMENT 0         The City's Strength                [] {} | Doubled stats.
+TIME_701        SPELL   1         Waveshaping                        [] {DISCOVER} | <b>Discover</b> a card from your deck. The others get put on the bottom.
+TIME_702        SPELL   2         Ebb and Flow                       [] {} | Deal $3 damage. If you played a minion while holding this, gain 5 Armor.
+TIME_703        MINION  5/5/5     Endangered Dodo                    [BEAST] {BATTLECRY,TAUNT} | [x]<b>Taunt</b> <b>Battlecry:</b> If you have 10 or less Health, gain +5/+5 and ___summon a copy of this.
+   token TIME_703e       ENCHANTMENT 0         Endangered                         [] {} | +5/+5.
+TIME_704        MINION  8/6/6     Highborne Mentor                   [] {BATTLECRY,DISCOVER} | [x]<b>Battlecry:</b> Get a 2/2 Pupil. <b>Discover</b> a spell that costs (7) or more from the past to teach it.
+   token TIME_704t       MINION  2/2/2     Highborne Pupil                    [] {BATTLECRY} | <b>Battlecry:</b> Cast {0}.
+TIME_705        MINION  6/4/7     Krona, Keeper of Eons              [] {BATTLECRY,TAUNT} | [x]<b>Taunt</b> <b>Battlecry:</b> Set the Costs of the bottom 5 cards of your deck to (1).
+TIME_707        SPELL   2         Alternate Reality                  [] {} | [x]Replace your hand and deck with random <b>Choose One</b> cards from the past. They cost (1) less.
+TIME_730        MINION  3/3/4     Kaldorei Cultivator                [] {BATTLECRY,DISCOVER} | [x]<b>Battlecry:</b> <b>Discover</b> 2 Beasts. Put them on the bottom of your deck with +5/+5.
+   token TIME_730e       ENCHANTMENT 0         Nurtured                           [] {} | +5/+5.

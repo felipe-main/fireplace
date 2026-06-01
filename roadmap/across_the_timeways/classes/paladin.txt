@@ -1,0 +1,24 @@
+=== PALADIN (10 collectible) ===
+TIME_009        MINION  8/6/6     Gelbin of Tomorrow                 [MECHANICAL] {BATTLECRY,FABLED} | [x]<b>Fabled</b> <b>Battlecry:</b> Put one of each Aura from your deck into the battlefield.
+   token TIME_009t1      SPELL   4         Gnomish Aura                       [] {} | [x]<b>Tradeable</b> At the end of your turn, restore #4 Health to all your characters. Lasts @ turns.
+   token TIME_009t2      SPELL   5         Mekkatorque's Aura                 [] {} | [x]<b>Tradeable</b>. At the end of your turn, give a random friendly minion +4/+4 and <b>Divine Shield</b>. Lasts @ turns.
+   token TIME_009t2e     ENCHANTMENT 0         For Gnomeregan!                    [] {} | +4/+4.
+TIME_015        MINION  2/2/1     Hardlight Protector                [MECHANICAL] {BATTLECRY,DIVINE_SHIELD} | [x]<b>Divine Shield</b> <b>Battlecry:</b> Restore #3 Health to your hero and give them <b>Divine Shield</b>.
+TIME_016        SPELL   3         Neon Innovation                    [] {DISCOVER} | <b>Discover</b> a Paladin Mech from the past. Give it +5/+5.
+   token TIME_016e       ENCHANTMENT 0         Neon Sign                          [] {} | +5/+5.
+TIME_017        MINION  4/2/1     Tankgineer                         [MECHANICAL] {DEATHRATTLE,DIVINE_SHIELD} | [x]<b>Divine Shield</b> <b>Deathrattle:</b> Summon a 7/7 Tank with <b>Divine Shield</b>.
+TIME_018        SPELL   3         Mend the Timeline                  [] {REWIND} | <b>Rewind</b> Get 2 random Holy spells. Restore Health to your hero equal to their Costs.
+TIME_019        MINION  4/3/3     Manifested Timeways                [ELEMENTAL] {BATTLECRY} | <b>Battlecry:</b> If you control an Aura, deal 3 damage to all enemies.
+TIME_043        MINION  6/4/4     PMM Infinitizer                    [MECHANICAL] {BATTLECRY} | <b>Battlecry:</b> Set a friendly minion's Attack and Health to 8. It can't attack heroes this turn.
+   token TIME_043e       ENCHANTMENT 0         Infinitized                        [] {} | Stats changed to 8/8.
+   token TIME_043e2      ENCHANTMENT 0         Pacifitized                        [] {} | Can't attack heroes this turn.
+TIME_044        LOCATION 2         Past Gnomeregan                    [] {} | [x]Give a minion +2/+1. <i>Advance to the present!</i>
+   token TIME_044e       ENCHANTMENT 0         Gnomish Strength                   [] {} | +2/+1.
+   token TIME_044t1      LOCATION 2         Present Gnomeregan                 [] {} | [x]Give a minion +2/+1 and "<b>Deathrattle:</b> Deal 2 damage to the enemy hero." <i>Advance to the future!</i>
+   token TIME_044t1e     ENCHANTMENT 0         Leper Strength                     [] {} | <b>Deathrattle:</b> Deal 2 damage to the enemy hero.
+   token TIME_044t2      LOCATION 2         Future Gnomeregan                  [] {} | [x]Give a minion +2/+1, <b>Divine_Shield</b>, and "<b>Deathrattle:</b> Deal 2 damage to the enemy hero."
+TIME_700        SPELL   5         Chronological Aura                 [] {} | At the end of your turn, summon a 3/5 Dragon with <b>Taunt</b>. Lasts @ turns.
+   token TIME_700t       MINION  4/3/5     Chronological Drake                [DRAGON] {TAUNT} | <b>Taunt</b>
+TIME_706        MINION  2/2/3     The Fins Beyond Time               [MURLOC] {BATTLECRY} | [x]<b>Battlecry:</b> Replace your hand with your starting hand. Swap back at the end of your turn.
+   token TIME_706e2      ENCHANTMENT 0         Time Altered                       [] {} | Cleanup enchant for TIME_706
+   token TIME_706e3      ENCHANTMENT 0         Beyond Time                        [] {} | Your hand is swapped with your starting hand this turn.

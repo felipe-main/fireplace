@@ -1,0 +1,18 @@
+=== MAGE (10 collectible) ===
+TIME_000        SPELL   2         Semi-Stable Portal                 [] {REWIND} | <b>Rewind</b> Add a random minion to your hand. It costs (3) less.
+   token TIME_000ta      SPELL   0         Keep Timeline                      [] {} | Do nothing. <i>This timeline is perfect as-is!</i>
+   token TIME_000tb      SPELL   0         Rewind Timeline                    [] {REWIND} | <b>Rewind</b> the card's effect.
+TIME_006        SPELL   1         Mirror Dimension                   [] {} | Summon a 0/4 minion with <b>Taunt</b>. If you are holding a Dragon, summon another.
+   token TIME_006t1      MINION  1/0/4     Mirrored Mage                      [] {TAUNT} | <b>Taunt</b>
+TIME_852        MINION  5/2/8     Azure Queen Sindragosa             [DRAGON] {FABLED} | [x]<b>Fabled</b> If you control another Dragon, your Arcane spells cost (2) less.
+   token TIME_852t1      MINION  5/2/8     Azure King Malygos                 [DRAGON] {} | If you control another Dragon, your Arcane spells cast twice.
+   token TIME_852t3      SPELL   8         Azure Oathstone                    [] {} | Summon your Dragons that died this game.
+TIME_855        SPELL   3         Arcane Barrage                     [] {} | Deal $3 damage to an enemy and $2 damage to two other random ones.
+TIME_856        MINION  5/4/7     Algeth'ar Instructor               [DRAGON] {} | <b>Spell Damage +2</b>
+TIME_857        SPELL   4         Alter Time                         [] {DISCOVER} | <b>Discover</b> two Arcane spells from the past. They cost (2) less.
+TIME_858        MINION  7/5/5     Temporal Construct                 [ELEMENTAL] {BATTLECRY} | [x]<b>Battlecry:</b> Deal 5 damage to an enemy minion. Draw cards equal to the excess damage.
+TIME_859        SPELL   7         Anomalize                          [] {} | Summon a random 10 and 1-Cost minion. Scramble their stats.
+   token TIME_859e       ENCHANTMENT 0         Anomalized                         [] {} | Attack and Health scrambled.
+TIME_860        MINION  2/2/2     Faceless Enigma                    [] {BATTLECRY} | [x]<b>Battlecry:</b> Look at 2 random <b>Secrets</b>. Pick one to cast for yourself. The other casts for your opponent.
+TIME_861        MINION  4/4/4     Timelooper Toki                    [] {BATTLECRY} | [x]<b>Battlecry:</b> Get 4 random spells from the past. When you play ALL 4, get another Timelooper Toki.
+   token TIME_861e1      ENCHANTMENT 0         Looping Time                       [] {} | Play the 4 spells created by Toki to create Toki.

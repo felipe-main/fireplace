@@ -1,0 +1,27 @@
+=== DEATHKNIGHT (10 collectible) ===
+TIME_610        SPELL   6         Shadows of Yesterday               [] {REWIND} | <b>Rewind</b> Summon four 3/2 Shades. They each gain two random <b>Bonus Effects</b>.
+   token TIME_610t2      MINION  2/3/2     Anomalous Shade                    [UNDEAD] {} | 
+TIME_611        SPELL   2         Timestop                           [] {} | Deal $3 damage. <b>Freeze</b> two random enemy minions.
+TIME_612        SPELL   3         Blood Draw                         [] {DISCOVER} | <b>Discover</b> a spell. This costs Health instead of Mana.
+TIME_613        MINION  1/2/1     Cryofrozen Champion                [] {DEATHRATTLE} | <b>Deathrattle:</b> Get a random <b>Legendary</b> minion. Reduce its Cost by (1).
+TIME_614        MINION  3/3/4     Liferender                         [UNDEAD] {BATTLECRY} | <b>Battlecry:</b> If your hero's Health changed this turn, deal 6 damage to an enemy minion.
+TIME_615        SPELL   8         Forgotten Millennium               [] {} | Fill your hand with random Undead. They cost Health instead of Mana this turn.
+   token TIME_615e       ENCHANTMENT 0         Forgotten                          [] {} | Costs Health instead of Mana.
+TIME_616        SPELL   4         Memoriam Manifest                  [] {} | Summon the highest Cost friendly Undead that died this game.
+TIME_617        MINION  4/8/7     Chronochiller                      [UNDEAD] {} | You no longer draw a card at the start of your turn.
+TIME_618        MINION  4/5/3     Husk, Eternal Reaper               [UNDEAD] {BATTLECRY} | [x]<b>Battlecry:</b> Give your hero "<b>Deathrattle:</b> Spend up to 20 <b>Corpses</b> to resurrect with that much Health."
+   token TIME_618e       ENCHANTMENT 0         Eternal Life Player Enchant        [] {} | <b>Deathrattle:</b> Spend up to 20 <b>Corpses</b> to resurrect with that much Health.
+   token TIME_618e2      ENCHANTMENT 0         A Second Chance                    [] {} | Your hero has been resurrected.
+   token TIME_618t       SPELL   0         Eternal Life                       [] {} | <b>Deathrattle:</b> Spend up to 20 <b>Corpses</b> to resurrect with that much Health.
+TIME_619        MINION  4/4/5     Talanji of the Graves              [UNDEAD] {BATTLECRY,FABLED} | [x]<b>Fabled.</b> <b>Battlecry:</b> Draw Bwonsamdi <i>(or resurrect him if he has died)</i>. Choose a Boon to give him.
+   token TIME_619e       ENCHANTMENT 0         Boon of Power Player Ench          [] {} | Give Bwonsamdi <b>Taunt</b> <i>permanently</i>.
+   token TIME_619e2      ENCHANTMENT 0         Boon of Longevity Player Ench      [] {} | Give Bwonsamdi <b>Lifesteal</b> <i>permanently</i>.
+   token TIME_619e3      ENCHANTMENT 0         Boon of Speed Player Ench          [] {} | Give Bwonsamdi <b>Rush</b> <i>permanently</i>.
+   token TIME_619e4      ENCHANTMENT 0         Pact for Power                     [] {} | <b>Taunt</b>.
+   token TIME_619e5      ENCHANTMENT 0         Pact for Longevity                 [] {} | <b>Lifesteal</b>.
+   token TIME_619e6      ENCHANTMENT 0         Pact for Speed                     [] {} | <b>Rush</b>.
+   token TIME_619t       MINION  6/6/6     Bwonsamdi                          [UNDEAD] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Summon a random @-Cost minion. <i>(Any Boons given to ___Bwonsamdi carry over.)</i>
+   token TIME_619t2      SPELL   3         What Befell Zandalar               [] {} | [x]Deal $2 damage to all enemies. Choose a Boon to give to Bwonsamdi.
+   token TIME_619t3      SPELL   0         Boon of Power                      [] {} | Give Bwonsamdi <b>Taunt</b> <i>permanently</i>. Minions summoned by his <b>Deathrattle</b> cost (2) more.
+   token TIME_619t4      SPELL   0         Boon of Longevity                  [] {} | Give Bwonsamdi <b>Lifesteal</b> <i>permanently</i>. Minions summoned by his <b>Deathrattle</b> cost (2) more.
+   token TIME_619t5      SPELL   0         Boon of Speed                      [] {} | Give Bwonsamdi <b>Rush</b> <i>permanently</i>. Minions summoned by his <b>Deathrattle</b> cost (2) more.

@@ -1,0 +1,40 @@
+# NEW Lost City mini-set collectibles: 38
+# prefixes: {'DINO_': 38}
+DINO_130     MINION 2/0/2    DRUID         Longneck Egg                       | <b>Deathrattle:</b> Summon a 1/2 Beast. Give your minions +1/+1.
+DINO_131     MINION 6/2/2    WARLOCK       Possessed Animancer                | [x]<b>Deathrattle:</b> Summon a random Beast from your deck. Give it <b>Lifesteal</b>.
+DINO_132     MINION 8/6/10   WARLOCK       Asphyxiodon                        | [x]<b>Taunt</b>. At the end of your turn, deal 5 damage to a random enemy minion.
+DINO_136     SPELL  4        DEMONHUNTER   Horn of Feasting                   | Summon three 2/1 Raptors with <b>Rush</b>. <b>Outcast:</b> Give them <b>Immune</b> while attacking this turn.
+DINO_137     MINION 3/4/2    DEMONHUNTER   Skittish Saucier                   | <b>Battlecry:</b> Reduce the Cost of adjacent cards in your hand by (1).
+DINO_138     MINION 6/6/5    DEMONHUNTER   Diabolus Rex                       | <b>Kindred:</b> Deal 6 damage to your opponent's left and right-most minions.
+DINO_400     MINION 3/4/3    WARRIOR       Barricade Basher                   | [x]Whenever you gain Armor,  gain +2/+2 and attack a random enemy minion.
+DINO_401     MINION 8/5/12   WARRIOR       The Great Dracorex                 | [x]<b>Rush</b> After this attacks an enemy minion, it damages ALL other enemy minions.
+DINO_402     SPELL  8        WARLOCK       Bat Mask                           | Set a friendly minion's stats to 1/1. Fill your board with copies of it.
+DINO_403     SPELL  8        HUNTER        Devilsaur Mask                     | Set a minion's stats to 8/8. Give it <b>Charge</b>.
+DINO_404     MINION 2/3/2    PALADIN       Firegill                           | <b>Kindred:</b> Give your other minions <b>Rush</b>.
+DINO_405     SPELL  3        PALADIN       Hatching Ceremony                  | At the end of your next turn, give your minions +2/+2.
+DINO_406     SPELL  3        SHAMAN        Fire Breath                        | Deal $4 damage. Give your Elementals +1/+1.
+DINO_407     MINION 3/3/3    ROGUE         Mirrex, the Crystalline            | [x]While in your hand, this is a 3/3 copy of the last minion your opponent played.
+DINO_408     WEAPON 2/2/2    ROGUE         Crystal Tusk                       | [x]<b>Battlecry:</b> Shuffle the left- most card in your hand into your deck. <b>Deathrattle:</b> Draw 2 cards.
+DINO_409     MINION 7/3/6    MAGE          Techysaurus                        | [x]<b>Taunt</b>. Costs (1) less for each card you played this game that didn't start in your deck.
+DINO_410     MINION 3/0/3    NEUTRAL       The Egg of Khelos                  | [x]<b>Deathrattle:</b> Summon a slightly cracked Egg. <i>(Break 5 times to hatch into a 20/20 Beast!)</i>
+DINO_411     MINION 2/1/2    NEUTRAL       Holy Eggbearer                     | <b>Battlecry:</b> Draw a 0-Attack minion.
+DINO_412     MINION 2/0/4    SHAMAN        Tortotem                           | [x]At the end of your turn, get a random minion with multiple minion types.
+DINO_413     MINION 4/3/4    SHAMAN        Chillspine Stegodon                | [x]<b>Battlecry:</b> Deal 2 damage to two random enemy minions. _<b>Kindred:</b> And <b>Freeze</b> them.
+DINO_414     SPELL  5        MAGE          Tribute Dance                      | [x]Choose a minion. Choose a different minion to transform it into.
+DINO_415     SPELL  7        DEATHKNIGHT   Story of Umbra                     | [x]<b>Discover</b> a <b>Deathrattle</b> minion that costs (5) or more. Summon it and trigger its <b>Deathrattle</b>.
+DINO_416     MINION 5/5/4    DEATHKNIGHT   Hollow Direhorn                    | <b>Rush</b> After a friendly minion dies, spend 3 <b>Corpses</b> to gain <b>Reborn</b>.
+DINO_417     SPELL  1        DEATHKNIGHT   Soulrest Ceremony                  | [x]Give your minions +1 Attack and <b>Rush</b>. They die at the end of your turn.
+DINO_419     MINION 3/3/2    NEUTRAL       Herbivore Assistant                | <b>Battlecry:</b> Give a friendly Beast +2/+2 and <b>Rush</b>.
+DINO_421     MINION 9/9/9    DRUID         Seismopod                          | <b>Taunt</b>, <b>Elusive</b> <b>Deathrattle:</b> Give all minions in your hand and deck +3/+3.
+DINO_422     MINION 8/7/7    HUNTER        Ankylodon                          | [x]<b><b>Taunt</b>. Deathrattle:</b> Summon two random 3-Cost Beasts. _They attack random enemies._
+DINO_424     SPELL  8        PALADIN       Hero's Welcome                     | <b>Discover</b> a <b>Legendary</b> minion to summon. Set its stats to 10/10.
+DINO_426     SPELL  2        PRIEST        Ritual of Life                     | <b>Discover</b> a 3-Cost minion. Summon a 2/2 copy of it.
+DINO_427     MINION 3/1/3    ROGUE         Costume Merchant                   | [x]<b>Battlecry:</b> Get a random Mask from another class. _<b>Combo:</b> It costs (2) less.
+DINO_428     SPELL  7        PRIEST        Behemoth Mask                      | [x]Set a minion's stats to 8/10 and give it <b>Lifesteal</b>. Force a random enemy minion to attack it.
+DINO_429     SPELL  4        MAGE          Sheep Mask                         | Set a minion's stats to 1/1 and give it "<b>Deathrattle:</b> Deal 2 damage to all minions."
+DINO_430     MINION 7/2/2    NEUTRAL       Beast Speaker Taka                 | [x]<b>Battlecry:</b> <b>Discover</b> a ___<b>Legendary</b> Beast from any___ _class to gain its stats. __<b>Deathrattle:</b> Summon it.
+DINO_431     MINION 8/5/10   PRIEST        Atlasaurus                         | <b>Taunt</b>. <b>Deathrattle:</b> Summon a random <b>Taunt</b> minion that costs (5) or more.
+DINO_432     SPELL  4        DRUID         Panther Mask                       | Set a minion's stats to 5/4 and give it <b>Stealth</b>. Draw 2 cards.
+DINO_433     SPELL  7        WARRIOR       Guard Duty                         | Summon a random 6, 4, and 2-Cost <b>Taunt</b> minion.
+DINO_434     MINION 1/1/1    HUNTER        Raptor-Nest Nurse                  | [x]<b>Battlecry:</b> Get a random 1-Cost minion. <b><b>Deathrattle:</b> </b>Get a random 1-Cost spell.
+DINO_435     MINION 5/3/4    NEUTRAL       Crater Experiment                  | <b>Kindred:</b> Summon a copy of this.

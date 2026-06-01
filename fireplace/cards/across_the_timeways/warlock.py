@@ -376,7 +376,9 @@ class _AcolyteRestore(TargetedAction):
         removed = False
         for b in list(victim.buffs):
             if b.id == "END_018e":
-                b.destroy()
+                # Enchantments are removed via remove(), not destroy() (which is
+                # a minion/weapon method) — calling destroy() here crashes.
+                b.remove()
                 removed = True
         if removed and victim.zone == Zone.HAND:
             source.game.queue_actions(source, [Buff(victim, "END_018e2")])

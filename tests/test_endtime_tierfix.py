@@ -40,3 +40,20 @@ def test_remnant_of_rage_cost_counts_both_sides_deaths():
 
     # 7 - 3 = 4, counting both sides (not just the controller's one death).
     assert remnant.cost == 4
+
+
+def test_acolyte_of_infinity_deathrattle_restores_cost():
+    # END_018: Battlecry sets a random hand card's Cost to INFINITY; Deathrattle
+    # restores it. The deathrattle must remove() the enchant, not destroy() it
+    # (the latter crashed on the Enchantment — surfaced by the soak).
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    for c in list(p1.hand):
+        c.discard()
+    victim = p1.give("CS2_029")  # Fireball, cost 4
+    acolyte = p1.give("END_018")
+    acolyte.play()                      # only other hand card is the Fireball
+    assert victim.cost >= 2147483647    # set to INFINITY
+    acolyte.destroy()
+    game.process_deaths()               # deathrattle restores cost (no crash)
+    assert victim.cost == 4

@@ -160,7 +160,10 @@ class TIME_441:
     # Rewind
     # Deal $4 damage to two random enemies.
     # (Rewind is engine-handled — only the base effect lives here.)
-    play = Hit(RANDOM_ENEMY_CHARACTER, 4) * 2
+    # Multiply the SELECTOR (not the action) so the two 4-damage hits land on
+    # two DISTINCT random enemies (random.sample), matching "two random enemies"
+    # — the action*N form would re-roll and could hit the same target twice.
+    play = Hit(RANDOM_ENEMY_CHARACTER * 2, 4)
 
 
 class _Imprison(TargetedAction):

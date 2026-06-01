@@ -115,15 +115,28 @@ class TIME_432:
     ).then(GenericChoice(CONTROLLER, Copy(RANDOM(DeDuplicate(ENEMY_DECK)) * 3)))
 
 
+class _CeaseToExist(TargetedAction):
+    """Pick ONE random enemy minion, then Silence AND Destroy that same minion
+    (the Silence strips its deathrattle before it is destroyed). Capturing the
+    victim once avoids the two-independent-rolls bug where a tuple of
+    Silence(RANDOM(...)) / Destroy(RANDOM(...)) hits two different minions."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        victims = (ENEMY_MINIONS - DEAD).eval(source.game, source)
+        if not victims:
+            return
+        victim = source.game.random.choice(victims)
+        source.game.cheat_action(source, [Silence(victim), Destroy(victim)])
+
+
 class TIME_433:
     """Cease to Exist"""
 
     # Rewind. Silence and destroy a random enemy minion. (Rewind is
     # engine-handled via GameTag.REWIND — only the base effect lives here.)
-    play = (
-        Silence(RANDOM(ENEMY_MINIONS)),
-        Destroy(RANDOM(ENEMY_MINIONS)),
-    )
+    play = _CeaseToExist(CONTROLLER)
 
 
 class TIME_447:

@@ -201,6 +201,9 @@ class _FillTemporarySpells(TargetedAction):
             spell.tags[enums.TEMPORARY] = True
             if doubled:
                 source.game.cheat_action(source, [Buff(spell, "TIME_211t1te")])
+                # "They cast twice": flag the spell so the engine fires its play
+                # effect an extra time (per-spell, no player-wide aura needed).
+                spell._casts_twice_self = True
 
 
 class _SummonDoubledCopy(TargetedAction):

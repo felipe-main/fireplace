@@ -1897,6 +1897,12 @@ class Battlecry(TargetedAction):
         if player.spells_cast_twice and card.type == CardType.SPELL:
             return True
 
+        # Across the Timeways — the empowered Well of Eternity (Lady Azshara)
+        # marks each spell it creates so that spell alone casts twice, even
+        # without the player-wide spells_cast_twice aura.
+        if card.type == CardType.SPELL and getattr(card, "_casts_twice_self", False):
+            return True
+
         # Spirit of the Shark
         if card.type == CardType.MINION:
             if player.minion_extra_combos and card.has_combo and player.combo:

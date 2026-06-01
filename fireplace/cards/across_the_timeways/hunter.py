@@ -100,12 +100,14 @@ class _UntimelyResummon(TargetedAction):
             target = target[0] if target else None
         if target is None:
             return
-        # "The turn after being played": the minion lived through at least one
-        # turn. turn_played is the (global) turn index it entered play; for
-        # this to fire it must die on a strictly later turn.
+        # "The turn after being played": the minion must die on the SINGLE turn
+        # immediately following the one it was played on (turn_played + 1), not
+        # any later turn. turn_played is the global turn index it entered play.
+        # (Secrets are already suppressed on the controller's own turns, so the
+        # qualifying death lands on the opponent's immediately-next turn.)
         if getattr(target, "turn_played", -1) < 0:
             return
-        if target.turn_played >= source.game.turn:
+        if not (target.turn_played < source.game.turn <= target.turn_played + 1):
             return
         ctrl = source.controller
         if ctrl.minion_slots <= 0:

@@ -187,26 +187,34 @@ def test_perennial_serpent_cost_reduction_with_dormant():
 def test_aeon_rend_base_two_hits():
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1, p2 = game.player1, game.player2
-    # Single enemy (hero) with big HP absorbs both random hits.
-    p2.hero.max_health = 80
+    # Exactly two enemy characters (hero + one minion): "two random enemies"
+    # picks BOTH (distinct), so each takes exactly 4.
+    minion = p2.summon("CS2_182")  # Chillwind Yeti 4/5
+    minion.max_health = 80
+    minion.set_current_health(80)
     rend = p1.give("TIME_441")
     rend.play()
     keep = next(c for c in p1.choice.cards if c.id == "TIME_000ta")
     p1.choice.choose(keep)
-    assert p2.hero.damage == 8  # exactly 4 + 4
+    assert p2.hero.damage == 4
+    assert minion.damage == 4
 
 
 def test_aeon_rend_rewind_reruns():
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1, p2 = game.player1, game.player2
-    p2.hero.max_health = 80
+    minion = p2.summon("CS2_182")  # Chillwind Yeti
+    minion.max_health = 80
+    minion.set_current_health(80)
     rend = p1.give("TIME_441")
     rend.play()
     rewind = next(c for c in p1.choice.cards if c.id == "TIME_000tb")
     p1.choice.choose(rewind)
     while p1.choice:
         p1.choice.choose(p1.choice.cards[0])
-    assert p2.hero.damage == 16  # 8 from base + 8 from rewind re-run
+    # Both enemies hit on the base cast AND the rewound re-run: 4 + 4 each.
+    assert p2.hero.damage == 8
+    assert minion.damage == 8
 
 
 # ---------------------------------------------------------------------------

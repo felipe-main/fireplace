@@ -77,9 +77,24 @@ class DAL_431:
             horror = self.player.card("DAL_431t")
             horror.custom_card = True
 
+            def _play_actions(play, card):
+                # A card's `play` may be a tuple/list of actions, a single
+                # action, or a generator method (def play(self): yield ...).
+                # Materialize each into a list of action objects (their SELF
+                # selectors resolve to the horror at play time, as before).
+                if callable(play):
+                    result = play(card)
+                    if result is None:
+                        return []
+                    return list(result) if hasattr(result, "__iter__") else [result]
+                if isinstance(play, (list, tuple)):
+                    return list(play)
+                return [play] if play is not None else []
+
             def create_custom_card(horror):
-                horror.data.scripts.play = (
-                    card1.data.scripts.play + card2.data.scripts.play
+                horror.data.scripts.play = tuple(
+                    _play_actions(card1.data.scripts.play, card1)
+                    + _play_actions(card2.data.scripts.play, card2)
                 )
                 horror.requirements = card1.requirements | card2.requirements
                 horror.tags[GameTag.CARDTEXT_ENTITY_0] = card1.data.name

@@ -101,6 +101,9 @@ class Player(Entity, TargetableByAuras):
         # bumps this. Imbued Hero Powers scale off this level; payoff cards
         # (e.g. EDR_860, EDR_888) gate on it.
         self.imbues_this_game = 0
+        # Cataclysm — Herald counter (advances Deathwing) and Shatter counter.
+        self.heralds_this_game = 0
+        self.shatters_this_game = 0
         self.used_mana = 0
         self.minions_killed_this_turn = 0
         self.minions_played_this_turn = 0

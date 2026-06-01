@@ -2425,6 +2425,11 @@ class Draw(TargetedAction):
             card.zone = Zone.HAND
             card.turn_drawn = source.game.turn
             source.controller.cards_drawn_this_turn += 1
+            # Cataclysm — Shatter: a SHATTER card shatters when drawn, splitting
+            # into its two "Shattered" half-cards which replace it in hand.
+            if card.data.tags.get(GameTag.SHATTER, 0):
+                _shatter_into_halves(card, target)
+                return [card]
             # The Great Dark Beyond — The Ceaseless Expanse cost ledger.
             source.game.cards_dpd_this_game = (
                 getattr(source.game, "cards_dpd_this_game", 0) + 1
@@ -3571,6 +3576,40 @@ class Imbue(TargetedAction):
         new_power.imbue_level = player.imbues_this_game
         source.game.queue_actions(player, [Summon(player, new_power)])
         return new_power
+
+
+class Herald(TargetedAction):
+    """Cataclysm — "Herald".
+
+    Advances the controller toward Deathwing: bumps the per-game
+    ``heralds_this_game`` counter. Deathwing, Worldbreaker (CATA_190h) reads it
+    to choose more Cataclysms to unleash and to reduce its own Cost, and other
+    Herald payoffs (e.g. Ultraxion) read it too. Like Imbue, this is purely a
+    counter — the payoff lives on the cards that consume it.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        player = target if hasattr(target, "heralds_this_game") else target.controller
+        player.heralds_this_game += 1
+        log.info("%r heralds (now %i)", player, player.heralds_this_game)
+        source.game.manager.targeted_action(self, source, player)
+
+
+def _shatter_into_halves(card, player):
+    """Cataclysm — Shatter: replace a SHATTER card with its two "Shattered"
+    half-cards (``<id>t`` + ``<id>t2``) in the player's hand, and bump the
+    per-game shatter counter. The full card never resolves; you play the halves
+    independently."""
+    from .cards import db
+
+    base = card.id
+    card.discard()
+    for half in (base + "t", base + "t2"):
+        if half in db:
+            player.game.cheat_action(player, [Give(player, half)])
+    player.shatters_this_game += 1
 
 
 class MultipleChoice(TargetedAction):

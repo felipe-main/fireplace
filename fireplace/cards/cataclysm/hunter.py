@@ -156,7 +156,9 @@ class _EarthenRoarSecond(TargetedAction):
     def do(self, source, first):
         ctrl = source.controller
         holding_dragon = any(
-            c.race == Race.DRAGON for c in ctrl.hand if c is not source
+            c.type == CardType.MINION and Race.DRAGON in c.races
+            for c in ctrl.hand
+            if c is not source
         )
         if not holding_dragon:
             return

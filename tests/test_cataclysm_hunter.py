@@ -225,6 +225,23 @@ def test_earthen_roar_picks_second_when_holding_dragon():
     assert e2.health == 1
 
 
+def test_earthen_roar_with_spell_in_hand_no_crash():
+    # Regression: the holding-a-Dragon check iterated c.race over the whole
+    # hand, crashing on Spells (no .race attr). A non-Dragon hand (incl. a
+    # spell) must not crash and must NOT trigger the second pick.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    e1 = game.player2.summon("CS2_182")  # 4/5
+    e2 = game.player2.summon("CS2_182")  # 4/5
+    p1.give("CS2_029")  # Fireball — a spell in hand (no .race)
+    roar = p1.give("CATA_554")
+    roar.play(target=e1)
+    _resolve_choices(p1)
+    assert e1.health == 1
+    assert e2.health == 5  # second pick NOT triggered (no Dragon held)
+
+
 # ---------------------------------------------------------------------------
 # Sylvanas's Triumph
 # ---------------------------------------------------------------------------

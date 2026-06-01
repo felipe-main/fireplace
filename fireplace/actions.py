@@ -998,9 +998,18 @@ class Play(GameAction):
             # gates this whole block), so a Rewind battlecry that fizzled for
             # lack of a target never offers a pointless rewind.
             if trigger_battlecry and card.data.tags.get(GameTag.REWIND, 0):
-                keep = player.card("TIME_000ta", source=card)
-                rewind = player.card("TIME_000tb", source=card)
-                source.game.queue_actions(card, [_RewindChoice(player, [keep, rewind])])
+                # Across the Timeways mini-set — Morchie (END_036): "Your Rewinds
+                # keep BOTH potential outcomes." While a Morchie is in play the
+                # player skips the Keep/Rewind choice and gets both: the effect
+                # already resolved (Keep), and it re-runs once more (Rewind).
+                if any(m.id == "END_036" for m in player.field):
+                    source.game.queue_actions(card, [Battlecry(card, card.target)])
+                else:
+                    keep = player.card("TIME_000ta", source=card)
+                    rewind = player.card("TIME_000tb", source=card)
+                    source.game.queue_actions(
+                        card, [_RewindChoice(player, [keep, rewind])]
+                    )
 
         player.combo = True
         player.last_card_played = card

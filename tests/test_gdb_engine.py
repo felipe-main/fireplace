@@ -102,13 +102,13 @@ def test_starship_permanent_is_immune_and_indestructible_while_building():
 def test_starship_launch_combines_stats_and_keywords():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
-    p1.summon("GDB_100").destroy()  # Taunt piece
+    p1.summon("GDB_109").destroy()  # Lifesteal piece (GDB_100 lost its Taunt)
     game.process_deaths()
     p1.summon("GDB_101").destroy()  # Divine Shield piece
     game.process_deaths()
     ship = p1.starship
-    a = p1.card("GDB_100").atk + p1.card("GDB_101").atk
-    h = p1.card("GDB_100").health + p1.card("GDB_101").health
+    a = p1.card("GDB_109").atk + p1.card("GDB_101").atk
+    h = p1.card("GDB_109").health + p1.card("GDB_101").health
 
     game.queue_actions(p1.hero, [LaunchStarship(p1)])
     # Launched: a real, attackable minion with combined stats + keywords.
@@ -116,7 +116,7 @@ def test_starship_launch_combines_stats_and_keywords():
     assert not ship.dormant
     assert not ship.cant_be_damaged
     assert (ship.atk, ship.max_health) == (a, h)
-    assert ship.taunt          # from GDB_100
+    assert ship.lifesteal      # from GDB_109
     assert ship.divine_shield  # from GDB_101
 
 

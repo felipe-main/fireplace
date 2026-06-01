@@ -15,19 +15,18 @@ import fireplace.cards as _cards
 
 
 # ---------------------------------------------------------------------------
-# GDB_100 — Arkonite Defense Crystal: Taunt. Deathrattle: Gain 6 Armor.
-# Starship Piece.
+# GDB_100 — Arkonite Defense Crystal: Deathrattle: Gain 4 Armor.
+# Starship Piece. (Patch 34.2 dropped the Taunt and rebalanced armor 6 -> 4.)
 # ---------------------------------------------------------------------------
 def test_arkonite_defense_crystal():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     crystal = p1.summon("GDB_100")
-    assert crystal.taunt
     assert _cards.db["GDB_100"].tags.get(GameTag.STARSHIP_PIECE, 0)
     p1.hero.armor = 0
     crystal.destroy()
     game.process_deaths()
-    assert p1.hero.armor == 6
+    assert p1.hero.armor == 4
 
 
 # ---------------------------------------------------------------------------

@@ -383,8 +383,9 @@ class _CastProtocol(TargetedAction):
 class GDB_100:
     """Arkonite Defense Crystal"""
 
-    # Taunt (data). Deathrattle: Gain 6 Armor. Starship Piece.
-    deathrattle = GainArmor(FRIENDLY_HERO, 6)
+    # Deathrattle: Gain 4 Armor. Starship Piece. (Patch 34.2 data dropped the
+    # Taunt and rebalanced the armor 6 -> 4.)
+    deathrattle = GainArmor(FRIENDLY_HERO, 4)
 
 
 class GDB_120:

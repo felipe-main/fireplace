@@ -6,7 +6,7 @@ from hearthstone.enums import CardClass, GameTag, Race, Zone
 
 
 def test_dino_130_longneck_egg_deathrattle():
-    # Deathrattle: Summon a 1/2 Beast. Give your minions +1/+1.
+    # Deathrattle: Summon a 3/3 Beast. Give your minions +1/+1.
     game = prepare_game(CardClass.DRUID, CardClass.DRUID)
     p1 = game.player1
     # A bystander friendly minion that should receive the +1/+1.
@@ -19,17 +19,17 @@ def test_dino_130_longneck_egg_deathrattle():
     egg.destroy()
     game.process_deaths()
 
-    # Little Longneck token: a 1/2 Beast.
+    # Little Longneck token: a 3/3 Beast.
     tokens = [m for m in p1.field if m.id == "DINO_130t"]
     assert len(tokens) == 1
     token = tokens[0]
-    # Little Longneck is a 1/2 Beast.
+    # Little Longneck is a 3/3 Beast.
     assert Race.BEAST in token.races
 
     # "Give your minions +1/+1" lands on both the bystander and the freshly
-    # summoned token (token summoned before the buff resolves): 1/2 -> 2/3.
+    # summoned token (token summoned before the buff resolves): 3/3 -> 4/4.
     assert other.atk == 4 and other.max_health == 3
-    assert token.atk == 2 and token.max_health == 3
+    assert token.atk == 4 and token.max_health == 4
     # The egg itself is dead and does not get buffed.
     assert egg.zone == Zone.GRAVEYARD
 

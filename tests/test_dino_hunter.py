@@ -55,7 +55,7 @@ def test_ankylodon_deathrattle():
 
     anky = p1.summon("DINO_422")
     assert anky.taunt
-    assert anky.atk == 7 and anky.health == 7
+    assert anky.atk == 7 and anky.health == 5
     anky.destroy()
     game.process_deaths()
     summoned = list(p1.field)

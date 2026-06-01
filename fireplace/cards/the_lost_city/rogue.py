@@ -426,12 +426,12 @@ class _MirrexHandUpdate(TargetedAction):
 class DINO_407:
     """Mirrex, the Crystalline"""
 
-    # While in your hand, this is a 3/3 copy of the last minion your opponent
+    # While in your hand, this is a 3/4 copy of the last minion your opponent
     # played. (Engine model: a Hand.update + a Play.do hook continuously
-    # morph this — and every copy it becomes — into a 3/3 clone of the
+    # morph this — and every copy it becomes — into a 3/4 clone of the
     # opponent's most-recently-played minion, re-syncing whenever the
     # opponent plays a new one. The DINO_407e2 "Crystalline" enchant pins the
-    # copy's stats to 3/3.)
+    # copy's stats to 3/4.)
     class Hand:
         update = _MirrexHandUpdate(SELF)
 
@@ -439,9 +439,9 @@ class DINO_407:
 class DINO_407e2:
     """Crystalline"""
 
-    # Sets the copied minion's stats to 3/3 (Mirrex is always a 3/3 copy).
+    # Sets the copied minion's stats to 3/4 (Mirrex is always a 3/4 copy).
     atk = lambda self, i: 3
-    max_health = lambda self, i: 3
+    max_health = lambda self, i: 4
 
 
 ##

@@ -1,6 +1,6 @@
 """The Lost City of Un'Goro — MINI-SET (Dinosaurs, DINO_) — Rogue cards.
 
-DINO_407 Mirrex, the Crystalline — in-hand 3/3 copy of opponent's last minion
+DINO_407 Mirrex, the Crystalline — in-hand 3/4 copy of opponent's last minion
 DINO_408 Crystal Tusk         — weapon: shuffle leftmost / deathrattle draw 2
 DINO_427 Costume Merchant     — get a Mask from another class; Combo (2) less
 """
@@ -28,7 +28,7 @@ def _clear_hand(player):
 
 # ---------------------------------------------------------------------------
 # DINO_407 Mirrex, the Crystalline
-# While in your hand, this is a 3/3 copy of the last minion your opponent
+# While in your hand, this is a 3/4 copy of the last minion your opponent
 # played.
 # ---------------------------------------------------------------------------
 def test_mirrex_copies_opponent_last_minion_as_3_3():
@@ -36,9 +36,9 @@ def test_mirrex_copies_opponent_last_minion_as_3_3():
     p1, p2 = game.player1, game.player2
 
     mirrex = p1.give("DINO_407")
-    # Before the opponent has played any minion, Mirrex is its own 3/3 self.
+    # Before the opponent has played any minion, Mirrex is its own 3/4 self.
     assert mirrex.id == "DINO_407"
-    assert mirrex.atk == 3 and mirrex.max_health == 3
+    assert mirrex.atk == 3 and mirrex.max_health == 4
 
     game.end_turn()
     p2.give(YETI).play()          # Chillwind Yeti — opponent's last minion
@@ -47,10 +47,10 @@ def test_mirrex_copies_opponent_last_minion_as_3_3():
     copies = [c for c in p1.hand if getattr(c, "_mirrex", False)]
     assert len(copies) == 1
     copy = copies[0]
-    # Mirrex now shows the Yeti's identity, but pinned to 3/3.
+    # Mirrex now shows the Yeti's identity, but pinned to 3/4.
     assert copy.id == YETI
     assert copy.atk == 3
-    assert copy.max_health == 3
+    assert copy.max_health == 4
 
 
 def test_mirrex_resyncs_when_opponent_plays_a_new_minion():
@@ -64,12 +64,12 @@ def test_mirrex_resyncs_when_opponent_plays_a_new_minion():
     first = [c for c in p1.hand if getattr(c, "_mirrex", False)][0]
     assert first.id == YETI
 
-    # Opponent plays a different minion → Mirrex re-syncs to it (still 3/3).
+    # Opponent plays a different minion → Mirrex re-syncs to it (still 3/4).
     p2.give(BOULDERFIST).play()
     game.refresh_auras()
     second = [c for c in p1.hand if getattr(c, "_mirrex", False)][0]
     assert second.id == BOULDERFIST
-    assert second.atk == 3 and second.max_health == 3
+    assert second.atk == 3 and second.max_health == 4
 
 
 def test_mirrex_plays_as_3_3_body():
@@ -88,7 +88,7 @@ def test_mirrex_plays_as_3_3_body():
     body = p1.field[-1]
     assert body.id == YETI
     assert body.atk == 3
-    assert body.max_health == 3
+    assert body.max_health == 4
 
 
 # ---------------------------------------------------------------------------

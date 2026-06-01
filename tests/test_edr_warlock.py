@@ -189,9 +189,13 @@ def test_avant_gardening_grants_dark_gift_to_discovered_minion():
 
     live_tags = {t for t in _GIFT_TAGS if chosen.tags.get(t)}
     granted = live_tags - base_tags
-    # Seed 0 deterministically discovers WW_397 and rolls Reborn as its gift.
-    assert chosen.id == "WW_397"
-    assert granted == {GameTag.REBORN}
+    # The discovered minion arrives with exactly one Bonus Effect keyword it did
+    # NOT carry as a base card (the precise card/keyword shifts with the data
+    # pool, so we assert the Dark Gift invariant rather than a fixed RNG roll).
+    assert chosen.type == CardType.MINION
+    assert chosen.data.tags.get(GameTag.DEATHRATTLE)
+    assert len(granted) == 1
+    assert granted.issubset(set(_GIFT_TAGS))
 
 
 # ---------------------------------------------------------------------------

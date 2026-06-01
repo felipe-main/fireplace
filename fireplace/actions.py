@@ -992,6 +992,16 @@ class Play(GameAction):
                 )
             self.broadcast(player, EventListener.AFTER, player, played_card, target)
 
+            # Across the Timeways — Rewind: once the play effect has fired (and
+            # its AFTER triggers resolved), offer Keep Timeline vs Rewind
+            # Timeline. Only when the effect actually triggered (trigger_battlecry
+            # gates this whole block), so a Rewind battlecry that fizzled for
+            # lack of a target never offers a pointless rewind.
+            if trigger_battlecry and card.data.tags.get(GameTag.REWIND, 0):
+                keep = player.card("TIME_000ta", source=card)
+                rewind = player.card("TIME_000tb", source=card)
+                source.game.queue_actions(card, [_RewindChoice(player, [keep, rewind])])
+
         player.combo = True
         player.last_card_played = card
         if card.type == CardType.MINION:
@@ -1513,6 +1523,37 @@ class GenericChoice(Choice):
 
 class ChoiceTarget(Choice):
     pass
+
+
+class _RewindChoice(Choice):
+    """Across the Timeways — Rewind.
+
+    After a Rewind card's play effect resolves, the controller chooses between
+    two timeline tokens: "Keep Timeline" (TIME_000ta, a no-op) or "Rewind
+    Timeline" (TIME_000tb, re-run the parent card's play effect once, re-rolling
+    any random outcomes). Both tokens are discarded after the choice; only the
+    "Rewind" pick re-queues the effect. The re-run goes through Battlecry, which
+    never re-offers Rewind (the choice is queued from Play.do, not Battlecry),
+    so a single Rewind triggers exactly one optional repeat.
+    """
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise InvalidAction(
+                "%r is not a valid choice (one of %r)" % (card, self.cards)
+            )
+        self.player.choice = None
+        parent = self.source
+        # self.cards == [keep_token, rewind_token]; the second is "Rewind".
+        rewind_token = self.cards[1]
+        for token in self.cards:
+            token.discard()
+        if card is rewind_token:
+            self.game.queue_actions(parent, [Battlecry(parent, parent.target)])
+        for action in self._callback:
+            self.game.trigger(self.source, [action], [self.player, self.cards, card])
+        self.callback = self._callback
+        self.trigger_choice_callback()
 
 
 class CopyDeathrattleBuff(TargetedAction):

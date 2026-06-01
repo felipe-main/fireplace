@@ -1,0 +1,23 @@
+{
+  "set": "Across the Timeways",
+  "cardset": "TIME_TRAVEL",
+  "prefix": "TIME_",
+  "build": "229984.1",
+  "patch": "34.0",
+  "card_count": 145,
+  "novel_mechanics": [
+    {
+      "name": "Rewind",
+      "tag": "REWIND",
+      "model": "After a Rewind card's play effect resolves, present a 2-option choice using engine tokens TIME_000ta 'Keep Timeline' (no-op) and TIME_000tb 'Rewind Timeline' (re-run the card's play effect once, re-rolling random outcomes). 15 cards. Engine: _RewindChoice queued in Play.do after the AFTER broadcast, gated on GameTag.REWIND and trigger_battlecry.",
+      "cards": ["TIME_000","TIME_001","TIME_002","TIME_003","TIME_004","TIME_008","TIME_014","TIME_018","TIME_033","TIME_034","TIME_038","TIME_433","TIME_441","TIME_602","TIME_610"]
+    },
+    {
+      "name": "Fabled / Fabled+",
+      "tag": "FABLED",
+      "model": "Cosmetic legendary tier marker (like Signature). No uniform engine mechanic; each Fabled card is a self-contained build-around legendary. 11 cards.",
+      "cards": ["TIME_005","TIME_009","TIME_020","TIME_209","TIME_211","TIME_609","TIME_619","TIME_850","TIME_852","TIME_875","TIME_890"]
+    }
+  ],
+  "notes": "TIME_TRAVEL base expansion, build 229984.1 (lowest fully containing 145). CATACLYSM=0/PET=0 at this build (clean). Reuses Discover/Combo/Outcast/Dormant/Aura/Corpses. Choice tokens TIME_000ta/tb non-collectible SPELLs (no scripts needed)."
+}

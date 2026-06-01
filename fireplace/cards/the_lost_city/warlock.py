@@ -236,3 +236,68 @@ class TLC_449:
     activate = Discover(CONTROLLER, RandomMinion(cost=1)).then(
         Give(CONTROLLER, Discover.CARD).then(GiveTemporary(Give.CARD))
     )
+
+
+##
+# Lost City of Un'Goro mini-set (DINO_) — Warlock
+
+
+class DINO_131:
+    """Possessed Animancer"""
+
+    # Deathrattle: Summon a random Beast from your deck. Give it Lifesteal.
+    deathrattle = Summon(CONTROLLER, RANDOM(FRIENDLY_DECK + BEAST + MINION)).then(
+        SetTags(Summon.CARD, {GameTag.LIFESTEAL: True})
+    )
+
+
+class DINO_132:
+    """Asphyxiodon"""
+
+    # Taunt (data). At the end of your turn, deal 5 damage to a random
+    # enemy minion.
+    events = OWN_TURN_END.on(Hit(RANDOM_ENEMY_MINION, 5))
+
+
+class _BatMask(TargetedAction):
+    """Bat Mask — set the chosen friendly minion's stats to 1/1, then fill
+    the board with 1/1 copies of it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None:
+            return
+        controller = source.controller
+        # True SET-to-1/1: wipe prior atk/health buffs first, then apply a
+        # fresh enchant that locks stats to 1/1.
+        target.clear_buffs()
+        source.game.cheat_action(source, [Buff(target, "DINO_402e")])
+        while len(controller.field) < source.game.MAX_MINIONS_ON_FIELD:
+            source.game.cheat_action(source, [Summon(controller, target.id)])
+            copy = controller.field[-1]
+            copy.atk = 1
+            copy.max_health = 1
+            copy.damage = 0
+        source.game.manager.targeted_action(self, source, target)
+
+
+class DINO_402:
+    """Bat Mask"""
+
+    # Set a friendly minion's stats to 1/1. Fill your board with copies of it.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_FRIENDLY_TARGET: 0,
+    }
+    play = _BatMask(TARGET)
+
+
+class DINO_402e:
+    """Bat Mask"""
+
+    # Set-stats enchant (exists in data). atk/max_health lambdas lock the
+    # target to 1/1 regardless of its base stats.
+    atk = lambda self, i: 1
+    max_health = lambda self, i: 1

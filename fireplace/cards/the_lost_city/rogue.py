@@ -326,3 +326,185 @@ class TLC_519:
         Summon(CONTROLLER, "TLC_519t"),
         Kindred() & Summon(CONTROLLER, "TLC_519t"),
     )
+
+
+##
+# ============================================================================
+# The Lost City of Un'Goro — MINI-SET (Dinosaurs, DINO_ prefix) — ROGUE
+# ============================================================================
+
+
+##
+# Engine glue — track the last MINION each player played (for Mirrex), and
+# keep any "Mirrex copy" cards sitting in a player's hand continuously
+# re-synced to the *current* last-opponent-minion.
+#
+# Mirrex reads "the last minion your OPPONENT played", so each player records
+# the last minion THEY played in `_dino_last_minion_played`; Mirrex (in your
+# hand) copies its controller's opponent's value. We wrap Play.do once (the
+# single chokepoint every play flows through) to (a) stamp the played minion
+# and (b) refresh every Mirrex copy in the just-played player's opponent's
+# hand. Refresh is also driven by `Hand.update` for the in-hand-from-turn-1
+# / drawn-after-the-fact cases.
+
+if not getattr(Play, "_dino_mirrex_patched", False):
+    _dino_orig_play_do = Play.do
+
+    def _dino_play_do(self, source, card, target=None, *args, **kwargs):
+        result = _dino_orig_play_do(self, source, card, target, *args, **kwargs)
+        try:
+            player = card.controller
+            if card.type == CardType.MINION:
+                player._dino_last_minion_played = card.id
+                # The card *they* just played is the opponent's "last minion"
+                # from the other player's point of view — refresh that
+                # player's Mirrex copies in hand.
+                _dino_refresh_mirrex(player.opponent)
+        except Exception:
+            pass
+        return result
+
+    Play.do = _dino_play_do
+    Play._dino_mirrex_patched = True
+
+
+def _dino_refresh_mirrex(player):
+    """Re-sync every Mirrex copy in `player`'s hand to a 3/3 copy of the last
+    minion that player's OPPONENT played. A Mirrex copy is any hand card that
+    still carries the `_mirrex` marker (set when the copy is minted, and
+    re-stamped on every fresh copy so the chain keeps updating)."""
+    if player is None:
+        return
+    last_id = getattr(player.opponent, "_dino_last_minion_played", None)
+    if not last_id:
+        return
+    from .. import db as _db
+
+    if last_id not in _db:
+        return
+    for entity in list(player.hand):
+        if not getattr(entity, "_mirrex", False):
+            continue
+        # Already showing this minion — nothing to do.
+        if getattr(entity, "_mirrex_shows", None) == last_id:
+            continue
+        copy = player.card(last_id, source=entity)
+        copy.controller = player
+        copy._mirrex = True
+        copy._mirrex_shows = last_id
+        player.game.cheat_action(entity, [Morph(entity, copy), Buff(copy, "DINO_407e2")])
+
+
+class _MirrexHandUpdate(TargetedAction):
+    """Hand.update driver for Mirrex (and its minted copies). Each aura refresh
+    it re-syncs the copy to the last minion the opponent played. Mirrex itself
+    carries the `_mirrex` marker via this action's first run."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # Mark the base Mirrex so the global refresher recognises it.
+        source._mirrex = True
+        _dino_refresh_mirrex(source.controller)
+
+
+class DINO_407:
+    """Mirrex, the Crystalline"""
+
+    # While in your hand, this is a 3/3 copy of the last minion your opponent
+    # played. (Engine model: a Hand.update + a Play.do hook continuously
+    # morph this — and every copy it becomes — into a 3/3 clone of the
+    # opponent's most-recently-played minion, re-syncing whenever the
+    # opponent plays a new one. The DINO_407e2 "Crystalline" enchant pins the
+    # copy's stats to 3/3.)
+    class Hand:
+        update = _MirrexHandUpdate(SELF)
+
+
+class DINO_407e2:
+    """Crystalline"""
+
+    # Sets the copied minion's stats to 3/3 (Mirrex is always a 3/3 copy).
+    atk = lambda self, i: 3
+    max_health = lambda self, i: 3
+
+
+##
+# Weapon
+
+
+class _CrystalTuskShuffleLeftmost(TargetedAction):
+    """Crystal Tusk battlecry: shuffle the LEFT-most card in your hand into your
+    deck. (deck-left = hand index 0; the weapon itself has already left the
+    hand by the time its battlecry resolves.)"""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        hand = list(ctrl.hand)
+        if not hand:
+            return
+        leftmost = hand[0]
+        source.game.cheat_action(source, [Shuffle(ctrl, leftmost)])
+
+
+class DINO_408:
+    """Crystal Tusk"""
+
+    # Battlecry: Shuffle the left-most card in your hand into your deck.
+    # Deathrattle: Draw 2 cards.
+    play = _CrystalTuskShuffleLeftmost(CONTROLLER)
+    deathrattle = Draw(CONTROLLER) * 2
+
+
+##
+# Costume Merchant
+
+
+# The five "Mask" spells, one per OTHER class (Costume Merchant is Rogue, so
+# all five qualify as "from another class").
+_DINO_MASKS = ("DINO_402", "DINO_403", "DINO_428", "DINO_429", "DINO_432")
+
+
+class _CostumeMerchantGetMask(TargetedAction):
+    """Costume Merchant battlecry: get a random Mask from another class. When
+    `combo` is True (subclass), the freshly-created Mask also gets a "costs
+    (2) less" enchant stamped on it while it sits in hand."""
+
+    TARGET = ActionArg()
+    combo_buff = False
+
+    def do(self, source, target):
+        ctrl = source.controller
+        before = set(ctrl.hand)
+        source.game.cheat_action(source, [Give(ctrl, RandomID(*_DINO_MASKS))])
+        new = [c for c in ctrl.hand if c not in before]
+        if new and self.combo_buff:
+            source.game.cheat_action(source, [Buff(new[0], "DINO_427e")])
+
+
+class _CostumeMerchantGetMaskCombo(_CostumeMerchantGetMask):
+    combo_buff = True
+
+
+# "Costs (2) less" — Combo discount on the minted Mask. Not present in data,
+# so register it as a custom enchant.
+@custom_card
+class DINO_427e:
+    tags = {
+        GameTag.CARDNAME: "Disguise Discount",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
+
+
+class DINO_427:
+    """Costume Merchant"""
+
+    # Battlecry: Get a random Mask from another class. Combo: It costs (2)
+    # less. (Data already carries the COMBO GameTag, so `has_combo` is set;
+    # the combo script supersedes play when a card was played first this turn
+    # and adds the cost reduction on top of the base "get a Mask" effect.)
+    play = _CostumeMerchantGetMask(CONTROLLER)
+    combo = _CostumeMerchantGetMaskCombo(CONTROLLER)

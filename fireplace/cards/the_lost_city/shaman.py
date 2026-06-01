@@ -212,8 +212,8 @@ class TLC_464:
 class TLC_229:
     """Spirit of the Mountain"""
 
-    # Quest: Play 7 minions of unique types. Reward: Ashalon.
-    progress_total = 7
+    # Quest: Play minions of unique types (total from QUEST_PROGRESS_TOTAL data
+    # tag, 6 at build 226928). Reward: Ashalon.
     quest = Play(CONTROLLER, MINION).after(AddProgress(SELF, Play.CARD))
     reward = Summon(CONTROLLER, "TLC_229t14")
 
@@ -236,3 +236,94 @@ class TLC_229:
     def clear_progress(self):
         self._tlc_quest_types = set()
         self.progress = 0
+
+
+##
+# The Lost City of Un'Goro mini-set (DINO_ / Dinosaurs) — Shaman
+#
+# Tokens this file summons are defined here as their own classes (none of the
+# DINO_ shaman cards summon tokens — DINO_412 GETs a random card to hand).
+
+
+class _TortotemGet(TargetedAction):
+    """Tortotem — get (to hand) a random collectible minion that has two or
+    more minion types. We build the multi-type pool ourselves because the
+    random-card pickers can't filter on tribe-count. "Multiple minion types"
+    means 2+ distinct tribes (a single-tribe or tribeless minion never
+    qualifies)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        from ... import cards as card_module
+
+        player = source.controller
+        pool = []
+        for cid in card_module.db.filter(collectible=True, type=CardType.MINION):
+            card = card_module.db[cid]
+            races = {r for r in getattr(card, "races", []) if r != Race.INVALID}
+            if len(races) >= 2:
+                pool.append(cid)
+
+        game = source.game
+        if game.is_standard:
+            pool = [
+                cid for cid in pool
+                if getattr(card_module.db[cid], "is_standard", True)
+            ]
+        if not pool:
+            return
+        cid = game.random.choice(pool)
+        source.game.queue_actions(source, [Give(player, cid)])
+
+
+class DINO_412:
+    """Tortotem"""
+
+    # At the end of your turn, get a random minion with multiple minion types.
+    events = OWN_TURN_END.on(_TortotemGet(CONTROLLER))
+
+
+class _ChillspineStegodon(TargetedAction):
+    """Chillspine Stegodon battlecry — pick two random enemy minions ONCE,
+    deal 2 damage to each, and (with Kindred) Freeze the same two. Capturing
+    the targets up front guarantees the Freeze lands on the minions that were
+    hit, not a freshly-rolled pair."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        enemies = [m for m in source.controller.opponent.field if not m.dead]
+        picks = source.game.random.sample(enemies, min(2, len(enemies)))
+        if not picks:
+            return
+        actions = [Hit(m, 2) for m in picks]
+        if kindred_active(source):
+            actions += [SetTag(m, GameTag.FROZEN) for m in picks]
+        source.game.queue_actions(source, actions)
+
+
+class DINO_413:
+    """Chillspine Stegodon"""
+
+    # Battlecry: Deal 2 damage to two random enemy minions.
+    # Kindred: And Freeze them.
+    play = _ChillspineStegodon(SELF)
+
+
+class DINO_406:
+    """Fire Breath"""
+
+    # Deal $4 damage. Give your Elementals +1/+1.
+    # (No target requirement in data -> the 4 damage hits a random enemy.)
+    play = (
+        Hit(RANDOM_ENEMY_CHARACTER, 4),
+        Buff(FRIENDLY_MINIONS + ELEMENTAL, "DINO_406e"),
+    )
+
+
+class DINO_406e:
+    """Fire Breather"""
+
+    # +1/+1. (Enchant exists in data but carries no stat tags.)
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}

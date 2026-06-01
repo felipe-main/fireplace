@@ -120,7 +120,14 @@ class BaseCard(BaseEntity):
         self.heropower_damage = 0
         self._zone = Zone.INVALID
         self._progress: int = 0
-        self.progress_total: int = data.scripts.progress_total
+        # Quest progress total: prefer an explicit script value, else fall back
+        # to the data's QUEST_PROGRESS_TOTAL tag so quests track data rebalances
+        # automatically (e.g. The Lost City quests retuned across builds).
+        self.progress_total: int = (
+            data.scripts.progress_total
+            if data.scripts.progress_total is not None
+            else data.tags.get(GameTag.QUEST_PROGRESS_TOTAL, 0)
+        )
         self.card_class = CardClass.INVALID
         self.multi_class_group = MultiClassGroup.INVALID
         self.tags.update(data.tags)

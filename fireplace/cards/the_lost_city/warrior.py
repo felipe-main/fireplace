@@ -207,3 +207,42 @@ class TLC_632t2:
     def activate(self):
         yield Hit(RANDOM_ENEMY_CHARACTER, 8)
         yield Summon(CONTROLLER, self.controller.hero_power._old_hero_power)
+
+
+##
+# The Lost City of Un'Goro — Dinosaurs mini-set (DINO_)
+
+
+class DINO_400:
+    """Barricade Basher"""
+
+    # Whenever you gain Armor, gain +2/+2 and attack a random enemy minion.
+    events = GainArmor(FRIENDLY_HERO).on(
+        Buff(SELF, "DINO_400e"),
+        Attack(SELF, RANDOM_ENEMY_MINION),
+    )
+
+
+# Bashful — +2/+2 (in data as DINO_400e).
+DINO_400e = buff(atk=2, health=2)
+
+
+class DINO_401:
+    """The Great Dracorex"""
+
+    # Rush (data). After this attacks an enemy minion, it damages ALL other
+    # enemy minions (for its Attack).
+    events = Attack(SELF, ENEMY_MINIONS).after(
+        Hit(ENEMY_MINIONS - Attack.DEFENDER, ATK(SELF))
+    )
+
+
+class DINO_433:
+    """Guard Duty"""
+
+    # Summon a random 6, 4, and 2-Cost Taunt minion.
+    play = (
+        Summon(CONTROLLER, RandomMinion(cost=6, custom_filter=lambda c: c.taunt)),
+        Summon(CONTROLLER, RandomMinion(cost=4, custom_filter=lambda c: c.taunt)),
+        Summon(CONTROLLER, RandomMinion(cost=2, custom_filter=lambda c: c.taunt)),
+    )

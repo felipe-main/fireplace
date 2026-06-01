@@ -782,3 +782,126 @@ class TLC_987:
     # Battlecry: If you played a Quest this game, deal 2 damage.
     play = _QuestingAssistant(TARGET)
     requirements = {PlayReq.REQ_TARGET_IF_AVAILABLE: 0}
+
+
+##
+# ---------------------------------------------------------------------------
+# The Lost City of Un'Goro MINI-SET — Dinosaurs (DINO_ prefix), NEUTRAL.
+# ---------------------------------------------------------------------------
+
+
+class _TakaGain(TargetedAction):
+    """Beast Speaker Taka — gain the Discovered Legendary Beast's stats and
+    remember it so the Deathrattle can summon a real copy of it."""
+
+    TARGET = ActionArg()
+    CARD = CardArg()
+
+    def do(self, source, target, card):
+        if card is None:
+            return
+        if isinstance(card, list):
+            if not card:
+                return
+            card = card[0]
+        source._taka_card_id = card.id
+        source.game.queue_actions(
+            source,
+            [Buff(source, "DINO_430e", atk=card.atk, max_health=card.health)],
+        )
+
+
+class _TakaDeathrattle(TargetedAction):
+    """Summon the Legendary Beast that Taka gained its stats from."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        cid = getattr(source, "_taka_card_id", None)
+        if cid:
+            source.game.queue_actions(source, [Summon(source.controller, cid)])
+
+
+class DINO_410:
+    """The Egg of Khelos"""
+
+    # Deathrattle: Summon a slightly cracked Egg. (Break 5 times to hatch into
+    # a 20/20 Beast!)  The egg chain is a sequence of tokens, each whose own
+    # Deathrattle summons the next, until the 20/20 Khelos hatches.
+    deathrattle = Summon(CONTROLLER, "DINO_410t2")
+
+
+class DINO_410t2:
+    """The Egg of Khelos"""
+
+    # Deathrattle: Summon a more cracked Egg.
+    deathrattle = Summon(CONTROLLER, "DINO_410t3")
+
+
+class DINO_410t3:
+    """The Egg of Khelos"""
+
+    # Deathrattle: Summon a very cracked Egg.
+    deathrattle = Summon(CONTROLLER, "DINO_410t4")
+
+
+class DINO_410t4:
+    """The Egg of Khelos"""
+
+    # Deathrattle: Summon the most cracked Egg.
+    deathrattle = Summon(CONTROLLER, "DINO_410t5")
+
+
+class DINO_410t5:
+    """The Egg of Khelos"""
+
+    # Deathrattle: Summon a 20/20 Khelos. (Break to hatch!)
+    deathrattle = Summon(CONTROLLER, "DINO_410t")
+
+
+class DINO_410t:
+    """Khelos"""
+
+    # 20/20 Beast — the hatched dinosaur (vanilla stats from data).
+    pass
+
+
+class DINO_411:
+    """Holy Eggbearer"""
+
+    # Battlecry: Draw a 0-Attack minion.
+    play = Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION + (ATK == 0)))
+
+
+class DINO_419:
+    """Herbivore Assistant"""
+
+    # Battlecry: Give a friendly Beast +2/+2 and Rush.
+    play = (
+        Buff(TARGET, "DINO_419e", atk=2, max_health=2),
+        SetTags(TARGET, {GameTag.RUSH: True}),
+    )
+    requirements = {
+        PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
+        PlayReq.REQ_FRIENDLY_TARGET: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_TARGET_WITH_RACE: Race.BEAST,
+    }
+
+
+class DINO_430:
+    """Beast Speaker Taka"""
+
+    # Battlecry: Discover a Legendary Beast from any class to gain its stats.
+    # Deathrattle: Summon it.
+    play = Discover(CONTROLLER, RandomBeast(rarity=Rarity.LEGENDARY)).then(
+        _TakaGain(SELF, Discover.CARD)
+    )
+    deathrattle = _TakaDeathrattle(SELF)
+
+
+class DINO_435:
+    """Crater Experiment"""
+
+    # Kindred: Summon a copy of this.
+    play = Kindred() & Summon(CONTROLLER, Copy(SELF))

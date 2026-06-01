@@ -134,8 +134,8 @@ class TLC_462:
 class TLC_460:
     """The Forbidden Sequence"""
 
-    # Quest: Discover 8 cards. Reward: The Origin Stone.
-    progress_total = 8
+    # Quest: Discover cards (total from QUEST_PROGRESS_TOTAL data tag, 7 at
+    # build 226928). Reward: The Origin Stone.
     quest = Discovered(CONTROLLER).on(AddProgress(SELF, Discovered.CARD))
     reward = Give(CONTROLLER, "TLC_460t")
 
@@ -151,3 +151,84 @@ class TLC_460t:
     # un-chosen options is not modelled; we ship the 0/8/3 weapon body so the
     # quest reward still resolves. Tracked in review.csv.
     pass
+
+
+##
+# The Lost City of Un'Goro mini-set (Dinosaurs, DINO_)
+
+
+class DINO_409:
+    """Techysaurus"""
+
+    # Taunt. Costs (1) less for each card you played this game that didn't
+    # start in your deck.
+    # cards_played_this_game records hand-plays; subtract the starting deck so
+    # only "didn't start in your deck" cards count.
+    cost_mod = -Count(CARDS_PLAYED_THIS_GAME - STARTING_DECK)
+
+
+class _TributeDanceMorph(TargetedAction):
+    """Tribute Dance — transform the first chosen minion (TARGET) into a copy
+    of a second, different minion (FORM)."""
+
+    TARGET = ActionArg()
+    FORM = CardArg()
+
+    def get_target_args(self, source, target):
+        from ...actions import _eval_card
+
+        form = _eval_card(source, self._args[1])
+        form = form[0] if isinstance(form, list) and form else form
+        return [form]
+
+    def do(self, source, target, form):
+        if target is None or form is None:
+            return
+        source.game.queue_actions(source, [Morph(target, form.id)])
+
+
+class DINO_414:
+    """Tribute Dance"""
+
+    # Choose a minion. Choose a different minion to transform it into.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+
+    def play(self):
+        target = self.target
+        if target is None:
+            return
+        # Second pick: any minion other than the one being transformed.
+        target_eid = target.entity_id
+        others = FuncSelector(
+            lambda entities, source: [
+                m
+                for m in ALL_MINIONS.eval(source.game, source)
+                if m.entity_id != target_eid
+            ]
+        )
+        yield Find(others) & ChoiceTarget(CONTROLLER, others).then(
+            _TributeDanceMorph(target, ChoiceTarget.CARD)
+        )
+
+
+class DINO_429:
+    """Sheep Mask"""
+
+    # Set a minion's stats to 1/1 and give it "Deathrattle: Deal 2 damage to
+    # all minions."
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Buff(TARGET, "DINO_429e")
+
+
+class DINO_429e:
+    # Sheep Mask — stats set to 1/1, plus the Deathrattle.
+    tags = {GameTag.DEATHRATTLE: True}
+    atk = lambda self, i: 1
+    max_health = lambda self, i: 1
+    deathrattle = Hit(ALL_MINIONS, 2)

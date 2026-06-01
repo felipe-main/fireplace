@@ -303,3 +303,117 @@ class TLC_817t5:
     # damage to a random enemy.
     play = Summon(CONTROLLER, ExactCopy(SELF))
     deathrattle = Hit(RANDOM_ENEMY_CHARACTER, 5)
+
+
+##
+# The Lost City of Un'Goro mini-set (DINO_) — Priest
+#
+# Custom actions
+
+
+class _RitualOfLifeSummon(TargetedAction):
+    """Ritual of Life — after Discovering a 3-Cost minion, summon a copy of it
+    and set the copy's stats to 2/2 (the "Lasting Life" enchant). The
+    Discovered card itself is the LazyValue picked option; we summon a fresh
+    copy by its id rather than adding it to hand."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # `target` is the Discovered card option (a real Card instance).
+        if target is None:
+            return
+        ctrl = source.controller
+        source.game.cheat_action(
+            source,
+            [Summon(ctrl, target.id).then(Buff(Summon.CARD, "DINO_426e"))],
+        )
+
+
+class _BehemothMask(TargetedAction):
+    """Behemoth Mask — set the targeted minion's stats to 8/10 and give it
+    Lifesteal (the DINO_428e enchant), then force a random *enemy* minion to
+    attack it. "Enemy" is relative to the spell's caster, so a random minion
+    controlled by the opponent of the caster is chosen as the attacker."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if target is None:
+            return
+        source.game.cheat_action(source, [Buff(target, "DINO_428e")])
+        # Pick a random enemy minion (an opponent-controlled minion) to attack
+        # the masked target. The target may itself be friendly or enemy; the
+        # attacker is always from the side opposing the caster.
+        enemies = [
+            m for m in source.controller.opponent.field
+            if m is not target and not m.dead
+        ]
+        if not enemies:
+            return
+        attacker = source.game.random.choice(enemies)
+        source.game.cheat_action(source, [Attack(attacker, target)])
+
+
+##
+# Spells
+
+
+class DINO_426:
+    """Ritual of Life"""
+
+    # Discover a 3-Cost minion. Summon a 2/2 copy of it.
+    play = Discover(CONTROLLER, RandomMinion(cost=3)).then(
+        _RitualOfLifeSummon(Discover.CARD)
+    )
+
+
+class DINO_428:
+    """Behemoth Mask"""
+
+    # Set a minion's stats to 8/10 and give it Lifesteal. Force a random enemy
+    # minion to attack it.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = _BehemothMask(TARGET)
+
+
+##
+# Minions
+
+
+class DINO_431:
+    """Atlasaurus"""
+
+    # Taunt. Deathrattle: Summon a random Taunt minion that costs (5) or more.
+    deathrattle = Summon(
+        CONTROLLER,
+        RandomMinion(
+            custom_filter=lambda c: bool(c.tags.get(GameTag.TAUNT))
+            and (c.cost or 0) >= 5
+        ),
+    )
+
+
+##
+# Enchantments
+
+
+class DINO_426e:
+    # Lasting Life — the summoned copy's stats are set to 2/2.
+    atk = SET(2)
+    max_health = SET(2)
+
+
+class DINO_428e:
+    # Behemoth Mask — stats set to 8/10 and Lifesteal granted. The data enchant
+    # carries no stat/keyword tags, so the SET overrides and LIFESTEAL tag are
+    # supplied here. Clear damage on apply so current Health equals the new max.
+    tags = {GameTag.LIFESTEAL: True}
+    atk = SET(8)
+    max_health = SET(10)
+
+    def apply(self, target):
+        target.damage = 0

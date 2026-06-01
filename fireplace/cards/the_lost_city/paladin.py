@@ -354,3 +354,74 @@ class TLC_477e:
     # +4/+4 and Deathrattle: Summon a random 4-Cost minion.
     tags = {GameTag.ATK: 4, GameTag.HEALTH: 4, GameTag.DEATHRATTLE: True}
     deathrattle = Summon(CONTROLLER, RandomMinion(cost=4))
+
+
+##
+# The Lost City of Un'Goro mini-set (Dinosaurs, DINO_)
+
+
+class _HatchTick(TargetedAction):
+    """Hatching Ceremony timer. The spell is cast during your turn, so the
+    first OWN_TURN_END belongs to THIS turn and is skipped (counter starts at
+    1). At the next OWN_TURN_END (your next turn) the counter hits 0 — buff
+    every friendly minion +2/+2, then remove the timer enchant."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        left = getattr(target, "_hatching_turns_left", 0) - 1
+        target._hatching_turns_left = left
+        if left <= 0:
+            for minion in list(source.controller.field):
+                source.game.cheat_action(source, [Buff(minion, "DINO_405e")])
+            source.game.cheat_action(source, [Destroy(source)])
+
+
+class DINO_404:
+    """Firegill"""
+
+    # Kindred: Give your other minions Rush.
+    play = Kindred() & GiveRush(FRIENDLY_MINIONS - SELF)
+
+
+class DINO_405:
+    """Hatching Ceremony"""
+
+    # At the end of your next turn, give your minions +2/+2.
+    play = Buff(CONTROLLER, "DINO_405e2")
+
+
+@custom_card
+class DINO_405e2:
+    # Engine-internal timer: fires at the end of the caster's NEXT turn.
+    tags = {
+        GameTag.CARDNAME: "Hatching Ceremony",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+
+    def apply(self, target):
+        # Start at 2 so the first OWN_TURN_END (this turn) decrements to 1,
+        # and the next OWN_TURN_END (your next turn) decrements to 0 and fires.
+        target._hatching_turns_left = 2
+
+    events = OWN_TURN_END.on(_HatchTick(OWNER))
+
+
+# DINO_405e "Hatched" exists in data (name + cardtype only); add the +2/+2.
+DINO_405e = buff(+2, +2)
+
+
+class DINO_424:
+    """Hero's Welcome"""
+
+    # Discover a Legendary minion to summon. Set its stats to 10/10.
+    play = Discover(CONTROLLER, RandomLegendaryMinion()).then(
+        Summon(CONTROLLER, Discover.CARD).then(Buff(Summon.CARD, "DINO_424e"))
+    )
+
+
+# DINO_424e "Hero's Celebration" exists in data (name + cardtype only).
+# "Set its stats to 10/10" — fixed-value enchant (mirrors the set-cost pattern).
+class DINO_424e:
+    atk = lambda self, i: 10
+    max_health = lambda self, i: 10

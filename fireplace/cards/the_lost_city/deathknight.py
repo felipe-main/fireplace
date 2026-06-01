@@ -70,6 +70,26 @@ class _StampCorpseBaseline(TargetedAction):
         target._corpse_base = target.controller.corpses_spent_this_game
 
 
+class _DirehornSpendForReborn(TargetedAction):
+    """Hollow Direhorn (DINO_416) - after a friendly minion dies, if the
+    controller has at least 3 Corpses, spend them and grant Reborn to the
+    Direhorn. `source` is the Direhorn. If it already has Reborn or there
+    aren't enough Corpses, nothing happens."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        if source.zone != Zone.PLAY:
+            return
+        if source.reborn:
+            return
+        if ctrl.corpses < 3:
+            return
+        ctrl.game.cheat_action(source, [SpendCorpses(ctrl, 3)])
+        source.game.cheat_action(source, [SetTags(source, {GameTag.REBORN: True})])
+
+
 ##
 # Minions
 
@@ -123,12 +143,12 @@ class TLC_810:
 class TLC_433:
     """Reanimate the Terror"""
 
-    # Quest: Spend 18 Corpses. Reward: Tyrax, Bone Terror. SpendCorpses does
-    # not broadcast an event, so we track progress by polling the lifetime
-    # corpses-spent counter against a baseline captured when the Quest is
-    # played. process_reward() (run after every action block) fires the
-    # reward once progress reaches 18.
-    progress_total = 18
+    # Quest: Spend Corpses (count from the QUEST_PROGRESS_TOTAL data tag, 15 at
+    # build 226928). Reward: Tyrax, Bone Terror. SpendCorpses does not broadcast
+    # an event, so we track progress by polling the lifetime corpses-spent
+    # counter against a baseline captured when the Quest is played.
+    # process_reward() (run after every action block) fires the reward once
+    # progress reaches the total. progress_total falls back to the data tag.
     play = _StampCorpseBaseline(SELF)
     reward = Summon(CONTROLLER, "TLC_433t")
 
@@ -244,3 +264,55 @@ class TLC_439e:
         GameTag.COST: 2,
     }
     events = OWN_TURN_END.on(Destroy(SELF))
+
+
+##
+# The Lost City of Un'Goro mini-set (Dinosaurs, DINO_) — Death Knight
+
+
+class DINO_416:
+    """Hollow Direhorn"""
+
+    # Rush (data). After a friendly minion dies, spend 3 Corpses to gain
+    # Reborn. FRIENDLY + MINION (without IN_PLAY) still matches the dying
+    # minion that has already moved to the graveyard by AFTER-time. SELF is
+    # excluded so the Direhorn's own death never tries to revive it.
+    events = Death(FRIENDLY + MINION - SELF).on(
+        _DirehornSpendForReborn(SELF)
+    )
+
+
+class DINO_415:
+    """Story of Umbra"""
+
+    # Discover a Deathrattle minion that costs (5) or more. Summon it and
+    # trigger its Deathrattle.
+    play = Discover(
+        CONTROLLER,
+        RandomMinion(
+            deathrattle=True,
+            custom_filter=lambda c: (c.cost or 0) >= 5,
+        ),
+    ).then(
+        Summon(CONTROLLER, Discover.CARD).then(
+            Deathrattle(Summon.CARD)
+        )
+    )
+
+
+class DINO_417:
+    """Soulrest Ceremony"""
+
+    # Give your minions +1 Attack and Rush. They die at the end of your turn.
+    play = Buff(FRIENDLY_MINIONS, "DINO_417e")
+
+
+class DINO_417e:
+    # Soulrest - +1 Attack and Rush. At the end of your turn, this minion dies.
+    # The enchant exists in data (no stat/keyword tags there); we supply the
+    # +1 Attack, Rush, and the end-of-turn self-destroy trigger.
+    tags = {
+        GameTag.ATK: 1,
+        GameTag.RUSH: True,
+    }
+    events = OWN_TURN_END.on(Destroy(OWNER))

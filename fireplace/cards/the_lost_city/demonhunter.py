@@ -227,3 +227,131 @@ class TLC_903e:
 
     # +5 Attack this turn.
     tags = {GameTag.ATK: 5, GameTag.TAG_ONE_TURN_EFFECT: True}
+
+
+##
+# The Lost City of Un'Goro — Dinosaurs mini-set (DINO_)
+
+
+class _SaucierDiscount(TargetedAction):
+    """Skittish Saucier battlecry: reduce the Cost of the cards that were
+    adjacent to it in hand by (1).
+
+    The battlecry fires *after* the Saucier has left the hand (it is already in
+    PLAY). The engine's generic hand-adjacency pass (``Play.do``) stamps each of
+    the two physical neighbours' ``adjacent_plays_this_turn`` the instant before
+    the Saucier leaves hand, and the two neighbours collapse to *consecutive*
+    slots in the now-shorter hand. We therefore look for the freshly-bumped
+    neighbour cluster: a run of one or two consecutive hand cards that were both
+    flanking the gap. ``_saucier_adj_seen`` snapshots the prior counter so a card
+    that merely flanked an *earlier* play this turn is not mistaken for a current
+    neighbour."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        player = source.controller
+        hand = list(player.hand)
+        # Cards whose adjacency counter just advanced because of THIS play.
+        fresh = []
+        for i, card in enumerate(hand):
+            seen = getattr(card, "_saucier_adj_seen", 0)
+            if card.adjacent_plays_this_turn > seen:
+                fresh.append(i)
+            card._saucier_adj_seen = card.adjacent_plays_this_turn
+        # The Saucier sat between its two neighbours, so after removal they are
+        # consecutive. Take the contiguous run of freshly-bumped indices (1 for
+        # an edge play, 2 for a middle play).
+        neighbors = []
+        for i in fresh:
+            if not neighbors or i == neighbors[-1] + 1:
+                neighbors.append(i)
+            else:
+                break
+        for i in neighbors:
+            source.game.queue_actions(source, [Buff(hand[i], "DINO_137e")])
+
+
+class _HornOfFeasting(TargetedAction):
+    """Horn of Feasting: summon three 2/1 Rush Raptors. When played as an
+    Outcast (``immune=True``), also give each freshly-summoned Raptor Immune
+    while attacking this turn (a one-turn enchant)."""
+
+    TARGET = ActionArg()
+
+    def __init__(self, *args, immune=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._immune = immune
+
+    def do(self, source, target):
+        player = source.controller
+        for _ in range(3):
+            before = set(player.field)
+            source.game.queue_actions(player, [Summon(player, "DINO_136t")])
+            if self._immune:
+                for raptor in [m for m in player.field if m not in before]:
+                    source.game.queue_actions(source, [Buff(raptor, "DINO_136e")])
+
+
+class DINO_136:
+    """Horn of Feasting"""
+
+    # Summon three 2/1 Raptors with <b>Rush</b>.
+    # <b>Outcast:</b> Give them <b>Immune</b> while attacking this turn.
+    # This data build encodes Outcast as tag 1824 (not GameTag.OUTCAST=1333,
+    # which the engine maps to has_outcast), so the engine's Outcast dispatch
+    # never fires. Re-stamp the recognised OUTCAST tag so the edge-play check
+    # in Play/Battlecry routes to the `outcast` script.
+    tags = {GameTag.OUTCAST: True}
+    play = _HornOfFeasting(CONTROLLER)
+    outcast = _HornOfFeasting(CONTROLLER, immune=True)
+
+
+class DINO_137:
+    """Skittish Saucier"""
+
+    # <b>Battlecry:</b> Reduce the Cost of adjacent cards in your hand by (1).
+    play = _SaucierDiscount(SELF)
+
+
+class DINO_138:
+    """Diabolus Rex"""
+
+    # <b>Kindred:</b> Deal 6 damage to your opponent's left and right-most
+    # minions.
+    play = Kindred() & Hit(OUTERMOST(ENEMY_MINIONS), 6)
+
+
+##
+# DINO tokens
+
+
+class DINO_136t:
+    """Ravenous Raptor"""
+
+    # <b>Rush</b> (vanilla 2/1 token; Rush comes from data)
+
+
+##
+# DINO enchantments
+
+
+class DINO_136e:
+    """Feasting"""
+
+    # <b>Immune</b> while attacking this turn (data enchant carries only the
+    # one-turn-effect marker, so we supply the Immune-while-attacking tag).
+    tags = {
+        GameTag.IMMUNE_WHILE_ATTACKING: True,
+        GameTag.TAG_ONE_TURN_EFFECT: True,
+    }
+
+
+@custom_card
+class DINO_137e:
+    # Skittish Saucier — adjacent card costs (1) less.
+    tags = {
+        GameTag.CARDNAME: "Skittish Saucier",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -1,
+    }

@@ -392,3 +392,49 @@ class TLC_830t:
     # Rush
     # Battlecry: Get a random 8, 6, and 4-Attack Beast. Set their Costs to (2).
     play = _ShokkBattlecry(CONTROLLER)
+
+
+##
+# The Lost City of Un'Goro mini-set (DINO_)
+
+
+class DINO_403:
+    """Devilsaur Mask"""
+
+    # Set a minion's stats to 8/8. Give it Charge.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Buff(TARGET, "DINO_403e")
+
+
+class DINO_403e:
+    # Devilsaur Mask — 8/8 and Charge. (Enchant exists in data; supply the
+    # set-stats lambdas + Charge tag.) atk/max_health ignore the base value and
+    # clamp the minion to a fixed 8/8 body.
+    atk = lambda self, i: 8
+    max_health = lambda self, i: 8
+    tags = {GameTag.CHARGE: True}
+
+
+class DINO_422:
+    """Ankylodon"""
+
+    # Taunt. Deathrattle: Summon two random 3-Cost Beasts. They attack random
+    # enemies.
+    deathrattle = (
+        Summon(CONTROLLER, RandomBeast(cost=3)).then(
+            Attack(Summon.CARD, RANDOM_ENEMY_CHARACTER)
+        )
+        * 2
+    )
+
+
+class DINO_434:
+    """Raptor-Nest Nurse"""
+
+    # Battlecry: Get a random 1-Cost minion.
+    # Deathrattle: Get a random 1-Cost spell.
+    play = Give(CONTROLLER, RandomMinion(cost=1))
+    deathrattle = Give(CONTROLLER, RandomSpell(cost=1))

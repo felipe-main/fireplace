@@ -36,4 +36,6 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 4:Lost City (TLC_) | P4 audit | wf_99317081 (3-vote) crashed on StructuredOutput overload; re-ran lean wf_cb0d4079 (1-vote): 35 rows = 3 real bugs/22 approx/6 once-over/4 cosmetic
 - 2026-06-01 | 4:Lost City (TLC_) | P5 tierfix | 3 real bugs fixed (3f327269): High Cultist Herenn simultaneous fight, Cursed Catacombs deck-Discover, + per-spell SPELLPOWER engine fix (closes Volcanic Thrasher AND EDR_874 Stellar Balance watch). 32 watch. review.csv 0 open real bugs
 - 2026-06-01 | 4:Lost City (TLC_) | P6+P7 soak | README->Patch 33.0; soak 1000/1000. SET #4 DONE
-- 2026-06-01 | MILESTONE | 4 of 8 sets DONE | Next: #5 Lost City mini-set (THE_LOST_CITY, build 228587.1, +38 -> 183)
+- 2026-06-01 | MILESTONE | 4 of 8 sets DONE
+- 2026-06-01 | 5:Lost City mini-set (DINO_) | P0/P1 | bump 223542->226928.1 (Patch 33.2); 38 DINO_ Dinosaur cards, CardSet=THE_LOST_CITY; reuses Kindred/Corpses/Outcast/Combo + Masks (set-stats) + Egg counters; no new mechanic. Fixed 9 data-bump regressions (quest totals 7->6/8->7/6->5/15->12, Osk 7/7->6/6, Playhouse Giant 20->25)
+- 2026-06-01 | 5:Lost City mini-set (DINO_) | P3 cards | workflow wf_8fcbd1a2 (12 agents, fold into the_lost_city/, new test_dino_<class>.py); implement->verify

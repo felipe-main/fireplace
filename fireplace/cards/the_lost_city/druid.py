@@ -183,3 +183,76 @@ class TLC_239e:
     # +2/+2. (The data enchant carries only visual tags, so supply the real
     # stat buff here.)
     tags = {GameTag.ATK: 2, GameTag.HEALTH: 2}
+
+
+##
+# The Lost City of Un'Goro mini-set — Dinosaurs (DINO_)
+
+
+class DINO_130:
+    """Longneck Egg"""
+
+    # <b>Deathrattle:</b> Summon a 1/2 Beast. Give your minions +1/+1.
+    # Summon the Little Longneck first so the "your minions +1/+1" buff
+    # (FRIENDLY_MINIONS) also lands on the freshly-summoned token.
+    deathrattle = Summon(CONTROLLER, "DINO_130t").then(
+        Buff(FRIENDLY_MINIONS, "DINO_130e")
+    )
+
+
+class DINO_130t:
+    """Little Longneck"""
+
+    # 1/2 Beast (stats + Beast race live in data).
+
+
+class DINO_130e:
+    """Long Neck"""
+
+    # +1/+1. (The data enchant carries only visual tags, so supply the real
+    # stat buff here.)
+    tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
+
+
+class DINO_421:
+    """Seismopod"""
+
+    # <b>Taunt</b>, <b>Elusive</b> <b>Deathrattle:</b> Give all minions in
+    # your hand and deck +3/+3. Taunt lives in data; Elusive's data tag isn't
+    # mapped to targeting flags by python-hearthstone, so restore it here.
+    tags = {
+        GameTag.CANT_BE_TARGETED_BY_SPELLS: True,
+        GameTag.CANT_BE_TARGETED_BY_HERO_POWERS: True,
+    }
+    deathrattle = Buff(FRIENDLY_HAND + MINION, "DINO_421e"), Buff(
+        FRIENDLY_DECK + MINION, "DINO_421e"
+    )
+
+
+class DINO_421e:
+    """Seismic"""
+
+    # +3/+3. (The data enchant carries only visual tags, so supply the real
+    # stat buff here.)
+    tags = {GameTag.ATK: 3, GameTag.HEALTH: 3}
+
+
+class DINO_432:
+    """Panther Mask"""
+
+    # Set a minion's stats to 5/4 and give it <b>Stealth</b>. Draw 2 cards.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Buff(TARGET, "DINO_432e"), Draw(CONTROLLER) * 2
+
+
+class DINO_432e:
+    """Panther Mask"""
+
+    # 5/4 and Stealth. Set stats (atk/max_health overrides, mirroring the
+    # set-cost enchant pattern) plus the Stealth keyword tag.
+    atk = SET(5)
+    max_health = SET(4)
+    tags = {GameTag.STEALTH: True}

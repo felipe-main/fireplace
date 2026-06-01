@@ -67,7 +67,9 @@ def is_valid_target(self, target, requirements=None):
         # "can't be targeted by spells OR hero powers". Build 29.0 migrated
         # cards like Faerie Dragon (and Whizbang's Virus Module) onto it, so
         # honor it in addition to the legacy split flags.
-        elusive = target.data.tags.get(GameTag.ELUSIVE)
+        elusive = getattr(target, "elusive", False) or target.data.tags.get(
+            GameTag.ELUSIVE
+        )
         if self.type == CardType.SPELL and (
             target.cant_be_targeted_by_abilities or elusive
         ):

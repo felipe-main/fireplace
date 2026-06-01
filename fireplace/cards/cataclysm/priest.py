@@ -226,11 +226,9 @@ class CATA_306:
 
     # Shatter. Give a friendly minion +2/+3 and Elusive. Summon a copy of it.
     # The parent never resolves: the engine splits a SHATTER card into its
-    # two "Shattered" half-cards when it is drawn. NOTE: the engine's splitter
-    # looks for "<id>t" + "<id>t2"; this card's first half is named CATA_306t1
-    # (not CATA_306t), so only CATA_306t2 (the copy half) is auto-given. The
-    # +2/+3+Elusive half (CATA_306t1) is implemented below for fidelity but
-    # is not reached by the current splitter. (Engine file is out of scope.)
+    # two "Shattered" half-cards when it is drawn. Schism uniquely names its
+    # halves CATA_306t1 / CATA_306t2 (every other SHATTER card uses <id>t /
+    # <id>t2); the splitter probes all three suffixes so both halves are given.
     pass
 
 

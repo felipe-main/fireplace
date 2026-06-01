@@ -249,16 +249,17 @@ def test_schism_half2_summon_copy():
 
 def test_schism_shatter_splits_on_draw():
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
-    # A SHATTER card splits into its half-cards when DRAWN. Engine splitter
-    # uses "<id>t" + "<id>t2"; CATA_306's first half is named CATA_306t1
-    # (not CATA_306t), so only the copy half (CATA_306t2) is auto-given.
-    # Documented engine-naming approximation.
+    # A SHATTER card splits into BOTH half-cards when DRAWN. The full card is
+    # discarded and replaced. Schism uniquely names its halves CATA_306t1 /
+    # CATA_306t2 (other SHATTER cards use <id>t / <id>t2); the splitter probes
+    # all three suffixes so BOTH halves arrive — not just the copy half.
     from fireplace.actions import Draw
     card = game.player1.card("CATA_306")
     card.zone = Zone.DECK
     game.queue_actions(game.player1, [Draw(game.player1)])
     ids = [c.id for c in game.player1.hand]
     assert "CATA_306" not in ids
+    assert "CATA_306t1" in ids
     assert "CATA_306t2" in ids
 
 

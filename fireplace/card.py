@@ -1288,6 +1288,10 @@ class LiveEntity(PlayableCard, Entity):
 class Character(LiveEntity):
     health_attribute = "health"
     cant_attack = boolean_property("cant_attack")
+    # ELUSIVE (can't be targeted by spells/hero powers) as a live, grantable
+    # attribute. Read from data tags in targeting too; this lets cards add or
+    # remove the keyword at runtime (e.g. Chromatus's heads).
+    elusive = boolean_property("elusive")
     cant_be_frozen = boolean_property("cant_be_frozen")
     cant_be_targeted_by_opponents = boolean_property("cant_be_targeted_by_opponents")
     cant_be_targeted_by_abilities = boolean_property("cant_be_targeted_by_abilities")

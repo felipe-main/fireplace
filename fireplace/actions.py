@@ -3609,14 +3609,19 @@ class Herald(TargetedAction):
 
 def _shatter_into_halves(card, player):
     """Cataclysm — Shatter: replace a SHATTER card with its two "Shattered"
-    half-cards (``<id>t`` + ``<id>t2``) in the player's hand, and bump the
-    per-game shatter counter. The full card never resolves; you play the halves
-    independently."""
+    half-cards in the player's hand, and bump the per-game shatter counter. The
+    full card never resolves; you play the halves independently.
+
+    Most SHATTER cards name their halves ``<id>t`` + ``<id>t2``, but Schism
+    (CATA_306) uniquely uses ``<id>t1`` + ``<id>t2``. Probe all three suffixes
+    and give whichever actually exist in the data so both conventions work (the
+    suffixes are mutually exclusive per card — no card defines both ``t`` and
+    ``t1``)."""
     from .cards import db
 
     base = card.id
     card.discard()
-    for half in (base + "t", base + "t2"):
+    for half in (base + "t", base + "t1", base + "t2"):
         if half in db:
             player.game.cheat_action(player, [Give(player, half)])
     player.shatters_this_game += 1

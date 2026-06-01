@@ -78,7 +78,7 @@ def test_alien_encounters_summons_two_taunt_beasts():
     tokens = [m for m in p1.field if m.id == "GDB_237t"]
     assert len(tokens) == 2
     for t in tokens:
-        assert (t.atk, t.max_health) == (2, 4)
+        assert (t.atk, t.max_health) == (2, 5)
         assert t.taunt
         assert Race.BEAST in t.races
 
@@ -299,7 +299,7 @@ def test_exarch_naielle_replaces_hero_power_with_tracking():
 def test_snacking_scrunguk_token_stats():
     game = prepare_empty_game(CardClass.HUNTER, CardClass.HUNTER)
     t = game.player1.summon("GDB_237t")
-    assert (t.atk, t.max_health) == (2, 4)
+    assert (t.atk, t.max_health) == (2, 5)
     assert t.taunt
     assert Race.BEAST in t.races
 

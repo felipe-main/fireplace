@@ -696,6 +696,10 @@ class TLC_465:
 
     # Deathrattle: Give a random friendly minion a random Bonus Effect and
     # this Deathrattle.
+    # Data bump (Patch 35.0, build 237510) dropped the DEATHRATTLE GameTag
+    # from the base card data, so declare it here to keep has_deathrattle
+    # live and fire the scripted deathrattle.
+    tags = {GameTag.DEATHRATTLE: True}
     deathrattle = _StranglevineDeath(CONTROLLER)
 
 

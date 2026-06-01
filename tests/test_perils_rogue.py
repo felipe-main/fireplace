@@ -168,11 +168,17 @@ def test_maestra_discovers_other_class_hero_card():
     maestra.play()
     assert p1.choice is not None
     # Every offered card is a HERO card from a class other than Rogue.
+    # Data bump (Patch 35.0, build 237510) added multi-class heroes (e.g.
+    # CATA_190h Deathwing, Worldbreaker — classes DK/Rogue/Shaman/Warlock/
+    # Warrior/DH) which the "from another class" filter accepts because they
+    # belong to OTHER classes too. The tight invariant is therefore "not a
+    # pure-Rogue hero": the card must list at least one non-Rogue class.
     for cid in p1.choice.cards:
         cdata = _cards.db[cid]
         assert cdata.type == CardType.HERO
         classes = list(getattr(cdata, "classes", None) or [cdata.card_class])
-        assert CardClass.ROGUE not in classes
+        assert classes != [CardClass.ROGUE]
+        assert any(cc != CardClass.ROGUE for cc in classes)
     chosen = p1.choice.cards[0]
     p1.choice.choose(chosen)
     assert any(c.id == chosen for c in p1.hand)
@@ -197,8 +203,14 @@ def test_maestra_discover_pool_is_foreign_collectible_heroes():
         assert cdata.type == CardType.HERO
         assert cdata.collectible
         classes = list(getattr(cdata, "classes", None) or [cdata.card_class])
-        # Never the controller's own class (Rogue).
-        assert CardClass.ROGUE not in classes
+        # "From another class": the hero must list at least one non-Rogue
+        # class and must not be a pure-Rogue hero. Data bump (Patch 35.0,
+        # build 237510) introduced multi-class heroes (e.g. CATA_190h
+        # Deathwing) that incidentally list Rogue alongside other classes;
+        # those are legitimately eligible, so a strict "ROGUE not in classes"
+        # is too tight now.
+        assert classes != [CardClass.ROGUE]
+        assert any(cc != CardClass.ROGUE for cc in classes)
     # Picking one puts that exact Hero card into hand.
     chosen = p1.choice.cards[1]
     p1.choice.choose(chosen)

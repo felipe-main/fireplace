@@ -103,11 +103,12 @@ def test_ingenious_artificer_refreshes_mana_on_next_draenei():
     # Make its play free of mana concerns: set used_mana so it can be summoned
     # by hand-play; but play() pays cost. Bypass by summoning won't fire the
     # hook (only *playing* does). So clear cost via used_mana reset.
-    p1.used_mana = 5  # mana = 5, GDB_135 costs 5
+    # Data bump (Patch 35.0): GDB_135 cost dropped 5 -> 4; attack stays 4.
+    p1.used_mana = 6  # mana = 4, GDB_135 costs 4
     pre_mana = p1.mana
     draenei.play()
     # Next Draenei (4 attack) refreshes 4 Mana Crystals this turn.
-    # After paying its 5 cost (mana 5 -> 0) then refunding 4 -> mana == 4.
+    # After paying its 4 cost (mana 4 -> 0) then refunding 4 -> mana == 4.
     assert p1.mana == 4
 
 

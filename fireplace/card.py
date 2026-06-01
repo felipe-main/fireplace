@@ -202,7 +202,13 @@ class BaseCard(BaseEntity):
             else:
                 break
 
-        description = description.format(*formats)
+        try:
+            description = description.format(*formats)
+        except (IndexError, KeyError):
+            # Some newer cards (e.g. Cataclysm "Herald {0}") carry {N} placeholders
+            # with no matching CARDTEXT_ENTITY_N tag to fill them. Rendering the
+            # raw placeholder is cosmetic; crashing here is not acceptable.
+            pass
         # https://github.com/HearthSim/hs-bugs/issues/459
         description = description.replace("[x]", "")
         if self.type == CardType.SPELL:

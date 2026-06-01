@@ -102,13 +102,13 @@ def test_starlight_reactor_ignores_non_arcane_spell():
     assert target.damage == 1
 
 
-# GDB_854 — Uluu, the Everdrifter (5/6/5 Beast): Each turn this is in your hand,
+# GDB_854 — Uluu, the Everdrifter (4/5/4 Beast): Each turn this is in your hand,
 # gain two random Choose One choices; on play, Choose One among them all.
 def test_uluu_the_everdrifter_stats():
     game = prepare_empty_game(CardClass.DRUID, CardClass.DRUID)
     p1 = game.current_player
     uluu = p1.summon("GDB_854")
-    assert uluu.atk == 6 and uluu.max_health == 5
+    assert uluu.atk == 5 and uluu.max_health == 4
     assert Race.BEAST in uluu.races
 
 
@@ -137,7 +137,7 @@ def test_uluu_play_offers_choice_and_resolves_chosen_effect():
     uluu._uluu_options = ["GDB_854o1", "GDB_854o2"]  # Gain 5 Armor / Draw a card
     p1.hero.armor = 0
     uluu.play()
-    assert uluu.zone == Zone.PLAY and (uluu.atk, uluu.max_health) == (6, 5)
+    assert uluu.zone == Zone.PLAY and (uluu.atk, uluu.max_health) == (5, 4)
     assert p1.choice is not None
     assert len(p1.choice.cards) == 2
     armor_option = next(c for c in p1.choice.cards if c.id == "GDB_854o1")

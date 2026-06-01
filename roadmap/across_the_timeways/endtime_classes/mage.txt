@@ -1,0 +1,2 @@
+=== MAGE (1) ===
+END_024        SPELL   3         Flames of Infinity             [] {SECRET} | <b>Secret:</b> When your enemy's turn ends, deal INFINITE damage to their highest Health minion.

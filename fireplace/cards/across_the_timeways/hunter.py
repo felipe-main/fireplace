@@ -120,6 +120,19 @@ class _UntimelyResummon(TargetedAction):
 # Minions
 
 
+class END_015:
+    """Triennium Rex"""
+
+    # Kindred and Deathrattle: Get a random Deathrattle minion. It costs (2)
+    # less. Both triggers run the same effect: the Deathrattle always fires on
+    # death; the Kindred copy fires on play only when Kindred is active.
+    _GET = Give(CONTROLLER, RandomMinion(deathrattle=True)).then(
+        Buff(Give.CARD, "END_015e")
+    )
+    play = Kindred() & _GET
+    deathrattle = _GET
+
+
 class TIME_042:
     """King Maluk"""
 
@@ -272,3 +285,14 @@ class TIME_609t2e:
 
     # +1/+1.
     tags = {GameTag.ATK: 1, GameTag.HEALTH: 1}
+
+
+@custom_card
+class END_015e:
+    # Triennium Rex - the fetched Deathrattle minion costs (2) less. Not in
+    # data; register a name + COST tag (engine clamps the cost floor to 0).
+    tags = {
+        GameTag.CARDNAME: "Kindred Spirit",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }

@@ -346,3 +346,84 @@ def test_future_silvermoon_hits_lowest_health():
     assert small.zone == Zone.GRAVEYARD
     assert big.damage == 0  # the big minion was untouched
     assert game.player2.hero.health == 27
+
+
+# ---------------------------------------------------------------------------
+# END_ — Across the Timeways mini-set ("End Time")
+# ---------------------------------------------------------------------------
+
+BEAST = "CS2_172"  # Bloodfen Raptor (3/2 Beast)
+
+
+def _arm_kindred_beast(game, p):
+    """Play a Beast last turn so a Beast card's Kindred is active this turn."""
+    p.give(BEAST).play()
+    game.end_turn(); game.end_turn()
+    assert Race.BEAST in p.races_played_last_turn
+    for m in list(p.field):
+        m.destroy()
+    game.process_deaths()
+
+
+def test_triennium_rex_deathrattle_gets_discounted_deathrattle_minion():
+    """END_015 Triennium Rex — Deathrattle: Get a random Deathrattle minion,
+    costing (2) less."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    p.discard_hand()
+    game.random.seed(1)
+    rex = p.summon("END_015")
+    rex.destroy()
+    assert len(p.hand) == 1
+    got = p.hand[0]
+    # The fetched minion is itself a Deathrattle minion.
+    assert got.type == CardType.MINION
+    assert got.data.deathrattle
+    # It costs (2) less than its printed cost (floored at 0).
+    assert got.cost == max(0, got.data.cost - 2)
+
+
+def test_triennium_rex_kindred_play_gets_discounted_deathrattle_minion():
+    """END_015 — Kindred (Beast played last turn): the play also fetches a
+    discounted Deathrattle minion."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    p.discard_hand()
+    _arm_kindred_beast(game, p)
+    p.discard_hand()  # clear cards drawn during the turn-cycle
+    game.random.seed(2)
+    rex = p.give("END_015")
+    rex.play()
+    # Kindred active on play → exactly one fetched minion in hand.
+    assert len(p.hand) == 1
+    got = p.hand[0]
+    assert got.type == CardType.MINION
+    assert got.data.deathrattle
+    assert got.cost == max(0, got.data.cost - 2)
+
+
+def test_triennium_rex_no_kindred_play_fetches_nothing():
+    """END_015 — without Kindred active, the play effect does nothing
+    (Deathrattle still pending on the board)."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    p.discard_hand()
+    assert Race.BEAST not in p.races_played_last_turn
+    rex = p.give("END_015")
+    rex.play()
+    # No Kindred → nothing fetched on play.
+    assert len(p.hand) == 0
+    assert rex.zone == Zone.PLAY
+
+
+def test_triennium_rex_discount_floors_at_zero():
+    """END_015 — the (2)-less discount never drops a fetched minion's cost
+    below 0."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p = game.player1
+    p.discard_hand()
+    game.random.seed(1)
+    rex = p.summon("END_015")
+    rex.destroy()
+    got = p.hand[0]
+    assert got.cost >= 0

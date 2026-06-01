@@ -339,3 +339,65 @@ class TIME_032:
     # Battlecry: You draw your 2 highest Cost cards. Your opponent draws your 2
     # lowest Cost cards.
     play = _ChronogorDraw(CONTROLLER)
+
+
+##
+# Across the Timeways mini-set (END_, CardSet TIME_TRAVEL)
+
+
+class _AcolyteSetInfinity(TargetedAction):
+    """Acolyte of Infinity battlecry — set a random card in the controller's
+    hand to INFINITY Cost (END_018e) and remember which card was buffed so the
+    deathrattle can change it back."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        hand = list(ctrl.hand)
+        if not hand:
+            return
+        chosen = source.game.random.choice(hand)
+        source._infinity_target = chosen
+        source.game.queue_actions(source, [Buff(chosen, "END_018e")])
+
+
+class _AcolyteRestore(TargetedAction):
+    """Acolyte of Infinity deathrattle — strip the INFINITY-Cost enchant from
+    the card it was placed on and tag it with the cosmetic "returned to normal"
+    enchant (END_018e2)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        victim = getattr(source, "_infinity_target", None)
+        if victim is None:
+            return
+        removed = False
+        for b in list(victim.buffs):
+            if b.id == "END_018e":
+                b.destroy()
+                removed = True
+        if removed and victim.zone == Zone.HAND:
+            source.game.queue_actions(source, [Buff(victim, "END_018e2")])
+
+
+class END_018:
+    "Acolyte of Infinity"
+    # Battlecry: Set the Cost of a random card in your hand to INFINITY!
+    # Deathrattle: Change it back.
+    play = _AcolyteSetInfinity(SELF)
+    deathrattle = _AcolyteRestore(SELF)
+
+
+class END_018e:
+    "Infinite Delay"
+    # Cost set to INFINITY!
+    cost = SET(2147483647)
+
+
+class END_018e2:
+    "Preserved Essence"
+    # Cost returned to normal. (Cosmetic marker — removing END_018e already
+    # restores the printed Cost.)
+    pass

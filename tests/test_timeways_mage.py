@@ -450,5 +450,40 @@ def test_toki_partial_play_no_new_toki():
     assert p1._toki_groups.get(0, 0) > 0
 
 
+# ---------------------------------------------------------------------------
+# END_024 — Flames of Infinity (Secret, mini-set)
+# "Secret: When your enemy's turn ends, deal INFINITE damage to their
+#  highest Health minion."
+# ---------------------------------------------------------------------------
+def test_flames_of_infinity_kills_highest_health():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    secret = p1.give("END_024")
+    secret.play()
+    assert secret.zone == Zone.SECRET
+    game.end_turn()  # -> p2's turn
+    # p2 board: a small vanilla minion and a fat one; the fat one must die
+    # outright no matter how much health it has (INFINITE damage).
+    small = p2.summon("CS2_172")  # Bloodfen Raptor 3/2 (vanilla)
+    fat = p2.summon(YETI)  # 4/5
+    fat.max_health = 200
+    fat.damage = 0
+    game.end_turn()  # enemy's turn ends -> secret fires
+    assert secret.zone == Zone.GRAVEYARD  # revealed
+    assert fat.dead
+    assert not small.dead  # only the highest-Health minion is hit
+    assert small.health == 2
+
+
+def test_flames_of_infinity_no_minions_stays_armed():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    secret = p1.give("END_024")
+    secret.play()
+    game.end_turn()  # p2's turn, p2 has no minions
+    game.end_turn()  # enemy turn ends with empty board -> must NOT reveal
+    assert secret.zone == Zone.SECRET
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-q"])

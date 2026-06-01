@@ -3512,6 +3512,9 @@ IMBUED_HERO_POWERS = {
     CardClass.PALADIN: "EDR_445p",   # Blessing of the Dragon
     CardClass.PRIEST: "EDR_449p",    # Blessing of the Moon
     CardClass.SHAMAN: "EDR_448p",    # Blessing of the Wind
+    # Across the Timeways mini-set adds Imbued Hero Powers for two more classes.
+    CardClass.ROGUE: "END_000p",     # Blessing of the Bronze
+    CardClass.DEATHKNIGHT: "END_003p",  # Blessing of the Infinite
 }
 
 

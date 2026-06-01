@@ -1,0 +1,3 @@
+=== PALADIN (1) ===
+END_012        WEAPON  3/4/0     Hand of Infinity               [] {BATTLECRY} | [x]Can't attack heroes. <b>Battlecry:</b> Set this weapon's Attack to INFINITY this turn!
+   token END_012e       ENCHANTMENT 0         Infinite Sharpness             [] {} | Attack set to INFINITY this turn.

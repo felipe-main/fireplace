@@ -628,3 +628,464 @@ def test_soldier_of_the_bronze_doubles_health():
     soldier = game.player1.give("TIME_720").play()
     assert soldier.health == 6 and soldier.atk == 5
     assert soldier.taunt
+
+
+# ===========================================================================
+# END_ — Across the Timeways End Time mini-set (neutral / dual-class)
+# ===========================================================================
+
+
+def test_jagged_edge_of_time_imbues_hero_power():
+    # Rogue gets a real Imbued Hero Power token (END_000p); the counter bumps.
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    before = p1.imbues_this_game
+    game.end_turn(); game.end_turn()
+    p1.give("END_001").play()
+    assert p1.imbues_this_game == before + 1
+    assert p1.hero.power.id == "END_000p"
+
+
+def test_wicked_blightspawn_equips_dagger_when_unarmed():
+    game = prepare_game()
+    p1 = game.player1
+    assert p1.weapon is None
+    bs = p1.summon("END_002")
+    bs.destroy()
+    # Reborn re-summons a copy; the original's deathrattle equips a 1/2 Dagger.
+    assert p1.weapon is not None
+    assert p1.weapon.id == "CS2_082"
+    assert p1.weapon.atk == 1
+
+
+def test_wicked_blightspawn_buffs_existing_weapon():
+    game = prepare_game()
+    p1 = game.player1
+    p1.give("CS2_082").play()  # equip a 1/2 Wicked Knife first
+    base_atk = p1.weapon.atk
+    bs = p1.summon("END_002")
+    bs.destroy()
+    # Weapon already equipped -> +2 Attack instead of a new dagger.
+    assert p1.weapon.atk == base_atk + 2
+
+
+def test_remnant_of_rage_cost_drops_per_death_and_draws():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    remnant = p1.give("END_004")
+    assert remnant.cost == 7
+    # Kill two of our own minions this turn.
+    for _ in range(2):
+        m = p1.summon("CS2_182")  # 4/5 Boulderfist
+        m.destroy()
+    assert p1.minions_killed_this_turn == 2
+    assert remnant.cost == 5
+    pre_hand = len(p1.hand)
+    remnant.play()
+    # Battlecry drew 2; the Remnant itself left hand (net +1).
+    assert len(p1.hand) == pre_hand - 1 + 2
+
+
+def _middle_bygone(p1):
+    """Give Bygone Echoes flanked by other cards so Outcast does NOT trigger."""
+    _clear_hand(p1)
+    p1.give("CS2_171")
+    card = p1.give("END_005")
+    p1.give("CS2_171")
+    return card
+
+
+def test_bygone_echoes_summons_one_without_corpses():
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.corpses = 0
+    card = _middle_bygone(p1)
+    pre = len(p1.field)
+    card.play()
+    _resolve_choices(p1)
+    assert len(p1.field) == pre + 1
+
+
+def test_bygone_echoes_spends_corpses_for_second():
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.corpses = 4
+    card = _middle_bygone(p1)
+    pre = len(p1.field)
+    card.play()
+    _resolve_choices(p1)
+    # Base summon + a second from spending 4 Corpses.
+    assert len(p1.field) == pre + 2
+    assert p1.corpses == 0
+
+
+def test_bygone_echoes_outcast_adds_another():
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.corpses = 0
+    _clear_hand(p1)
+    card = p1.give("END_005")  # leftmost+rightmost -> Outcast active
+    pre = len(p1.field)
+    card.play()
+    _resolve_choices(p1)
+    # Base + Outcast's extra (no corpses spent).
+    assert len(p1.field) == pre + 2
+
+
+def test_press_the_advantage():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    target = p2.summon("CS2_182")  # 4/5
+    target.max_health = 80
+    target.damage = 0
+    _clear_hand(p1)
+    p1.give("END_007").play(target=target)
+    assert target.damage == 1
+    assert p1.hero.atk == 1
+    assert p1.hero.armor == 1
+    # Drew exactly 1 card.
+    assert len(p1.hand) == 1
+
+
+def test_enduring_roach_refreshes_mana_on_hero_power():
+    game = prepare_game()
+    p1 = game.player1
+    p1.summon("END_008")
+    p1.used_mana = 5
+    p1.hero.power.use()
+    # Hero power cost 2 + then refresh 2 crystals.
+    assert p1.used_mana == 5
+
+
+def test_twilight_timereaver_sets_attack_to_one():
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1, p2 = game.player1, game.player2
+    big = p2.summon("CS2_182")  # 4/5
+    mine = p1.summon("CS2_182")  # 4/5
+    reaver = p1.give("END_010")
+    reaver.play(choose="END_010a")
+    assert big.atk == 1 and mine.atk == 1
+    assert big.health == 5  # health untouched
+    assert reaver.atk == 5  # "all OTHER minions"
+
+
+def test_twilight_timereaver_sets_health_to_one():
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1, p2 = game.player1, game.player2
+    big = p2.summon("CS2_182")  # 4/5
+    reaver = p1.give("END_010")
+    reaver.play(choose="END_010b")
+    assert big.health == 1
+    assert big.atk == 4  # attack untouched
+    assert reaver.health == 5
+
+
+def test_acceleration_aura_gives_temp_mana_at_turn_start():
+    game = prepare_game()
+    p1 = game.player1
+    p1.give("END_011").play()
+    game.end_turn(); game.end_turn()
+    # Start of our turn: +1 temporary mana crystal.
+    assert p1.temp_mana == 1
+
+
+def test_brutish_endmaw_discovers_one_cost_minion():
+    game = prepare_game()
+    p1 = game.player1
+    _clear_hand(p1)
+    p1.give("END_013").play()
+    assert p1.choice is not None
+    for c in p1.choice.cards:
+        assert c.cost == 1 and c.type == CardType.MINION
+    p1.choice.choose(p1.choice.cards[0])
+    assert len(p1.hand) == 1
+
+
+def test_synchronized_spark_buffs_on_kill():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    _clear_hand(p1)
+    victim = p2.summon("EX1_011")  # 1/3 Voodoo Doctor — dies to 3 damage
+    friendly = p1.summon("CS2_182")  # 4/5, the only friendly minion
+    pre_atk, pre_health = friendly.atk, friendly.health
+    spark = p1.give("END_014")
+    spark.play(target=victim)
+    assert victim.dead
+    assert friendly.atk == pre_atk + 3
+    assert friendly.health == pre_health + 3
+
+
+def test_synchronized_spark_no_buff_on_survive():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    victim = p2.summon("CS2_182")  # 4/5 survives 3 damage
+    friendly = p1.summon("CS2_182")
+    pre_atk = friendly.atk
+    p1.give("END_014").play(target=victim)
+    assert not victim.dead
+    assert friendly.atk == pre_atk
+
+
+def test_chronoclaws_discards_highest_cost_on_attack():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    _clear_hand(p1)
+    cheap = p1.give("CS2_171")   # 1-cost Stonetusk
+    pricey = p1.give("CS2_182")  # 6-cost Boulderfist
+    p1.give("END_016").play()    # equip 4/3 weapon
+    p1.hero.attack(p2.hero)
+    # Highest-cost card (Boulderfist) discarded; cheap one remains.
+    assert pricey not in p1.hand
+    assert cheap in p1.hand
+
+
+def test_battle_at_end_time_quest_completes():
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    quest = p1.give("END_017").play()
+    # Fill the hand to max.
+    while len(p1.hand) < p1.max_hand_size:
+        p1.give("CS2_171")
+    game.end_turn(); game.end_turn()  # turn end #1: progress to "filled"
+    assert quest.progress == 1
+    _clear_hand(p1)
+    game.end_turn(); game.end_turn()  # turn end #2: emptied -> reward
+    # Reward gives Tick and Tock.
+    assert any(c.id == "END_017t" for c in p1.hand)
+
+
+def test_tick_and_tock_fills_hand_and_empties_enemy():
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1, p2 = game.player1, game.player2
+    _clear_hand(p1)
+    # Stock the deck so the battlecry has cards to draw to full.
+    for _ in range(12):
+        _deck_card(p1, "CS2_171")
+    tnt = p1.give("END_017t")
+    tnt.play()
+    assert len(p1.hand) == p1.max_hand_size
+    # Deathrattle empties opponent's hand.
+    _clear_hand(p2)
+    p2.give("CS2_171"); p2.give("CS2_171")
+    assert len(p2.hand) == 2
+    tnt.destroy()
+    game.process_deaths()
+    assert len(p2.hand) == 0
+
+
+def test_endtime_survivor_buffs_when_hero_damaged():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    p1.hero.damaged_this_turn = 3  # hero took damage this turn
+    p1.hero.damage = 3
+    surv = p1.give("END_019").play()
+    assert surv.atk == 8 and surv.health == 9  # 5/6 + 3/3
+    assert surv.taunt
+
+
+def test_endtime_survivor_no_buff_when_undamaged():
+    game = prepare_game()
+    p1 = game.player1
+    surv = p1.give("END_019").play()
+    assert surv.atk == 5 and surv.health == 6
+
+
+def test_eternal_toil_draw_on_survive():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    _clear_hand(p1)
+    survivor = p2.summon("CS2_182")  # 4/5 survives 1 damage
+    p1.give("END_020").play(target=survivor)
+    assert survivor.damage == 1
+    assert not survivor.dead
+    assert len(p1.hand) == 1
+
+
+def test_eternal_toil_summon_on_kill():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    victim = p2.summon("CS2_171")  # 3/1, dies to 1 dmg
+    pre = len(p1.field)
+    p1.give("END_020").play(target=victim)
+    assert victim.dead
+    summoned = [m for m in p1.field]
+    assert len(p1.field) == pre + 1
+    assert summoned[-1].cost == 1
+
+
+def test_time_twisted_seer_spell_damage_while_damaged():
+    game = prepare_game()
+    p1 = game.player1
+    seer = p1.summon("END_022")  # 1/3
+    assert seer.spellpower == 0
+    seer.damage = 1
+    game.refresh_auras()
+    assert seer.spellpower == 2
+    seer.damage = 0
+    game.refresh_auras()
+    assert seer.spellpower == 0
+
+
+def test_bitter_end_freezes_and_destroys_damaged():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    left = p2.summon("CS2_182")    # 4/5
+    center = p2.summon("CS2_182")  # 4/5
+    right = p2.summon("CS2_182")   # 4/5
+    center.damage = 1  # damaged -> destroyed
+    p1.give("END_023").play(target=center)
+    assert center.dead
+    # Neighbors undamaged -> frozen but alive.
+    assert not left.dead and not right.dead
+    assert left.frozen and right.frozen
+
+
+def test_eternal_firebolt_lifesteal_and_return_on_kill():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    p1.hero.damage = 5
+    victim = p2.summon("CS2_171")  # 3/1, dies
+    _clear_hand(p1)
+    bolt = p1.give("END_025")
+    bolt.play(target=victim)
+    assert victim.dead
+    # Lifesteal healed the hero by 3.
+    assert p1.hero.damage == 2
+    game.end_turn()
+    # Returned to hand at end of turn.
+    assert any(c.id == "END_025" for c in p1.hand)
+
+
+def test_eternal_firebolt_no_return_on_survive():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    survivor = p2.summon("CS2_182")  # 4/5 survives
+    _clear_hand(p1)
+    p1.give("END_025").play(target=survivor)
+    assert not survivor.dead
+    game.end_turn()
+    assert not any(c.id == "END_025" for c in p1.hand)
+
+
+def test_fragment_of_nothing_draws_on_spell_to_minion():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    p1.summon("END_026")
+    _clear_hand(p1)
+    target = p2.summon("CS2_182")  # 4/5
+    target.max_health = 80
+    target.damage = 0
+    p1.give("CS2_024").play(target=target)  # Frostbolt -> minion
+    assert len(p1.hand) == 1
+
+
+def test_for_all_time_destroys_low_attack():
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    weak = p2.summon("CS2_171")    # 1/1
+    strong = p2.summon("CS2_200")  # 6/7 (Boulderfist Ogre) — survives
+    mine = p1.summon("CS2_171")    # 1/1, also affected
+    p1.give("END_028").play()
+    assert weak.dead and mine.dead
+    assert not strong.dead
+
+
+def test_voodoo_totem_gets_shadow_spell():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.player1
+    p1.summon("END_029")
+    _clear_hand(p1)
+    game.end_turn()
+    got = [c for c in p1.hand]
+    assert len(got) == 1
+    assert got[0].type == CardType.SPELL
+    assert got[0].data.spell_school == SpellSchool.SHADOW
+
+
+def test_winged_aberration_combo_grants_immune_and_overload():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    p1.give("CS2_171").play()  # set up combo
+    aber = p1.give("END_032").play()
+    assert aber.immune
+    assert aber.windfury
+    assert p1.overloaded == 2
+
+
+def test_winged_aberration_no_combo_no_effect():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    aber = p1.give("END_032").play()  # first card this turn -> no combo
+    assert not aber.immune
+    assert p1.overloaded == 0
+
+
+def test_prescient_slitherdrake_cost_reduction():
+    game = prepare_game()
+    p1 = game.player1
+    drake = p1.give("END_033")
+    assert drake.cost == 7
+    p1.give("CS2_182")  # not a dragon
+    assert drake.cost == 7
+    p1.give("END_033")  # another Dragon in hand
+    assert drake.cost == 4
+
+
+def test_crumblecrusher_destroys_minion_and_weapon():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    enemy = p2.summon("CS2_182")  # 4/5
+    p2.summon("CS2_082")          # enemy weapon equipped
+    assert p2.weapon is not None
+    p1.give("END_034").play()
+    assert enemy.dead
+    assert p2.weapon is None
+
+
+def test_omen_of_the_end_mills_when_deck_empty():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    _clear_deck(p1)
+    for _ in range(8):
+        _deck_card(p2, "CS2_171")
+    pre = len(p2.deck)
+    p1.give("END_035").play()
+    assert len(p2.deck) == pre - 5
+
+
+def test_omen_of_the_end_no_mill_when_deck_nonempty():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    _deck_card(p1, "CS2_171")  # deck not empty
+    for _ in range(8):
+        _deck_card(p2, "CS2_171")
+    pre = len(p2.deck)
+    p1.give("END_035").play()
+    assert len(p2.deck) == pre
+
+
+def test_morchie_discovers_rewind_card():
+    game = prepare_game()
+    p1 = game.player1
+    _clear_hand(p1)
+    p1.give("END_036").play()
+    assert p1.choice is not None
+    for c in p1.choice.cards:
+        assert c.data.tags.get(GameTag.REWIND, 0)
+    p1.choice.choose(p1.choice.cards[0])
+    assert len(p1.hand) == 1
+    # Marker enchant applied to hero.
+    assert any(b.id == "END_036e" for b in p1.hero.buffs)
+
+
+def test_endtime_murozond_fills_board_and_heals():
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    p1.hero.damage = 10
+    muro = p1.give("END_037").play()
+    # Board filled with dragons (plus Murozond himself).
+    assert len(p1.field) == game.MAX_MINIONS_ON_FIELD
+    dragons = [m for m in p1.field if Race.DRAGON in m.races and m is not muro]
+    assert len(dragons) >= 1
+    # Hero fully healed.
+    assert p1.hero.damage == 0

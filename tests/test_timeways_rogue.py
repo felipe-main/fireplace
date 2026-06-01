@@ -41,7 +41,7 @@ for _sib in _SIBS:
         _sys.modules[_full] = _types.ModuleType(_full)
 # --------------------------------------------------------------------------
 
-from hearthstone.enums import Zone
+from hearthstone.enums import CardType, Zone
 
 from utils import prepare_game, CardClass
 
@@ -377,3 +377,71 @@ def test_shapeshifter_no_enemy_minions():
     _advance_to_own_turn_begin(game, me)
     # No enemy minion in hand -> Shapeshifter stays itself (Find gate fails).
     assert any(c.id == "TIME_876" for c in me.hand)
+
+
+# ===========================================================================
+# Across the Timeways mini-set (END_)
+# ===========================================================================
+
+
+# END_000 Eventuality — Deal 2 damage. Imbue your Hero Power.
+def test_eventuality_damage_and_imbue():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    me, opp = _both(game)
+    target = opp.summon("CS2_182")  # 4/5 Chillwind Yeti
+    pre_imbues = me.imbues_this_game
+    me.give("END_000").play(target=target)
+    # 2 damage to the chosen target.
+    assert target.damage == 2
+    # Hero Power imbued once -> Rogue's Blessing of the Bronze installed.
+    assert me.imbues_this_game == pre_imbues + 1
+    assert me.hero_power.id == "END_000p"
+
+
+def test_eventuality_can_hit_face():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    me, opp = _both(game)
+    opp.hero.max_health = 30
+    opp.hero.damage = 0
+    me.give("END_000").play(target=opp.hero)
+    assert opp.hero.health == 28
+    assert me.hero_power.id == "END_000p"
+
+
+# END_000p Blessing of the Bronze — Get a random minion from another class.
+# It costs (@) less. (@ scales with imbue level.)
+def test_blessing_of_the_bronze_level1():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    me, opp = _both(game)
+    me.discard_hand()
+    # Install the Imbued Hero Power at level 1 via Eventuality.
+    me.give("END_000").play(target=opp.hero)
+    assert me.hero_power.id == "END_000p"
+    assert me.imbues_this_game == 1
+    me.used_mana = 0
+    me.hero.power.use()
+    # Exactly one minion added to hand, from a class other than Rogue/Neutral.
+    assert len(me.hand) == 1
+    got = me.hand[0]
+    assert got.type == CardType.MINION
+    assert got.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
+    # Level 1 => costs (1) less than its base cost.
+    assert got.cost == max(0, got.data.cost - 1)
+
+
+def test_blessing_of_the_bronze_scales_with_imbue_level():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    me, opp = _both(game)
+    me.discard_hand()
+    # Imbue twice -> level 2.
+    me.give("END_000").play(target=opp.hero)
+    me.give("END_000").play(target=opp.hero)
+    assert me.imbues_this_game == 2
+    assert me.hero_power.id == "END_000p"
+    me.used_mana = 0
+    me.hero.power.use()
+    assert len(me.hand) == 1
+    got = me.hand[0]
+    assert got.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
+    # Level 2 => costs (2) less.
+    assert got.cost == max(0, got.data.cost - 2)

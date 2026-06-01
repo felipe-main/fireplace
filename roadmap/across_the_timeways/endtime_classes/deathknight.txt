@@ -1,0 +1,4 @@
+=== DEATHKNIGHT (1) ===
+END_003        SPELL   3         Finality                       [] {} | Draw an Undead. <b>Imbue</b> your Hero Power twice.
+   token END_003p       HERO_POWER 0         Blessing of the Infinite       [] {} | <b>Passive</b> The first Undead you play each turn gains +@ Attack.
+   token END_003pe      ENCHANTMENT 0         The End is Nigh                [] {} | Increased Attack.

@@ -349,3 +349,43 @@ def test_zin_azshari_empowered_summons_doubled_copy():
     copy = next(m for m in yetis if m is not orig)
     # Doubled: 8/10.
     assert copy.atk == 8 and copy.max_health == 10
+
+
+# ---------------------------------------------------------------------------
+# END_009 Splintered Reality — Summon two 2/2 Treants. They gain +1/+1 for
+# each friendly Treant that died this game.
+# ---------------------------------------------------------------------------
+def test_splintered_reality_no_dead_treants_summons_vanilla():
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.player1
+    for m in list(p1.field):
+        m.destroy()
+    game.process_deaths()
+    spell = p1.give("END_009")
+    spell.play()
+    treants = [m for m in p1.field if m.id == "END_009t"]
+    assert len(treants) == 2
+    # No friendly Treant died this game -> vanilla 2/2 each.
+    for t in treants:
+        assert t.atk == 2 and t.max_health == 2
+
+
+def test_splintered_reality_buffs_per_dead_treant():
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.player1
+    for m in list(p1.field):
+        m.destroy()
+    game.process_deaths()
+    # Kill three friendly Treant tokens this game.
+    deaths = [p1.summon("END_009t") for _ in range(3)]
+    for t in deaths:
+        t.destroy()
+    game.process_deaths()
+    assert all(t.zone == Zone.GRAVEYARD for t in deaths)
+    spell = p1.give("END_009")
+    spell.play()
+    treants = [m for m in p1.field if m.id == "END_009t"]
+    assert len(treants) == 2
+    # 3 dead Treants -> +3/+3 each -> 5/5.
+    for t in treants:
+        assert t.atk == 5 and t.max_health == 5

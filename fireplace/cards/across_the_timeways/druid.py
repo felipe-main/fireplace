@@ -230,6 +230,38 @@ class _SummonDoubledCopy(TargetedAction):
         )
 
 
+class _SplinteredReality(TargetedAction):
+    """Splintered Reality (END_009) — summon two 2/2 Treants. They gain +1/+1
+    for each friendly Treant that died this game.
+
+    "Friendly Treant that died this game" = minions in the controller's
+    graveyard whose printed name ends with "Treant" (matches the TREANT
+    selector convention). Each freshly-summoned Treant gets the END_009e
+    enchant carrying +N/+N where N is that count.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        dead_treants = sum(
+            1
+            for card in ctrl.graveyard
+            if card.type == CardType.MINION
+            and getattr(card, "name_enUS", "").endswith("Treant")
+        )
+        for _ in range(2):
+            if len(ctrl.field) >= 7:
+                break
+            treant = ctrl.card("END_009t", source=source)
+            source.game.cheat_action(source, [Summon(ctrl, treant)])
+            if dead_treants > 0 and treant.zone == Zone.PLAY:
+                source.game.cheat_action(
+                    source,
+                    [Buff(treant, "END_009e", atk=dead_treants, max_health=dead_treants)],
+                )
+
+
 class _AlternateReality(TargetedAction):
     """Alternate Reality — replace the controller's hand and deck with random
     Choose One cards from the past; each costs (1) less.
@@ -347,6 +379,25 @@ class TIME_707:
     # Replace your hand and deck with random Choose One cards from the past.
     # They cost (1) less.
     play = _AlternateReality(CONTROLLER)
+
+
+class END_009:
+    """Splintered Reality"""
+
+    # Summon two 2/2 Treants. They gain +1/+1 for each friendly Treant that
+    # died this game.
+    play = _SplinteredReality(CONTROLLER)
+
+
+class END_009e:
+    "Splintered"
+    # Increased stats (in data; +N/+N applied at summon time).
+
+
+class END_009t:
+    """Treant"""
+
+    # Vanilla 2/2 Treant token.
 
 
 # ---------------------------------------------------------------------------

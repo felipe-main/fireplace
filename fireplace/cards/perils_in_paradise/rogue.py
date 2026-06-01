@@ -134,9 +134,9 @@ class _FillAnnoying(TargetedAction):
 class VAC_330:
     """Metal Detector"""
 
-    events = Attack(FRIENDLY_HERO, MINION).after(
-        Dead(Attack.DEFENDER) & Give(CONTROLLER, "GAME_005")
-    )
+    # Deathrattle: Get a Coin. (Patch 34.2 reworked this from an
+    # after-your-hero-kills trigger to a plain Deathrattle.)
+    deathrattle = Give(CONTROLLER, "GAME_005")
 
 
 ##

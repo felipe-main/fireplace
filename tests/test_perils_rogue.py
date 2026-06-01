@@ -10,40 +10,28 @@ from utils import *
 from fireplace import cards as _cards
 
 
-# VAC_330 — Metal Detector (3/2/2 weapon):
-# After your hero attacks and kills a minion, get a Coin.
-def test_metal_detector_coin_on_kill():
+# VAC_330 — Metal Detector (3/2 weapon): Deathrattle: Get a Coin.
+# (Patch 34.2 reworked this from an after-kill trigger to a Deathrattle.)
+def test_metal_detector_coin_on_deathrattle():
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
-    p1, p2 = game.player1, game.player2
+    p1 = game.player1
     weapon = p1.give("VAC_330")
     weapon.play()
     assert p1.hero.atk == weapon.atk
-    # Enemy 1-health minion the hero can kill outright.
-    victim = p2.summon("CS2_231")  # Wisp 1/1
     pre_coins = len([c for c in p1.hand if c.id == "GAME_005"])
-    p1.hero.attack(victim)
+    weapon.destroy()
     game.process_deaths()
-    assert victim.dead
     coins = [c for c in p1.hand if c.id == "GAME_005"]
     assert len(coins) == pre_coins + 1
 
 
-def test_metal_detector_no_coin_when_minion_survives():
+def test_metal_detector_no_coin_while_equipped():
     game = prepare_empty_game(CardClass.ROGUE, CardClass.ROGUE)
-    p1, p2 = game.player1, game.player2
+    p1 = game.player1
     weapon = p1.give("VAC_330")
     weapon.play()
-    # Beefy minion that survives a 2-attack hit.
-    victim = p2.summon("CS2_231")
-    victim.max_health = 10
-    victim._max_health = 10
-    victim.damage = 0
-    pre_coins = len([c for c in p1.hand if c.id == "GAME_005"])
-    p1.hero.attack(victim)
-    game.process_deaths()
-    assert not victim.dead
-    coins = [c for c in p1.hand if c.id == "GAME_005"]
-    assert len(coins) == pre_coins
+    # Deathrattle has not fired yet — no Coin while the weapon is still equipped.
+    assert len([c for c in p1.hand if c.id == "GAME_005"]) == 0
 
 
 # VAC_332 — Sea Shill (3/3/2 Pirate):

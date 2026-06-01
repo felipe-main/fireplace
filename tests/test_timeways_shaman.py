@@ -35,7 +35,7 @@ def _install_shaman_only_package():
     sys.modules[pkg_name + ".shaman"] = shaman
     spec.loader.exec_module(shaman)
     for name in dir(shaman):
-        if name.startswith("TIME_"):
+        if name.startswith("TIME_") or name.startswith("END_"):
             setattr(pkg, name, getattr(shaman, name))
 
 
@@ -303,3 +303,33 @@ def test_static_shock_damages_minion_and_buffs_hero():
     spell.play(target=target)
     assert target.damage == 1
     assert p1.hero.atk == 1  # +1 Attack this turn
+
+
+# ---------------------------------------------------------------------------
+# Across the Timeways mini-set (END_)
+# ---------------------------------------------------------------------------
+
+
+def test_haywire_hornswog_base_cost_no_overload():
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    assert p1.overloaded_this_game == 0
+    hornswog = p1.give("END_030")
+    # Printed base cost is 6; no Overload this game -> no discount.
+    assert hornswog.cost == 6
+    # Elusive + Taunt come from data tags. Elusive is the ELUSIVE keyword tag
+    # (honored in targeting.py), not the legacy cant_be_targeted_by_abilities.
+    assert hornswog.taunt is True
+    assert hornswog.data.tags.get(GameTag.ELUSIVE)
+
+
+def test_haywire_hornswog_cost_drops_per_mana_crystal_overloaded():
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    hornswog = p1.give("END_030")
+    # 4 Mana Crystals Overloaded this game -> costs (4) less: 6 - 4 = 2.
+    p1.overloaded_this_game = 4
+    assert hornswog.cost == 2
+    # Cost never goes below 0: overload 10 -> clamped to 0.
+    p1.overloaded_this_game = 10
+    assert hornswog.cost == 0

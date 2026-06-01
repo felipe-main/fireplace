@@ -393,3 +393,84 @@ class TIME_618e:
     # Hero deathrattle: spend up to 20 Corpses to resurrect. Reviving the hero
     # is an engine limitation; we spend the Corpses.
     deathrattle = _HuskHeroDeathrattle(FRIENDLY_HERO)
+
+
+##
+# Across the Timeways mini-set (END_, "End Time")
+
+
+class _BlessingOfTheInfiniteBuff(TargetedAction):
+    """Blessing of the Infinite (END_003p) — buff the first Undead the
+    controller plays each turn with +N Attack (N = imbue level), then latch a
+    per-turn flag so subsequent Undead this turn are untouched. The flag clears
+    at OWN_TURN_END. TARGET is the just-played Undead minion (Play.CARD)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        # TARGET is the just-played Undead minion (Play.CARD).
+        ctrl = source.controller
+        if getattr(ctrl, "_blessing_infinite_consumed_this_turn", False):
+            return
+        if target is None or target.type != CardType.MINION:
+            return
+        is_undead = target.race == Race.UNDEAD or Race.UNDEAD in getattr(
+            target, "races", []
+        )
+        if not is_undead:
+            return
+        ctrl._blessing_infinite_consumed_this_turn = True
+        # @ scales with the number of times the Hero Power was imbued.
+        amount = max(1, getattr(source, "imbue_level", 1))
+        source.game.cheat_action(source, [Buff(target, "END_003pe", atk=amount)])
+
+
+class _BlessingOfTheInfiniteReset(TargetedAction):
+    """Clear the once-per-turn latch at the controller's turn end."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target._blessing_infinite_consumed_this_turn = False
+
+
+##
+# Spells
+
+
+class END_003:
+    """Finality"""
+
+    # Draw an Undead. Imbue your Hero Power twice.
+    play = (
+        ForceDraw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION + UNDEAD)),
+        Imbue(CONTROLLER),
+        Imbue(CONTROLLER),
+    )
+
+
+##
+# Tokens — Imbued Hero Power
+
+
+class END_003p:
+    """Blessing of the Infinite"""
+
+    # Passive. The first Undead you play each turn gains +@ Attack.
+    # @ scales with the imbue level (Finality imbues twice -> level >= 2).
+    events = (
+        Play(CONTROLLER, MINION + UNDEAD).after(
+            _BlessingOfTheInfiniteBuff(Play.CARD)
+        ),
+        OWN_TURN_END.on(_BlessingOfTheInfiniteReset(CONTROLLER)),
+    )
+
+
+##
+# Enchantments
+
+
+class END_003pe:
+    """The End is Nigh"""
+
+    # Increased Attack. Amount set dynamically by Buff(atk=imbue_level).

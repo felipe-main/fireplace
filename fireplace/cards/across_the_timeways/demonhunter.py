@@ -374,3 +374,44 @@ class TIME_449e2:
 
     # +4 Attack.
     tags = {GameTag.ATK: 4}
+
+
+##
+# Across the Timeways: End Time mini-set (END_)
+
+
+class _TickEonFragments(TargetedAction):
+    """Eon Fragments — counts your turn-begins; the +3 Attack buff lasts THIS
+    turn, NEXT turn, and the turn AFTER (3 of your turns). It is applied on the
+    battlecry turn, then must survive that turn plus two more, so it self-
+    destroys on the 3rd OWN_TURN_BEGIN after being attached."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source._eon_turns = getattr(source, "_eon_turns", 0) + 1
+        if source._eon_turns >= 3:
+            source.game.cheat_action(source, [Destroy(source)])
+
+
+class END_006:
+    """Chronikar"""
+
+    # Battlecry: Give your hero +3 Attack this turn, next turn, and the turn
+    # after.
+    play = Buff(FRIENDLY_HERO, "END_006e")
+
+
+@custom_card
+class END_006e:
+    """Eon Fragments"""
+
+    # +3 Attack for 3 turns. (Data omits the ATK value, so declare it; the
+    # buff persists across turns and self-destroys after the 3rd of your
+    # turn-begins via _TickEonFragments.)
+    tags = {
+        GameTag.CARDNAME: "Eon Fragments",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.ATK: 3,
+    }
+    events = OWN_TURN_BEGIN.on(_TickEonFragments(SELF))

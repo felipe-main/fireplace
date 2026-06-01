@@ -1,0 +1,2 @@
+=== SHAMAN (1) ===
+END_030        MINION  6/4/6     Haywire Hornswog               [BEAST,DRAGON] {ELUSIVE,TAUNT} | [x]<b>Elusive,</b> <b>Taunt</b> Costs (1) less for each Mana Crystal you've _<b>Overloaded</b> this game.

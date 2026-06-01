@@ -1,0 +1,2 @@
+=== HUNTER (1) ===
+END_015        MINION  5/5/5     Triennium Rex                  [BEAST] {DEATHRATTLE,KINDRED} | [x]<b>Kindred and Deathrattle:</b> Get a random <b>Deathrattle</b> _minion. It costs (2) less.

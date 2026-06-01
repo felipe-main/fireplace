@@ -1,0 +1,42 @@
+=== NEUTRAL (27) ===
+END_001        WEAPON  3/3/0     Jagged Edge of Time            [] MC=['DEATHKNIGHT', 'ROGUE'] {BATTLECRY,MULTIPLE_CLASSES} | <b>Battlecry:</b> <b>Imbue</b> your Hero Power.
+END_002        MINION  4/4/3     Wicked Blightspawn             [UNDEAD] MC=['DEATHKNIGHT', 'ROGUE'] {DEATHRATTLE,MULTIPLE_CLASSES,REBORN} | [x]<b>Reborn</b>. <b>Deathrattle:</b> Equip a 1/2 Dagger. If you already have a weapon equipped, give it +2 Attack instead.
+   token END_002e       ENCHANTMENT 0         Wicked                         [] {} | +2 Attack.
+END_004        MINION  7/6/5     Remnant of Rage                [UNDEAD,DEMON] MC=['DEATHKNIGHT', 'DEMONHUNTER'] {BATTLECRY,MULTIPLE_CLASSES} | [x]Costs (1) less for each minion that died this turn. _<b>Battlecry:</b> Draw 2 cards.
+END_005        SPELL   5         Bygone Echoes                  [] MC=['DEATHKNIGHT', 'DEMONHUNTER'] {CORPSE_SPENDER,MULTIPLE_CLASSES,OUTCAST} | Summon a random 4-Cost minion. Spend 4 <b>Corpses</b> to summon another. <b>Outcast:</b> And another.
+END_007        SPELL   2         Press the Advantage            [] MC=['DRUID', 'DEMONHUNTER'] {MULTIPLE_CLASSES} | Deal $1 damage. Give your hero +1 Attack this turn. Draw 1 card. Gain 1 Armor.
+   token END_007e1      ENCHANTMENT 0         Claws of Fury                  [] {} | +1 Attack this turn.
+END_008        MINION  3/3/4     Enduring Roach                 [BEAST] MC=['DRUID', 'DEMONHUNTER'] {MULTIPLE_CLASSES} | After you use your Hero_Power, refresh 2 Mana_Crystals.
+END_010        MINION  6/5/5     Twilight Timereaver            [DRAGON] MC=['DRUID', 'PALADIN'] {CHOOSE_ONE,MULTIPLE_CLASSES} | <b>Choose One -</b> Set the Attack of all other minions to 1; or Health to 1.
+   token END_010a       SPELL   6         Finite Will                    [] MC=['DRUID', 'PALADIN'] {MULTIPLE_CLASSES} | Set the Attack of all other minions to 1.
+   token END_010ae      ENCHANTMENT 0         Finite Will                    [] {} | Attack set to 1.
+   token END_010b       SPELL   6         Finite Resolve                 [] MC=['DRUID', 'PALADIN'] {MULTIPLE_CLASSES} | Set the Health of all other minions to 1.
+   token END_010be      ENCHANTMENT 0         Finite Resolve                 [] {} | Health set to 1.
+   token END_010e       ENCHANTMENT 0         Finite Existence               [] {} | Attack and Health set to 1.
+END_011        SPELL   2         Acceleration Aura              [] MC=['DRUID', 'PALADIN'] {MULTIPLE_CLASSES} | At the start of your turn, gain a temporary Mana Crystal. Lasts @ turns.
+END_013        MINION  3/3/3     Brutish Endmaw                 [BEAST] MC=['HUNTER', 'PALADIN'] {BATTLECRY,DISCOVER,MULTIPLE_CLASSES} | <b>Battlecry:</b> <b>Discover</b> a 1-Cost minion with a <b>Dark_Gift</b>.
+END_014        SPELL   4         Synchronized Spark             [] MC=['HUNTER', 'PALADIN'] {MULTIPLE_CLASSES} | [x]Deal $3 damage to an enemy. If it dies, give a random friendly minion +3/+3.
+   token END_014e       ENCHANTMENT 0         In Sync                        [] {} | +3/+3.
+END_016        WEAPON  4/4/0     Chronoclaws                    [] MC=['HUNTER', 'WARLOCK'] {MULTIPLE_CLASSES} | After your hero attacks, discard your highest Cost card.
+END_017        SPELL   1         Battle at the End Time         [] MC=['HUNTER', 'WARLOCK'] {MULTIPLE_CLASSES,QUEST} | <b>Quest:</b> Fill your hand, then empty it. <b>Reward: </b>Tick and Tock.
+   token END_017t       MINION  5/8/8     Tick and Tock                  [DRAGON] MC=['HUNTER', 'WARLOCK'] {BATTLECRY,MULTIPLE_CLASSES} | <b>Battlecry:</b> Draw until your hand is full. <b>Deathrattle:</b> Empty the opponent's hand.
+END_019        MINION  5/5/6     Endtime Survivor               [] MC=['WARLOCK', 'WARRIOR'] {BATTLECRY,MULTIPLE_CLASSES,TAUNT} | <b>Taunt</b>. <b>Battlecry:</b> If your hero took damage this turn, gain +3/+3.
+   token END_019e       ENCHANTMENT 0         Alone in Time                  [] {} | +3/+3.
+END_020        SPELL   1         Eternal Toil                   [] MC=['WARLOCK', 'WARRIOR'] {MULTIPLE_CLASSES} | [x]Deal $1 damage to a minion. If it survives, draw a card. If it dies, summon a random 1-Cost minion.
+END_022        MINION  1/1/3     Time-Twisted Seer              [DRAGON] MC=['MAGE', 'WARRIOR'] {MULTIPLE_CLASSES} | Has <b>Spell Damage +2</b> while damaged.
+   token END_022e       ENCHANTMENT 0         Time-Twisted                   [] {} | <b>Spell Damage +2</b>.
+END_023        SPELL   5         Bitter End                     [] MC=['MAGE', 'WARRIOR'] {MULTIPLE_CLASSES} | <b>Freeze</b> a minion and its neighbors. Destroy any that are damaged.
+END_025        SPELL   3         Eternal Firebolt               [] MC=['MAGE', 'PRIEST'] {LIFESTEAL,MULTIPLE_CLASSES} | <b>Lifesteal</b> Deal $3 damage to a minion. If it dies, return this to your hand at the end of your turn.
+   token END_025e       ENCHANTMENT 0         Eternal Firebolt               [] {} | Get an Eternal Flame at the end of the turn.
+END_026        MINION  4/3/6     Fragment of Nothing            [ELEMENTAL] MC=['MAGE', 'PRIEST'] {MULTIPLE_CLASSES} | After you cast a spell on a minion, draw a card.
+END_028        SPELL   4         For All Time                   [] MC=['PRIEST', 'SHAMAN'] {MULTIPLE_CLASSES,OVERLOAD} | Destroy all minions with 4 or less Attack. <b>Overload:</b> (2)
+END_029        MINION  2/0/4     Voodoo Totem                   [TOTEM] MC=['PRIEST', 'SHAMAN'] {MULTIPLE_CLASSES} | At the end of your turn, get a random Shadow spell.
+END_031        MINION  3/3/3     Shade of the End Time          [UNDEAD] MC=['ROGUE', 'SHAMAN'] {MULTIPLE_CLASSES,STEALTH} | <b>Stealth</b> <b>Spell Damage +1</b>
+END_032        MINION  4/4/4     Winged Aberration              [DRAGON] MC=['ROGUE', 'SHAMAN'] {COMBO,MULTIPLE_CLASSES,RUSH} | [x]<b>Rush</b> <b>Combo and Overload (2)</b>: Gain <b>Immune</b> this turn and <b>Windfury</b>.
+   token END_032e       ENCHANTMENT 0         Aberrant                       [] {} | <b>Immune</b> this turn.
+END_033        MINION  7/6/9     Prescient Slitherdrake         [DRAGON] {} | [x]<b>Elusive</b> Costs (3) less if you're _holding another Dragon.
+END_034        MINION  8/8/6     Crumblecrusher                 [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> Destroy a random enemy minion, location, and weapon.
+END_035        MINION  5/5/5     Omen of the End                [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> If your deck is empty, destroy the top 5 _cards of the enemy deck.
+END_036        MINION  4/2/5     Morchie                        [] {BATTLECRY,DISCOVER} | [x]Your <b>Rewinds</b> keep BOTH potential outcomes. <b>Battlecry:</b> <b>Discover</b> a <b>Rewind</b> card from any class.
+   token END_036e       ENCHANTMENT 0         Multiversal Singularity        [] {} | Your <b>Rewinds</b> keep BOTH outcomes.
+END_037        MINION  9/4/6     Endtime Murozond               [] {BATTLECRY} | <b>Battlecry:</b> Fill your board with random Dragons. Fully heal your hero. Skip your next turn.

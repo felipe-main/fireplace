@@ -370,3 +370,95 @@ def test_anomalous_shade_vanilla():
     m = caster.summon("TIME_610t2")
     assert (m.atk, m.health) == (3, 2)
     assert m.race == Race.UNDEAD or Race.UNDEAD in getattr(m, "races", [])
+
+
+# ===========================================================================
+# Across the Timeways mini-set (END_, "End Time")
+# ===========================================================================
+
+from fireplace.actions import Imbue
+
+UNDEAD_TOKEN = "TIME_610t2"  # Anomalous Shade, 3/2 Undead
+
+
+# ---------------------------------------------------------------------------
+# END_003 Finality - Draw an Undead. Imbue your Hero Power twice.
+# ---------------------------------------------------------------------------
+
+def test_finality_draws_undead_and_imbues_twice():
+    game = _dk_game()
+    caster = game.player1
+    caster.discard_hand()
+    # Empty the deck, then seed exactly one Undead so the draw is deterministic.
+    for c in list(caster.deck):
+        c.discard()
+    ud = caster.card(UNDEAD_TOKEN)
+    ud.zone = Zone.DECK
+    assert caster.imbues_this_game == 0
+    card = caster.give("END_003")
+    card.play()
+    # Drew the seeded Undead.
+    assert [c.id for c in caster.hand] == [UNDEAD_TOKEN]
+    # Imbued twice -> counter is 2 and Hero Power is the DK Imbued token.
+    assert caster.imbues_this_game == 2
+    assert caster.hero_power.id == "END_003p"
+    assert caster.hero_power.imbue_level == 2
+
+
+# ---------------------------------------------------------------------------
+# END_003p Blessing of the Infinite - Passive: the first Undead you play each
+# turn gains +@ Attack (@ = imbue level).
+# ---------------------------------------------------------------------------
+
+def _install_blessing(caster, game, times=2):
+    """Imbue the caster's Hero Power `times` times -> END_003p at that level."""
+    for _ in range(times):
+        game.queue_actions(caster.hero, [Imbue(caster)])
+    assert caster.hero_power.id == "END_003p"
+    assert caster.hero_power.imbue_level == times
+
+
+def test_blessing_buffs_first_undead_only():
+    game = _dk_game()
+    caster = game.player1
+    _install_blessing(caster, game, times=2)
+    u1 = caster.give(UNDEAD_TOKEN)
+    u1.play()
+    # First Undead this turn: +2 Attack (level 2). Base 3 -> 5.
+    assert u1.atk == 5
+    assert any(b.id == "END_003pe" for b in u1.buffs)
+    # Second Undead this turn: untouched.
+    u2 = caster.give(UNDEAD_TOKEN)
+    u2.play()
+    assert u2.atk == 3
+    assert not any(b.id == "END_003pe" for b in u2.buffs)
+
+
+def test_blessing_resets_next_turn():
+    game = _dk_game()
+    caster = game.player1
+    _install_blessing(caster, game, times=1)
+    u1 = caster.give(UNDEAD_TOKEN)
+    u1.play()
+    assert u1.atk == 3 + 1  # level 1 -> +1
+    # Roll to the caster's next turn; the per-turn latch must clear.
+    game.end_turn()
+    game.end_turn()
+    assert game.current_player is caster
+    u2 = caster.give(UNDEAD_TOKEN)
+    u2.play()
+    assert u2.atk == 3 + 1
+
+
+def test_blessing_ignores_non_undead():
+    game = _dk_game()
+    caster = game.player1
+    _install_blessing(caster, game, times=2)
+    # A non-Undead minion does not consume the latch nor get buffed.
+    yeti = caster.give(YETI)
+    yeti.play()
+    assert yeti.atk == 4  # Chillwind Yeti base, unbuffed
+    # The Undead played afterward still gets the buff (latch not consumed).
+    u1 = caster.give(UNDEAD_TOKEN)
+    u1.play()
+    assert u1.atk == 5

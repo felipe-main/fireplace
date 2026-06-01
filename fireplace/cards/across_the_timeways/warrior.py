@@ -188,3 +188,19 @@ class TIME_873:
 class TIME_873t:
     "Coliseum Crocolisk"
     # Vanilla 2/3 beast token.
+
+
+##
+# Across the Timeways — End Time mini-set (END_)
+
+
+class END_021:
+    "Dimensional Weaponsmith"
+    # Battlecry: Give all minions and weapons in your hand +2 Attack.
+    play = Buff(FRIENDLY_HAND + (MINION | WEAPON), "END_021e")
+
+
+class END_021e:
+    "Cutting Edge"
+    # Data enchant carries no stat tags — supply the printed +2 Attack.
+    tags = {GameTag.ATK: 2}

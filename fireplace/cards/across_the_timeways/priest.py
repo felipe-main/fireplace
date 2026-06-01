@@ -1,5 +1,10 @@
 from ..utils import *
 
+# Shared set-wide Dark Gift granter (random Nightmare keyword Bonus Effect).
+# Reused from the Emerald Dream package — Wings of Eternity (END_027) grants a
+# Dark Gift to its Discovered Dragon exactly like the EDR Dark-Gift cards.
+from ..emerald_dream.neutral import _GiveDarkGift
+
 
 ##
 # Minions
@@ -187,3 +192,20 @@ class TIME_436t2:
         Summon(CONTROLLER, Discover.CARD),
         Give(CONTROLLER, Copy(Discover.CARD)),
     )
+
+
+##
+# Across the Timeways (END_) — End Time mini-set
+
+
+class END_027:
+    """Wings of Eternity"""
+
+    # Discover a Dragon from the past with a Dark Gift.
+    # "From the past" is flavour — the data pool is collectible Dragons. The
+    # Discovered Dragon receives a random Dark Gift via the shared set-wide
+    # `_GiveDarkGift` helper (same modelling as every EDR Dark-Gift card).
+    play = Discover(
+        CONTROLLER,
+        RandomDragon(),
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))

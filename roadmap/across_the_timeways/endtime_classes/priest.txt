@@ -1,0 +1,2 @@
+=== PRIEST (1) ===
+END_027        SPELL   1         Wings of Eternity              [] {DISCOVER} | [x]<b>Discover</b> a Dragon from the past with a <b>Dark Gift</b>.

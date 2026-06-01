@@ -1,5 +1,9 @@
 from ..utils import *
 
+from hearthstone.enums import SpellSchool, Race
+
+from ..emerald_dream.neutral import _GiveDarkGift
+
 
 ##
 # Rewind minions — implement only the base play effect. The engine offers the
@@ -542,3 +546,625 @@ class TIME_720e:
         self._xhealth = target.health * 2
 
     max_health = lambda self, _: self._xhealth
+
+
+##
+# Across the Timeways (END_) — End Time mini-set
+#
+# Every collectible here is a dual-class ("Multiple Classes") card, but class
+# membership is data-side only; the scripts use no class-specific machinery
+# beyond Imbue/Corpses/Outcast which the engine already routes per controller.
+
+
+class END_001:
+    "Jagged Edge of Time"
+    # Battlecry: Imbue your Hero Power.
+    play = Imbue(CONTROLLER)
+
+
+class _WickedDaggerDeathrattle(TargetedAction):
+    """Wicked Blightspawn — equip a 1/2 Dagger (Wicked Knife, CS2_082); but if
+    a weapon is already equipped, give it +2 Attack instead."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        if ctrl.weapon is not None:
+            source.game.cheat_action(source, [Buff(ctrl.weapon, "END_002e")])
+        else:
+            source.game.cheat_action(source, [Summon(ctrl, "CS2_082")])
+
+
+class END_002:
+    "Wicked Blightspawn"
+    # Reborn. Deathrattle: Equip a 1/2 Dagger. If you already have a weapon
+    # equipped, give it +2 Attack instead.
+    deathrattle = _WickedDaggerDeathrattle(SELF)
+
+
+class END_002e:
+    "Wicked"
+    # +2 Attack.
+    tags = {GameTag.ATK: 2}
+
+
+class END_004:
+    "Remnant of Rage"
+    # Costs (1) less for each minion that died this turn. Battlecry: Draw 2
+    # cards. The engine tracks deaths via the per-turn `minions_killed_this_turn`
+    # counter (covers all minions that died this turn, both sides).
+    cost_mod = -Attr(CONTROLLER, "minions_killed_this_turn")
+    play = Draw(CONTROLLER) * 2
+
+
+class _BygoneSummon(TargetedAction):
+    """Bygone Echoes — summon a random 4-Cost minion; then for each additional
+    summon "credit" (one for spending 4 Corpses, one more for Outcast) summon
+    another random 4-Cost minion. The credits are decided by the caller."""
+
+    TARGET = ActionArg()
+    AMOUNT = IntArg()
+
+    def do(self, source, target, amount):
+        for _ in range(amount):
+            source.game.cheat_action(
+                source, [Summon(source.controller, RandomMinion(cost=4))]
+            )
+
+
+class _BygoneEcho(TargetedAction):
+    """Resolve Bygone Echoes' total summon count: 1 base, +1 if 4 Corpses are
+    spent, +1 for Outcast (passed via OUTCAST)."""
+
+    TARGET = ActionArg()
+    OUTCAST = IntArg()
+
+    def do(self, source, target, outcast):
+        ctrl = source.controller
+        count = 1
+        if ctrl.corpses >= 4:
+            source.game.cheat_action(source, [SpendCorpses(ctrl, 4)])
+            count += 1
+        count += outcast
+        source.game.cheat_action(source, [_BygoneSummon(ctrl, count)])
+
+
+class END_005:
+    "Bygone Echoes"
+    # Summon a random 4-Cost minion. Spend 4 Corpses to summon another.
+    # Outcast: And another.
+    play = _BygoneEcho(SELF, 0)
+    outcast = _BygoneEcho(SELF, 1)
+
+
+class END_007:
+    "Press the Advantage"
+    # Deal 1 damage. Give your hero +1 Attack this turn. Draw 1 card. Gain 1
+    # Armor.
+    requirements = {PlayReq.REQ_TARGET_TO_PLAY: 0}
+    play = (
+        Hit(TARGET, 1),
+        Buff(FRIENDLY_HERO, "END_007e1"),
+        Draw(CONTROLLER),
+        GainArmor(FRIENDLY_HERO, 1),
+    )
+
+
+class END_007e1:
+    "Claws of Fury"
+    # +1 Attack this turn.
+    tags = {GameTag.ATK: 1}
+
+
+class END_008:
+    "Enduring Roach"
+    # After you use your Hero Power, refresh 2 Mana Crystals.
+    events = Activate(FRIENDLY_HERO_POWER).after(FillMana(CONTROLLER, 2))
+
+
+class END_010:
+    "Twilight Timereaver"
+    # Choose One - Set the Attack of all other minions to 1; or Health to 1.
+    choose = ("END_010a", "END_010b")
+    # If both halves are chosen (e.g. by a Choose-Both effect) apply the
+    # combined "Attack and Health set to 1" enchant to all other minions.
+    play = ChooseBoth(CONTROLLER) & Buff(ALL_MINIONS - SELF, "END_010e")
+
+
+class END_010a:
+    "Finite Will"
+    # Set the Attack of all other minions to 1.
+    play = Buff(ALL_MINIONS - SELF, "END_010ae")
+
+
+class END_010ae:
+    "Finite Will"
+    # Attack set to 1.
+    atk = SET(1)
+
+
+class END_010b:
+    "Finite Resolve"
+    # Set the Health of all other minions to 1.
+    play = Buff(ALL_MINIONS - SELF, "END_010be")
+
+
+class END_010be:
+    "Finite Resolve"
+    # Health set to 1.
+    max_health = SET(1)
+
+
+class END_010e:
+    "Finite Existence"
+    # Attack and Health set to 1.
+    atk = SET(1)
+    max_health = SET(1)
+
+
+class _AccelerationTick(TargetedAction):
+    """Acceleration Aura tick — at the start of the controller's turn, grant a
+    temporary Mana Crystal (ManaThisTurn) and count the aura down. The data
+    ships no controller-aura enchant id, so a custom one is registered below.
+    Base duration 3 turns (TAG_SCRIPT_DATA_NUM_1 = 3)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        enchant = target
+        if enchant is None:
+            return
+        ctrl = enchant.controller
+        enchant.game.cheat_action(enchant, [ManaThisTurn(ctrl, 1)])
+        left = getattr(enchant, "_aura_turns_left", 0) - 1
+        enchant._aura_turns_left = max(0, left)
+        if left <= 0:
+            enchant.game.cheat_action(enchant, [Destroy(enchant)])
+
+
+class END_011:
+    "Acceleration Aura"
+    # At the start of your turn, gain a temporary Mana Crystal. Lasts 3 turns.
+    play = Buff(CONTROLLER, "END_011_aura")
+
+    def custom_cardtext(self):
+        return self.data.description.replace("@", "3")
+
+    tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
+
+
+@custom_card
+class END_011_aura:
+    "Acceleration Aura"
+    tags = {
+        GameTag.CARDNAME: "Acceleration Aura",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    events = OWN_TURN_BEGIN.on(_AccelerationTick(SELF))
+
+    def apply(self, target):
+        self._aura_turns_left = 3
+
+
+class END_013:
+    "Brutish Endmaw"
+    # Battlecry: Discover a 1-Cost minion with a Dark Gift.
+    # Same modelling as EDR Dark-Gift Discover cards (shared `_GiveDarkGift`).
+    play = Discover(
+        CONTROLLER,
+        RandomMinion(cost=1),
+    ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))
+
+
+class END_014:
+    "Synchronized Spark"
+    # Deal 3 damage to an enemy. If it dies, give a random friendly minion
+    # +3/+3.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_ENEMY_TARGET: 0,
+    }
+    play = Hit(TARGET, 3).then(
+        Dead(TARGET) & Buff(RANDOM(FRIENDLY_MINIONS), "END_014e")
+    )
+
+
+class END_014e:
+    "In Sync"
+    # +3/+3.
+    tags = {GameTag.ATK: 3, GameTag.HEALTH: 3}
+
+
+class END_016:
+    "Chronoclaws"
+    # After your hero attacks, discard your highest Cost card.
+    events = Attack(FRIENDLY_HERO).after(Discard(HIGHEST_COST(FRIENDLY_HAND)))
+
+
+class _BattleEndProgress(TargetedAction):
+    """Battle at the End Time quest — progresses through a fill-then-empty
+    cycle, checked at the controller's turn end. Progress 1 once the hand is
+    full; progress 2 once the (previously-full) hand has been emptied. Tracked
+    via `_battle_filled` on the quest card."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, quest):
+        ctrl = source.controller
+        if not getattr(quest, "_battle_filled", False):
+            if len(ctrl.hand) >= ctrl.max_hand_size:
+                quest._battle_filled = True
+                source.game.cheat_action(source, [AddProgress(quest, 1)])
+        else:
+            if len(ctrl.hand) == 0:
+                source.game.cheat_action(source, [AddProgress(quest, 1)])
+
+
+class END_017(QuestRewardProtect):
+    "Battle at the End Time"
+    # Quest: Fill your hand, then empty it. Reward: Tick and Tock.
+    # The fill->empty objective has no Play-style trigger; we evaluate the hand
+    # at each of the controller's turn ends (progress 1 when full, 2 when later
+    # emptied), matching the data QUEST_PROGRESS_TOTAL of 2.
+    progress_total = 2
+    quest = OWN_TURN_END.on(_BattleEndProgress(SELF))
+    reward = Give(CONTROLLER, "END_017t")
+
+
+class _TickAndTockFill(TargetedAction):
+    """Tick and Tock battlecry — draw until the controller's hand is full."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        guard = 0
+        while len(ctrl.hand) < ctrl.max_hand_size and guard < 20:
+            guard += 1
+            before = len(ctrl.hand) + len(ctrl.deck)
+            source.game.cheat_action(source, [Draw(ctrl)])
+            if not ctrl.deck and len(ctrl.hand) + len(ctrl.deck) >= before:
+                # Drew nothing new (fatigue / empty deck) — stop.
+                if not ctrl.deck:
+                    break
+
+
+class _EmptyOpponentHand(TargetedAction):
+    """Tick and Tock deathrattle — discard the opponent's entire hand. Resolved
+    via the controller's opponent directly so it works from the graveyard (a
+    relative ENEMY_HAND selector evaluates to nothing once the source is dead)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        opp = source.controller.opponent
+        for card in list(opp.hand):
+            source.game.cheat_action(source, [Discard(card)])
+
+
+class END_017t:
+    "Tick and Tock"
+    # Battlecry: Draw until your hand is full. Deathrattle: Empty the
+    # opponent's hand.
+    # The data card ships only the BATTLECRY tag (no DEATHRATTLE), so declare it
+    # here or the deathrattle never fires.
+    tags = {GameTag.DEATHRATTLE: True}
+    play = _TickAndTockFill(SELF)
+    deathrattle = _EmptyOpponentHand(SELF)
+
+
+class END_019:
+    "Endtime Survivor"
+    # Taunt. Battlecry: If your hero took damage this turn, gain +3/+3.
+    play = (Attr(FRIENDLY_HERO, "damaged_this_turn") >= 1) & Buff(
+        SELF, "END_019e"
+    )
+
+
+class END_019e:
+    "Alone in Time"
+    # +3/+3.
+    tags = {GameTag.ATK: 3, GameTag.HEALTH: 3}
+
+
+class END_020:
+    "Eternal Toil"
+    # Deal 1 damage to a minion. If it survives, draw a card. If it dies,
+    # summon a random 1-Cost minion.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Hit(TARGET, 1).then(
+        (Dead(TARGET) & Summon(CONTROLLER, RandomMinion(cost=1)))
+        | Draw(CONTROLLER)
+    )
+
+
+class END_022:
+    "Time-Twisted Seer"
+    # Has Spell Damage +2 while damaged.
+    update = Find(SELF + DAMAGED) & Refresh(SELF, {GameTag.SPELLPOWER: 2})
+
+
+class END_022e:
+    "Time-Twisted"
+    # Spell Damage +2.
+    tags = {GameTag.SPELLPOWER: 2}
+
+
+class END_023:
+    "Bitter End"
+    # Freeze a minion and its neighbors. Destroy any that are damaged.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = (
+        Freeze(TARGET),
+        Freeze(ADJACENT(TARGET)),
+        Find(TARGET + DAMAGED) & Destroy(TARGET),
+        Destroy(ADJACENT(TARGET) + DAMAGED),
+    )
+
+
+class _EternalFireboltReturn(TargetedAction):
+    """Eternal Firebolt — when the damaged minion dies, arm an end-of-turn
+    return: a one-shot enchant on the controller that, at this turn's end,
+    gives a fresh copy of the spell back to the hand and removes itself."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        # `source` is the cast spell card; re-create it by id at turn end.
+        spell_id = source.id
+        ench = ctrl.card("END_025e", source=source)
+        ench._firebolt_id = spell_id
+        source.game.cheat_action(source, [Buff(ctrl, ench)])
+
+
+class END_025:
+    "Eternal Firebolt"
+    # Lifesteal. Deal 3 damage to a minion. If it dies, return this to your hand
+    # at the end of your turn.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+    }
+    play = Hit(TARGET, 3).then(Dead(TARGET) & _EternalFireboltReturn(SELF))
+
+
+class _FireboltGiveBack(TargetedAction):
+    """At end of turn, return the Eternal Firebolt to hand and self-destruct."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, enchant):
+        ctrl = enchant.controller
+        spell_id = getattr(enchant, "_firebolt_id", "END_025")
+        enchant.game.cheat_action(enchant, [Give(ctrl, spell_id)])
+        enchant.game.cheat_action(enchant, [Destroy(enchant)])
+
+
+@custom_card
+class END_025e:
+    "Eternal Firebolt"
+    # Get an Eternal Firebolt at the end of the turn.
+    tags = {
+        GameTag.CARDNAME: "Eternal Firebolt",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    events = OWN_TURN_END.on(_FireboltGiveBack(SELF))
+
+
+class END_026:
+    "Fragment of Nothing"
+    # After you cast a spell on a minion, draw a card.
+    events = Play(CONTROLLER, SPELL).after(
+        Find(Play.TARGET + MINION) & Draw(CONTROLLER)
+    )
+
+
+class END_028:
+    "For All Time"
+    # Destroy all minions with 4 or less Attack. Overload: (2)
+    play = Destroy(ALL_MINIONS + (ATK <= 4))
+
+
+class _VoodooShadowSpell(TargetedAction):
+    """Voodoo Totem — get one random Shadow spell. Wrapped in a custom action so
+    the random roll happens exactly ONCE: a bare Give(RANDOM(...)) placed directly
+    in an `events` list is evaluated twice by the event machinery (truthy gate +
+    action extraction), which rolls — and gives — two different cards per turn."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.game.cheat_action(
+            source,
+            [Give(source.controller, RandomSpell(spell_school=SpellSchool.SHADOW))],
+        )
+
+
+class END_029:
+    "Voodoo Totem"
+    # At the end of your turn, get a random Shadow spell.
+    events = OWN_TURN_END.on(_VoodooShadowSpell(SELF))
+
+
+class END_031:
+    "Shade of the End Time"
+    # Stealth. Spell Damage +1. (Both carried by data tags — vanilla body.)
+    pass
+
+
+class END_032:
+    "Winged Aberration"
+    # Rush. Combo and Overload (2): Gain Immune this turn and Windfury.
+    # The combo body is only run when a card was played earlier this turn, and
+    # it pays the Overload (2) itself (the data carries no OVERLOAD tag).
+    combo = (
+        Buff(SELF, "END_032e"),
+        Overload(CONTROLLER, 2),
+    )
+
+
+class END_032e:
+    "Aberrant"
+    # Immune this turn (and Windfury — folded into this single enchant; the
+    # data enchant carries only TAG_ONE_TURN_EFFECT, so supply both keywords).
+    tags = {GameTag.IMMUNE: True, GameTag.WINDFURY: True}
+
+
+class END_033:
+    "Prescient Slitherdrake"
+    # Elusive. Costs (3) less if you're holding another Dragon.
+    # Elusive (CANT_BE_TARGETED_BY_SPELLS/HERO_POWERS) is carried by data tags.
+    cost_mod = HOLDING_DRAGON & -3
+
+
+class _CrumblecrusherDestroy(TargetedAction):
+    """Crumblecrusher — destroy a random enemy minion, a random enemy location,
+    and a random enemy weapon (each independently, if present)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        opp = ctrl.opponent
+        rng = source.game.random
+        picks = []
+        minions = [m for m in opp.field if not m.dead]
+        locations = [c for c in opp.field if c.type == CardType.LOCATION]
+        # Locations live in the same field list as minions; separate them so a
+        # minion-destroy and a location-destroy are independent picks.
+        real_minions = [m for m in minions if m.type == CardType.MINION]
+        if real_minions:
+            picks.append(rng.choice(real_minions))
+        if locations:
+            picks.append(rng.choice(locations))
+        if opp.weapon is not None:
+            picks.append(opp.weapon)
+        if picks:
+            source.game.cheat_action(source, [Destroy(picks)])
+
+
+class END_034:
+    "Crumblecrusher"
+    # Battlecry: Destroy a random enemy minion, location, and weapon.
+    play = _CrumblecrusherDestroy(SELF)
+
+
+class _OmenDestroyTop(TargetedAction):
+    """Omen of the End — if the controller's deck is empty, destroy (mill) the
+    top 5 cards of the enemy deck."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        if ctrl.deck:
+            return
+        opp = ctrl.opponent
+        for _ in range(5):
+            if not opp.deck:
+                break
+            card = opp.deck[-1]
+            source.game.cheat_action(source, [Destroy(card)])
+
+
+class END_035:
+    "Omen of the End"
+    # Battlecry: If your deck is empty, destroy the top 5 cards of the enemy
+    # deck.
+    play = _OmenDestroyTop(SELF)
+
+
+class END_036:
+    "Morchie"
+    # Your Rewinds keep BOTH potential outcomes. Battlecry: Discover a Rewind
+    # card from any class.
+    # The "keep BOTH outcomes" rule has no engine hook (the Rewind choice keeps
+    # exactly one); the marker enchant is applied for fidelity and the Discover
+    # is faithful.
+    play = Buff(FRIENDLY_HERO, "END_036e"), DISCOVER(
+        RandomCard(
+            collectible=True,
+            custom_filter=lambda c: c.tags.get(GameTag.REWIND, 0),
+        )
+    )
+
+
+class END_036e:
+    "Multiversal Singularity"
+    # Your Rewinds keep BOTH outcomes.
+    pass
+
+
+class _MurozondFillDragons(TargetedAction):
+    """Endtime Murozond — fill the controller's board with random Dragons, then
+    fully heal the hero. "Skip your next turn" has no clean engine primitive;
+    it is approximated by granting the opponent an extra turn (inserting them
+    at the front of the turn queue), so play effectively passes to the opponent
+    twice in a row (audit-noted approximation)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        guard = 0
+        while ctrl.minion_slots > 0 and guard < 14:
+            guard += 1
+            before = len(ctrl.field)
+            source.game.cheat_action(source, [Summon(ctrl, RandomDragon())])
+            if len(ctrl.field) <= before:
+                break
+        source.game.cheat_action(source, [Heal(ctrl.hero, 30)])
+        # Approximate "Skip your next turn": let the opponent take an extra turn.
+        source.game.next_players.insert(0, ctrl.opponent)
+
+
+class END_037:
+    "Endtime Murozond"
+    # Battlecry: Fill your board with random Dragons. Fully heal your hero.
+    # Skip your next turn.
+    play = _MurozondFillDragons(SELF)
+
+
+class _EndTimeQuestStage(TargetedAction):
+    """Battle at the End Time — two-stage Quest progress, evaluated at the end of
+    your turn: stage 1 completes when your hand is full, stage 2 (the reward)
+    when your hand is then empty. (Approximation: the printed quest can fill and
+    empty within a single turn; we sample hand size at end of turn, which still
+    requires the player to have filled then emptied across their turns.)"""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        stage = getattr(source, "_endtime_stage", 0)
+        if stage == 0 and len(ctrl.hand) >= ctrl.max_hand_size:
+            source._endtime_stage = 1
+            source.game.cheat_action(source, [AddProgress(source, source)])
+        elif stage == 1 and len(ctrl.hand) == 0:
+            source._endtime_stage = 2
+            source.game.cheat_action(source, [AddProgress(source, source)])
+
+
+class END_017(QuestRewardProtect):
+    "Battle at the End Time"
+    # Quest: Fill your hand, then empty it. Reward: Tick and Tock.
+    progress_total = 2
+    quest = OWN_TURN_END.on(_EndTimeQuestStage(SELF))
+    reward = Give(CONTROLLER, "END_017t")
+
+
+class END_017t:
+    "Tick and Tock"
+    # Battlecry: Draw until your hand is full. Deathrattle: Empty the opponent's
+    # hand. (Token data omits the DEATHRATTLE tag, so declare it for the engine.)
+    tags = {GameTag.DEATHRATTLE: True}
+    play = DrawUntil(CONTROLLER, 10)
+    deathrattle = Discard(ENEMY_HAND)

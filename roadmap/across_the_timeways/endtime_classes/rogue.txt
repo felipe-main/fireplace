@@ -1,0 +1,4 @@
+=== ROGUE (1) ===
+END_000        SPELL   2         Eventuality                    [] {} | [x]Deal $2 damage. <b>Imbue</b> your Hero Power.
+   token END_000e       ENCHANTMENT 0         Dimensionally Shifted          [] {} | Reduced Cost.
+   token END_000p       HERO_POWER 1         Blessing of the Bronze         [] {REWIND} | [x]<b>Rewind</b> Get a random minion from another class. It costs (@) less.

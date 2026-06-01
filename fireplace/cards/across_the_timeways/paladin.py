@@ -570,3 +570,34 @@ class TIME_706e2:
 
     # Cleanup enchant for TIME_706 — no mechanical effect in our engine.
     tags = {}
+
+
+##
+# END_012 — Hand of Infinity (Weapon, 4/2, cost 3)
+# [x]Can't attack heroes. Battlecry: Set this weapon's Attack to INFINITY this
+# turn!
+#
+# CANNOT_ATTACK_HEROES is baked into the weapon's data tags. The battlecry buffs
+# the weapon with END_012e (a TAG_ONE_TURN_EFFECT enchant already in data) which
+# sets Attack to INFINITY for the current turn (precedent: TIME_024e in neutral).
+
+
+class END_012:
+    """Hand of Infinity"""
+
+    # "Can't attack heroes" lives in the weapon's data under an unmapped tag
+    # (321), so the engine never reads it. We restore it on the weapon entity
+    # via the mapped GameTag.CANNOT_ATTACK_HEROES. NOTE: the engine's
+    # attack-target filter checks `cannot_attack_heroes` on the attacking
+    # *character* (the hero), and Hero does not aggregate this flag from its
+    # weapon — so hero-level enforcement is an engine gap we don't patch here.
+    # The flag is correct on the weapon entity itself.
+    tags = {GameTag.CANNOT_ATTACK_HEROES: True}
+    play = Buff(SELF, "END_012e")
+
+
+class END_012e:
+    """Infinite Sharpness"""
+
+    # Attack set to INFINITY this turn (TAG_ONE_TURN_EFFECT carried by data).
+    atk = SET(2147483647)

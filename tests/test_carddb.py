@@ -24,7 +24,7 @@ CARDS = utils.fireplace.cards.db
 # TLC_EVENT_* : EVENT set — Tavern-Brawl/event-mode cards (e.g. Staff of the
 #               Endbringer TLC_EVENT_402) that became collectible at build
 #               226928; not part of the standard Lost City expansion.
-_OUT_OF_SCOPE_PREFIXES = ("NX2_", "YOG_", "VAN_", "LEG_", "WORK_", "TLC_EVENT_")
+_OUT_OF_SCOPE_PREFIXES = ("NX2_", "YOG_", "VAN_", "LEG_", "WORK_", "TLC_EVENT_", "TIME_EVENT_")
 _OUT_OF_SCOPE_IDS = frozenset(
     [
         "BG31_BOB",

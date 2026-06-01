@@ -1,0 +1,3 @@
+=== DEMONHUNTER (1) ===
+END_006        MINION  5/3/5     Chronikar                      [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> Give your hero +3_Attack this turn, next turn, and the turn after.
+   token END_006e       ENCHANTMENT 0         Eon Fragments                  [] {} | +3 Attack for 3 turns.

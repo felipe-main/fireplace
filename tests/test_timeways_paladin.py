@@ -337,3 +337,25 @@ def test_mend_rewind_reruns():
         assert len(holy) == 4
     else:
         assert len(holy) == 2
+
+
+##
+# END_012 — Hand of Infinity
+# Battlecry sets the weapon's Attack to INFINITY this turn; it reverts next turn.
+
+
+def test_hand_of_infinity():
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    weapon = p1.give("END_012")
+    weapon.play()
+    # Equipped weapon's Attack is INFINITY this turn (the one-turn enchant).
+    assert p1.weapon is not None
+    assert p1.weapon.atk == 2147483647
+    # Can't attack heroes (baked into the weapon data).
+    assert bool(p1.weapon.tags.get(GameTag.CANNOT_ATTACK_HEROES, False))
+    # End of turn clears the one-turn effect — back to base 4 Attack.
+    game.end_turn()
+    game.end_turn()
+    assert p1.weapon is not None
+    assert p1.weapon.atk == 4

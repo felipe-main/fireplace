@@ -334,3 +334,96 @@ class TIME_770e:
 class TIME_876e:
     "Shapeshifting"
     # Transforming into a random minion in your opponent's hand.
+
+
+##
+# Across the Timeways mini-set (END_) — End Time
+#
+# Custom actions
+
+
+class _EventualityImbue(TargetedAction):
+    """Eventuality (END_000) — Imbue your Hero Power.
+
+    The base spell deals 2 damage (handled by Hit on END_000.play) and then
+    imbues the controller's Hero Power once. Rogue's Imbued Hero Power is
+    END_000p "Blessing of the Bronze" (engine-mapped in actions.IMBUED_HERO_POWERS).
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.game.cheat_action(source, [Imbue(source.controller)])
+
+
+class _BlessingOfTheBronze(TargetedAction):
+    """Blessing of the Bronze (END_000p) — Get a random minion from another
+    class. It costs (@) less, where @ scales with the imbue level
+    (level 1 = (1) less, level 2 = (2) less, ...).
+
+    Pool is collectible minions whose class is neither the controller's class
+    nor Neutral ("from another class")."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        level = max(1, getattr(source, "imbue_level", 1))
+        own_classes = set(ctrl.hero.classes) or {ctrl.hero.card_class}
+        pool = [
+            cid for cid, c in db.items()
+            if (
+                c.type == CardType.MINION
+                and c.collectible
+                and c.card_class not in own_classes
+                and c.card_class != CardClass.NEUTRAL
+            )
+        ]
+        if not pool:
+            return
+        chosen = source.game.random.choice(pool)
+        card = ctrl.card(chosen, source=source)
+        source.game.cheat_action(
+            source, [Give(ctrl, card).then(Buff(Give.CARD, "END_000e", cost=-level))]
+        )
+
+
+##
+# Collectible cards
+
+
+class END_000:
+    "Eventuality"
+    # Deal $2 damage. Imbue your Hero Power.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+    }
+    play = Hit(TARGET, 2), _EventualityImbue(CONTROLLER)
+
+
+##
+# Imbued Hero Power token
+
+
+class END_000p:
+    "Blessing of the Bronze"
+    # Rewind: Get a random minion from another class. It costs (@) less.
+    #
+    # NOTE: the printed Hero Power carries the Rewind keyword (re-run once).
+    # Hero-power activation does not flow through Play.do's Rewind hook, so the
+    # re-run is not modelled here; we faithfully implement the underlying
+    # effect (a random off-class minion with a scaling cost reduction). The
+    # cost reduction scales with the imbue level (set by Imbue at install
+    # time and refreshed on every subsequent imbue).
+    activate = _BlessingOfTheBronze(CONTROLLER)
+
+
+##
+# Enchantments
+
+
+class END_000e:
+    """Dimensionally Shifted"""
+
+    # Reduced Cost (data enchant). Amount set dynamically by
+    # Buff(cost=-level) at activate time.

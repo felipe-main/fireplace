@@ -1,0 +1,4 @@
+=== WARLOCK (1) ===
+END_018        MINION  3/5/5     Acolyte of Infinity            [DRAGON] {BATTLECRY,DEATHRATTLE} | [x]<b>Battlecry:</b> Set the Cost of a random card in your hand to INFINITY! <b>Deathrattle:</b> Change it back.
+   token END_018e       ENCHANTMENT 0         Infinite Delay                 [] {} | Cost set to INFINITY!
+   token END_018e2      ENCHANTMENT 0         Preserved Essence              [] {} | Cost returned to normal.

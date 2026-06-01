@@ -240,3 +240,15 @@ class TIME_218e:
     "Statically Charged"
     # +1 Attack this turn. (TAG_ONE_TURN_EFFECT is in data.)
     tags = {GameTag.ATK: 1}
+
+
+# ===========================================================================
+# Across the Timeways mini-set (END_ — "End Time")
+# ===========================================================================
+
+
+class END_030:
+    "Haywire Hornswog"
+    # Elusive, Taunt (both in data). Costs (1) less for each Mana Crystal
+    # you've Overloaded this game. (Mirrors ICC_090 Snowfury Giant exactly.)
+    cost_mod = -Attr(CONTROLLER, GameTag.OVERLOAD_THIS_GAME)

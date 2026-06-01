@@ -27,10 +27,10 @@ IMBUE_CLASSES = {
     CardClass.MAGE: "EDR_851p",
 }
 
+# Rogue (END_000p) and Death Knight (END_003p) gained Imbued Hero Powers in the
+# Across the Timeways mini-set; the three below still have none.
 NO_IMBUE_CLASSES = [
-    CardClass.DEATHKNIGHT,
     CardClass.DEMONHUNTER,
-    CardClass.ROGUE,
     CardClass.WARLOCK,
     CardClass.WARRIOR,
 ]

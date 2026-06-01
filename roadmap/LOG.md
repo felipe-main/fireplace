@@ -50,3 +50,5 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-06-01 | 6:Across the Timeways (TIME_) | P6 docs | README -> Patch 34.0.229984 + Across the Timeways line
 - 2026-06-01 | 6:Across the Timeways (TIME_) | P7 soak | final 1000/1000, 0 failed (after tier-fix). SET #6 DONE (6ec6811b)
 - 2026-06-01 | MILESTONE | 6 of 8 sets DONE | Next: #7 Across the Timeways mini-set (TIME_TRAVEL, build TBD; full set arrived 229984, mini-set later build)
+- 2026-06-01 | 7:Across the Timeways mini-set (END_) | P0/P1/P2 | bump 229984->233275.1 (Patch 34.2; TIME_TRAVEL 145->183, prefix END_ 38 "End Time"; CATACLYSM still 0). Reuses Imbue/Rewind/Kindred/Dark Gift/Corpses/Quest/INFINITY=SET(large)/multi-class. NOVEL=Morchie END_036 (Rewinds keep BOTH outcomes -> Play.do re-runs effect, no choice, when END_036 in field). Fixed 2 GDB data-bump regressions (GDB_100 lost Taunt + armor 6->4; starship test uses GDB_109 Lifesteal). Commit d504d687
+- 2026-06-01 | 7:Across the Timeways mini-set (END_) | P3 cards | workflow wf_1d44568d running (12 class agents, neutral=27, folds into across_the_timeways pkg)

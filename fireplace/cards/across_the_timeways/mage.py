@@ -354,3 +354,20 @@ class TIME_861e1:
     # controller plays and routes it through _TokiTick (which only acts on
     # Toki-marked spells).
     events = Play(CONTROLLER, SPELL).after(_TokiTick(CONTROLLER, Play.CARD))
+
+
+##
+# Across the Timeways mini-set (END_, "End Time")
+
+
+class END_024:
+    "Flames of Infinity"
+    # Secret: When your enemy's turn ends, deal INFINITE damage to their
+    # highest Health minion. INFINITE damage modeled as Hit for INFINITY
+    # (2147483647) — precedent TIME_024 uses SET(2147483647) for INFINITY.
+    # Gate on the opponent actually having a minion so the secret doesn't
+    # reveal into an empty board.
+    secret = EndTurn(OPPONENT).on(
+        Find(ENEMY_MINIONS)
+        & (Reveal(SELF), Hit(HIGHEST_HEALTH(ENEMY_MINIONS), 2147483647))
+    )

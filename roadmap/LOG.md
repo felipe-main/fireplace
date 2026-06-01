@@ -33,4 +33,7 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | 4:The Shrouded City / Lost City of Un'Goro (TLC_) | P0/P1 | bump 219846->223542.1 (Patch 33.0); 145 TLC_ cards; novel=Kindred (matching minion-type/spell-school played PREVIOUS turn). Fixed 2 data-bump regressions (Flickering Lightbot cost 3->5; King Plush rework). 4b5b01c0
 - 2026-05-31 | 4:Lost City (TLC_) | P2 engine | Kindred: player.races/schools_played_{this,last}_turn + Play.do record + _begin_turn rollover; Kindred evaluator + kindred_active() + KindredCost LazyNum; test_tlc_engine.py 4 tests green
 - 2026-05-31 | 4:Lost City (TLC_) | P3 cards+gate | wf_98003509: 145 TLC_ cards; gate caught EDR_950 (new collectible at 223542 -> implemented) + TLC_436 corpse cost 5->3 + Shokk set-cost-enchant/determinism; full suite 3572 passed; commit bd0b5317 (+ removed stray tmp_paladin_tlc.py)
-- 2026-05-31 | 4:Lost City (TLC_) | P4 audit + P7 soak | wf_99317081 (finders+3-vote refute) + 1000-game soak launched in parallel
+- 2026-05-31 | 4:Lost City (TLC_) | P4 audit | wf_99317081 (3-vote) crashed on StructuredOutput overload; re-ran lean wf_cb0d4079 (1-vote): 35 rows = 3 real bugs/22 approx/6 once-over/4 cosmetic
+- 2026-06-01 | 4:Lost City (TLC_) | P5 tierfix | 3 real bugs fixed (3f327269): High Cultist Herenn simultaneous fight, Cursed Catacombs deck-Discover, + per-spell SPELLPOWER engine fix (closes Volcanic Thrasher AND EDR_874 Stellar Balance watch). 32 watch. review.csv 0 open real bugs
+- 2026-06-01 | 4:Lost City (TLC_) | P6+P7 soak | README->Patch 33.0; soak 1000/1000. SET #4 DONE
+- 2026-06-01 | MILESTONE | 4 of 8 sets DONE | Next: #5 Lost City mini-set (THE_LOST_CITY, build 228587.1, +38 -> 183)

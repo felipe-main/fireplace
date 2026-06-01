@@ -213,17 +213,18 @@ def test_bralma_searstone_aura_removed_on_death():
 
 
 # ---------------------------------------------------------------------------
-# TLC_229 Spirit of the Mountain - Quest: Play 7 minions of unique types.
-# Reward: Ashalon.
+# TLC_229 Spirit of the Mountain - Quest: Play N minions of unique types.
+# Reward: Ashalon. (N = QUEST_PROGRESS_TOTAL, read from data.)
 # ---------------------------------------------------------------------------
 
 def test_spirit_of_the_mountain_quest():
     game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
     p1 = game.player1
     quest = p1.give("TLC_229").play()
+    total = quest.data.tags[GameTag.QUEST_PROGRESS_TOTAL]
     assert quest.zone == Zone.SECRET
     assert quest.progress == 0
-    # Seven minions of seven distinct tribes. Destroy each after playing so the
+    # `total` minions of distinct tribes. Destroy each after playing so the
     # board has room for the reward (Ashalon) at completion - progress counts
     # types played, independent of board presence.
     distinct = [
@@ -234,7 +235,8 @@ def test_spirit_of_the_mountain_quest():
         ELEMENTAL,        # Elemental
         "ds1_whelptoken", # Dragon
         "CS2_051",        # Stoneclaw Totem - Totem
-    ]
+    ][:total]
+    assert len(distinct) == total
     for i, cid in enumerate(distinct):
         m = p1.give(cid).play()
         if i < len(distinct) - 1:
@@ -242,8 +244,8 @@ def test_spirit_of_the_mountain_quest():
             assert quest.progress == i + 1, (cid, quest.progress)
             m.destroy()
             game.process_deaths()
-    # 7 unique types reached -> quest complete, reward (Ashalon) summoned.
-    # (On completion the engine clears progress, so don't assert progress==7.)
+    # `total` unique types reached -> quest complete, reward (Ashalon) summoned.
+    # (On completion the engine clears progress, so don't assert progress==total.)
     assert quest.zone == Zone.GRAVEYARD
     ashalons = [m for m in p1.field if m.id == "TLC_229t14"]
     assert len(ashalons) == 1

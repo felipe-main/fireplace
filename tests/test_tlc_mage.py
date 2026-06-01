@@ -144,8 +144,9 @@ def test_titanographer_osk_body():
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     osk = game.player1.summon("TLC_452")
     assert osk.zone == Zone.PLAY
-    assert osk.atk == 7
-    assert osk.health == 7
+    # Stats read from data (rebalanced 7/7 -> 6/6 in Patch 33.2).
+    assert osk.atk == osk.data.atk
+    assert osk.health == osk.data.health
 
 
 # ---------------------------------------------------------------------------
@@ -159,10 +160,12 @@ def test_forbidden_sequence_quest():
     quest = p1.give("TLC_460").play()
     assert quest.zone == Zone.SECRET
     assert quest.progress == 0
+    # Quest total read from data (rebalanced 8 -> 7 in Patch 33.2).
+    total = quest.data.tags[GameTag.QUEST_PROGRESS_TOTAL]
     # Each Scrappy Scavenger battlecry Discovers one card -> +1 progress.
     # Clear hand + field each iteration so the board/hand caps never block a
     # subsequent play.
-    for i in range(7):
+    for i in range(total - 1):
         scrappy = p1.give("TLC_461")
         scrappy.play()
         _resolve_choices(p1)
@@ -172,7 +175,7 @@ def test_forbidden_sequence_quest():
         for m in list(p1.field):
             m.destroy()
         game.process_deaths()
-    # 8th discover completes the quest and grants the reward weapon.
+    # Final discover completes the quest and grants the reward weapon.
     p1.give("TLC_461").play()
     _resolve_choices(p1)
     assert quest.zone == Zone.GRAVEYARD

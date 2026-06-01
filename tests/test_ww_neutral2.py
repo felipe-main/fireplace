@@ -91,9 +91,10 @@ def test_playhouse_giant_base_cost_is_20():
     p1 = game.player1
     # Empty game: no draws have happened during start beyond the opening hand.
     giant = p1.card("TOY_530", zone=Zone.HAND)
-    # cost = 20 - cards drawn this game. With cant_fatigue empty deck, the
-    # mulligan/coin draws still counted, so just assert reduction is bounded.
-    assert giant.cost == max(0, 20 - getattr(giant, "_cards_drawn_this_game", 0))
+    # cost = base - cards drawn this game. Read the base cost from data so the
+    # test survives rebalances (Patch 33.2 bumped the base 20 -> 25).
+    base = giant.data.cost
+    assert giant.cost == max(0, base - getattr(giant, "_cards_drawn_this_game", 0))
 
 
 # TOY_531 Li'Na, Shop Manager — Whenever you cast a spell, fill your board

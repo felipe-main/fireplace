@@ -86,10 +86,14 @@ def test_reanimate_the_terror_partial_spend_no_reward():
     p1 = game.player1
     quest = p1.give("TLC_433")
     quest.play()
-    p1.corpses = 17
-    game.cheat_action(p1.hero, [SpendCorpses(p1, 17)])
+    # Spend one fewer Corpse than the quest requires (total rebalanced to 15 in
+    # build 226928) — the quest stays incomplete and grants no reward.
+    total = quest.data.tags.get(GameTag.QUEST_PROGRESS_TOTAL)
+    partial = total - 1
+    p1.corpses = partial
+    game.cheat_action(p1.hero, [SpendCorpses(p1, partial)])
     assert quest.zone == Zone.SECRET
-    assert quest.progress == 17
+    assert quest.progress == partial
     assert not [m for m in p1.field if m.id == "TLC_433t"]
 
 

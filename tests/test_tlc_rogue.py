@@ -119,7 +119,10 @@ def test_interrogation_shuffles_three_ninjas():
     n = ninjas[0]
     assert n.atk == 3 and n.max_health == 3
     assert n.stealthed
-    assert n.casts_when_drawn
+    # "Summoned When Drawn" is driven by the token's `draw` script
+    # (Summon(CONTROLLER, SELF)), not the data CASTS_WHEN_DRAWN tag (which the
+    # 226928.1 rebalance removed). Assert the real mechanism is present.
+    assert n.get_actions("draw")
 
 
 def test_interrogation_ninja_summoned_when_drawn():

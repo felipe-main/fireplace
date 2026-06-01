@@ -2,7 +2,7 @@
 
 from utils import *
 
-from hearthstone.enums import CardClass, Race, Zone
+from hearthstone.enums import CardClass, GameTag, Race, Zone
 
 # Vanilla helpers
 BEAST = "CS2_172"   # Bloodfen Raptor — 3/2 Beast
@@ -143,15 +143,16 @@ def test_unleash_the_colossus_quest_rewards_colossus():
     quest = p1.give("TLC_631")
     quest.play()
     assert quest.zone == Zone.SECRET
-    assert quest.progress_total == 15
+    total = quest.data.tags.get(GameTag.QUEST_PROGRESS_TOTAL)
+    assert quest.progress_total == total
     foe = game.player2.hero
     foe.max_health = 80
     foe.damage = 0
-    for _ in range(14):
+    for _ in range(total - 1):
         game.queue_actions(p1.hero, [Hit(foe, 2)])
-    assert quest.progress == 14
+    assert quest.progress == total - 1
     assert not any(m.id == "TLC_631t" for m in p1.field)
-    # 15th exactly-2 hit completes the quest.
+    # The final exactly-2 hit completes the quest.
     game.queue_actions(p1.hero, [Hit(foe, 2)])
     assert any(m.id == "TLC_631t" for m in p1.field)
 

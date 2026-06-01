@@ -2,7 +2,7 @@
 
 from utils import prepare_game
 
-from hearthstone.enums import CardClass, CardType, Race, SpellSchool, Zone
+from hearthstone.enums import CardClass, CardType, GameTag, Race, SpellSchool, Zone
 
 from fireplace.cards.utils import enums
 
@@ -217,20 +217,21 @@ def test_escape_the_underfel_quest():
     quest = p1.give("TLC_446")
     quest.play()
     assert quest.zone == Zone.SECRET
-    assert quest.progress_total == 6
+    total = quest.data.tags.get(GameTag.QUEST_PROGRESS_TOTAL)
+    assert quest.progress_total == total
 
-    for i in range(5):
+    for i in range(total - 1):
         t = p1.give(BOAR)
         t.tags[enums.TEMPORARY] = True
         t.play()
-    assert quest.progress == 5
+    assert quest.progress == total - 1
     assert not quest.finished
     assert not any(c.id == "TLC_446t1" for c in p1.hand)
 
     t = p1.give(BOAR)
     t.tags[enums.TEMPORARY] = True
     t.play()
-    # 6th Temporary play completes the quest -> Underfel Rift to hand.
+    # Final Temporary play completes the quest -> Underfel Rift to hand.
     assert any(c.id == "TLC_446t1" for c in p1.hand)
     assert quest.zone != Zone.SECRET
 

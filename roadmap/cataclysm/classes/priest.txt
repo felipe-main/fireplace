@@ -1,0 +1,21 @@
+=== PRIEST (10) ===
+CATA_216       MINION  4/4/5     Cleansing Cleric               [DRAENEI] {BATTLECRY} | <b>Battlecry:</b> Your healing effects restore 2 more Health this game.
+   token CATA_216e      ENCHANTMENT 0         Free From Corruption           [] {} | Your healing effects heal (2) more this game.
+CATA_300       MINION  7/4/8     The Black Blood                [] {COLOSSAL} | [x]<b>Colossal +3. </b> After you restore Health to a character, attack a random enemy minion.
+   token CATA_300t1     MINION  3/1/2     Black Blood's Body             [] {} | [x]At the end of your turn, restore #3 Health to a random damaged _friendly character.
+   token CATA_300t2     MINION  3/1/2     Black Blood's Body             [] {} | [x]At the end of your turn, restore #3 Health to a random damaged _friendly character.
+   token CATA_300t3     MINION  3/1/2     Black Blood's Body             [] {} | [x]At the end of your turn, restore #3 Health to a random damaged _friendly character.
+CATA_301       LOCATION 1         Ruby Sanctum                   [] {} | [x]Your next Healing effect this turn deals damage instead.
+   token CATA_301e      ENCHANTMENT 0         Lifebind                       [] {} | Your next Healing effect this turn deals damage instead.
+CATA_302       SPELL   1         Mend                           [] {} | [x]Restore a minion to full Health. Draw a card.
+CATA_303       SPELL   2         Purifying Breath               [] {} | [x]Deal $5 damage to a minion. If it dies, restore #5 Health to the enemy hero.
+CATA_304       MINION  3/3/8     Injured Attendant              [UNDEAD] {BATTLECRY,LIFESTEAL} | <b><b>Lifesteal</b> Battlecry:</b> Deal 4 damage to this minion.
+CATA_305       MINION  4/3/3     Incensed Matriarch             [DRAGON] {} | At the end of your turn, if this is at full Health, gain +3 Health.
+   token CATA_305e      ENCHANTMENT 0         Incensed                       [] {} | +3 Health.
+CATA_306       SPELL   4         Schism                         [] {SHATTER} | [x]<b>Shatter</b> Give a friendly minion +2/+3 and <b>Elusive</b>. Summon a copy of it.@Give a friendly minion +2/+3 and <b>Elusive</b>. Summon a copy of it.
+   token CATA_306e      ENCHANTMENT 0         Dark Influence                 [] {} | +2/+3
+   token CATA_306t1     SPELL   4         Schism                         [] {} | <b>Shattered</b> Give a friendly minion +2/+3 and <b>Elusive</b>.
+   token CATA_306t2     SPELL   4         Schism                         [] {} | <b>Shattered</b> Summon a copy of a friendly minion.
+CATA_307       MINION  7/8/8     Alexstrasza, Guardian of Life  [DRAGON] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | [x]<b>Battlecry:</b> Set your remaining Health to 15. When you reach full Health, deal 15 damage to your opponent.
+   token CATA_307e      ENCHANTMENT 0         Cleansed of Corruption         [] {} | When you reach full Health, deal 15 damage to your opponent.
+CATA_308       SPELL   5         Medivh's Triumph               [] {} | Deal $4 damage to all minions. Costs (1) if you control a <b>Legendary</b> card.

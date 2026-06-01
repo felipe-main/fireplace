@@ -1,0 +1,22 @@
+=== PALADIN (10) ===
+CATA_432       MINION  8/8/8     Chromatus                      [DRAGON] {COLOSSAL,DIVINE_SHIELD,ELUSIVE,LIFESTEAL,TAUNT} | <b>Colossal +4</b> <b>Taunt</b>, <b>Lifesteal</b>, <b>Elusive</b>, <b>Divine Shield</b>
+   token CATA_432t1     MINION  2/2/3     Green Head of Chromatus        [DRAGON] {DEATHRATTLE,TAUNT} | [x]<b>Taunt</b> <b>Deathrattle:</b> Remove  <b>Taunt</b> from Chromatus.
+   token CATA_432t2     MINION  2/2/3     Red Head of Chromatus          [DRAGON] {DEATHRATTLE,LIFESTEAL} | <b>Lifesteal</b> <b>Deathrattle:</b> Remove <b>Lifesteal</b> from Chromatus.
+   token CATA_432t3     MINION  2/2/3     Blue Head of Chromatus         [DRAGON] {DEATHRATTLE,ELUSIVE} | [x]<b>Elusive</b> <b>Deathrattle:</b> Remove  <b>Elusive</b> from Chromatus.
+   token CATA_432t4     MINION  2/2/3     Bronze Head of Chromatus       [DRAGON] {DEATHRATTLE,DIVINE_SHIELD} | <b>Divine Shield</b> <b>Deathrattle:</b> Remove <b>Divine Shield</b> from Chromatus.
+CATA_472       WEAPON  2/2/0     Inspiring Maul                 [] {DEATHRATTLE} | <b>Deathrattle:</b> Trigger a random friendly minion's end of turn effect.
+CATA_473       MINION  5/4/4     Nozdormu, Bronze Aspect        [] {} | [x]At the end of your turn, give your minions <b>Divine Shield</b>. Any that already had one __gain +3/+3 instead.
+   token CATA_473e      ENCHANTMENT 0         Nozdormu's Nimbus              [] {} | +3/+3.
+CATA_474       MINION  4/3/4     Spearheart Sentry              [DRAGON] {} | [x]At the end of your turn, get a random Holy Spell. Reduce its Cost by (3).
+CATA_475       MINION  6/3/6     Scalebreaker Bulwark           [] {} | [x]At the end of your turn, deal 2 damage to all enemies.
+CATA_477       LOCATION 2         Chamber of Aspects             [] {CAN_TARGET_CARDS_IN_HAND} | Choose a minion in your hand. Give it +2/+2.
+   token CATA_477e      ENCHANTMENT 0         Aspects' Blessing              [] {} | +2/+2.
+CATA_478       MINION  5/3/3     Bronze Redeemer                [] {} | At the end of your turn, summon a Dragon with stats equal to this minion's.
+   token CATA_478t      MINION  1/1/1     Bronze Brute                   [DRAGON] {} | 
+CATA_479       SPELL   4         Flight Maneuvers               [] {SHATTER} | [x]<b>Shatter</b> Summon two 4/2 Drakes. Give your minions +1/+1 and <b>Divine Shield</b>.@[x]Summon two 4/2 Drakes. Give your minions +1/+1 and <b>Divine Shield</b>.
+   token CATA_479e      ENCHANTMENT 0         Courageous                     [] {} | +1/+1 and <b>Divine Shield</b>.
+   token CATA_479t      SPELL   4         Flight Maneuvers               [] {} | [x]<b>Shattered</b> Summon two 4/2 Drakes.
+   token CATA_479t2     SPELL   4         Flight Maneuvers               [] {} | <b>Shattered</b> Give your minions +1/+1 and <b>Divine Shield</b>.
+   token CATA_479t3     MINION  3/4/2     Sky Drake                      [DRAGON] {} | 
+CATA_480       SPELL   3         Sandfury Aura                  [] {} | Your minions' end of turn effects trigger twice. Lasts @ turns.
+CATA_621       SPELL   1         Gelbin's Triumph               [] {} | Get a random Paladin Aura. It lasts an additional turn.

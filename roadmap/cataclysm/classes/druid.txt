@@ -1,0 +1,28 @@
+=== DRUID (10) ===
+CATA_130       MINION  1/1/2     Crystalspine Cub               [BEAST] {} | Whenever you spend your last Mana Crystal, gain +1/+1.
+   token CATA_130e      ENCHANTMENT 0         Crystalized                    [] {} | +1/+1.
+CATA_131       MINION  2/2/2     Felwood Treant                 [] {} | [x]<b>Battlecry:</b> Gain a temporary Mana Crystal. If you spent 4 Mana while holding this, it's ___permanent. <i>({0} left!)</i>@[x]<b>Battlecry:</b> Gain a temporary Mana Crystal. If you spent 4 Mana while holding this, it's ___permanent. <i>(Ready!)</i>@[x]<b>Battlecry:</b> Gain a temporary Mana Crystal. If you spent 4 Mana while holding this, it's permanent.
+CATA_132       MINION  4/4/5     Broodwatcher                   [DRAGON] {} | [x]<b>Battlecry:</b> Get two 3/3 Whelps with <b>Taunt</b>. If you spent 8 Mana while holding this, summon them. <i>({0} left!)</i>@[x]<b>Battlecry:</b> Get two 3/3 Whelps with <b>Taunt</b>. If you spent 8 Mana while holding this, summon them. <i>(Ready!)</i>@[x]<b>Battlecry:</b> Get two 3/3 Whelps with <b>Taunt</b>. If you spent 8 Mana while holding this, summon them.
+   token CATA_132t      MINION  3/3/3     Emerald Whelp                  [DRAGON] {} | <b>Taunt</b>
+CATA_133       MINION  5/4/5     Iridescent Flitterwing         [DRAGON] {} | <b>Elusive</b> At the end of your turn, give your other minions +1/+1.
+   token CATA_133e      ENCHANTMENT 0         Iridescent Glow                [] {} | +1/+1
+CATA_134       SPELL   3         Wildwood Circle                [] {SHATTER} | [x]<b>Shatter</b>. Summon two  2/2 Treants. Give your minions "<b>Deathrattle:</b>  Summon a 2/2 Treant."@[x]Summon two 2/2 Treants. Give your minions "<b>Deathrattle:</b> __Summon a 2/2 Treant."
+   token CATA_134e      ENCHANTMENT 0         Wildwood Aura                  [] {} | <b>Deathrattle:</b> Summon a 2/2 Treant.
+   token CATA_134t      SPELL   3         Wildwood Circle                [] {} | [x]<b>Shattered</b> Summon two 2/2 Treants.
+   token CATA_134t2     SPELL   3         Wildwood Circle                [] {} | <b>Shattered</b> Give your minions "<b>Deathrattle:</b> Summon a 2/2 Treant."
+   token CATA_134t3     MINION  1/2/2     Treant                         [] {} | 
+CATA_135       SPELL   2         Mossbinding                    [] {} | [x]Summon two 1/2 Golems. Spend all your Mana to give them +1/+1 for each Mana spent.
+   token CATA_135e      ENCHANTMENT 0         Moss Shaped                    [] {} | Increased stats.
+   token CATA_135t      MINION  1/1/2     Moss Golem                     [] {} | 
+CATA_136       SPELL   1         Azshara's Triumph              [] {CAN_TARGET_CARDS_IN_HAND} | Shuffle 5 random minions into your deck that cost (8) or more. Double their stats.
+   token CATA_136e      ENCHANTMENT 0         Azshara's Triumph              [] {} | Doubled Attack and Health.
+CATA_138       SPELL   2         Forest's Gift                  [] {} | Give a friendly minion +1/+1 for each minion you control.
+   token CATA_138e      ENCHANTMENT 0         Tree Hugged                    [] {} | Increased stats.
+CATA_139       MINION  6/0/5     Wickerfang                     [] {COLOSSAL} | <b>Colossal +4</b> After one of Wickerfang's Legs gains stats, this gains them too.
+   token CATA_139e      ENCHANTMENT 0         Symbiotic                      [] {} | Increased Stats.
+   token CATA_139t      MINION  1/0/2     Wickerfang's Leg               [] {} | At the end of your turn, gain +1/+1.
+   token CATA_139t2     MINION  1/0/2     Wickerfang's Leg               [] {} | At the end of your turn, gain +1/+1.
+   token CATA_139t3     MINION  1/0/2     Wickerfang's Leg               [] {} | At the end of your turn, gain +1/+1.
+   token CATA_139t4     MINION  1/0/2     Wickerfang's Leg               [] {} | At the end of your turn, gain +1/+1.
+   token CATA_139te     ENCHANTMENT 0         Growing Quick!                 [] {} | +1/+1.
+CATA_140       MINION  8/4/12    Merithra of the Dream          [DRAGON] {} | [x]<b>Battlecry:</b> Fill your hand with random Dragons. If you spent 25 Mana while holding this, they cost (1). <i>({0} left!)</i>@[x]<b>Battlecry:</b> Fill your hand with random Dragons. If you spent 25 Mana while holding this, they cost (1). <i>(Ready!)</i>@[x]<b>Battlecry:</b> Fill your hand with random Dragons. If you spent 25 Mana while holding this, they cost (1).

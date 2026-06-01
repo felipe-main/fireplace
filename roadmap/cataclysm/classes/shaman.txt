@@ -1,0 +1,20 @@
+=== SHAMAN (10) ===
+CATA_153       MINION  8/2/8     Al'Akir, Lord of Storms        [ELEMENTAL] {COLOSSAL,RUSH} | [x]<b>Colossal +2, <b>Rush</b>, Windfury</b> <b>Battlecry:</b> Get 2 minions with Cost equal to this minion's Attack. They cost (1).
+   token CATA_153e      ENCHANTMENT 0         Spark of Fury                  [] {} | +@ Attack.
+   token CATA_153t      MINION  1/1/2     Charged Hand of Al'Akir        [ELEMENTAL] {} | [x]Adjacent minions have +{0} Attack. <i><b>Herald</b> twice to upgrade.</i>@[x]Adjacent minions have +{0} Attack. <i><b>Herald</b> once to upgrade.</i>@[x]Adjacent minions have +{0} Attack.
+   token CATA_153t1     MINION  1/1/2     Charged Hand of Al'Akir        [ELEMENTAL] {} | [x]Adjacent minions have +{0} Attack. <i><b>Herald</b> twice to upgrade.</i>@[x]Adjacent minions have +{0} Attack. <i><b>Herald</b> once to upgrade.</i>@[x]Adjacent minions have +{0} Attack.
+CATA_561       SPELL   2         Ritual of Power                [] {HERALD} | [x]<b>Herald</b> {0}. Get two 1/1 Elementals with <b>Rush</b>.
+   token CATA_561t      MINION  1/1/1     Breezling                      [ELEMENTAL] {RUSH} | <b>Rush</b>
+CATA_563       MINION  3/4/3     Crackling Cloudstrider         [ELEMENTAL] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND,DEATHRATTLE} | [x]<b>Battlecry:</b> Choose a spell in your hand that costs (4) or less to absorb.  <b>Deathrattle:</b> Cast it.
+   token CATA_563e2     ENCHANTMENT 0         Overcast                       [] {} | <b>Deathrattle:</b> Cast {0}.
+CATA_564       MINION  5/5/5     Air Support                    [] {BATTLECRY} | [x]<b>Battlecry:</b> Give a friendly minion <b>Mega-Windfury</b>. It can't attack heroes.
+   token CATA_564e      ENCHANTMENT 0         Air Support                    [] {} | <b>Mega-Windfury</b>. Can't attack heroes.
+CATA_565       MINION  2/0/3     Skywall Sentinel               [ELEMENTAL] {BATTLECRY,HERALD,TAUNT} | <b>Taunt</b> <b>Battlecry:</b> <b>Herald</b> {0}.
+   token CATA_565t      MINION  1/1/2     Soldier of Al'Akir             [ELEMENTAL] {} | [x]Adjacent minions have +{0} Attack. <i><b>Herald</b> twice to upgrade.</i>@[x]Adjacent minions have +{0} Attack. <i><b>Herald</b> once to upgrade.</i>@[x]Adjacent minions have +{0} Attack.
+CATA_567       SPELL   4         Ascendance                     [] {} | [x]Transform all friendly minions into ones that cost (1) more. They summon the originals when they die.
+   token CATA_567e      ENCHANTMENT 0         Ascended                       [] {} | <b>Deathrattle:</b> Summon {0}.
+CATA_568       SPELL   9         Muradin's Last Stand           [] {} | Draw 2 cards. Costs (1) less for each time a friendly character attacked this game.
+CATA_569       SPELL   4         Ceremonial Clash               [] {OVERLOAD} | [x]Summon a random 3, 2, and 1-Cost minion. <b>Overload:</b> (1)
+CATA_570       MINION  10/10/10  Morchok                        [ELEMENTAL] {BATTLECRY} | [x]<b>Battlecry:</b> Draw a card and reduce its Cost by (10). Repeat this with excess Cost reduction.
+   token CATA_570e      ENCHANTMENT 0         Worldbreak                     [] {} | Reduced Cost.
+CATA_724       MINION  4/7/7     Stormbinder                    [] {DEATHRATTLE,OVERLOAD} | [x]<b>Deathrattle:</b> Unlock your <b>Overloaded</b> Mana Crystals. <b>Overload:</b> (3)

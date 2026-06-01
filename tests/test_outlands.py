@@ -61,11 +61,19 @@ def test_imprisoned_antaen():
 
 
 def test_darkglare():
+    # Battlecry: If your hero took damage this turn, refresh 3 Mana Crystals.
     game = prepare_game()
-    game.player1.give("BT_307").play()
-    assert game.player1.mana == 7
-    game.player1.give(FIREBALL).play(target=game.player1.hero)
-    assert game.player1.mana == 7 - 4 + 2
+    p1 = game.player1
+    # No hero damage yet -> battlecry refreshes nothing (just pays its 3 cost).
+    p1.give("BT_307").play()
+    assert p1.mana == 7
+
+    # Now the hero takes damage this turn; a fresh Darkglare refreshes 3.
+    game.queue_actions(p1.hero, [Hit(p1.hero, 3)])
+    assert p1.hero.damage == 3
+    pre = p1.mana
+    p1.give("BT_307").play()
+    assert p1.mana == min(10, pre - 3 + 3)
 
 
 def test_maiev_shadowsong():

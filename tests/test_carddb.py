@@ -27,13 +27,10 @@ CARDS = utils.fireplace.cards.db
 _OUT_OF_SCOPE_PREFIXES = ("NX2_", "YOG_", "VAN_", "LEG_", "WORK_", "TLC_EVENT_", "TIME_EVENT_")
 _OUT_OF_SCOPE_IDS = frozenset(
     [
-        "BG31_BOB",
-        "WON_145",
-        "BT_307",
-        "TOY_913",
-        "Core_UNG_072",
-        "Core_UNG_211",
-        "CORE_VAN_EX1_561",
+        "BG31_BOB",          # Battlegrounds-only action card
+        "WON_145",           # Avatar of Hearthstone — special pack-opener
+        "CORE_WON_145",      # CORE reprint of the same special card
+        "CORE_VAN_EX1_561",  # vanilla Alexstrasza reprint (VAN_ out of scope)
         # CORE id-collisions: these CORE cards are DIFFERENT cards that happen to
         # share an id with one of our expansion cards after CORE_-stripping, so
         # get_script_definition resolves them to the wrong (expansion) script.

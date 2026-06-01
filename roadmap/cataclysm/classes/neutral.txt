@@ -1,0 +1,47 @@
+=== NEUTRAL (25) ===
+CATA_111       MINION  3/4/3     Darkscale Broodmother          [DRAGON] {BATTLECRY} | <b>Battlecry:</b> If you're holding a Dragon, refresh 2 Mana Crystals.
+CATA_180       MINION  2/1/1     War'loc                        [MURLOC] {BATTLECRY} | [x]<b>Battlecry:</b> Your next Murloc that costs (3) or less costs _Health instead of Mana.
+   token CATA_180e      ENCHANTMENT 0         Doom!                          [] {} | Costs Health instead of Mana.
+CATA_185       MINION  3/3/3     Faceless Replicator            [] {DEATHRATTLE,ELUSIVE} | [x]<b>Elusive Deathrattle:</b> Transform the minion that killed this into _a Faceless Replicator.
+CATA_186       MINION  4/4/4     Stickybomb Saboteur            [] {BATTLECRY} | [x]<b>Battlecry:</b> Give your opponent a 2-Cost Sabotage. Cards next to it cost (1) more.
+   token CATA_186t      SPELL   2         Sabotage!                      [] {} | Cards adjacent to this in hand cost (1) more.
+   token CATA_186te     ENCHANTMENT 0         Sabotaged                      [] {} | Costs (1) more.
+CATA_190h      HERO    10        Deathwing, Worldbreaker        [] MC=['DEATHKNIGHT', 'ROGUE', 'SHAMAN', 'WARLOCK', 'WARRIOR', 'DEMONHUNTER'] {BATTLECRY,MULTIPLE_CLASSES} | [x]<b>Battlecry:</b> Choose {0} |4(Cataclysm,Cataclysms) to unleash! <i><b>Herald</b> twice to upgrade.</i>@[x]<b>Battlecry:</b> Choose {0} |4(Cataclysm,Cataclysms) to unleash! <i><b>Herald</b> once to upgrade.</i>@[x]<b>Battlecry:</b> Choose {0} |4(Cataclysm,Cataclysms) to unleash!
+   token CATA_190p      HERO_POWER 2         Ruthless                       [] {} | +$a5 Attack this turn.
+   token CATA_190pe     ENCHANTMENT 0         Ruthless                       [] {} | +5 Attack this turn.
+   token CATA_190t10    SPELL   0         Dragon's Reign                 [] {} | Summon a 12/12 Dragon.
+   token CATA_190t11    SPELL   0         Topple                         [] {} | [x]Destroy the highest  Health enemy minion.
+   token CATA_190t12    SPELL   0         Raze                           [] {} | Deal 4 damage to all enemy minions.
+   token CATA_190t13    SPELL   0         Enthrall                       [] {} | Shuffle five random <b>Legendary</b> Dragons into your deck. They cost (1).
+   token CATA_190t14    MINION  10/12/12  Progeny of Deathwing           [DRAGON] {} | 
+CATA_206       MINION  5/6/5     Twisted Monstrosity            [BEAST] {ELUSIVE,TAUNT} | [x]<b>{0}, {1}</b> Each turn this is in your hand, swap between two _random <b>Bonus Effects</b>.
+   token CATA_206t      MINION  5/6/5     Twisted Monstrosity            [BEAST] {} | [x]<b>{0}, {1}</b> Each turn this is in your hand, swap between two _random <b>Bonus Effects</b>.
+CATA_208       MINION  2/2/6     Selfless Protector             [] {TAUNT} | [x]<b>Taunt</b> Takes one extra damage from all sources.
+CATA_209       MINION  3/3/4     Battlefield Blaster            [] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | [x]<b>Battlecry:</b> Choose a spell in your hand to give <b>Spell Damage +1</b>.
+   token CATA_209e      ENCHANTMENT 0         Battlefield Channeler Spellpower [] {} | <b>Spell Damage +1</b>.
+CATA_210       MINION  1/0/2     Twilight Egg                   [] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Summon a @/@ Whelp. <i>(Gains +1/+1 __at the start of your turns!)__</i>
+   token CATA_210t      MINION  2/2/2     Accelerated Whelp              [DRAGON] {} | 
+CATA_213       MINION  6/6/6     Vyranoth                       [ELEMENTAL] {BATTLECRY} | [x]<b>Battlecry:</b> If the total Cost of your starting minions was 100, split 100 stats among minions in your deck.
+   token CATA_213e      ENCHANTMENT 0         Stormcharged                   [] {} | Increased Attack.
+   token CATA_213e2     ENCHANTMENT 0         Stormcharged                   [] {} | Increased Health.
+CATA_476       MINION  8/3/7     Bronze Keeper                  [DRAGON] {} | [x]At the end of your turn, summon a 6/6 Elemental Dragon with <b>Divine Shield</b>.
+   token CATA_476t      MINION  6/6/6     Sandscale Dragon               [ELEMENTAL,DRAGON] {DIVINE_SHIELD} | <b>Divine Shield</b>
+CATA_497       MINION  6/6/7     Ultraxion                      [DRAGON] MC=['DEATHKNIGHT', 'ROGUE', 'SHAMAN', 'WARLOCK', 'WARRIOR', 'DEMONHUNTER'] {BATTLECRY,HERALD,MULTIPLE_CLASSES} | [x]<b>Battlecry:</b> <b>Herald</b> {0}. Reduce Deathwing's Cost by ({1}).  <i>(<b>Herald</b> to improve!)</i>
+   token CATA_497e      ENCHANTMENT 0         Ultraxion Heralded             [] {} | Reduced Cost.
+CATA_556       MINION  1/1/2     Carrier Whelp                  [DRAGON] {BATTLECRY} | <b>Battlecry:</b> Get a random Dragon that costs (3) or less.
+CATA_612       MINION  2/5/3     Frostbitten Imp                [DEMON] {BATTLECRY} | <b>Battlecry:</b> <b>Freeze</b> this.
+CATA_613       MINION  9/6/6     Survivalist                    [] {} | [x]Has <b>Immune</b> while you control no other minions.
+CATA_614       MINION  2/2/2     Shadowed Informant             [DRAGON] {BATTLECRY,DISCOVER} | [x]<b>Battlecry:</b> <b>Discover</b> a spell from your class. <i>(Swaps class each turn!)</i>@[x]<b>Battlecry:</b> <b>Discover</b> a {0} spell. <i>____(Swaps class each turn!)</i>__
+CATA_615       MINION  4/5/4     Genn, Cursed King              [] {} | [x]While holding this, if the rest of your hand is all even or all odd, transform _into the Worgen King.
+   token CATA_615e      ENCHANTMENT 0         The Moooon                     [] {} | Your <b>Hero Power</b> costs (1).
+   token CATA_615t      MINION  4/6/5     Genn, Worgen King              [] {BATTLECRY} | <b>Battlecry:</b> Upgrade your starting Hero Power. It costs (1).
+CATA_616       MINION  9/8/8     Gronn Giant                    [] {} | [x]This minion's Cost is reduced by the Cost of the last card you played.
+CATA_720       MINION  7/6/6     Warmaster Blackhorn            [] {BATTLECRY} | <b>Battlecry:</b> Destroy all cards that cost (2) or less in both players' decks.
+CATA_721       MINION  2/2/3     Sheltered Survivor             [] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | [x]<b>Battlecry:</b> Choose a card in your hand to shuffle into your deck. Draw a card.
+CATA_722       MINION  5/5/4     Envoy of the End               [] MC=['DEATHKNIGHT', 'ROGUE', 'SHAMAN', 'WARLOCK', 'WARRIOR', 'DEMONHUNTER'] {BATTLECRY,HERALD,MULTIPLE_CLASSES,TAUNT} | <b>Taunt</b>  <b>Battlecry:</b> <b>Herald</b> {0}.
+CATA_723       MINION  7/8/6     Drakeadon Mongrel              [DRAGON] {DEATHRATTLE} | <b>Deathrattle:</b> Summon two random 4-Cost minions.
+CATA_897       MINION  3/3/4     Gemstone Hoarder               [] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND,DEATHRATTLE} | [x]<b>Battlecry:</b> Choose a card in your hand to discard. <b>Deathrattle:</b> Get it back. It costs (1) less.
+   token CATA_897e3     ENCHANTMENT 0         Hoarded Gemstone               [] {} | Discarded {0}.
+CATA_898       MINION  4/6/6     Scaled Lancer                  [DRAGON] {} | All enemy minions have <b>Taunt</b>.
+   token CATA_898e      ENCHANTMENT 0         Scalebound                     [] {} | Scaled Lancer grants <b>Taunt</b>.
+CATA_999       MINION  5/4/4     Earthen Drake                  [ELEMENTAL,DRAGON] {} | At the end of your turn, deal 4 damage to the enemy hero.

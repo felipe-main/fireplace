@@ -1,0 +1,17 @@
+=== ROGUE (10) ===
+CATA_154       MINION  6/5/5     Sinestra                       [DRAGON] {COLOSSAL} | <b>Colossal +2</b> Your spells from other classes cast twice.
+   token CATA_154e      ENCHANTMENT 0         Sinestra's Song                [] {} | Your spells from other classes cast twice.
+   token CATA_154t      MINION  1/1/1     Sinestra's Wing                [DRAGON] {} | [x]When summoned, get a random spell from another class. It costs ({0}) less. _____<i><b>Herald</b> twice to upgrade.</i>____@[x]When summoned, get a random spell from another class. It costs ({0}) less. _____<i><b>Herald</b> once to upgrade.</i>____@[x]When summoned, get a random spell from another class. It costs ({0}) less.
+   token CATA_154t1     MINION  1/1/1     Sinestra's Wing                [DRAGON] {} | [x]When summoned, get a random spell from another class. It costs ({0}) less. _____<i><b>Herald</b> twice to upgrade.</i>____@[x]When summoned, get a random spell from another class. It costs ({0}) less. _____<i><b>Herald</b> once to upgrade.</i>____@[x]When summoned, get a random spell from another class. It costs ({0}) less.
+CATA_158       MINION  3/3/1     Maniacal Follower              [] {DEATHRATTLE,HERALD,STEALTH} | <b>Stealth</b> <b>Deathrattle:</b> <b>Herald</b> {0}.
+   token CATA_158t      MINION  1/1/1     Soldier of Sinestra            [DRAGON] {} | [x]When summoned, get a random spell from another class. It costs ({0}) less. _____<i><b>Herald</b> twice to upgrade.</i>____@[x]When summoned, get a random spell from another class. It costs ({0}) less. _____<i><b>Herald</b> once to upgrade.</i>____@[x]When summoned, get a random spell from another class. It costs ({0}) less.
+CATA_200       MINION  1/2/1     Agent of the Old Ones          [DEMON] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | [x]<b>Battlecry:</b> Choose a card in your hand to  transform into a Coin.
+CATA_201       MINION  9/4/12    Twilight Mistress              [DRAGON] {BATTLECRY} | <b>Battlecry:</b> Return all enemy minions to their owner's hand.
+CATA_202       SPELL   3         Stolen Power                   [] {} | Get a random <b>Shatter</b> card from another class. <i>(It's already combined).</i>
+CATA_203       SPELL   2         Garona's Last Stand            [] {} | [x]<b>Tradeable</b> Destroy a <b>Legendary</b> minion.
+CATA_215       SPELL   3         Daze                           [] {} | [x]Return an enemy  minion to its owner's hand. They can't play it next turn.
+   token CATA_215e      ENCHANTMENT 0         Dazed                          [] {} | Can't be played this turn.
+CATA_481       MINION  5/5/3     Iso'rath                       [] {BATTLECRY,DEATHRATTLE} | [x]<b>Battlecry:</b> Devour 2 random cards from the opponent's hand, then go <b>Dormant</b> for 2 turns. <b>Deathrattle:</b> Return them.
+   token CATA_481e      ENCHANTMENT 0         Watch and Wait                 [] {} | <b>Dormant</b>. Awaken in @ |4(turn, turns).
+CATA_785       SPELL   2         Rite of Twilight               [] {HERALD} | <b>Herald</b> {0}. <b>Combo:</b> Deal $3 damage.
+CATA_786       MINION  4/3/5     Chaos Supplicant               [] {} | [x]After you cast a spell, cast a random spell of the same Cost from another class.

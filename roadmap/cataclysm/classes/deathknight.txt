@@ -1,0 +1,22 @@
+=== DEATHKNIGHT (10) ===
+CATA_155       MINION  9/3/6     Arisen Onyxia                  [UNDEAD,DRAGON] {COLOSSAL} | [x]<b>Colossal +2</b>. When your hero would lose Health on your turn, gain that much max Health instead.
+   token CATA_155e      ENCHANTMENT 0         Black Scales                   [] {} | Increased Health.
+   token CATA_155e2     ENCHANTMENT 0         Onyxia's Blood                 [] {} | Costs Health this turn.
+   token CATA_155t      MINION  1/1/1     Onyxia's Wing                  [UNDEAD,DRAGON] {} | [x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn. _____<i><b>Herald</b> twice to upgrade.</i>____@[x][x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn. _____<i><b>Herald</b> once to upgrade.</i>____@[x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn.
+   token CATA_155t1     MINION  1/1/1     Onyxia's Wing                  [UNDEAD,DRAGON] {} | [x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn. _____<i><b>Herald</b> twice to upgrade.</i>____@[x][x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn. _____<i><b>Herald</b> once to upgrade.</i>____@[x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn.
+CATA_156       SPELL   6         Experimental Animation         [] {HERALD} | <b>Herald</b> {0}. Deal $4 damage to all enemy minions.
+CATA_161       MINION  3/3/3     Gruesome Nightmare             [BEAST] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | <b>Battlecry:</b> Give a minion in your hand or battlefield Attack equal to this minion's Attack.
+   token CATA_161e      ENCHANTMENT 0         Nightmarish                    [] {} | Increased Attack.
+CATA_464       MINION  2/3/1     Blackwing Experiment           [UNDEAD,DRAGON] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Get a 2-Cost spell that deals this minion's Attack damage.
+   token CATA_464t      SPELL   2         Dragon Breath                  [] {} | Deal $@ damage.
+CATA_465       SPELL   8         Chow Down                      [] {} | [x]Summon five 5/4 Undead Drakes. Spend 8 <b>Corpses</b> to give them <b>Rush</b>.
+   token CATA_465t      MINION  5/5/4     Hungry Drake                   [UNDEAD,DRAGON] {} | 
+CATA_467       WEAPON  2/2/0     Command Claw                   [] {} | [x]After your hero attacks, give a random friendly minion +2 Attack.
+   token CATA_467e      ENCHANTMENT 0         The Clawww                     [] {} | +2 Attack.
+CATA_469       MINION  4/2/5     Chromatic Broodmother          [UNDEAD,DRAGON] {RUSH} | [x]<b>Rush</b> __Whenever this attacks, refresh Mana Crystals equal ___to this minion's Attack.
+CATA_470       MINION  4/4/4     Victor Nefarius                [UNDEAD] {BATTLECRY} | [x]<b>Battlecry:</b> Craft a custom Undead Dragon. If you're  holding a Dragon, reduce the Creation's Cost by (3).
+   token CATA_470t1     MINION  1/1/1     Nefarian's Creation            [UNDEAD,DRAGON] {} | 
+CATA_471       SPELL   5         Talanji's Last Stand           [] {} | [x]Give your minions "<b>Deathrattle:</b> Summon a random 4-Cost minion."
+   token CATA_471e      ENCHANTMENT 0         Talanji's Last Wish            [] {} | <b>Deathrattle:</b> Summon a random 4-Cost minion.
+CATA_780       MINION  4/2/5     Obsessive Technician           [] {BATTLECRY,HERALD,LIFESTEAL} | <b>Lifesteal</b> <b>Battlecry:</b> <b>Herald</b> {0}.
+   token CATA_780t      MINION  1/1/1     Soldier of Onyxia              [UNDEAD,DRAGON] {} | [x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn. _____<i><b>Herald</b> twice to upgrade.</i>____@[x][x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn. _____<i><b>Herald</b> once to upgrade.</i>____@[x]When summoned, get a  random {0}-Cost minion.  It costs Health this turn.

@@ -1,0 +1,26 @@
+{
+  "set": "Cataclysm",
+  "cardset": "CATACLYSM",
+  "prefix": "CATA_",
+  "build": "237510.1",
+  "patch": "35.0",
+  "card_count": 135,
+  "novel_mechanics": [
+    {
+      "name": "Herald",
+      "tag": "HERALD",
+      "model": "Engine: Herald(CONTROLLER) bumps player.heralds_this_game (like Imbue). 14 cards say 'Herald {0}'. Payoff = Deathwing, Worldbreaker (CATA_190h, a collectible HERO card): Battlecry chooses N Cataclysms (CATA_190t10 Dragon's Reign / t11 Topple / t12 Raze / t13 Enthrall) to unleash, N scaling with heralds (base 1, +1 per Herald up to twice). Ultraxion (CATA_497) reduces Deathwing's cost by heralds. Card scripts call Herald(CONTROLLER); Deathwing reads heralds_this_game."
+    },
+    {
+      "name": "Shatter",
+      "tag": "SHATTER",
+      "model": "Engine: a SHATTER card splits into its two 'Shattered' half-cards (<id>t + <id>t2) when DRAWN (Draw.do hook + _shatter_into_halves), bumping shatters_this_game. 5 cards. Card scripts implement the two HALF tokens (<id>t, <id>t2) as their own playable spells/effects; the collectible parent's text is the combined flavour and never resolves directly (it shatters on draw)."
+    },
+    {
+      "name": "Choose a card in your hand",
+      "tag": "CAN_TARGET_CARDS_IN_HAND",
+      "model": "13 cards 'Choose a card in your hand to <discard/buff/transform/...>'. Engine targeting of hand cards is not supported; APPROXIMATE per existing precedent (castle_nathria REV_511) as acting on RANDOM(FRIENDLY_HAND[-filter]). Audit-noted approximation."
+    }
+  ],
+  "notes": "Base Cataclysm expansion, build 237510.1 (lowest with full 135 CATA_; MEND_ mini-set absent, PET empty). Reuses Colossal/Spellburst/Discover/Combo/Outcast/Overload/Lifesteal + INFINITY=SET(large). card.py description.format() guarded for Herald {0} placeholders."
+}

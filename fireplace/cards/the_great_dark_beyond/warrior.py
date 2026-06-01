@@ -238,6 +238,9 @@ class GDB_234:
     """Spore Empress Moldara"""
 
     # Start of Game: Shuffle 7 Replicating Spores into your deck.
+    # Battlecry: Cast one. (Patch 35.0 added the battlecry.)
+    play = CastSpell("GDB_234t")
+
     class Deck:
         events = GameStart().on(Shuffle(CONTROLLER, "GDB_234t") * 7)
 

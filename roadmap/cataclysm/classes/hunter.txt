@@ -1,0 +1,28 @@
+=== HUNTER (10) ===
+CATA_550       MINION  7/2/12    Magmaw                         [MECHANICAL,BEAST] {COLOSSAL} | <b>Colossal +99</b> Summon any leftover appendages when there is room.@<b>Colossal +99</b> Summon any leftover appendages when there is room. <i>({0} left!)</i>
+   token CATA_550e1     ENCHANTMENT 0         Stampede                       [] {} | +2 Attack.
+   token CATA_550t      MINION  1/2/1     Magmaw's Body                  [MECHANICAL,BEAST] {DEATHRATTLE} | <b>Deathrattle:</b> Give a random friendly minion +2 Attack.
+   token CATA_550t2     MINION  1/2/1     Magmaw's Body                  [MECHANICAL,BEAST] {DEATHRATTLE} | <b>Deathrattle:</b> Give a random friendly minion +2 Attack.
+   token CATA_550t3     MINION  1/2/1     Magmaw's Body                  [MECHANICAL,BEAST] {DEATHRATTLE} | <b>Deathrattle:</b> Give a random friendly minion +2 Attack.
+   token CATA_550t4     MINION  1/2/1     Magmaw's Body                  [MECHANICAL,BEAST] {DEATHRATTLE} | <b>Deathrattle:</b> Give a random friendly minion +2 Attack.
+   token CATA_550t5     MINION  1/2/1     Magmaw's Body                  [MECHANICAL,BEAST] {DEATHRATTLE} | <b>Deathrattle:</b> Give a random friendly minion +2 Attack.
+   token CATA_550t6     MINION  1/2/1     Magmaw's Body                  [MECHANICAL,BEAST] {DEATHRATTLE} | <b>Deathrattle:</b> Give a random friendly minion +2 Attack.
+CATA_551       MINION  3/3/3     Stonetalon Striker             [] {} | [x]<b>Taunt</b> <i>While in hand, play a Dragon to become a 6/6 Dragon!</i>
+   token CATA_551t      MINION  3/6/6     Stonetalon Striker             [DRAGON] {} | <b>Taunt</b>
+CATA_552       MINION  6/4/4     Ebonscale Scout                [] {BATTLECRY} | [x]<b>Battlecry:</b> Deal damage equal to this minion's Attack. <i>(While in hand, play a Dragon to  become an 8/8 Dragon.)</i>
+   token CATA_552t      MINION  6/8/8     Ebonscale Scout                [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> Deal damage equal to this minion's Attack.
+CATA_553       MINION  7/6/6     Ebyssian                       [] {BATTLECRY} | [x]<b>Battlecry:</b> Your Dragons have <b>Rush</b> this game. <i>While in hand, play a Dragon to become a 12/12 Dragon!</i>
+   token CATA_553e      ENCHANTMENT 0         Ebyssian's Blessing            [] {} | Your Dragons have <b>Rush</b>.
+   token CATA_553e2     ENCHANTMENT 0         Ebyssian's Blessing            [] {RUSH} | <b>Rush</b>
+   token CATA_553t      MINION  7/12/12   Ebyssian                       [DRAGON] {BATTLECRY} | [x]<b>Battlecry:</b> Your Dragons have <b>Rush</b> this game.
+CATA_554       SPELL   1         Earthen Roar                   [] {} | [x]Set an enemy minion's Health to 1. If you're holding a Dragon, pick another.
+   token CATA_554e      ENCHANTMENT 0         Intimidated                    [] {} | This minion has 1 Health.
+CATA_557       SPELL   2         Sylvanas's Triumph             [] {} | [x]Deal 3 damage. If you've played another copy of this,  hit all enemies instead.
+CATA_558       MINION  1/2/2     Reinforcement Rallier          [] {} | <b>Elusive</b>
+CATA_560       SPELL   3         Confront the Tol'vir           [] {} | [x]Replay each 1-Cost card you've played this game <i>(targeting enemies if possible.)</i>
+CATA_566       MINION  3/3/2     Tol'vir Carver                 [] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | [x]<b>Battlecry:</b> Choose a  card in your hand.  At the start of your turns,  reduce its Cost by (1).
+   token CATA_566e      ENCHANTMENT 0         Carving                        [] {} | Reduces Cost each turn.
+CATA_820       SPELL   4         Supply Run                     [] {SHATTER} | <b>Shatter</b> Draw 3 minions. Give minions in your hand +2/+2.@Draw 3 minions. Give minions in your hand +2/+2.
+   token CATA_820e      ENCHANTMENT 0         Brick by Brick                 [] {} | +2/+2.
+   token CATA_820t      SPELL   4         Supply Run                     [] {} | <b>Shattered</b> Draw 3 minions.
+   token CATA_820t2     SPELL   4         Supply Run                     [] {} | <b>Shattered</b> Give minions in your hand +2/+2.

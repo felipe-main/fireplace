@@ -1,0 +1,21 @@
+=== DEMONHUNTER (10) ===
+CATA_151       MINION  8/8/8     Azshara, Ocean Lord            [NAGA] {COLOSSAL} | <b>Colossal +2</b> Your hero has <b>Windfury</b>.
+   token CATA_151e      ENCHANTMENT 0         Azshara Windfury               [] {} | <b>Windfury</b>
+   token CATA_151t      MINION  1/2/1     Azshara's Tentacle             [NAGA] {} | [x]When summoned, give your hero +{0} Attack this turn. <i>_<b>Herald</b> twice to upgrade.</i>@[x]When summoned, give your hero +{0} Attack this turn. <i>_<b>Herald</b> once to upgrade.</i>@[x]When summoned, give your hero +{0} Attack this turn.
+   token CATA_151t1     MINION  1/2/1     Azshara's Tentacle             [NAGA] {} | [x]When summoned, give your hero +{0} Attack this turn. <i>_<b>Herald</b> twice to upgrade.</i>@[x]When summoned, give your hero +{0} Attack this turn. <i>_<b>Herald</b> once to upgrade.</i>@[x]When summoned, give your hero +{0} Attack this turn.
+   token CATA_151te     ENCHANTMENT 0         Hero Blood of the Fel          [] {} | +@ Attack on your turn.
+CATA_525       MINION  3/3/1     Armored Bloodletter            [NAGA] {BATTLECRY,HERALD,RUSH} | <b>Rush</b> <b>Battlecry:</b> <b>Herald</b> {0}.
+   token CATA_525t      MINION  1/2/1     Soldier of Azshara             [NAGA] {} | [x]When summoned, give your hero +{0} Attack this turn. <i>_<b>Herald</b> twice to upgrade.</i>@[x]When summoned, give your hero +{0} Attack this turn. <i>_<b>Herald</b> once to upgrade.</i>@[x]When summoned, give your hero +{0} Attack this turn.
+CATA_526       SPELL   2         Broxigar's Last Stand          [] {} | [x]Deal $1 damage to all minions. Draw a card for each that died.
+CATA_527       LOCATION 3         Nespirah, Enthralled           [] {} | [x]Deal 1 damage. After you cast a Fel spell, reopen. <b>Deathrattle:</b> Summon Nespirah, Unshackled.
+   token CATA_527t2     MINION  6/6/6     Nespirah, Unshackled           [BEAST] {} | [x]After you cast a Fel spell, get a random Naga. It costs (1).
+CATA_528       SPELL   1         Sigil of the Seas              [] {} | At the start of your next turn, summon a 3/3 Naga with <b>Taunt</b>.
+   token CATA_528t      MINION  3/3/3     Naga Monstrosity               [NAGA] {TAUNT} | <b>Taunt</b>
+CATA_529       MINION  6/5/5     Ravenous Felfisher             [NAGA] {} | [x]Costs (1) less for each Fel spell you've cast this game.
+CATA_530       SPELL   2         Fel Infusion                   [] {HERALD} | <b>Herald</b> {0}. Your hero has  <b>Lifesteal</b> this turn.
+   token CATA_530e      ENCHANTMENT 0         Lifesteal this turn            [] {} | 
+CATA_533       SPELL   5         Flash Flood                    [] {OUTCAST} | [x]Deal $5 damage to your opponent's left _and right-most minions. <b>Outcast:</b> Do it again.
+CATA_697       MINION  3/3/4     Malevolent Mutant              [NAGA] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | [x]<b>Battlecry:</b> Choose a Fel spell in your hand. Get a copy of it.
+CATA_699       MINION  9/9/6     Dread Leviathan                [BEAST] {BATTLECRY,TAUNT} | [x]<b>Taunt</b>. <b>Battlecry:</b> Choose an enemy minion to steal 3 _Health from, three times.
+   token CATA_699e      ENCHANTMENT 0         Drained                        [] {} | Reduced Health.
+   token CATA_699e2     ENCHANTMENT 0         Crackin'                       [] {} | Increased Health.

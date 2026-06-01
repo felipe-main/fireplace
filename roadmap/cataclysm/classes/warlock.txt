@@ -1,0 +1,18 @@
+=== WARLOCK (10) ===
+CATA_490       MINION  3/3/6     Ocular Occultist               [DEMON] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND,TAUNT} | [x]<b>Taunt</b> <b>Battlecry:</b> Choose a card in your hand to discard.
+CATA_491       SPELL   6         Eldritch Tentacles             [] {} | Deal $3 damage to all minions. Repeat this with 1 less damage.
+CATA_492       LOCATION 4         Shrine of Twilight             [] {HERALD} | <b>Herald</b> {0}. Draw a card.
+CATA_493       MINION  4/2/2     Duke of Below                  [] {RUSH} | [x]<b>Rush</b> Has +2/+2 for each card you've discarded this game.
+   token CATA_493e      ENCHANTMENT 0         Binding Nightmare              [] {} | Increased Stats.
+CATA_494       MINION  7/7/7     Maloriak                       [DRAGON] {} | After you discard a minion, summon a copy of it.
+CATA_496       SPELL   2         Cursed Chains                  [] {} | [x]Take control of an enemy minion until the end of their turn.  It can't attack this turn.
+   token CATA_496e      ENCHANTMENT 0         Cursed Chains                  [] {} | Switched control, but can't attack.
+CATA_498       SPELL   3         Rafaams' Last Stand            [] {} | Deal $@ damage to two  random enemy minions. <i>(Upgrades each turn!)</i>
+CATA_499       SPELL   2         Disposable Acolytes            [] {} | [x]When you play or discard this, summon two random 1-Cost minions.
+CATA_725       MINION  2/2/1     Shadowsworn Disciple           [] {BATTLECRY,DEATHRATTLE,HERALD} | <b><b>Battlecry:</b> Herald</b> {0}. <b>Deathrattle:</b> Restore #3 Health to your hero.
+   token CATA_725t      MINION  1/1/1     Soldier of Cho'gall            [] {} | [x]At the end of your turn, ____destroy the minion to the____ right to gain +{0}/+{0}. __<i><b>Herald</b> twice to upgrade.</i>@[x]At the end of your turn, ____destroy the minion to the____ right to gain +{0}/+{0}. __<i><b>Herald</b> once to upgrade.</i>@[x]At the end of your turn, destroy the minion to the right to gain +{0}/+{0}.
+CATA_726       MINION  9/6/6     Cho'gall, Mastermind           [] {COLOSSAL} | [x]<b>Colossal +2</b> Your Arms and Soldiers destroy minions in the _enemy's deck instead.
+   token CATA_726e2     ENCHANTMENT 0         Embiggened                     [] {} | Increased stats.
+   token CATA_726t      MINION  1/1/1     Cho's Arm                      [] {} | [x]At the end of your turn, ____destroy the minion to the____ right to gain +{0}/+{0}. __<i><b>Herald</b> twice to upgrade.</i>@[x]At the end of your turn, destroy the minion to the right to gain +{0}/+{0}.  <i><b>Herald</b> once to upgrade.</i>@[x]At the end of your turn, destroy the minion to the right to gain +{0}/+{0}.
+   token CATA_726t1     MINION  1/1/1     Gall's Arm                     [] {} | [x]At the end of your turn, ____destroy the minion to the____ right to gain +{0}/+{0}. __<i><b>Herald</b> twice to upgrade.</i>@[x]At the end of your turn, ____destroy the minion to the____ right to gain +{0}/+{0}. __<i><b>Herald</b> once to upgrade.</i>@[x]At the end of your turn, destroy the minion to the right to gain +{0}/+{0}.
+   token CATA_726te     ENCHANTMENT 0         Souldrain                      [] {} | Increased Stats

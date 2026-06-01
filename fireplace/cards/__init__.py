@@ -38,8 +38,12 @@ def get_script_definition(id, card=None):
     # the data under the CORE_ namespace while their scripts live under
     # the bare id in the cards/core/ package.
     lookup_ids = [id]
-    if id.startswith("CORE_"):
-        lookup_ids.append(id[len("CORE_"):])
+    # Strip the Core-namespace prefix (data exposes printable reprints under
+    # CORE_/Core_ while the script lives under the bare id). The data uses both
+    # casings, e.g. CORE_CS3_012 and Core_UNG_072.
+    for prefix in ("CORE_", "Core_"):
+        if id.startswith(prefix):
+            lookup_ids.append(id[len(prefix):])
 
     for cardset in CARD_SETS:
         if cardset not in modules:
@@ -106,6 +110,7 @@ class CardDB(dict[str, cardxml.CardXML]):
             "spellburst",
             "frenzy",
             "trade",
+            "summoned",
         )
 
         for script in scriptnames:

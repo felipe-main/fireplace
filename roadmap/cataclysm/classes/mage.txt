@@ -1,0 +1,20 @@
+=== MAGE (10) ===
+CATA_452       SPELL   10        Spellweaver's Brilliance       [] {} | [x]Summon a 6/6 Dragon. Costs (1) less for each damage you dealt with spells this turn.
+   token CATA_452t      MINION  6/6/6     Azure Warden                   [DRAGON] {} | 
+CATA_458       MINION  4/4/4     Archmage Kalec                 [] {BATTLECRY} | [x]<b>Battlecry:</b> Give all spells in your hand and deck <b>Spell Damage +1.</b>
+   token CATA_458e      ENCHANTMENT 0         Kalec's Insight                [] {} | <b>Spell Damage +1</b>.
+CATA_483       MINION  4/2/5     Unstable Spellcaster           [ELEMENTAL] {BATTLECRY} | [x]<b>Spell Damage +1</b> <b>Battlecry:</b> If you dealt damage with a spell this turn,  summon a copy of this.
+CATA_484       MINION  1/1/2     Winterspring Whelp             [DRAGON] {BATTLECRY,DISCOVER} | <b>Battlecry:</b> <b>Discover</b> a 1-Cost spell from any_class.
+CATA_485       SPELL   1         Sleet Storm                    [] {} | [x]Deal $2 damage. _Deal $1 damage to a _random enemy minion.
+CATA_487       MINION  2/1/4     Raincaller                     [ELEMENTAL] {} | The first time you deal damage with a spell each turn, gain +2 Attack.
+   token CATA_487e      ENCHANTMENT 0         Building Storm                 [] {} | +2 Attack.
+   token CATA_487e1     ENCHANTMENT 0         Building Storm                 [] {} | Disable trigger visual this turn
+CATA_488       MINION  7/4/8     Vulcanos                       [ELEMENTAL] {COLOSSAL} | [x]<b>Colossal +2</b> At the end of your turn, deal 2 damage to all other minions.
+   token CATA_488t      MINION  2/1/4     Plume of Vulcanos              [ELEMENTAL] {} | [x]Whenever this takes damage, get a random Fire spell. It costs (3) less.
+   token CATA_488t2     MINION  2/1/4     Plume of Vulcanos              [ELEMENTAL] {} | [x]Whenever this takes damage, get a random Fire spell. It costs (3) less.
+CATA_489       SPELL   4         Arcane Flow                    [] {SHATTER} | [x]<b>Shatter</b> Deal $4 damage. _Deal $2 damage to _all enemies.@[x]Deal $4 damage. _Deal $2 damage to _all enemies.
+   token CATA_489t      SPELL   4         Arcane Flow                    [] {} | <b>Shattered</b> Deal $4 damage.
+   token CATA_489t2     SPELL   4         Arcane Flow                    [] {} | <b>Shattered</b> Deal $2 damage to all enemies.
+CATA_978       SPELL   5         Sindragosa's Triumph           [] {} | [x]Deal $8 damage to a minion. Reduce the Cost of a random card in your hand by the excess damage.
+   token CATA_978e      ENCHANTMENT 0         Triumphant                     [] {} | Reduced Cost
+CATA_979       MINION  3/3/4     Conjuration Specialist         [] {BATTLECRY,CAN_TARGET_CARDS_IN_HAND} | <b>Battlecry:</b> Choose a spell in your hand. Split it into two random spells of the same Cost.

@@ -1,0 +1,18 @@
+=== WARRIOR (10) ===
+CATA_150       MINION  8/8/8     Ragnaros, the Great Fire       [ELEMENTAL] {COLOSSAL} | [x]<b>Colossal +2</b> At the end of your turn, trigger ___your minions' <b>Deathrattles</b>.
+   token CATA_150t      MINION  1/2/1     Hand of Ragnaros               [ELEMENTAL] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Deal {0} damage to a random enemy. <i><b>Herald</b> twice to upgrade.</i>@[x]<b>Deathrattle:</b> Deal {0} damage to a random enemy. <i><b>Herald</b> once to upgrade.</i>@[x]<b>Deathrattle:</b> Deal {0} damage to a random enemy.
+   token CATA_150t1     MINION  1/2/1     Hand of Ragnaros               [ELEMENTAL] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Deal {0} damage to a random enemy. <i><b>Herald</b> twice to upgrade.</i>@[x]<b>Deathrattle:</b> Deal {0} damage to a random enemy. <i><b>Herald</b> once to upgrade.</i>@[x]<b>Deathrattle:</b> Deal {0} damage to a random enemy.
+CATA_160       MINION  4/4/3     Scorching Ravager              [DRAGON] {BATTLECRY,HERALD} | <b>Battlecry:</b> <b>Herald</b> {0}. Give the Soldier <b>Rush</b>.
+CATA_580       WEAPON  3/3/0     Cataclysmic War Axe            [] {BATTLECRY,HERALD} | <b>Battlecry:</b> <b>Herald</b> {0}.
+   token CATA_580t      MINION  1/2/1     Soldier of Ragnaros            [ELEMENTAL] {DEATHRATTLE} | [x]<b>Deathrattle:</b> Deal {0} damage to a random enemy. <i><b>Herald</b> twice to upgrade.</i>@[x]<b>Deathrattle:</b> Deal {0} damage to a random enemy. <i><b>Herald</b> once to upgrade.</i>@[x]<b>Deathrattle:</b> Deal {0} damage to a random enemy.
+CATA_581       SPELL   6         Decimation                     [] {} | [x]Deal $@ damage to all minions. <i>(Improved for each minion on the battlefield.)</i>
+CATA_582       SPELL   2         Searing Fissure                [] {} | Deal $1 damage to all minions. Give your hero +3 Attack this turn.
+   token CATA_582e      ENCHANTMENT 0         Flamebound                     [] {} | +3 Attack this turn,
+CATA_584       LOCATION 3         Erupting Volcano               [] {} | [x]Deal 3 damage randomly split among enemies. If you've played a Fire spell this turn, deal 3 more.
+CATA_585       SPELL   1         Torch                          [] {} | [x]Deal $@ damage to a damaged minion. Return this to hand with any excess damage.
+CATA_586       MINION  5/3/3     Destructive Blaze              [ELEMENTAL] {DEATHRATTLE} | [x]After this survives damage, summon a Destructive Blaze. <b>Deathrattle:</b> Deal 2 damage to a random enemy.
+CATA_591       MINION  7/7/7     Commander Geddon               [ELEMENTAL] {BATTLECRY} | [x]<b>Battlecry:</b> Instead of drawing each turn, <b>Discover</b> a card from your deck. It costs (3) __less. Destroy the others.
+   token CATA_591e      ENCHANTMENT 0         Barren                         [] {} | At the start of your turns, <b>Discover</b> a card from your deck to play. The other two are incinerated.
+   token CATA_591e2     ENCHANTMENT 0         Overheat                       [] {} | Costs (3) less.
+CATA_610       SPELL   5         Lo'Gosh's Last Stand           [] {} | [x]Give a minion "<b>Deathrattle:</b> Summon a random minion from your hand."
+   token CATA_610e      ENCHANTMENT 0         Holding On                     [] {} | <b>Deathrattle:</b> Summon a random minion from your hand.

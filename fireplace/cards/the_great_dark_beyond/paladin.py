@@ -168,9 +168,10 @@ class GDB_144:
 class GDB_721:
     """Interstellar Wayfarer"""
 
-    # Divine Shield (data). Battlecry: Reduce the Cost of your Librams by (1)
-    # this game.
+    # Divine Shield (data). Battlecry AND Deathrattle: Reduce the Cost of your
+    # Librams by (1) this game. (Patch 35.0 added the Deathrattle half.)
     play = _ReduceLibrams(CONTROLLER)
+    deathrattle = _ReduceLibrams(CONTROLLER)
 
 
 class GDB_728:

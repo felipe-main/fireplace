@@ -22,8 +22,17 @@ class BT_127e:
 class BT_131:
     """Ysiel Windsinger"""
 
-    # Your spells cost (1).
-    update = Refresh(FRIENDLY_HAND + SPELL, {GameTag.COST: SET(1)})
+    # Battlecry: Your spells cost (1) this turn. (Patch 35.0 reworked this from a
+    # permanent aura into a one-turn battlecry.)
+    play = Buff(FRIENDLY_HAND + SPELL, "BT_131e")
+
+
+class BT_131e:
+    """Ysiel Windsinger"""
+
+    # Cost set to (1) this turn.
+    tags = {GameTag.TAG_ONE_TURN_EFFECT: True}
+    cost = SET(1)
 
 
 class BT_133:

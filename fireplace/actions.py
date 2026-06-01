@@ -3084,6 +3084,16 @@ class Summon(TargetedAction):
             self.queue_broadcast(self, (source, EventListener.ON, target, card))
             self.broadcast(source, EventListener.AFTER, target, card)
 
+            # A minion may carry a `summoned` script — a self-effect that fires
+            # when IT enters play via Summon. The summon broadcast above excludes
+            # a card from its own summon event, so this is how "When summoned, …"
+            # tokens (e.g. Cataclysm's Soldier of Azshara) react to their own
+            # arrival. Called directly on the card, so it can't recurse into the
+            # summon-event loop the self-exclusion guards against.
+            summoned_actions = card.get_actions("summoned")
+            if summoned_actions:
+                source.game.cheat_action(card, summoned_actions)
+
             # Colossal: when a parent Colossal minion is summoned, also
             # summon its appendages alongside it. Limbs are tokens named
             # {parent_id}t, t2, … with COLOSSAL_LIMB=1. Limbs do NOT

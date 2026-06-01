@@ -355,17 +355,25 @@ def test_toy_652t_window_shopper_mini_sets_stats_to_1_1_1():
 #   4/4/3. Deathrattle: Get 3 random first-edition Demon Hunter cards.
 # ---------------------------------------------------------------------------
 def test_toy_913_cicigi_deathrattle_three_dh_cards():
+    # Patch 35.0 reworked Ci'Cigi: Battlecry, Outcast, AND Deathrattle each Get
+    # ONE random first-edition Demon Hunter card (was a Deathrattle "get 3").
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
-    cici = game.player1.summon("TOY_913")
+    valid_sets = {int(s) for s in FIRST_EDITION_DH_SETS}
+
+    def _assert_first_edition_dh(card):
+        assert CardClass.DEMONHUNTER in card.data.classes
+        assert int(cards_module.db[card.id].card_set) in valid_sets
+
+    # Battlecry: get one.
+    cici = game.player1.give("TOY_913")
+    pre = len(game.player1.hand)
+    cici.play()
+    assert len(game.player1.hand) == pre - 1 + 1  # Ci'Cigi left hand, +1 card
+    _assert_first_edition_dh(game.player1.hand[-1])
+
+    # Deathrattle: get one more.
     pre = len(game.player1.hand)
     cici.destroy()
-    # Exactly 3 cards added.
-    assert len(game.player1.hand) == pre + 3
-    new = game.player1.hand[-3:]
-    valid_sets = {int(s) for s in FIRST_EDITION_DH_SETS}
-    for c in new:
-        # Each card is a Demon Hunter card...
-        assert CardClass.DEMONHUNTER in c.data.classes
-        # ...and comes from the first-edition pool (Ashes of Outland /
-        # Demon Hunter Initiate), not any modern DH set.
-        assert int(cards_module.db[c.id].card_set) in valid_sets
+    game.process_deaths()
+    assert len(game.player1.hand) == pre + 1
+    _assert_first_edition_dh(game.player1.hand[-1])

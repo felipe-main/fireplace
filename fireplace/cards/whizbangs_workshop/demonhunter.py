@@ -131,12 +131,13 @@ class TOY_652t:
 class TOY_913:
     """Ci'Cigi"""
 
-    # Deathrattle: Get 3 random first-edition Demon Hunter cards (in mint
-    # condition). "first-edition" is the load-bearing restriction: the original
-    # Demon Hunter pool — Ashes of Outland (BLACK_TEMPLE) + Demon Hunter
-    # Initiate. "in mint condition" is flavour. is_standard=False so the wild
-    # first-edition sets aren't filtered out in Standard games.
-    deathrattle = Give(
+    # Battlecry, Outcast, and Deathrattle: Get a random first-edition Demon
+    # Hunter card (in mint condition). (Patch 35.0 reworked this from a
+    # Deathrattle-only "get 3" into one card on each of Battlecry/Outcast/
+    # Deathrattle.) "first-edition" = the original DH pool — Ashes of Outland
+    # (BLACK_TEMPLE) + Demon Hunter Initiate; is_standard=False keeps the wild
+    # first-edition sets in the pool in Standard games.
+    _GET = Give(
         CONTROLLER,
         RandomCard(
             collectible=True,
@@ -144,7 +145,10 @@ class TOY_913:
             card_set=[CardSet.BLACK_TEMPLE, CardSet.DEMON_HUNTER_INITIATE],
             is_standard=False,
         ),
-    ) * 3
+    )
+    play = _GET
+    outcast = _GET
+    deathrattle = _GET
 
 
 ##

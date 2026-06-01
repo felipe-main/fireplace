@@ -1527,6 +1527,15 @@ class Hero(Character):
         return ret
 
     @property
+    def cannot_attack_heroes(self):
+        # A "Can't attack heroes" weapon (e.g. Hand of Infinity, END_012)
+        # restricts the wielding hero's legal attack targets to minions.
+        ret = super().cannot_attack_heroes
+        if self.controller.weapon:
+            return getattr(self.controller.weapon, "cannot_attack_heroes", False) or ret
+        return ret
+
+    @property
     def incoming_damage_divider(self):
         ret = super().incoming_damage_divider
         if self.controller.weapon:

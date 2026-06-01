@@ -589,12 +589,21 @@ class END_002e:
     tags = {GameTag.ATK: 2}
 
 
+class _MinionsDiedThisTurn(LazyNum):
+    """Count every minion that died this turn, BOTH sides. The per-player
+    `minions_killed_this_turn` only bumps on the controller of the minion that
+    died, so reading just CONTROLLER's would miss enemy deaths — use the
+    game-level both-sides aggregate (game.py minions_killed_this_turn)."""
+
+    def evaluate(self, source):
+        return self.num(source.game.minions_killed_this_turn)
+
+
 class END_004:
     "Remnant of Rage"
-    # Costs (1) less for each minion that died this turn. Battlecry: Draw 2
-    # cards. The engine tracks deaths via the per-turn `minions_killed_this_turn`
-    # counter (covers all minions that died this turn, both sides).
-    cost_mod = -Attr(CONTROLLER, "minions_killed_this_turn")
+    # Costs (1) less for each minion that died this turn (both sides).
+    # Battlecry: Draw 2 cards.
+    cost_mod = -_MinionsDiedThisTurn()
     play = Draw(CONTROLLER) * 2
 
 

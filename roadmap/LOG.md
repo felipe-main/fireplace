@@ -48,3 +48,5 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-06-01 | 6:Across the Timeways (TIME_) | P4 audit | wf_69d220d7 DONE: 19 survivors = 4 real bugs / 11 approx / 3 once-over / 1 cosmetic -> review.csv
 - 2026-06-01 | 6:Across the Timeways (TIME_) | P5 tierfix | 4 real bugs fixed (04d6f336): Aeon Rend distinct-targets, Cease to Exist same-minion silence+destroy, Untimely Death turn+1 bound, Well of Eternity per-spell _casts_twice_self engine flag. test_timeways_tierfix.py 6 tests. Full suite 3897 passed/2 skipped. review.csv 4 fixed/15 watch/0 open
 - 2026-06-01 | 6:Across the Timeways (TIME_) | P6 docs | README -> Patch 34.0.229984 + Across the Timeways line
+- 2026-06-01 | 6:Across the Timeways (TIME_) | P7 soak | final 1000/1000, 0 failed (after tier-fix). SET #6 DONE (6ec6811b)
+- 2026-06-01 | MILESTONE | 6 of 8 sets DONE | Next: #7 Across the Timeways mini-set (TIME_TRAVEL, build TBD; full set arrived 229984, mini-set later build)

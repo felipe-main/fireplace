@@ -375,6 +375,12 @@ def _dino_refresh_mirrex(player):
     re-stamped on every fresh copy so the chain keeps updating)."""
     if player is None:
         return
+    # Re-entrancy guard: Morph below triggers an aura refresh, which re-runs
+    # Mirrex's Hand.update -> this function. Without the guard the same entity
+    # is morphed twice in one pass and the second _set_zone hits an empty zone
+    # cache (utils.py remove ValueError).
+    if getattr(player, "_mirrex_refreshing", False):
+        return
     last_id = getattr(player.opponent, "_dino_last_minion_played", None)
     if not last_id:
         return
@@ -382,17 +388,26 @@ def _dino_refresh_mirrex(player):
 
     if last_id not in _db:
         return
-    for entity in list(player.hand):
-        if not getattr(entity, "_mirrex", False):
-            continue
-        # Already showing this minion — nothing to do.
-        if getattr(entity, "_mirrex_shows", None) == last_id:
-            continue
-        copy = player.card(last_id, source=entity)
-        copy.controller = player
-        copy._mirrex = True
-        copy._mirrex_shows = last_id
-        player.game.cheat_action(entity, [Morph(entity, copy), Buff(copy, "DINO_407e2")])
+    player._mirrex_refreshing = True
+    try:
+        for entity in list(player.hand):
+            if not getattr(entity, "_mirrex", False):
+                continue
+            # Only morph a card that is actually still in hand.
+            if entity.zone != Zone.HAND:
+                continue
+            # Already showing this minion — nothing to do.
+            if getattr(entity, "_mirrex_shows", None) == last_id:
+                continue
+            copy = player.card(last_id, source=entity)
+            copy.controller = player
+            copy._mirrex = True
+            copy._mirrex_shows = last_id
+            player.game.cheat_action(
+                entity, [Morph(entity, copy), Buff(copy, "DINO_407e2")]
+            )
+    finally:
+        player._mirrex_refreshing = False
 
 
 class _MirrexHandUpdate(TargetedAction):

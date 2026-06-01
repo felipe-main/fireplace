@@ -38,4 +38,7 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-06-01 | 4:Lost City (TLC_) | P6+P7 soak | README->Patch 33.0; soak 1000/1000. SET #4 DONE
 - 2026-06-01 | MILESTONE | 4 of 8 sets DONE
 - 2026-06-01 | 5:Lost City mini-set (DINO_) | P0/P1 | bump 223542->226928.1 (Patch 33.2); 38 DINO_ Dinosaur cards, CardSet=THE_LOST_CITY; reuses Kindred/Corpses/Outcast/Combo + Masks (set-stats) + Egg counters; no new mechanic. Fixed 9 data-bump regressions (quest totals 7->6/8->7/6->5/15->12, Osk 7/7->6/6, Playhouse Giant 20->25)
-- 2026-06-01 | 5:Lost City mini-set (DINO_) | P3 cards | workflow wf_8fcbd1a2 (12 agents, fold into the_lost_city/, new test_dino_<class>.py); implement->verify
+- 2026-06-01 | 5:Lost City mini-set (DINO_) | P3 cards+gate | wf_8fcbd1a2: 38 DINO_ cards; gate caught TLC_EVENT_402 (EVENT card -> skip) + 3 stale quest totals (TLC_433/460/229) -> engine progress_total data fallback; full suite 3638 passed; commit 7bec019c
+- 2026-06-01 | 5:Lost City mini-set (DINO_) | P4 audit | wf_060b46a3 (lean): 4 rows, 0 real bugs, all watch
+- 2026-06-01 | 5:Lost City mini-set (DINO_) | P7 soak | 2 latent crash fixes (Swampqueen Hagatha method-play combine; Mirrex re-entrant morph guard); soak 2000/2000. SET #5 DONE. README->Patch 33.2
+- 2026-06-01 | MILESTONE | 5 of 8 sets DONE | Next: #6 Across the Timeways (TIME_TRAVEL, build TBD ~234xxx+)

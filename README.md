@@ -10,7 +10,8 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 33.0.223542](https://hearthstone.wiki.gg/wiki/Patch_33.0.223542)
+Now updated to [Patch 33.2.226928](https://hearthstone.wiki.gg/wiki/Patch_33.2.226928)
+* **100%** Lost City of Un'Goro mini-set / Dinosaurs (38 of 38 cards) — reuses Kindred, adds the Masks (set-stats) sub-theme and Egg break-counters
 * **100%** The Lost City of Un'Goro (145 of 145 cards) — adds the Kindred keyword (bonus if you played a matching minion-type or spell-school last turn), plus returning Quests and Adapt
 * **100%** Emerald Dream mini-set / Firelands (38 of 38 cards) — adds the Smoldering keyword (upgrade-each-turn-then-discard); reuses Dark Gift, Imbue, and Corpses
 * **100%** Into the Emerald Dream (145 of 145 cards) — adds Imbue (Hero Power upgrades) and Dark Gift

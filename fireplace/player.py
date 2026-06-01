@@ -764,6 +764,13 @@ class Player(Entity, TargetableByAuras):
         if getattr(spell, "spell_school", SpellSchool.NONE) in spell_school_power_map:
             bonus += spell_school_power_map[spell.spell_school]
         bonus += self.spellpower
+        # The Lost City of Un'Goro — a Spell Damage enchant ON the spell card
+        # itself (e.g. Volcanic Thrasher's Kindred "Give it Spell Damage +2",
+        # Stellar Balance's EDR_874e). The board-spellpower fields above only
+        # aggregate minion auras, so read the cast spell's own SPELLPOWER tag
+        # (aggregated across its enchants via _getattr).
+        if hasattr(spell, "_getattr"):
+            bonus += spell._getattr("spellpower", 0)
         # TITANS — The Primus Runes of Frost: next spell has Spell Damage +N.
         bonus += self.next_spell_spellpower
         bonus <<= self.controller.spellpower_bonus_double

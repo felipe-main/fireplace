@@ -52,9 +52,12 @@ class _SummonTwoDeathrattleFight(TargetedAction):
         if len(summoned) == 2:
             a, b = summoned
             if a.zone == Zone.PLAY and b.zone == Zone.PLAY:
-                ctrl.game.cheat_action(source, [Attack(a, b)])
-            if a.zone == Zone.PLAY and b.zone == Zone.PLAY:
-                ctrl.game.cheat_action(source, [Attack(b, a)])
+                # "They fight!" is a single SIMULTANEOUS strike — each deals its
+                # Attack to the other at once (not two sequential Attack()s,
+                # which would let the first kill the second before it retaliates
+                # and would fire attack triggers / exhaust them).
+                a_atk, b_atk = a.atk, b.atk
+                ctrl.game.cheat_action(source, [Hit(a, b_atk), Hit(b, a_atk)])
 
 
 class _StampCorpseBaseline(TargetedAction):

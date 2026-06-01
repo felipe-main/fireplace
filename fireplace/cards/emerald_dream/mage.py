@@ -173,17 +173,10 @@ class EDR_874:
     """Stellar Balance"""
 
     # Get a Moonfire and a Starfire. Give them <b>Spell Damage +1</b>.
-    # The +1 Spell Damage rider is applied as the in-data enchant EDR_874e;
-    # this engine's spell-damage only aggregates board (minion) Spell Damage,
-    # so an enchant on a held spell does not raise its cast damage. The main
-    # effect (two spells to hand) is full-fidelity.
-    #
-    # WATCH (engine gap): Player.get_spell_damage (player.py) reads only the
-    # player's board/aura spellpower + next_spell_spellpower; it never reads a
-    # SPELLPOWER tag on the spell card being cast. A faithful fix needs an
-    # engine change there — e.g. `bonus += getattr(spell, "spellpower", 0)` —
-    # so a per-card Spell Damage enchant counts. Until then EDR_874e is inert
-    # at cast time (Moonfire still deals 1, Starfire still 5).
+    # The +1 Spell Damage rider is the in-data enchant EDR_874e. As of the Lost
+    # City engine pass, Player.get_spell_damage reads the cast spell's own
+    # SPELLPOWER tag, so the rider now correctly adds +1 at cast time (Moonfire
+    # deals 2, Starfire 6).
     play = (
         Give(CONTROLLER, "CS2_008").then(Buff(Give.CARD, "EDR_874e")),
         Give(CONTROLLER, "EX1_173").then(Buff(Give.CARD, "EDR_874e")),

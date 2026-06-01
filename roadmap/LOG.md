@@ -32,4 +32,5 @@ Each line: `tick | set#:name | phase | result`.
 - 2026-05-31 | MILESTONE | 3 of 8 sets DONE | #1 StarCraft, #2 Emerald Dream, #3 Firelands mini all green+audited+soaked.
 - 2026-05-31 | 4:The Shrouded City / Lost City of Un'Goro (TLC_) | P0/P1 | bump 219846->223542.1 (Patch 33.0); 145 TLC_ cards; novel=Kindred (matching minion-type/spell-school played PREVIOUS turn). Fixed 2 data-bump regressions (Flickering Lightbot cost 3->5; King Plush rework). 4b5b01c0
 - 2026-05-31 | 4:Lost City (TLC_) | P2 engine | Kindred: player.races/schools_played_{this,last}_turn + Play.do record + _begin_turn rollover; Kindred evaluator + kindred_active() + KindredCost LazyNum; test_tlc_engine.py 4 tests green
-- 2026-05-31 | 4:Lost City (TLC_) | P3 cards | new package the_lost_city/ scaffolded; workflow wf_98003509 (12 agents, 1/class, 145 cards, new test_tlc_<class>.py); implement->verify
+- 2026-05-31 | 4:Lost City (TLC_) | P3 cards+gate | wf_98003509: 145 TLC_ cards; gate caught EDR_950 (new collectible at 223542 -> implemented) + TLC_436 corpse cost 5->3 + Shokk set-cost-enchant/determinism; full suite 3572 passed; commit bd0b5317 (+ removed stray tmp_paladin_tlc.py)
+- 2026-05-31 | 4:Lost City (TLC_) | P4 audit + P7 soak | wf_99317081 (finders+3-vote refute) + 1000-game soak launched in parallel

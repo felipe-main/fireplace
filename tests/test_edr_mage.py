@@ -242,3 +242,20 @@ def test_starsurge_base_one_with_no_deaths():
     tank.damage = 0
     p1.give("EDR_941").play(target=tank)
     assert tank.damage == 1
+
+
+def test_stellar_balance_spell_damage_applies_at_cast():
+    # Engine (Lost City pass): a SPELLPOWER enchant on the held spell now raises
+    # its cast damage. Stellar Balance gives Moonfire + Starfire Spell Damage +1.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.give("EDR_874").play()
+    moonfire = next(c for c in p1.hand if c.id == "CS2_008")
+    starfire = next(c for c in p1.hand if c.id == "EX1_173")
+    e = p1.opponent.hero
+    h0 = e.health
+    moonfire.play(target=e)
+    assert h0 - e.health == 2  # Moonfire 1 + Spell Damage 1
+    h1 = e.health
+    starfire.play(target=e)
+    assert h1 - e.health == 6  # Starfire 5 + Spell Damage 1

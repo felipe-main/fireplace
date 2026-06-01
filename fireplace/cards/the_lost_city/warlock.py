@@ -159,13 +159,45 @@ class TLC_447:
     play = Destroy(TARGET), Kindred() & Hit(ALL_MINIONS, 2)
 
 
+class _CursedCatacombsDiscover(TargetedAction):
+    """Cursed Catacombs — Discover a minion from your deck. A deck-Discover
+    removes ONLY the chosen card from the deck (drawn to hand); the other
+    presented cards stay in the deck (a plain GenericChoice would discard them).
+    Then make the drawn minion Temporary."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        ids = list({c.id for c in ctrl.deck if c.type == CardType.MINION})
+        if not ids:
+            return
+        source.game.cheat_action(
+            source,
+            [Discover(CONTROLLER, RandomID(*ids)).then(
+                _CursedCatacombsDraw(SELF, Discover.CARD)
+            )],
+        )
+
+
+class _CursedCatacombsDraw(TargetedAction):
+    TARGET = ActionArg()
+    CARD = CardArg()
+
+    def do(self, source, target, card):
+        ctrl = source.controller
+        real = next((c for c in ctrl.deck if c.id == card.id), None)
+        if real is not None:
+            source.game.cheat_action(
+                source, [ForceDraw(real), SetTag(real, enums.TEMPORARY)]
+            )
+
+
 class TLC_451:
     """Cursed Catacombs"""
 
     # Discover a minion from your deck. Make it Temporary.
-    play = GenericChoice(
-        CONTROLLER, RANDOM(FRIENDLY_DECK + MINION) * 3
-    ).then(GiveTemporary(GenericChoice.CARD))
+    play = _CursedCatacombsDiscover(CONTROLLER)
 
 
 class TLC_466:

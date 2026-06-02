@@ -79,17 +79,49 @@ class CATA_586:
     deathrattle = Hit(RANDOM(ENEMY_CHARACTERS), 2)
 
 
+class _BarrenDeckDiscover(TargetedAction):
+    """Commander Geddon's Barren — instead of drawing, Discover one of three
+    ACTUAL cards from your deck (it enters hand costing (3) less) and DESTROY
+    the other two surfaced cards. The deck is thinned by three each turn.
+
+    Discover-to-hand is not a draw, so the chosen card is moved straight to
+    hand (no draw event); a full hand burns it. The two un-chosen deck cards go
+    to the graveyard."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        deck = list(ctrl.deck)
+        if not deck:
+            return
+        pool = source.game.random.sample(deck, min(3, len(deck)))
+
+        def _pick(src, chosen):
+            # Destroy the un-chosen surfaced cards (removed from the deck).
+            for c in pool:
+                if c is not chosen and c.zone == Zone.DECK:
+                    c.zone = Zone.GRAVEYARD
+            # The chosen card enters hand (or burns if full) costing (3) less.
+            if len(ctrl.hand) < ctrl.max_hand_size:
+                chosen.zone = Zone.HAND
+                src.game.cheat_action(src, [Buff(chosen, "CATA_591e2")])
+            else:
+                chosen.zone = Zone.GRAVEYARD
+
+        choose_card(source, pool, _pick)
+
+
 class CATA_591:
     """Commander Geddon"""
 
     # Battlecry: Instead of drawing each turn, Discover a card from your deck.
     # It costs (3) less. Destroy the others.
     #
-    # Approximation: we suppress the controller's normal draw (cant_draw) and
-    # apply the Barren enchant to the hero. Each turn-start Barren surfaces a
-    # 3-card choice copied from the deck (Discover-style) and the chosen card
-    # enters hand cost-reduced by (3). The un-picked options are copies, so the
-    # deck itself is not actually thinned/"destroyed" — this is a fidelity gap.
+    # We suppress the controller's normal draw (cant_draw) and apply the Barren
+    # enchant to the hero. Each turn-start Barren surfaces three real deck cards
+    # as a Discover; the chosen one enters hand cost-reduced by (3) and the
+    # other two are destroyed, so the deck shrinks by three per turn.
     def play(self):
         self.controller.cant_draw = True
         yield Buff(self.controller.hero, "CATA_591e")
@@ -104,11 +136,7 @@ class CATA_591e:
         GameTag.CARDNAME: "Barren",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
-    events = OWN_TURN_BEGIN.on(
-        GenericChoice(CONTROLLER, Copy(RANDOM(FRIENDLY_DECK) * 3)).then(
-            Buff(GenericChoice.CARD, "CATA_591e2")
-        )
-    )
+    events = OWN_TURN_BEGIN.on(_BarrenDeckDiscover(CONTROLLER))
 
 
 class CATA_591e2:

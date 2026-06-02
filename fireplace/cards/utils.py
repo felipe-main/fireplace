@@ -308,12 +308,23 @@ class HandCardChoice:
         self.player = player
         self.cards = list(cards)
         self._apply = apply
+        # The engine defers a turn-begin (and other queued continuations) onto
+        # the open choice via choice_callback; mirror Choice so an ENTITY_CHOICE
+        # that stays open across BeginTurn resolves correctly.
+        self.choice_callback = []
 
     def choose(self, card):
         if card not in self.cards:
             raise InvalidAction("%r is not a valid choice (%r)" % (card, self.cards))
         self.player.choice = None
         self._apply(self.source, card)
+        self.trigger_choice_callback()
+
+    def trigger_choice_callback(self):
+        callbacks = self.choice_callback
+        self.choice_callback = []
+        for callback in callbacks:
+            callback()
 
 
 def choose_card(source, candidates, apply):

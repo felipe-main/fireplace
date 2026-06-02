@@ -376,14 +376,50 @@ def test_supply_run_buff_half_gives_hand_minions_plus2():
 def test_magmaw_summons_colossal_bodies():
     game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
     p1 = game.player1
+    p1.discard_hand()
     p1.summon("CATA_550")
-    # Magmaw + its appendages fill the board (engine caps at 7).
+    # On an empty board Magmaw + 6 appendages fill the board exactly (cap 7).
     assert any(c.id == "CATA_550" for c in p1.field)
     bodies = [c for c in p1.field if c.id.startswith("CATA_550t")]
-    assert len(bodies) >= 1
+    assert len(bodies) == 6
+    assert len(p1.field) == 7
     # Each body is a 2/1 Beast/Mech.
     for b in bodies:
         assert b.atk == 2 and b.health == 1
+
+
+def test_magmaw_caps_at_board_limit_and_banks_leftovers():
+    # Played with little room, Magmaw summons only what fits (no board overflow)
+    # and banks the rest on _colossal_leftover.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    for _ in range(4):
+        p1.summon("CS2_171")  # 4 filler minions
+    magmaw = p1.summon("CATA_550")
+    assert len(p1.field) == 7  # capped, NOT 11
+    bodies = [c for c in p1.field if c.id.startswith("CATA_550t")]
+    assert len(bodies) == 2  # only 2 limbs fit (4 filler + Magmaw + 2 = 7)
+    assert len(magmaw._colossal_leftover) == 4  # the other 4 banked
+
+
+def test_magmaw_refills_appendages_when_room_opens():
+    # When board space frees up, Magmaw refills banked appendages at the start
+    # of its controller's turn.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    fillers = [p1.summon("CS2_171") for _ in range(4)]
+    magmaw = p1.summon("CATA_550")
+    assert len([c for c in p1.field if c.id.startswith("CATA_550t")]) == 2
+    # Clear the 4 fillers, opening room.
+    for f in fillers:
+        f.destroy()
+    game.end_turn()   # p1 -> p2
+    game.end_turn()   # p2 -> p1: refill fires at turn begin
+    bodies = [c for c in p1.field if c.id.startswith("CATA_550t")]
+    assert len(bodies) == 6          # all 6 appendages now in play
+    assert magmaw._colossal_leftover == []
 
 
 def test_magmaw_body_deathrattle_buffs_random_friendly():

@@ -281,6 +281,28 @@ def test_geddon_start_of_turn_discovers_cost_reduced_from_deck():
     assert in_hand[0].cost == max(0, pre_cost - 3)
 
 
+def test_geddon_destroys_the_other_two_and_thins_deck():
+    # The two un-chosen surfaced cards are destroyed; the chosen one is drawn —
+    # so the deck shrinks by exactly 3 (real cards, not copies).
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    p1.give("CATA_591").play()
+    game.end_turn()  # p1 -> p2
+    deck_before = len(p1.deck)
+    game.end_turn()  # p2 -> p1: Barren surfaces 3 real deck cards
+    assert p1.choice is not None
+    surfaced = list(p1.choice.cards)
+    assert len(surfaced) == 3
+    assert all(c in p1.deck for c in surfaced)  # the actual deck cards, not copies
+    chosen = surfaced[0]
+    p1.choice.choose(chosen)
+    # Chosen -> hand; other two -> graveyard; deck shrank by 3.
+    assert chosen.zone == Zone.HAND
+    for other in surfaced[1:]:
+        assert other.zone == Zone.GRAVEYARD
+    assert len(p1.deck) == deck_before - 3
+
+
 # ---------------------------------------------------------------------------
 # CATA_610 Lo'Gosh's Last Stand — give a minion a summon-from-hand deathrattle.
 # ---------------------------------------------------------------------------

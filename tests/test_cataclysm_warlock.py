@@ -1,6 +1,6 @@
 """Cataclysm — Warlock tests."""
 
-from hearthstone.enums import GameTag, Race, Zone
+from hearthstone.enums import CardType, GameTag, Race, Zone
 from utils import prepare_game, CardClass
 
 
@@ -323,6 +323,29 @@ def test_chogall_arm_gain_caps_at_two_heralds():
     assert victim.dead
     assert arm.atk == pre_atk + 4  # capped, not +5
     assert arm.health == pre_health + 4
+
+
+def test_chogall_aura_destroys_enemy_deck_minion_not_board_right():
+    # With Cho'gall, Mastermind in play, the Arm consumes a minion from the
+    # ENEMY's DECK instead of the board-right minion (which is left untouched),
+    # and still gains +2/+2.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    p1.discard_hand()
+    p1.summon("CATA_726")  # parent enables the aura (also brings two Arm limbs)
+    arm = p1.summon("CATA_726t")
+    right = p1.summon("CS2_182")  # board-right minion — must SURVIVE under aura
+    for _ in range(5):
+        p2.card("CS2_182").zone = Zone.DECK  # stock the enemy deck with minions
+    deck_before = len([c for c in p2.deck if c.type == CardType.MINION])
+    pre_atk, pre_health = arm.atk, arm.health
+    game.end_turn()
+    assert not right.dead  # board-right untouched — aura redirected to the deck
+    deck_after = len([c for c in p2.deck if c.type == CardType.MINION])
+    # Three consuming tokens (two limbs + this Arm) each destroyed a deck minion
+    # (the turn flip also draws one card, which may remove one more).
+    assert deck_after <= deck_before - 3
+    assert arm.atk == pre_atk + 2 and arm.health == pre_health + 2
 
 
 ##

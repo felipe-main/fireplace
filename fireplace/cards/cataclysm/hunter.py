@@ -306,11 +306,31 @@ class CATA_820e:
 # parent only needs a docstring; each limb body carries the same deathrattle.
 
 
+class _MagmawRefill(TargetedAction):
+    """Magmaw — "Summon any leftover appendages when there is room." At the
+    start of your turn, summon banked appendages (those that didn't fit when
+    Magmaw was played, tracked on `_colossal_leftover`) into any empty board
+    slots, up to the 7-minion cap."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        leftover = getattr(source, "_colossal_leftover", None)
+        if not leftover:
+            return
+        while leftover and source.controller.minion_slots > 0:
+            limb_id = leftover.pop(0)
+            source.game.cheat_action(source, [Summon(source.controller, limb_id)])
+
+
 class CATA_550:
     """Magmaw"""
 
     # Colossal +99. Summon any leftover appendages when there is room.
-    pass
+    # The Colossal hook caps limb-summoning at the 7-minion board and banks the
+    # rest on `_colossal_leftover`; at the start of each of your turns Magmaw
+    # refills empty slots from that bank.
+    events = OWN_TURN_BEGIN.on(_MagmawRefill(SELF))
 
 
 class CATA_550t:

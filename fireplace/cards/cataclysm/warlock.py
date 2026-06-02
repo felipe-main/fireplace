@@ -107,9 +107,10 @@ class CATA_726:
     """Cho'gall, Mastermind"""
 
     # Colossal +2. (Arms are engine-summoned from CATA_726t / CATA_726t1.)
-    # "Your Arms and Soldiers destroy minions in the enemy's deck instead" is a
-    # board-state aura we approximate as the limbs' default destroy-the-right
-    # behaviour (the deck-destruction variant is cosmetic at our fidelity).
+    # "Your Arms and Soldiers destroy minions in the enemy's DECK instead of the
+    # board-right minion" is modelled in _SoulConsume: while this Cho'gall is in
+    # play, those tokens destroy a random enemy-deck minion (and still gain
+    # +N/+N) rather than the right neighbour.
     pass
 
 
@@ -192,17 +193,36 @@ class _SoulConsumeGain(LazyNum):
 
 
 class _SoulConsume(TargetedAction):
-    """At the end of your turn, destroy the minion to the right; gain +N/+N."""
+    """At the end of your turn, destroy the minion to the right; gain +N/+N.
+
+    Cho'gall, Mastermind (CATA_726) aura: while a Cho'gall is in play under the
+    same controller, the Arms/Soldiers instead destroy a minion in the ENEMY's
+    DECK (no board-right requirement) and gain +N/+N. The deck minion is removed
+    straight to the graveyard (destroying a card that never entered play fires
+    no deathrattle)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         if source.zone != Zone.PLAY:
             return
+        ctrl = source.controller
+        gain = _SoulConsumeGain().evaluate(source)
+        if any(m.id == "CATA_726" for m in ctrl.field):
+            deck_minions = [
+                c for c in ctrl.opponent.deck if c.type == CardType.MINION
+            ]
+            if not deck_minions:
+                return  # no enemy deck minion -> no destroy, no gain
+            victim = source.game.random.choice(deck_minions)
+            victim.zone = Zone.GRAVEYARD
+            source.game.cheat_action(
+                source, [Buff(source, "CATA_726te", atk=gain, max_health=gain)]
+            )
+            return
         right = source.right_minion
         if not right:
             return  # nothing to the right -> no destroy, no gain
-        gain = _SoulConsumeGain().evaluate(source)
         source.game.cheat_action(
             source,
             [Destroy(right[0]), Buff(source, "CATA_726te", atk=gain, max_health=gain)],

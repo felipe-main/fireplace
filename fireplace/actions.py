@@ -61,7 +61,15 @@ def _summon_colossal_limbs(source, target, parent):
     right_offset = 1
     left_offset = 0
     placed_limbs = []
+    leftover_limb_ids = []
     for limb_id in limb_ids:
+        # Respect the 7-minion board cap: a Colossal played with little room
+        # summons only as many appendages as fit. Normal Colossals lose the
+        # rest; Magmaw banks them on the parent and refills later (it reads
+        # `_colossal_leftover`).
+        if parent.controller.minion_slots <= 0:
+            leftover_limb_ids.append(limb_id)
+            continue
         limb_card = parent.controller.card(limb_id, source)
         limb_card.controller = parent.controller
         if db[limb_id].tags.get(GameTag.COLOSSAL_LIMB_ON_LEFT, 0):
@@ -73,6 +81,8 @@ def _summon_colossal_limbs(source, target, parent):
         limb_card.zone = Zone.PLAY
         source.game.manager.targeted_action(Summon, source, parent.controller, limb_card)
         placed_limbs.append(limb_card)
+
+    parent._colossal_leftover = leftover_limb_ids
 
     # A Colossal limb may carry a `summoned` self-effect ("When summoned, …").
     # The placement above bypasses the Summon broadcast (limbs go straight into

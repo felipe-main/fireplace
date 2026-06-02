@@ -36,6 +36,22 @@ def test_ocular_occultist_empty_hand_no_crash():
     assert occultist in game.player1.field
 
 
+def test_ocular_occultist_chooses_which_card_to_discard():
+    # With two cards in hand the player CHOOSES which to discard (not random).
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    p1.discard_hand()
+    keep = p1.give("CS2_029")    # Fireball
+    toss = p1.give("CS2_062")    # Hellfire
+    occultist = p1.give("CATA_490")
+    occultist.play()
+    assert p1.choice is not None
+    assert set(p1.choice.cards) == {keep, toss}
+    p1.choice.choose(toss)       # discard the chosen one only
+    assert toss.zone == Zone.REMOVEDFROMGAME
+    assert keep.zone == Zone.HAND
+
+
 ##
 # CATA_493 — Duke of Below: Rush, +2/+2 per card discarded this game.
 

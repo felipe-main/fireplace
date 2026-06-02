@@ -219,17 +219,31 @@ class CATA_155e2:
     tags = {GameTag.CARD_COSTS_HEALTH: True}
 
 
+class _GruesomeNightmare(TargetedAction):
+    """Battlecry: Give a minion in your hand OR battlefield Attack equal to this
+    minion's Attack (player-chosen across both zones)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        atk = source.atk
+        board = [m for m in source.controller.field if m is not source]
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(
+                s, [Buff(c, "CATA_161e", atk=atk)]
+            ),
+            filter=lambda c: c.type == CardType.MINION,
+            extra=board,
+        )
+
+
 class CATA_161:
     """Gruesome Nightmare"""
 
     # Battlecry: Give a minion in your hand or battlefield Attack equal to this
-    # minion's Attack. Engine hand-targeting is unsupported, so we approximate
-    # by buffing a random eligible friendly minion (hand or field).
-    play = Buff(
-        RANDOM((FRIENDLY_HAND + MINION) | (FRIENDLY_MINIONS - SELF)),
-        "CATA_161e",
-        atk=Attr(SELF, GameTag.ATK),
-    )
+    # minion's Attack.
+    play = _GruesomeNightmare(SELF)
 
 
 class CATA_161e:

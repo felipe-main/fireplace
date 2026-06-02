@@ -49,12 +49,23 @@ class _CursedChainsReturn(TargetedAction):
 # Minions
 
 
+class _OcularOccultist(TargetedAction):
+    """Taunt. Battlecry: Choose a card in your hand to discard."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(s, [Discard(c)]),
+        )
+
+
 class CATA_490:
     """Ocular Occultist"""
 
     # Taunt. Battlecry: Choose a card in your hand to discard.
-    # Engine hand-targeting unsupported — approximate as a random discard.
-    play = Find(FRIENDLY_HAND - SELF) & Discard(RANDOM(FRIENDLY_HAND - SELF))
+    play = _OcularOccultist(SELF)
 
 
 class CATA_493:

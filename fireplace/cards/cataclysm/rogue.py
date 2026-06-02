@@ -193,13 +193,23 @@ class CATA_158t:
     summoned = _SinestraWingSummon(SELF)
 
 
+class _AgentOfTheOldOnes(TargetedAction):
+    """Battlecry: Choose a card in your hand to transform into a Coin."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(s, [Morph(c, "CATA_COIN1")]),
+        )
+
+
 class CATA_200:
     """Agent of the Old Ones"""
 
     # Battlecry: Choose a card in your hand to transform into a Coin.
-    # Engine hand-targeting is unsupported — approximate by transforming a
-    # random other card in hand into the Coin.
-    play = Morph(RANDOM(FRIENDLY_HAND - SELF), "CATA_COIN1")
+    play = _AgentOfTheOldOnes(SELF)
 
 
 class CATA_201:

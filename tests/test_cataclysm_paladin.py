@@ -134,6 +134,23 @@ def test_chamber_of_aspects_buffs_hand_minion():
     assert minion.health == 7
 
 
+def test_chamber_of_aspects_lets_you_choose_which_hand_minion():
+    # With two minions in hand the player CHOOSES which one gets +2/+2 (real
+    # in-hand targeting, not a random pick).
+    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1 = game.player1
+    p1.discard_hand()
+    a = p1.give("CS2_182")  # 4/5
+    b = p1.give("CS2_182")  # 4/5
+    location = p1.summon("CATA_477")
+    location.use()
+    assert p1.choice is not None
+    assert set(p1.choice.cards) == {a, b}
+    p1.choice.choose(b)        # pick the second one
+    assert b.atk == 6 and b.health == 7
+    assert a.atk == 4 and a.health == 5  # the unchosen minion is untouched
+
+
 ##
 # CATA_478 — Bronze Redeemer
 

@@ -288,6 +288,61 @@ def GainEmptyMana(selector, amount):
     return GainMana(selector, amount).then(SpendMana(selector, GainMana.AMOUNT))
 
 
+##
+# "Choose a card in your hand" support
+#
+# The engine's play-targets only range over in-play characters, so a card in
+# hand can't be a normal play-target. Model the printed "Choose a card in your
+# hand" with an ENTITY_CHOICE over the eligible hand cards (mirrors Chillin'
+# Vol'jin's pick), then run a callback on the chosen card. Auto-resolves when
+# there is exactly one candidate; no-op when there are none — so the soak's
+# automatic chooser and human play both work.
+
+class HandCardChoice:
+    type = "ENTITY_CHOICE"
+    min_count = 1
+    max_count = 1
+
+    def __init__(self, source, player, cards, apply):
+        self.source = source
+        self.player = player
+        self.cards = list(cards)
+        self._apply = apply
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise InvalidAction("%r is not a valid choice (%r)" % (card, self.cards))
+        self.player.choice = None
+        self._apply(self.source, card)
+
+
+def choose_hand_card(source, apply, filter=None, extra=None):
+    """Let ``source``'s controller choose a card in hand, then run
+    ``apply(source, chosen)``.
+
+    ``filter`` (optional) ``callable(card) -> bool`` restricts the candidates
+    (e.g. minions only, Fel spells only). ``extra`` (optional) adds further
+    candidate cards outside the hand (e.g. board minions for a "in your hand or
+    battlefield" pick). ``source`` is never offered as a candidate.
+
+    Auto-resolves immediately when exactly one card qualifies; does nothing when
+    none qualify."""
+    ctrl = source.controller
+    cands = [
+        c
+        for c in ctrl.hand
+        if c is not source and (filter is None or filter(c))
+    ]
+    if extra:
+        cands += [c for c in extra if c is not source and c not in cands]
+    if not cands:
+        return
+    if len(cands) == 1:
+        apply(source, cands[0])
+        return
+    ctrl.choice = HandCardChoice(source, ctrl, cands, apply)
+
+
 def custom_card(cls):
     from . import CardDB, db
 

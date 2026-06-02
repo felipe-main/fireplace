@@ -109,13 +109,24 @@ class CATA_558:
     tags = {GameTag.ELUSIVE: True}
 
 
+class _TolvirCarver(TargetedAction):
+    """Battlecry: Choose a card in your hand; reduce its Cost by (1) each turn."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(s, [Buff(c, "CATA_566e")]),
+        )
+
+
 class CATA_566:
     """Tol'vir Carver"""
 
     # Battlecry: Choose a card in your hand. At the start of your turns, reduce
-    # its Cost by (1). Engine hand-targeting is unsupported -> approximate by
-    # buffing a RANDOM other card in hand (precedent: castle_nathria REV_511).
-    play = Buff(RANDOM(FRIENDLY_HAND - SELF), "CATA_566e")
+    # its Cost by (1).
+    play = _TolvirCarver(SELF)
 
 
 class _CarvingTick(TargetedAction):

@@ -200,6 +200,24 @@ def test_gruesome_nightmare_buffs_field_minion_by_own_attack():
     assert target.atk == 4 + 3
 
 
+def test_gruesome_nightmare_choose_hand_or_battlefield_minion():
+    # The player CHOOSES a minion across hand AND battlefield. Here we pick the
+    # one sitting in hand; it gets +Attack equal to Gruesome Nightmare's Attack.
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    field_minion = p1.summon("CS2_182")   # 4/5 on board
+    hand_minion = p1.give("CS2_182")       # 4/5 in hand
+    nightmare = p1.give("CATA_161")        # 3/3 (atk 3)
+    nightmare.play()
+    assert p1.choice is not None
+    # Both the field minion and the hand minion are offered.
+    assert field_minion in p1.choice.cards and hand_minion in p1.choice.cards
+    p1.choice.choose(hand_minion)          # pick the in-hand minion
+    assert hand_minion.atk == 4 + 3        # +3 from Nightmare's Attack
+    assert field_minion.atk == 4           # the board minion untouched
+
+
 # ---------------------------------------------------------------------------
 # CATA_464 Blackwing Experiment — deathrattle spell scaling with Attack
 # ---------------------------------------------------------------------------

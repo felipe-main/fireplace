@@ -65,17 +65,18 @@ class _CracklingAbsorb(TargetedAction):
 
     TARGET = ActionArg()
 
+    def _absorb(self, source, chosen):
+        # Store the chosen spell on the minion (source/target are the same
+        # SELF here) for the deathrattle to cast, then remove it from hand.
+        source._absorbed_spell = chosen.id
+        chosen.discard()
+
     def do(self, source, target):
-        controller = source.controller
-        candidates = [
-            c for c in controller.hand
-            if c.type == CardType.SPELL and (c.cost or 0) <= 4
-        ]
-        if not candidates:
-            return
-        spell = source.game.random.choice(candidates)
-        target._absorbed_spell = spell.id
-        spell.discard()
+        choose_hand_card(
+            source,
+            self._absorb,
+            filter=lambda c: c.type == CardType.SPELL and (c.cost or 0) <= 4,
+        )
 
 
 class _CracklingCast(TargetedAction):

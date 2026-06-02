@@ -132,23 +132,25 @@ class _SindragosaTriumph(TargetedAction):
 
 class _ConjurationSpecialist(TargetedAction):
     """Battlecry: Choose a spell in your hand. Split it into two random spells
-    of the same Cost. Hand-targeting is unsupported, so we act on a random
-    spell in hand (precedent: REV_511 random-hand approximation)."""
+    of the same Cost."""
 
     TARGET = ActionArg()
 
-    def do(self, source, target):
+    def _split(self, source, chosen):
         player = source.controller
-        spells = [c for c in player.hand if c.type == CardType.SPELL]
-        if not spells:
-            return
-        chosen = source.game.random.choice(spells)
         cost = chosen.cost
         chosen.discard()
         for _ in range(2):
             new_id = RandomSpell(cost=cost).evaluate(source)
             if new_id:
                 player.give(new_id)
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            self._split,
+            filter=lambda c: c.type == CardType.SPELL,
+        )
 
 
 ##

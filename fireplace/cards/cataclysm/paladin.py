@@ -267,10 +267,24 @@ class CATA_475:
 # the controller's hand (precedent: REV_511). Noted approximation.
 
 
+class _ChamberOfAspects(TargetedAction):
+    """Choose a minion in your hand. Give it +2/+2."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(s, [Buff(c, "CATA_477e")]),
+            filter=lambda c: c.type == CardType.MINION,
+        )
+
+
 class CATA_477:
     """Chamber of Aspects"""
 
-    activate = Buff(RANDOM(FRIENDLY_HAND + MINION), "CATA_477e")
+    # Choose a minion in your hand. Give it +2/+2.
+    activate = _ChamberOfAspects(SELF)
 
 
 class CATA_477e:

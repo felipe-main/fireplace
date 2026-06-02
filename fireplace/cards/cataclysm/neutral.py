@@ -134,11 +134,23 @@ class CATA_208:
     update = Refresh(SELF, {GameTag.INCOMING_DAMAGE_ADJUSTMENT: 1})
 
 
+class _BattlefieldBlaster(TargetedAction):
+    """Battlecry: Choose a spell in your hand to give Spell Damage +1."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(s, [Buff(c, "CATA_209e")]),
+            filter=lambda c: c.type == CardType.SPELL,
+        )
+
+
 class CATA_209:
     "Battlefield Blaster"
     # Battlecry: Choose a spell in your hand to give Spell Damage +1.
-    # (Hand-targeting unsupported — buff a random spell in hand.)
-    play = Buff(RANDOM(FRIENDLY_HAND + SPELL), "CATA_209e")
+    play = _BattlefieldBlaster(SELF)
 
 
 class CATA_209e:
@@ -392,18 +404,23 @@ class CATA_720:
 
 
 class _ShelteredSurvivorShuffle(TargetedAction):
-    """Sheltered Survivor — choose a card in hand to shuffle into your deck,
-    then draw. Hand-targeting unsupported — shuffle a random other hand card."""
+    """Sheltered Survivor — Battlecry: choose a card in hand to shuffle into
+    your deck, then draw a card. The draw is unconditional (it still happens if
+    no other card is in hand)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        pool = [c for c in ctrl.hand if c is not source]
-        if pool:
-            pick = source.game.random.choice(pool)
-            source.game.cheat_action(source, [Shuffle(ctrl, pick)])
-        source.game.cheat_action(source, [Draw(ctrl)])
+        if any(c is not source for c in ctrl.hand):
+            choose_hand_card(
+                source,
+                lambda s, c: s.game.cheat_action(
+                    s, [Shuffle(ctrl, c), Draw(ctrl)]
+                ),
+            )
+        else:
+            source.game.cheat_action(source, [Draw(ctrl)])
 
 
 class CATA_721:
@@ -426,20 +443,17 @@ class CATA_723:
 
 
 class _GemstoneHoarderDiscard(TargetedAction):
-    """Gemstone Hoarder — choose a card in hand to discard; deathrattle gets it
-    back at (1) less. Hand-targeting unsupported — discard a random other hand
-    card and remember its id."""
+    """Gemstone Hoarder — Battlecry: choose a card in hand to discard;
+    deathrattle gets it back at (1) less (remember its id on the minion)."""
 
     TARGET = ActionArg()
 
+    def _absorb(self, source, chosen):
+        source._hoarded_id = chosen.id
+        source.game.cheat_action(source, [Discard(chosen)])
+
     def do(self, source, target):
-        ctrl = source.controller
-        pool = [c for c in ctrl.hand if c is not source]
-        if not pool:
-            return
-        pick = source.game.random.choice(pool)
-        source._hoarded_id = pick.id
-        source.game.cheat_action(source, [Discard(pick)])
+        choose_hand_card(source, self._absorb)
 
 
 class _GemstoneHoarderReturn(TargetedAction):

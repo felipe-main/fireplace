@@ -299,15 +299,25 @@ class CATA_533:
 # ---------------------------------------------------------------------------
 
 
+class _MalevolentMutant(TargetedAction):
+    """Battlecry: Choose a Fel spell in your hand. Get a copy of it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        choose_hand_card(
+            source,
+            lambda s, c: s.game.cheat_action(s, [Give(s.controller, c.id)]),
+            filter=lambda c: c.type == CardType.SPELL
+            and getattr(c, "spell_school", SpellSchool.NONE) == SpellSchool.FEL,
+        )
+
+
 class CATA_697:
     """Malevolent Mutant"""
 
     # Battlecry: Choose a Fel spell in your hand. Get a copy of it.
-    # Engine has no hand-targeting; approximate by copying a RANDOM Fel spell
-    # in hand (precedent: castle_nathria REV_511 random-hand selection).
-    play = Give(
-        CONTROLLER, Copy(RANDOM(FRIENDLY_HAND + SPELL + FEL_SPELL))
-    )
+    play = _MalevolentMutant(SELF)
 
 
 # ---------------------------------------------------------------------------

@@ -438,6 +438,9 @@ class BaseGame(Entity):
         # (War'loc's next_cheap_murloc_costs_health has no time limit, so it is
         # NOT reset here.)
         self.current_player.next_demon_free_this_turn = False
+        # Cataclysm — Ruby Sanctum: "next Healing effect THIS TURN deals damage"
+        # — clear the unused single-use flag at own turn end.
+        self.current_player.next_heal_deals_damage = False
         # MotLK — Silvermoon Arcanist: "Your spells can't target heroes
         # this turn" — one-turn marker, clear on own turn end.
         self.current_player.spells_cant_target_heroes_this_turn = False

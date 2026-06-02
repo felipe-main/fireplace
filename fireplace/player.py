@@ -405,6 +405,14 @@ class Player(Entity, TargetableByAuras):
         # Health instead of Mana." One-shot, NO time limit — consumed in
         # pay_cost when the next qualifying Murloc is played.
         self.next_cheap_murloc_costs_health = False
+        # Cataclysm — Cleansing Cleric: "Your healing effects restore 2 more
+        # Health this game." Additive bonus per heal, applied in Heal.do; per
+        # game, never reset.
+        self.extra_healing_this_game = 0
+        # Cataclysm — Ruby Sanctum: "Your next Healing effect this turn deals
+        # damage instead." Single-use; consumed by the next actual heal in
+        # Heal.do; reset at OWN_TURN_END (game.py).
+        self.next_heal_deals_damage = False
         # MotLK — Silvermoon Arcanist: one-turn marker, while True the
         # Spell.play() target picker filters heroes out. Set by the
         # battlecry, cleared at OWN_TURN_END.

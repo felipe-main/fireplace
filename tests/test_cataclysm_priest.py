@@ -10,22 +10,33 @@ def _resolve_choices(player):
 
 
 # ---------------------------------------------------------------------------
-# CATA_216 Cleansing Cleric — Battlecry: your healing restores more this game.
-# Engine approximation: HEALING_DOUBLE (doubler) rather than additive +2.
+# CATA_216 Cleansing Cleric — Battlecry: your healing restores 2 MORE this game
+# (flat additive, not a doubler).
 # ---------------------------------------------------------------------------
 def test_cleansing_cleric_amplifies_healing():
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
     cleric = game.player1.give("CATA_216")
     cleric.play()
-    # healing_double slot prop should now be 1 on the controller.
-    assert game.player1.healing_double == 1
-    # APPROXIMATION: we model "+2 healing this game" as HEALING_DOUBLE, which
-    # the engine applies to SPELL healing. Holy Light (restore 6) now restores
-    # 12, clearing 12 damage.
+    assert game.player1.extra_healing_this_game == 2
+    # Holy Light (restore 6) now restores 6 + 2 = 8 (additive, NOT doubled to
+    # 12). Hero at 9 damage -> healed by 8 -> 1 damage remaining.
+    game.player1.hero.damage = 9
+    holy = game.player1.give("CS2_089")  # Holy Light: restore 6
+    holy.play(target=game.player1.hero)
+    assert game.player1.hero.damage == 1
+
+
+def test_cleansing_cleric_additive_stacks_not_doubles():
+    # Two Clerics stack additively to +4. Holy Light (restore 6) then heals
+    # 6 + 4 = 10 (additive); a doubler would give 12. Hero at 12 damage -> 2.
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    game.player1.give("CATA_216").play()
+    game.player1.give("CATA_216").play()
+    assert game.player1.extra_healing_this_game == 4
     game.player1.hero.damage = 12
     holy = game.player1.give("CS2_089")  # Holy Light: restore 6
     holy.play(target=game.player1.hero)
-    assert game.player1.hero.damage == 0
+    assert game.player1.hero.damage == 2  # 12 - (6+4) = 2, not 12-12=0
 
 
 def test_cleansing_cleric_stats():
@@ -162,20 +173,29 @@ def test_alexstrasza_reprisal_on_full_health():
 # ---------------------------------------------------------------------------
 # CATA_301 Ruby Sanctum (location) — this turn, healing deals damage instead.
 # ---------------------------------------------------------------------------
-def test_ruby_sanctum_converts_healing_to_damage():
+def test_ruby_sanctum_converts_only_next_heal():
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
     loc = game.player1.summon("CATA_301")
     assert loc.type == CardType.LOCATION
     loc.use()
-    assert game.player1.healing_as_damage
-    # Now a "heal" on an enemy minion deals damage instead.
-    enemy = game.player2.summon("CATA_307")  # 8/8
+    assert game.player1.next_heal_deals_damage
     from fireplace.actions import Heal
+    # First heal on an enemy minion deals damage instead, and consumes the flag.
+    enemy = game.player2.summon("CATA_307")  # 8/8
     game.queue_actions(game.player1.hero, [Heal(enemy, 4)])
     assert enemy.damage == 4
-    # Expires at end of the controller's turn.
-    game.end_turn()
-    assert not game.player1.healing_as_damage
+    assert not game.player1.next_heal_deals_damage  # single-use, consumed
+    # The SECOND heal this turn heals normally (no longer converted).
+    game.queue_actions(game.player1.hero, [Heal(enemy, 4)])
+    assert enemy.damage == 0  # 4 damage healed away
+
+
+def test_ruby_sanctum_flag_expires_unused_at_turn_end():
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    game.player1.summon("CATA_301").use()
+    assert game.player1.next_heal_deals_damage
+    game.end_turn()  # never healed this turn -> flag clears
+    assert not game.player1.next_heal_deals_damage
 
 
 # ---------------------------------------------------------------------------

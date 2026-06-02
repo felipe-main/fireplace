@@ -2796,6 +2796,15 @@ class Heal(TargetedAction):
         if source.controller.healing_as_damage:
             return source.game.queue_actions(source.controller, [Hit(target, amount)])
 
+        # Cataclysm — Ruby Sanctum: "Your next Healing effect this turn deals
+        # damage instead." Single-use: the next healing effect (amount > 0) is
+        # consumed and converted to damage of the same magnitude, then the flag
+        # clears. (Distinct from healing_as_damage, which converts the whole
+        # turn's heals.)
+        if amount > 0 and source.controller.next_heal_deals_damage:
+            source.controller.next_heal_deals_damage = False
+            return source.game.queue_actions(source.controller, [Hit(target, amount)])
+
         # Festival of Legends — track requested heal vs. actually-applied
         # on the target so Overheal-aware listeners (Hedanis, Heartthrob,
         # Dreamboat) can read the overheal amount. Pure-overheal calls
@@ -2803,6 +2812,12 @@ class Heal(TargetedAction):
         # would break Lightwarden / Northshire Cleric / Truesilver, which
         # gate on "an actual heal happened".
         requested = source.get_heal(amount, target)
+        # Cataclysm — Cleansing Cleric: "Your healing effects restore 2 more
+        # Health this game." Flat additive bonus on every healing effect
+        # (applied after spellpower/doubling); only real heals (amount > 0) get
+        # the bonus.
+        if amount > 0 and source.controller.extra_healing_this_game:
+            requested += source.controller.extra_healing_this_game
         actual = min(requested, target.damage)
         target._last_heal_requested = requested
         overheal_amount = max(0, requested - actual)

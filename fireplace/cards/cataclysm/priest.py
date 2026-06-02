@@ -40,29 +40,22 @@ class CATA_002:
     play = _CaliaResurrect(SELF)
 
 
+class _CleansingClericBonus(TargetedAction):
+    """Cleansing Cleric — Battlecry: "Your healing effects restore 2 more
+    Health this game." Adds a flat +2 additive bonus per heal (Heal.do reads
+    Player.extra_healing_this_game). Stacks if played more than once."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.extra_healing_this_game += 2
+
+
 class CATA_216:
     """Cleansing Cleric"""
 
     # Battlecry: Your healing effects restore 2 more Health this game.
-    # ENGINE LIMITATION: there is no additive "+N healing this game" slot
-    # property — only HEALING_DOUBLE (a doubler). We approximate the +2 by
-    # doubling all of the controller's healing for the rest of the game via
-    # CATA_216e (HEALING_DOUBLE). Close for the common 1-3 heal range; over-
-    # estimates large heals. Noted as an approximation.
-    play = Buff(CONTROLLER, "CATA_216e")
-
-
-class CATA_216e:
-    # Free From Corruption — exists in data; refresh HEALING_DOUBLE onto the
-    # controller so its heals are amplified (additive +2 is not expressible).
-    # healing_double is a slot_property, so it must be granted via an aura
-    # (update=Refresh) rather than static tags on a player buff.
-    update = Refresh(
-        CONTROLLER,
-        {
-            GameTag.HEALING_DOUBLE: 1,
-        },
-    )
+    play = _CleansingClericBonus(CONTROLLER)
 
 
 class _BlackBloodAttack(TargetedAction):
@@ -293,28 +286,19 @@ class CATA_308:
 # Locations
 
 
+class _RubySanctumArm(TargetedAction):
+    """Ruby Sanctum — "Your next Healing effect this turn deals damage instead."
+    Arms a single-use per-turn flag (Heal.do consumes it on the next actual
+    heal and converts that one heal to damage; reset at OWN_TURN_END)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.next_heal_deals_damage = True
+
+
 class CATA_301:
     """Ruby Sanctum"""
 
     # Your next Healing effect this turn deals damage instead.
-    # APPROXIMATION: the engine's healing-as-damage is a turn-long slot
-    # property (EMBRACE_THE_SHADOW), not a single-use trigger, so EVERY heal
-    # this turn is converted (not just the next one). CATA_301e carries
-    # TAG_ONE_TURN_EFFECT so it auto-expires at the controller's turn end.
-    activate = Buff(CONTROLLER, "CATA_301e")
-
-
-class CATA_301e:
-    # Lifebind — convert this turn's healing into damage. Data carries only
-    # TAG_ONE_TURN_EFFECT (auto-expires at the controller's turn end). The
-    # healing_as_damage flag is a slot_property, so grant EMBRACE_THE_SHADOW
-    # via an aura (update=Refresh) rather than a static tag on a player buff.
-    tags = {
-        GameTag.TAG_ONE_TURN_EFFECT: True,
-    }
-    update = Refresh(
-        CONTROLLER,
-        {
-            GameTag.EMBRACE_THE_SHADOW: True,
-        },
-    )
+    activate = _RubySanctumArm(CONTROLLER)

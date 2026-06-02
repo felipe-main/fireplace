@@ -510,6 +510,9 @@ class BaseGame(Entity):
 
         for p in self.players:
             p.cards_drawn_this_turn = 0
+            # Across the Timeways — Devious Coyote: per-turn hero damage-event
+            # count for both players resets at every turn start.
+            p.times_hero_damaged_this_turn = 0
 
         player.turn_start = timegm(time.gmtime())
         player.last_turn = player.turn
@@ -673,7 +676,12 @@ class BaseGame(Entity):
             character.damaged_this_turn = 0
             character.healed_this_turn = 0
 
-        player.draw()
+        # Across the Timeways — Chronochiller cancels ONLY this start-of-turn
+        # draw; the player may still draw normally from other effects this turn.
+        if player.skip_next_start_draw:
+            player.skip_next_start_draw = False
+        else:
+            player.draw()
         self.manager.step(self.next_step, Step.MAIN_END)
 
 

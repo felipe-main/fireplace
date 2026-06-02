@@ -90,6 +90,15 @@ class Player(Entity, TargetableByAuras):
         self.max_resources = 10
         self.max_deck_size = 60
         self.cant_draw = False
+        # Across the Timeways — Chronochiller: skip ONLY the next start-of-turn
+        # draw (not every draw during the turn, which cant_draw would block).
+        self.skip_next_start_draw = False
+        # Across the Timeways — Jailbreak: "your next minion costs (0)" — a
+        # one-shot discount consumed when the next minion is played.
+        self.next_minion_costs_zero = False
+        # Across the Timeways — Devious Coyote: count of distinct damage events
+        # the hero took this turn (reset for all players at each turn start).
+        self.times_hero_damaged_this_turn = 0
         self.cant_fatigue = False
         self.combo = False
         self.fatigue_counter = 0

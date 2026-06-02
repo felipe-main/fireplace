@@ -837,6 +837,11 @@ class Play(GameAction):
 
         card.play_left_most = card is card.controller.hand[0]
         card.play_right_most = card is card.controller.hand[-1]
+        # Across the Timeways — Precise Shot: snapshot the exact hand position
+        # at play time so "exactly in the center of your hand" can be checked
+        # for any hand size (the left/right-most booleans only see size 1/3).
+        card._play_hand_index = card.controller.hand.index(card)
+        card._play_hand_size = len(card.controller.hand)
 
         card.zone = Zone.PLAY
 
@@ -976,6 +981,14 @@ class Play(GameAction):
             for hook in hooks:
                 hook(card)
             player.last_draenei_played = card.id
+
+        # Across the Timeways — Jailbreak: "your next minion costs (0)" is
+        # consumed by the next minion actually played (stamped in card.cost).
+        if card.type == CardType.MINION and getattr(
+            card, "received_next_minion_free", False
+        ):
+            player.next_minion_costs_zero = False
+            card.received_next_minion_free = False
 
         # Heroes of StarCraft — consume one-shot Protoss cost reductions on the
         # card that actually took them (stamped in card.cost), and count Protoss
@@ -1865,6 +1878,9 @@ class Damage(TargetedAction):
                 # The Great Dark Beyond — Healthstone restores this turn's hero
                 # damage.
                 target.controller.hero_damage_taken_this_turn += amount
+                # Across the Timeways — Devious Coyote: count each distinct
+                # damage event the hero takes this turn (not damage points).
+                target.controller.times_hero_damaged_this_turn += 1
                 if not target.controller.current_player:
                     # Damage dealt to the hero while it's the opponent's turn.
                     target.controller.damage_taken_on_opponents_turn += amount

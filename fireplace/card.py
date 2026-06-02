@@ -397,6 +397,10 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
         self.cast_on_friendly_minions = False
         self.play_left_most = False
         self.play_right_most = False
+        # Across the Timeways — Precise Shot: hand position/size captured at
+        # play time (-1/0 until the card is actually played from hand).
+        self._play_hand_index = -1
+        self._play_hand_size = 0
         # The Great Dark Beyond — adjacency ("Orbital" cards / Red Giant).
         # `adjacent_plays_this_turn` resets each turn; `adjacent_plays_while_in_hand`
         # accumulates while the card sits in hand (reset on hand entry).
@@ -606,6 +610,13 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= 100  # clamped to 0 below
                 self.received_demon_free = True
+            # Across the Timeways — Jailbreak: your next minion costs (0).
+            if (
+                self.type == CardType.MINION
+                and getattr(self.controller, "next_minion_costs_zero", False)
+            ):
+                ret -= 100  # clamped to 0 below
+                self.received_next_minion_free = True
             # The Great Dark Beyond — Interstellar Wayfarer / Starslicer:
             # Librams cost less for the rest of the game.
             if getattr(self, "libram", False) and getattr(

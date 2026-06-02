@@ -316,6 +316,25 @@ class HandCardChoice:
         self._apply(self.source, card)
 
 
+def choose_card(source, candidates, apply):
+    """Let ``source``'s controller choose one entity from ``candidates``, then
+    run ``apply(source, chosen)``.
+
+    A general "pick one of these" primitive built on the same ENTITY_CHOICE
+    object the in-hand picker uses, so it works for board minions / enemy
+    characters / hand cards alike. Auto-resolves immediately when exactly one
+    candidate is supplied; does nothing when the list is empty. ``source`` is
+    never offered (callers should exclude it up front if it could appear)."""
+    cands = [c for c in candidates if c is not None]
+    if not cands:
+        return
+    ctrl = source.controller
+    if len(cands) == 1:
+        apply(source, cands[0])
+        return
+    ctrl.choice = HandCardChoice(source, ctrl, cands, apply)
+
+
 def choose_hand_card(source, apply, filter=None, extra=None):
     """Let ``source``'s controller choose a card in hand, then run
     ``apply(source, chosen)``.
@@ -335,12 +354,7 @@ def choose_hand_card(source, apply, filter=None, extra=None):
     ]
     if extra:
         cands += [c for c in extra if c is not source and c not in cands]
-    if not cands:
-        return
-    if len(cands) == 1:
-        apply(source, cands[0])
-        return
-    ctrl.choice = HandCardChoice(source, ctrl, cands, apply)
+    choose_card(source, cands, apply)
 
 
 def custom_card(cls):

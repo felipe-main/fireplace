@@ -144,9 +144,31 @@ def test_rite_of_twilight_combo_deals_damage():
     o.hero.max_health = 40
     o.hero.damage = 0
     p.give("CATA_785").play()
-    # Combo bumps Herald AND deals 3 to a random enemy (only the enemy hero).
+    # Combo bumps Herald AND deals 3 to the only enemy character (the hero).
     assert p.heralds_this_game == 1
     assert o.hero.damage == 3
+
+
+def test_rite_of_twilight_combo_target_is_player_chosen():
+    # With enemy minions present the Combo's 3 damage is a real ENTITY_CHOICE
+    # over enemy characters (hero + minions): the player picks the target.
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p, o = game.player1, game.player2
+    p.give("CS2_172").play()  # establish Combo
+    assert p.combo
+    o.hero.max_health = 40
+    o.hero.damage = 0
+    em = o.summon("CS2_182")  # 4/5 Ogre — an enemy minion target
+    em.max_health = 40
+    em.damage = 0
+    rite = p.give("CATA_785")
+    rite.play()
+    # Choice offered over the enemy hero + minion; pick the minion.
+    assert p.choice is not None
+    assert o.hero in p.choice.cards and em in p.choice.cards
+    p.choice.choose(em)
+    assert em.damage == 3
+    assert o.hero.damage == 0  # hero untouched — minion was chosen
 
 
 # ---------------------------------------------------------------------------

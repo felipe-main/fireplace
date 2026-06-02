@@ -156,11 +156,11 @@ class CATA_566e:
 
 
 class _EarthenRoarSecond(TargetedAction):
-    """Earthen Roar second pick — if the controller is holding a Dragon, set a
-    second (different) enemy minion's Health to 1. Real card lets the player
-    pick; engine hand-targeting/secondary-pick is approximated by choosing a
-    random OTHER enemy minion (precedent: sunken_city TSC_023 used ChoiceTarget,
-    but that path mishandles a raw-entity exclusion, so we resolve directly)."""
+    """Earthen Roar second pick — if the controller is holding a Dragon, let the
+    player pick a second (different) enemy minion to set to 1 Health. Modelled
+    with the board-target ENTITY_CHOICE primitive (auto-resolves when only one
+    other enemy minion is on the board; no-op when none); the soak's automatic
+    chooser picks at random, matching the previous approximation."""
 
     TARGET = ActionArg()
 
@@ -174,10 +174,11 @@ class _EarthenRoarSecond(TargetedAction):
         if not holding_dragon:
             return
         others = [m for m in ctrl.opponent.field if m is not first]
-        if not others:
-            return
-        pick = source.game.random.choice(others)
-        source.game.cheat_action(source, [Buff(pick, "CATA_554e")])
+        choose_card(
+            source,
+            others,
+            lambda s, c: s.game.cheat_action(s, [Buff(c, "CATA_554e")]),
+        )
 
 
 class CATA_554:

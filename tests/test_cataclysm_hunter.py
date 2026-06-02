@@ -225,6 +225,27 @@ def test_earthen_roar_picks_second_when_holding_dragon():
     assert e2.health == 1
 
 
+def test_earthen_roar_second_pick_is_player_chosen():
+    # With >1 other enemy minion the second pick is a real ENTITY_CHOICE: the
+    # player picks WHICH minion, the others are untouched.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    e1 = game.player2.summon("CS2_182")  # 4/5 — first (targeted) pick
+    e2 = game.player2.summon("CS2_182")  # 4/5
+    e3 = game.player2.summon("CS2_182")  # 4/5
+    p1.give("CATA_553t")  # hold a Dragon
+    roar = p1.give("CATA_554")
+    roar.play(target=e1)
+    # A choice over the two remaining enemy minions must be offered.
+    assert p1.choice is not None
+    assert set(p1.choice.cards) == {e2, e3}
+    p1.choice.choose(e2)
+    assert e1.health == 1
+    assert e2.health == 1
+    assert e3.health == 5  # not chosen → untouched
+
+
 def test_earthen_roar_with_spell_in_hand_no_crash():
     # Regression: the holding-a-Dragon check iterated c.race over the whole
     # hand, crashing on Spells (no .race attr). A non-Dragon hand (incl. a

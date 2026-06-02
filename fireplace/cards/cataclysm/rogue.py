@@ -327,6 +327,24 @@ class CATA_481e:
     # Dormant. Awaken in N turns. (Engine-internal dormant marker.)
 
 
+class _RiteOfTwilightCombo(TargetedAction):
+    """Rite of Twilight Combo — let the player choose an enemy character and
+    deal 3 to it. The enemy hero is always a valid character, so there is always
+    at least one candidate (auto-resolves to the hero on an empty enemy board);
+    with enemy minions present the player picks. The soak's auto-chooser picks
+    at random, matching "Deal 3 damage" with a legal target."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        enemies = ENEMY_CHARACTERS.eval(source.game, source)
+        choose_card(
+            source,
+            enemies,
+            lambda s, c: s.game.cheat_action(s, [Hit(c, 3)]),
+        )
+
+
 class CATA_785:
     """Rite of Twilight"""
 
@@ -336,11 +354,11 @@ class CATA_785:
     # The non-combo line (Herald only) takes no target, but this engine treats
     # REQ_TARGET_FOR_COMBO as an always-on targeting prerequisite, which would
     # make the Herald-only play unplayable on an empty board. So we drop the
-    # target requirement and direct the Combo's 3 damage at a random enemy
-    # instead of a chosen one — an accepted approximation of "Deal 3 damage".
+    # target requirement and let the Combo branch run an ENTITY_CHOICE over enemy
+    # characters (player-chosen target; the enemy hero guarantees playability).
     tags = {GameTag.COMBO: True}
     play = Herald(CONTROLLER)
-    combo = Herald(CONTROLLER), Hit(RANDOM_ENEMY_CHARACTER, 3)
+    combo = Herald(CONTROLLER), _RiteOfTwilightCombo(CONTROLLER)
 
 
 class _ChaosSupplicantCast(TargetedAction):

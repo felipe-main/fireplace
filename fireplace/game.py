@@ -162,6 +162,13 @@ class BaseGame(Entity):
             self.refresh_auras()
             self.process_reward()
             self.process_deaths()
+            # Cataclysm — Shatter: if any Shattered halves are loose, merge any
+            # that have become adjacent in hand back into the full card.
+            if getattr(self, "_shatter_active", False):
+                from .actions import process_shatter_recombine
+
+                for player in self.players:
+                    process_shatter_recombine(player)
 
     def action_block(
         self, source, actions, type, index=-1, target=None, event_args=None

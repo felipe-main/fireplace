@@ -263,6 +263,70 @@ def test_schism_shatter_splits_on_draw():
     assert "CATA_306t2" in ids
 
 
+def _draw_schism_with_filler(game, player):
+    """Draw Schism into a hand that already holds a Coin, so the split leaves
+    the two halves apart: [t1 (left-most), Coin, t2]. Returns the Coin."""
+    from fireplace.actions import Draw
+    player.discard_hand()
+    coin = player.give("GAME_005")  # The Coin — a filler between the halves
+    sch = player.card("CATA_306")
+    sch.zone = Zone.DECK
+    game.queue_actions(player, [Draw(player)])
+    return coin
+
+
+def test_schism_halves_recombine_when_they_meet_in_hand():
+    # Shatter recombine: once the two halves become ADJACENT in hand they merge
+    # back into the full card (which then never Shatters again).
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    coin = _draw_schism_with_filler(game, p)
+    ids = [c.id for c in p.hand]
+    assert ids[0] == "CATA_306t1"          # one half goes left-most
+    assert "CATA_306t2" in ids
+    assert "CATA_306" not in ids           # apart -> still split
+    # Play the Coin sitting between them -> the halves meet -> recombine.
+    coin.play()
+    ids = [c.id for c in p.hand]
+    assert "CATA_306" in ids
+    assert "CATA_306t1" not in ids and "CATA_306t2" not in ids
+    parent = next(c for c in p.hand if c.id == "CATA_306")
+    assert getattr(parent, "_no_reshatter", False) is True
+
+
+def test_schism_recombine_combines_cost_reductions():
+    # The user's scenario: one half is reduced to 0, the other stays at the
+    # printed 4. The recombined card carries the discount -> costs 0, NOT 4
+    # (combine merges the halves' cost reductions, it does not sum displayed
+    # costs).
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    coin = _draw_schism_with_filler(game, p)
+    t1 = next(c for c in p.hand if c.id == "CATA_306t1")
+    assert t1.cost == 4
+    t1._cost = 0                            # reduce this half to 0
+    assert t1.cost == 0
+    coin.play()                             # halves meet -> recombine
+    parent = next(c for c in p.hand if c.id == "CATA_306")
+    assert parent.cost == 0                 # printed 4 minus the 4 discount
+
+
+def test_schism_recombined_card_never_shatters_again():
+    # The permanent "won't Shatter again" marker survives a shuffle back into
+    # the deck: re-drawing the recombined card yields the whole card, not halves.
+    from fireplace.actions import Draw
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    coin = _draw_schism_with_filler(game, p)
+    coin.play()
+    parent = next(c for c in p.hand if c.id == "CATA_306")
+    parent.zone = Zone.DECK                 # shuffle it back
+    game.queue_actions(p, [Draw(p)])
+    ids = [c.id for c in p.hand]
+    assert "CATA_306" in ids
+    assert "CATA_306t1" not in ids and "CATA_306t2" not in ids
+
+
 # ---------------------------------------------------------------------------
 # CATA_002 Calia Menethil — Battlecry: resurrect highest-Cost dead minion.
 # ---------------------------------------------------------------------------

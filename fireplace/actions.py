@@ -2439,8 +2439,12 @@ class Draw(TargetedAction):
             card.turn_drawn = source.game.turn
             source.controller.cards_drawn_this_turn += 1
             # Cataclysm — Shatter: a SHATTER card shatters when drawn, splitting
-            # into its two "Shattered" half-cards which replace it in hand.
-            if card.data.tags.get(GameTag.SHATTER, 0):
+            # into its two "Shattered" half-cards which replace it in hand. A
+            # card that has already been recombined carries `_no_reshatter` and
+            # is drawn whole (the permanent "won't Shatter again" enchant).
+            if card.data.tags.get(GameTag.SHATTER, 0) and not getattr(
+                card, "_no_reshatter", False
+            ):
                 _shatter_into_halves(card, target)
                 return [card]
             # The Great Dark Beyond — The Ceaseless Expanse cost ledger.
@@ -3629,15 +3633,166 @@ def _shatter_into_halves(card, player):
     (CATA_306) uniquely uses ``<id>t1`` + ``<id>t2``. Probe all three suffixes
     and give whichever actually exist in the data so both conventions work (the
     suffixes are mutually exclusive per card — no card defines both ``t`` and
-    ``t1``)."""
+    ``t1``).
+
+    Per the wiki, one half is placed at the **left-most** hand slot so the pair
+    starts apart; if they later become adjacent again they recombine (see
+    ``process_shatter_recombine``). Both halves are tagged with their parent id
+    and a shared "birth" token so an un-separated freshly-split pair does not
+    instantly re-merge."""
     from .cards import db
 
+    game = player.game
     base = card.id
     card.discard()
-    for half in (base + "t", base + "t1", base + "t2"):
-        if half in db:
-            player.game.cheat_action(player, [Give(player, half)])
+    game._shatter_active = True
+    token = getattr(game, "_shatter_split_counter", 0) + 1
+    game._shatter_split_counter = token
+
+    # Suppress the recombine scan while we are mid-split: each Give runs an
+    # action_end (which would otherwise re-merge the first half with the
+    # not-yet-tagged second half right back into the parent).
+    game._shattering = True
+    try:
+        given = []
+        for half in (base + "t", base + "t1", base + "t2"):
+            if half not in db:
+                continue
+            before = len(player.hand)
+            game.cheat_action(player, [Give(player, half)])
+            if len(player.hand) > before:
+                h = player.hand[-1]
+                h._shatter_parent = base
+                h._shatter_sibling = token
+                h._shatter_separated = False
+                given.append(h)
+        # One half goes to the left-most position (wiki) so the pair is not
+        # adjacent in a non-trivial hand; the other stays where it was given.
+        if given:
+            first = given[0]
+            try:
+                player.hand.remove(first)
+                player.hand.insert(0, first)
+            except ValueError:
+                pass
+    finally:
+        game._shattering = False
     player.shatters_this_game += 1
+
+
+# Lazily-built map: Shattered-half id -> (parent id, tuple of all half ids).
+_SHATTER_HALF_INDEX = None
+
+
+def _shatter_half_index():
+    global _SHATTER_HALF_INDEX
+    if _SHATTER_HALF_INDEX is not None:
+        return _SHATTER_HALF_INDEX
+    from .cards import db
+
+    idx = {}
+    for cid in db:
+        if not db[cid].tags.get(GameTag.SHATTER, 0):
+            continue
+        halves = tuple(cid + s for s in ("t", "t1", "t2") if (cid + s) in db)
+        for h in halves:
+            idx[h] = (cid, halves)
+    _SHATTER_HALF_INDEX = idx
+    return idx
+
+
+def _shatter_pair_parent(a, b, idx):
+    """Return the shared parent id if ``a`` and ``b`` are the two DISTINCT halves
+    that together make one Shatter parent, else None. Halves from different
+    copies of the same card still match (only their suffixes must complete the
+    set); two copies of the SAME half do not."""
+    ia = idx.get(getattr(a, "id", None))
+    ib = idx.get(getattr(b, "id", None))
+    if not ia or not ib or ia[0] != ib[0] or a.id == b.id:
+        return None
+    return ia[0]
+
+
+def process_shatter_recombine(player):
+    """Cataclysm — Shatter recombine: when the two matching Shattered halves are
+    adjacent in hand they merge back into the full card. The recombined card
+    appears where they met, combines both halves' enchantments (and direct cost
+    deltas), and is permanently marked so it never Shatters again. Run after
+    every settled action block (cheap no-op unless the player holds halves)."""
+    if getattr(player.game, "_shattering", False):
+        return  # mid-split: don't merge half-tagged siblings back together
+    idx = _shatter_half_index()
+    hand = player.hand
+
+    # 1) A born-together sibling pair that is NOT currently adjacent has been
+    #    pulled apart; mark it so that re-meeting later triggers a recombine
+    #    (a fresh split that is still adjacent must NOT instantly re-merge).
+    for i, card in enumerate(hand):
+        sib = getattr(card, "_shatter_sibling", None)
+        if sib is None:
+            continue
+        neighbours = []
+        if i > 0:
+            neighbours.append(hand[i - 1])
+        if i + 1 < len(hand):
+            neighbours.append(hand[i + 1])
+        partner_adjacent = any(
+            _shatter_pair_parent(card, nb, idx)
+            and getattr(nb, "_shatter_sibling", None) == sib
+            for nb in neighbours
+        )
+        if not partner_adjacent:
+            card._shatter_separated = True
+
+    # 2) Recombine adjacent completing pairs (restart after each merge — indices
+    #    shift). Skip an un-separated born-together sibling pair.
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(hand) - 1):
+            a, b = hand[i], hand[i + 1]
+            parent_id = _shatter_pair_parent(a, b, idx)
+            if not parent_id:
+                continue
+            sib_a = getattr(a, "_shatter_sibling", None)
+            same_birth = sib_a is not None and sib_a == getattr(
+                b, "_shatter_sibling", None
+            )
+            separated = getattr(a, "_shatter_separated", True) or getattr(
+                b, "_shatter_separated", True
+            )
+            if same_birth and not separated:
+                continue
+            _do_shatter_recombine(player, i, a, b, parent_id)
+            changed = True
+            break
+
+
+def _do_shatter_recombine(player, index, a, b, parent_id):
+    # Capture, before the halves leave play:
+    #  - the combined cost DISCOUNT each half carries below its own printed cost
+    #    (reading live .cost folds in both direct _cost edits and cost-reduction
+    #    enchants — every half prints at the parent's cost), and
+    #  - every enchantment id, to re-apply (Spell Damage +1, stat buffs, …).
+    total_discount = sum(max(0, (half.data.cost or 0) - half.cost) for half in (a, b))
+    buff_ids = [buff.id for half in (a, b) for buff in list(half.buffs)]
+    a.zone = Zone.REMOVEDFROMGAME
+    b.zone = Zone.REMOVEDFROMGAME
+    # Rebuild the full card where the halves met; it never Shatters again.
+    parent = player.card(parent_id, source=a)
+    parent._no_reshatter = True
+    parent._summon_index = index
+    parent.zone = Zone.HAND
+    parent._summon_index = None
+    # Combine enchantments first…
+    for bid in buff_ids:
+        try:
+            parent.buff(parent, bid)
+        except Exception:
+            pass
+    # …then set the recombined cost last so it wins over any cost-enchant's own
+    # _cost adjustment (that reduction is already folded into total_discount).
+    parent._cost = max(0, (parent.data.cost or 0) - total_discount)
 
 
 class MultipleChoice(TargetedAction):

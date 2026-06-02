@@ -108,6 +108,24 @@ def test_faceless_replicator_transforms_killer():
     assert all(m.id != BOULDERFIST for m in p2.field)
 
 
+def test_faceless_replicator_no_transform_when_killed_by_spell():
+    # Edge watch: "transform the MINION that killed this" — a spell kill leaves
+    # no minion-killer, so the deathrattle is a no-op (matches printed). Faceless
+    # is Elusive (can't be single-target-spelled), so kill it with an AoE.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    p1.max_mana = 10
+    p1.used_mana = 0
+    fr = p2.summon("CATA_185")  # 3/3 enemy minion
+    bystander = p2.summon(CHILLWIND)  # 4/5 — survives 4 AoE, must NOT transform
+    p1.give("CS2_032").play()  # Flamestrike: 4 damage to all enemy minions
+    game.process_deaths()
+    assert fr.dead
+    # No minion killed it -> nothing transformed; the bystander is untouched.
+    assert not any(m.id == "CATA_185" for m in p2.field)
+    assert bystander.id == CHILLWIND
+
+
 # ---------------------------------------------------------------------------
 # CATA_186 Stickybomb Saboteur — give opponent a Sabotage
 # ---------------------------------------------------------------------------

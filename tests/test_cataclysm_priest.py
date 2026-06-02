@@ -170,6 +170,26 @@ def test_alexstrasza_reprisal_on_full_health():
     assert game.player2.hero.damage == 15
 
 
+def test_alexstrasza_does_not_refire_or_fire_on_partial_heal():
+    # Edge watch: must fire ONLY when a heal reaches full Health — not on a
+    # partial heal, and not again on a heal while already full.
+    from fireplace.actions import Heal
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1, p2 = game.player1, game.player2
+    p1.give("CATA_307").play()  # hero -> 15 health (damage 15)
+    # Partial heal (still damaged) -> no reprisal.
+    game.queue_actions(p1.hero, [Heal(p1.hero, 5)])
+    assert p1.hero.damage == 10
+    assert p2.hero.damage == 0
+    # Heal to full -> reprisal fires once (15).
+    game.queue_actions(p1.hero, [Heal(p1.hero, 10)])
+    assert p1.hero.damage == 0
+    assert p2.hero.damage == 15
+    # Heal again while already full (pure overheal, no Heal event) -> no re-fire.
+    game.queue_actions(p1.hero, [Heal(p1.hero, 5)])
+    assert p2.hero.damage == 15  # still 15, not 30
+
+
 # ---------------------------------------------------------------------------
 # CATA_301 Ruby Sanctum (location) — this turn, healing deals damage instead.
 # ---------------------------------------------------------------------------

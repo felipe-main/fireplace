@@ -63,8 +63,12 @@ class EDR_449p:
 
     # Choose a Priest minion or Priest spell to add to your hand.
     # It costs (@) less, but is Temporary.  @ scales 1 / 2 / 3 ...
-    # NOTE: the "but is Temporary" downside is not modelled (this engine has
-    # no Temporary-card lifetime). The cost reduction is full-fidelity.
+    # The "but is Temporary" downside is modelled on the EDR_449pe enchant:
+    # it carries a Hand.events listener that Destroys the host card at the end
+    # of the controller's turn if it is still sitting in hand (i.e. unplayed).
+    # Playing the card before end of turn moves it (and its enchant) out of the
+    # HAND zone, so the Hand.events listener no longer fires and the card
+    # resolves normally. The cost reduction (cost=-level) is full-fidelity.
     #
     # Pool MUST be restricted to COLLECTIBLE Priest minions and Priest spells
     # only — a bare RandomCard(card_class=PRIEST) leaks hero cards, weapons and
@@ -88,13 +92,21 @@ class EDR_449p:
 
 @custom_card
 class EDR_449pe:
-    # Blessing of the Moon — discovered Priest card costs (@) less.
-    # Amount set dynamically by Buff(cost=-level) at activate time.
+    # Blessing of the Moon — discovered Priest card costs (@) less and is
+    # Temporary. Cost amount set dynamically by Buff(cost=-level) at activate
+    # time. The Temporary downside: while the host card sits in hand, this
+    # enchant's Hand.events fires at the controller's end of turn and Destroys
+    # the host card (OWNER). If the card is played first it leaves the HAND
+    # zone, so the listener stops firing and it resolves as normal.
     tags = {
         GameTag.CARDNAME: "Blessing of the Moon",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
         GameTag.COST: -1,
+        enums.TEMPORARY: 1,
     }
+
+    class Hand:
+        events = OWN_TURN_END.on(Destroy(OWNER))
 
 
 class EDR_847p:

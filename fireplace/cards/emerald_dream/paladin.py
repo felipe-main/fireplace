@@ -68,8 +68,34 @@ class _TorethReinforce(TargetedAction):
         hits = getattr(target, "_toreth_shield_hits", 0) + 1
         target._toreth_shield_hits = hits
         if hits < 3:
-            # Re-apply the shield: this hit didn't break it for good.
+            # Re-apply the shield: this hit didn't break it for good. The
+            # counter is bumped to 1 or 2 *before* this SetTag, so the reset
+            # listener below sees ``< 3`` and leaves it alone — that is how
+            # Toreth's own re-grant is distinguished from an external regain.
             source.game.cheat_action(source, [SetTag(target, GameTag.DIVINE_SHIELD)])
+
+
+class _TorethResetOnRegain(TargetedAction):
+    """Reset a friendly minion's Toreth hit-count when it gains a *brand-new*
+    Divine Shield from a source other than Toreth's own re-grant.
+
+    A shield fully breaks on the 3rd hit, at which point ``_toreth_shield_hits``
+    sits at 3 (the 3rd hit does not re-grant, so no further bump happens). Any
+    Divine Shield the minion gains *after* that — from a discover, a buff, a
+    Reborn copy, whatever — must itself take a fresh three hits. We detect that
+    case by the counter already being ``>= 3`` while a Divine Shield is set:
+    Toreth's own re-grants only ever fire with the counter at 1 or 2, so they
+    never satisfy this guard and never spuriously reset. (Gaining DS while it is
+    already up is a no-op in Hearthstone, so a mid-lifecycle external regain
+    with the counter at 1/2 cannot happen.)"""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if not getattr(target, "divine_shield", False):
+            return
+        if getattr(target, "_toreth_shield_hits", 0) >= 3:
+            target._toreth_shield_hits = 0
 
 
 def _ursol_cast(source, ctrl, spell_id):
@@ -172,10 +198,16 @@ class EDR_258:
 
     # Divine Shield, Taunt. Your Divine Shields take three hits to break.
     # When a friendly minion loses its Divine Shield, re-grant it until it has
-    # taken three hits.
-    events = LosesDivineShield(FRIENDLY_MINIONS).after(
-        _TorethReinforce(LosesDivineShield.TARGET)
-    )
+    # taken three hits. When a minion gains a brand-new Divine Shield from any
+    # other source, reset its hit-count so the fresh shield also takes three.
+    events = [
+        LosesDivineShield(FRIENDLY_MINIONS).after(
+            _TorethReinforce(LosesDivineShield.TARGET)
+        ),
+        SetTags(FRIENDLY_MINIONS, (GameTag.DIVINE_SHIELD,)).after(
+            _TorethResetOnRegain(SetTags.TARGET)
+        ),
+    ]
 
 
 class EDR_259:

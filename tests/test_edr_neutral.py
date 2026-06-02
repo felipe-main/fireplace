@@ -50,6 +50,28 @@ def test_ysera_start_of_game():
     assert p2.max_mana == 7
 
 
+def test_ysera_start_of_game_raises_ceiling_past_ten():
+    # The signature beyond-10 ramp: Ysera lifts each player's max-Mana ceiling
+    # by 5 (10 -> 15), so per-turn ramp can climb past the normal 10 cap.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    p1.max_mana = 9
+    p2.max_mana = 9
+    assert p1.max_resources == 10
+    ysera = p1.summon("EDR_000")
+    game.cheat_action(ysera, list(ysera.get_actions("start_of_game")))
+    # Ceiling lifted to 15 for both; current max_mana bumped by 5 (capped only
+    # by the new ceiling, so 9 + 5 = 14).
+    assert p1.max_resources == 15
+    assert p2.max_resources == 15
+    assert p1.max_mana == 14
+    assert p2.max_mana == 14
+    # Per-turn ramp can now push past 10 toward 15.
+    p1.max_mana = 14
+    p1.max_mana += 1
+    assert p1.max_mana == 15  # 11+ reachable; the 10-cap is gone
+
+
 # EDR_001 — Hopeful Dryad: Battlecry: Get a random Dream card.
 def test_hopeful_dryad():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
@@ -163,16 +185,37 @@ def test_illusory_greenwing():
 
 # EDR_453 — Briarspawn Drake: At end of your turn, attack a random enemy
 # minion (excess hits hero).
-def test_briarspawn_drake():
+def test_briarspawn_drake_tramples_excess_to_hero():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1, p2 = game.player1, game.player2
     if game.current_player is not p1:
         game.end_turn()
     drake = p1.summon("EDR_453")  # 12/7
     enemy = p2.summon("CS2_182")  # Chillwind Yeti 4/5
+    enemy_hp_pre = p2.hero.health
     game.end_turn()  # p1 turn ends -> drake attacks enemy
     assert enemy.dead  # 12 atk kills 4/5
-    assert drake.damage == 4  # drake took 4 back
+    assert drake.damage == 4  # drake took 4 back from the minion's attack
+    # Excess = 12 atk - 5 health = 7 spills onto the enemy hero.
+    assert p2.hero.health == enemy_hp_pre - 7
+
+
+def test_briarspawn_drake_no_excess_when_minion_survives():
+    # Target minion HP >= drake atk -> the hero takes 0 (no trample).
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    if game.current_player is not p1:
+        game.end_turn()
+    drake = p1.summon("EDR_453")  # 12/7
+    # A big-health enemy minion that absorbs the full 12 attack.
+    tank = p2.summon("CS2_182")  # Chillwind Yeti, then beef its health up.
+    tank.max_health = 30
+    tank.damage = 0
+    hero_hp_pre = p2.hero.health
+    game.end_turn()  # drake attacks the tank
+    assert not tank.dead
+    assert tank.damage == 12  # absorbed the whole hit
+    assert p2.hero.health == hero_hp_pre  # no excess to hero
 
 
 # EDR_469 — Slumbering Sprite: Starts Dormant. After you use your Hero Power,
@@ -314,13 +357,33 @@ def test_dream_rager():
 
 
 # EDR_780 — Bloodthistle Illusionist: Battlecry: Summon a copy of this.
+# One secretly dies when it takes damage.
 def test_bloodthistle_illusionist():
+    from fireplace.actions import Hit
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     illu = p1.give("EDR_780")
     illu.play()
     copies = [m for m in p1.field if m.id == "EDR_780"]
     assert len(copies) == 2
+    # Exactly ONE of the two is the "secretly fake" twin (the summoned copy):
+    # it is stamped _glass_dies; the original is not.
+    glass = [m for m in copies if getattr(m, "_glass_dies", False)]
+    normal = [m for m in copies if not getattr(m, "_glass_dies", False)]
+    assert len(glass) == 1
+    assert len(normal) == 1
+    original, fake = normal[0], glass[0]
+    # The original is the played Illusionist itself.
+    assert original is illu
+    # 1 damage to the fake copy destroys it outright (dies on any damage).
+    fake.set_current_health(fake.health)  # ensure full health
+    game.cheat_action(p1.hero, [Hit(fake, 1)])
+    assert fake.dead
+    # The original survives the same 1 damage (normal minion).
+    assert not original.dead
+    game.cheat_action(p1.hero, [Hit(original, 1)])
+    assert not original.dead
+    assert original.damage == 1
 
 
 # EDR_800 — Flutterwing Guardian: Taunt, Divine Shield. Battlecry: Imbue HP.
@@ -624,3 +687,104 @@ def test_sharp_eyed_lookout_draws_and_discounts():
     p1.give("EDR_950").play()
     assert fireball.zone == Zone.HAND
     assert fireball.cost == base - 1
+
+
+# FIR_959 — Fyrakk the Blazing (implemented in the emerald_dream neutral
+# package): the Battlecry's Fire-spell candidate pool must be Standard-legal
+# only (the set is Standard), so Wild-only Fire spells are never eligible.
+def test_fyrakk_pool_is_standard_only():
+    from hearthstone.enums import SpellSchool, CardType
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    # Rebuild the exact candidate comprehension the FIR_959 battlecry uses
+    # (budget=20 so all costed Fire spells are in scope).
+    candidates = [
+        cid for cid, c in _cards.db.items()
+        if (
+            c.collectible
+            and c.type == CardType.SPELL
+            and getattr(c, "spell_school", None) == SpellSchool.FIRE
+            and c.cost is not None
+            and 0 < c.cost <= 20
+            and getattr(c, "is_standard", False)
+        )
+    ]
+    assert candidates, "Standard Fire-spell pool must be non-empty"
+    # Every eligible card is a Standard, costed, Fire-school spell.
+    for cid in candidates:
+        c = _cards.db[cid]
+        assert getattr(c, "is_standard", False)
+        assert c.spell_school == SpellSchool.FIRE
+        assert (c.cost or 0) > 0
+    # A known Wild-only Fire spell (Flame Lance, AT_001) is excluded.
+    assert getattr(_cards.db["AT_001"], "is_standard", False) is False
+    assert "AT_001" not in candidates
+
+
+def test_fyrakk_battlecry_casts_about_twenty_mana_of_fire():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    game.random.seed(99)
+    # Absorb every random Fire spell on the enemy hero so the loop runs clean.
+    p2.hero.max_health = 500
+    p2.hero._max_health = 500
+    pre = len(p1.spells_cast_this_game)
+    fyrakk = p1.give("FIR_959")
+    fyrakk.play()
+    cast = p1.spells_cast_this_game[pre:]
+    # The battlecry cast at least one Fire spell, and EVERY cast was a costed
+    # Standard Fire-school spell. Total Mana spent is exactly the 20 budget
+    # (1-Cost Standard Fire spells exist so the budget drains to 0).
+    assert len(cast) >= 1
+    assert all(c.spell_school == SpellSchool.FIRE for c in cast)
+    assert all(getattr(c, "is_standard", False) for c in cast)
+    assert sum((c.cost or 0) for c in cast) == 20
+
+
+# EDR_888 — Malorne the Waywatcher (defensive once-over): the Discover pool is
+# exactly the 11 Legendary Wild Gods (tag 4065); all are reachable. The
+# imbues>=4 cost-to-1 buff (EDR_888e) is gated on the per-game imbue counter.
+def test_malorne_pool_is_eleven_wild_gods():
+    from fireplace.dsl.random_picker import RandomMinion
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    mal = p1.give("EDR_888")
+    # Reproduce the picker the battlecry constructs and evaluate its eligible
+    # pool. is_standard=None means the standard restriction is NOT applied, so
+    # Wild Gods are reachable regardless of game mode.
+    picker = RandomMinion(
+        is_standard=None,
+        custom_filter=lambda c: bool(c.tags.get(4065)),
+    )
+    pool = set(picker.find_cards(mal))
+    expected = {
+        cid for cid, c in _cards.db.items()
+        if c.collectible and bool(c.tags.get(4065))
+    }
+    assert len(expected) == 11
+    # Every Wild God is reachable; the pool is exactly the 11.
+    assert pool == expected
+
+
+def test_malorne_buff_gated_on_imbue_count():
+    # EDR_888e sets the discovered God's Cost to (1) ONLY when imbued >= 4.
+    # Not imbued: no buff -> printed cost. Imbued 4x: cost forced to 1.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.imbues_this_game = 3  # one short of the gate
+    p1.hand[:] = []
+    p1.give("EDR_888").play()
+    _resolve_choices(p1)
+    got = p1.hand[0]
+    assert _cards.db[got.id].tags.get(4065)
+    assert got.cost == _cards.db[got.id].cost  # unbuffed at 3 imbues
+
+    game2 = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    q1 = game2.player1
+    q1.imbues_this_game = 4  # gate met
+    q1.hand[:] = []
+    q1.give("EDR_888").play()
+    _resolve_choices(q1)
+    got2 = q1.hand[0]
+    assert _cards.db[got2.id].tags.get(4065)
+    assert got2.cost == 1

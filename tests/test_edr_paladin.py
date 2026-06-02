@@ -226,6 +226,54 @@ def test_toreth_self_has_divine_shield_and_taunt():
     assert toreth.taunt
 
 
+def test_toreth_fresh_external_shield_takes_three_hits_again():
+    """Regression: after a minion's Toreth shield is fully broken (3 hits), a
+    BRAND-NEW Divine Shield gained from another source must itself take three
+    hits — the stale per-minion hit counter must reset on the external regain.
+
+    The reset only fires when DS is granted through a broadcasting action
+    (``SetTags`` / ``GiveDivineShield``), which is how every in-game source
+    grants it. Toreth's own re-grants run with the counter at 1/2 and so do
+    NOT reset; only the post-break external regain (counter == 3) does."""
+    from fireplace.actions import SetTags
+
+    game = prepare_empty_game(CardClass.PALADIN, CardClass.PALADIN)
+    p1, p2 = game.player1, game.player2
+    p1.summon("EDR_258")  # Toreth in play -> aura active
+    shielded = p1.summon("CS2_182")  # 4/5
+    shielded.divine_shield = True
+    shielded.max_health = 5
+    shielded.damage = 0
+
+    # Break the first shield with three hits (Toreth absorbs all three).
+    for _ in range(3):
+        game.queue_actions(p2.hero, [Hit(shielded, 1)])
+    assert not shielded.divine_shield
+    assert shielded.damage == 0
+    assert getattr(shielded, "_toreth_shield_hits", 0) == 3
+
+    # Grant a brand-new Divine Shield from another source. This must reset the
+    # stale hit-count so the fresh shield is back to a full three hits.
+    game.queue_actions(p1.hero, [SetTags(shielded, (GameTag.DIVINE_SHIELD,))])
+    assert shielded.divine_shield
+    assert getattr(shielded, "_toreth_shield_hits", 0) == 0
+
+    # Fresh shield: hits 1 and 2 are absorbed, shield survives, no damage.
+    game.queue_actions(p2.hero, [Hit(shielded, 1)])
+    assert shielded.divine_shield
+    assert shielded.damage == 0
+    game.queue_actions(p2.hero, [Hit(shielded, 1)])
+    assert shielded.divine_shield
+    assert shielded.damage == 0
+    # Hit 3 breaks the fresh shield; still no damage absorbed by the shield.
+    game.queue_actions(p2.hero, [Hit(shielded, 1)])
+    assert not shielded.divine_shield
+    assert shielded.damage == 0
+    # Hit 4 lands as real damage now that the fresh shield is gone too.
+    game.queue_actions(p2.hero, [Hit(shielded, 1)])
+    assert shielded.damage == 1
+
+
 # ---------------------------------------------------------------------------
 # EDR_259 — Ursol: Battlecry: Cast the highest Cost spell from your hand as an
 # Aura that lasts 3 turns.

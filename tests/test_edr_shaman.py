@@ -45,6 +45,57 @@ def test_ohnahra_plays_top_three_from_deck():
     assert len([c for c in p1.deck if c.id == WISP]) == 0
 
 
+DEFIAS_RINGLEADER = "EX1_131"  # Combo: Summon a 2/1 Defias Bandit.
+DEFIAS_BANDIT = "EX1_131t"
+
+
+# EDR_031 — Ohn'ahra routes through the *real* Play pipeline, so Combo fires.
+# Play order (deck[-1] first): a Wisp plays first (flips player.combo on), then
+# Defias Ringleader plays second with Combo active and summons a Defias Bandit.
+# A summon+manual-battlecry shim would never set player.combo, so the Bandit
+# only appears if the genuine Play action ran.
+def test_ohnahra_real_play_pipeline_triggers_combo():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    p1.cant_fatigue = True
+    p1.deck = []
+    # Bottom -> top: Defias Ringleader, then Wisp on the very top.
+    _put_on_top(p1, DEFIAS_RINGLEADER)
+    _put_on_top(p1, WISP)  # deck[-1] = Wisp -> played first, sets combo
+    assert not p1.combo
+    p1.summon("EDR_031")
+    game.end_turn()
+    # Wisp + Defias Ringleader both played from deck...
+    assert any(c.id == WISP for c in p1.field)
+    assert any(c.id == DEFIAS_RINGLEADER for c in p1.field)
+    # ...and the Ringleader's COMBO resolved (only possible via the real Play
+    # pipeline): a 2/1 Defias Bandit token is on the board.
+    bandits = [c for c in p1.field if c.id == DEFIAS_BANDIT]
+    assert len(bandits) == 1
+    assert bandits[0].atk == 2 and bandits[0].health == 1
+    # Nothing left in deck (all consumed; cant_fatigue prevents draw refills).
+    assert not p1.deck
+
+
+# EDR_031 — a spell on top of the deck is genuinely cast (resolves its effect)
+# and auto-targets an enemy, played for free from deck via the real pipeline.
+def test_ohnahra_casts_spell_from_deck_at_enemy():
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    p1.cant_fatigue = True
+    p1.deck = []
+    enemy_hero = game.player2.hero
+    start_health = enemy_hero.health
+    # Only a single Fireball on top so the auto-target lands on the enemy hero
+    # (no enemy minions present -> hero is the only valid Fireball target).
+    _put_on_top(p1, FIREBALL)
+    p1.summon("EDR_031")
+    game.end_turn()
+    # Fireball left the deck and resolved its 6 damage on the enemy hero.
+    assert not any(c.id == FIREBALL for c in p1.deck)
+    assert enemy_hero.health == start_health - 6
+
+
 # EDR_230 — Beanstalk Brute: Battlecry: Give +4/+4 to the top 3 minions in
 # your deck.
 def test_beanstalk_brute_buffs_top_three_deck_minions():
@@ -250,3 +301,24 @@ def test_plucky_podling_is_vanilla_body():
     podling.play()
     assert podling.atk == 1 and podling.health == 2
     assert len(p1.field) == 1
+
+
+# EDR_529 — ACCEPTED (status=watch): the "transforms into one costing (2) more"
+# rider is unwired (it would need an engine-side Morph interception hook that
+# does not exist; the only such hook is a hard-coded REV_925 branch in
+# Morph.do). This test pins the *current* honest behaviour: when something
+# transforms Plucky Podling, it becomes exactly that minion with no +2-cost
+# upgrade applied. If a future engine change wires the rider, this test should
+# be revisited.
+def test_plucky_podling_transform_has_no_cost_upgrade():
+    from fireplace.actions import Morph
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    podling = p1.summon("EDR_529")
+    # Transform it into a plain Wisp (CS2_231). With the rider inert the result
+    # is exactly a Wisp — not a 2-Cost-higher minion.
+    game.queue_actions(p1, [Morph(podling, WISP)])
+    field = p1.field
+    assert len(field) == 1
+    assert field[0].id == WISP
+    assert field[0].cost == 0  # Wisp's printed cost, no +2 applied

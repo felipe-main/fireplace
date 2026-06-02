@@ -311,6 +311,63 @@ def test_blessing_of_the_moon_pool_is_collectible_minions_and_spells():
 
 
 # ---------------------------------------------------------------------------
+# EDR_449p — Blessing of the Moon "but is Temporary" downside.
+#
+# review.csv rows 486 + 502: the discovered card must (a) carry the cost
+# reduction AND (b) be Temporary — discarded at the controller's end of turn
+# if still in hand. Playing it first cancels the expiry.
+#
+# These tests apply the EDR_449pe enchant directly (exactly as the power's
+# activate does: Buff(card, "EDR_449pe", cost=-level)) so the assertions are
+# deterministic and independent of the Discover RNG pool.
+# ---------------------------------------------------------------------------
+def test_blessing_of_the_moon_temporary_cost_reduction_and_expiry():
+    from fireplace.actions import Buff
+
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    # A vanilla Priest minion to receive the enchant. Northshire Cleric (1-cost
+    # EX1_001) gives a known base cost so we can assert the exact reduction.
+    card = p1.give("EX1_001")
+    base_cost = card.cost
+    # Mirror activate(): apply the cost-reduction enchant with cost=-level (1).
+    game.queue_actions(p1.hero, [Buff(card, "EDR_449pe", cost=-1)])
+
+    # (a) Cost reduction applied, card sits in hand.
+    assert card.zone == Zone.HAND
+    assert card.cost == base_cost - 1
+    # The Temporary marker is set on the host card via the enchant tag.
+    assert card.buffs, "EDR_449pe enchant not attached"
+    assert card.buffs[-1].id == "EDR_449pe"
+
+    # (b) End the controller's turn -> Temporary card is discarded from hand.
+    game.end_turn()
+    assert card not in p1.hand
+    assert card.zone != Zone.HAND
+
+
+def test_blessing_of_the_moon_temporary_survives_if_played():
+    from fireplace.actions import Buff
+
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.current_player
+    card = p1.give("EX1_001")  # 1/3 Northshire Cleric
+    game.queue_actions(p1.hero, [Buff(card, "EDR_449pe", cost=-1)])
+    assert card.zone == Zone.HAND
+
+    # Play the card BEFORE end of turn — it leaves the HAND zone, so the
+    # enchant's Hand.events end-of-turn destroy no longer applies.
+    card.play()
+    assert card.zone == Zone.PLAY
+
+    # End the turn: the now-in-play minion must NOT be destroyed by the
+    # Temporary expiry (Hand.events only fire while owner is in hand).
+    game.end_turn()
+    assert card.zone == Zone.PLAY
+    assert card in p1.field
+
+
+# ---------------------------------------------------------------------------
 # EDR_970 — Kaldorei Priestess: Battlecry: Give all enemy minions -2 Attack
 # until your next turn. Imbue your Hero Power.
 # ---------------------------------------------------------------------------

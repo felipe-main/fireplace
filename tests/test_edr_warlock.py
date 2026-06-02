@@ -201,8 +201,8 @@ def test_avant_gardening_grants_dark_gift_to_discovered_minion():
 # ---------------------------------------------------------------------------
 # EDR_489 — Agamaggan: Battlecry: The next card you play costs your OPPONENT'S
 # Health instead of Mana (up to 10). (10/8/9)
-# Approximation: the next card is free and deals its Cost (capped 10) to the
-# enemy hero.
+# Approximation: the SINGLE next card is free (mana-wise) and deals its ACTUAL
+# effective Cost (capped 10) to the enemy hero — not its printed base cost.
 # ---------------------------------------------------------------------------
 def test_agamaggan_next_card_bills_opponent_health():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
@@ -222,6 +222,65 @@ def test_agamaggan_next_card_bills_opponent_health():
     # The effect is one-shot: a second card pays normally (and we have no mana).
     second = p1.give(WISP)
     assert not second.is_playable() or p1.mana == 0
+
+
+def test_agamaggan_bills_actual_cost_not_base_below_cap():
+    # The billed Health must be the card's ACTUAL (live) Cost, not its printed
+    # base cost. Chillwind Yeti's base cost is 4; we shift its live cost to 6
+    # so the two diverge, then confirm the opponent takes exactly 6 (the live
+    # cost), and the player pays 0 mana for it.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    aga = p1.give("EDR_489")
+    aga.play()
+
+    yeti = p1.give(CHILLWIND)
+    assert yeti.data.cost == 4  # printed base cost
+    yeti._cost = 6              # live cost diverges to 6
+    assert yeti.cost == 0       # aura zeroes the payable cost
+    p1.used_mana = 10           # zero mana available
+    assert p1.mana == 0
+
+    enemy_hp = p2.hero.health
+    yeti.play()
+    assert yeti.zone == Zone.PLAY
+    assert p1.mana == 0                          # paid 0 mana
+    assert p2.hero.health == enemy_hp - 6        # billed the ACTUAL cost (6), not base (4)
+
+
+def test_agamaggan_caps_bill_at_ten_and_only_affects_next_card():
+    # (i) Bill is capped at 10 even when the actual cost is higher.
+    # (ii) Only the SINGLE next card is affected: a second card pays normal
+    #      mana and deals NO opponent-health damage.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    aga = p1.give("EDR_489")
+    aga.play()
+
+    # First card: live cost 13 -> opponent should take exactly 10 (the cap).
+    big = p1.give(CHILLWIND)
+    big._cost = 13
+    assert big.cost == 0           # free to play
+    p1.used_mana = 10
+    assert p1.mana == 0
+
+    enemy_hp = p2.hero.health
+    big.play()
+    assert big.zone == Zone.PLAY
+    assert p1.mana == 0
+    assert p2.hero.health == enemy_hp - 10       # capped at 10, not 13
+
+    # Second card: the one-shot effect is spent. It must pay full mana and
+    # deal NO damage to the opponent.
+    p1.used_mana = 0                              # restore full mana
+    second = p1.give(CHILLWIND)                    # base cost 4, no override
+    assert second.cost == 4                        # no longer free
+    mana_before = p1.mana
+    enemy_hp2 = p2.hero.health
+    second.play()
+    assert second.zone == Zone.PLAY
+    assert p1.mana == mana_before - 4              # paid normal 4 mana
+    assert p2.hero.health == enemy_hp2             # opponent untouched
 
 
 # ---------------------------------------------------------------------------

@@ -118,27 +118,58 @@ class _WallowAbsorb(TargetedAction):
         source._wallow_absorbed = absorbed
 
 
+def _agamaggan_zero_cost(entity, i):
+    """Aura COST callable for Agamaggan's enchant. `i` is the card's full
+    effective cost accumulated up to this slot (cost_mod + every discount +
+    other buffs), i.e. the *actual* cost the card would have paid. We record
+    that real cost on the card so _AgamagganPay can bill the opponent exactly
+    that amount, then return a large negative to drive the displayed/payable
+    cost to 0 (the engine clamps cost at 0). Only friendly hand cards carry
+    this slot, so the snapshot tracks the live cost right up to play time."""
+    entity._agamaggan_real_cost = i
+    return i - 100
+
+
 class _AgamagganMark(TargetedAction):
     """Agamaggan — the next card you play costs your opponent's Health instead
-    of Mana (up to 10). Arms the cost-substituting aura on the hero."""
+    of Mana (up to 10). Arms the cost-substituting aura on the hero and the
+    one-shot consume flag on the controller."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
+        # Arm the single-use flag: only the NEXT card played is billed to the
+        # opponent. _AgamagganPay consumes it (tears the aura down) on that
+        # card's play, so subsequent cards pay normal Mana.
+        source.controller._agamaggan_armed = True
         source.game.cheat_action(source, [Buff(source.controller.hero, "EDR_489e")])
 
 
 class _AgamagganPay(TargetedAction):
-    """Agamaggan — when the next card is played, deal its (capped) Cost to the
-    enemy hero and consume the aura. TARGET is the played card (Play.CARD)."""
+    """Agamaggan — when the next card is played, deal its ACTUAL (capped) Cost
+    to the enemy hero and consume the one-shot aura. TARGET is the played card
+    (Play.CARD)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        # `target` is the card that was just played. Its printed Cost is the
-        # amount of opponent Health to spend, capped at 10.
-        cost = min(10, target.data.cost or 0)
-        enemy = source.controller.opponent.hero
+        ctrl = source.controller
+        # Only the single armed card is billed to the opponent.
+        if not getattr(ctrl, "_agamaggan_armed", False):
+            return
+        ctrl._agamaggan_armed = False
+        # `target` is the card that was just played. Bill the card's ACTUAL
+        # effective cost (snapshotted by the aura callable while the card sat
+        # in hand, all discounts applied), capped at 10 — NOT its printed base
+        # cost. Falls back to _played_cost / data.cost if the snapshot is
+        # missing (e.g. a card that never carried the aura slot).
+        real_cost = getattr(target, "_agamaggan_real_cost", None)
+        if real_cost is None:
+            real_cost = getattr(target, "_played_cost", None)
+        if real_cost is None:
+            real_cost = target.data.cost or 0
+        cost = min(10, max(0, real_cost))
+        enemy = ctrl.opponent.hero
         if cost > 0:
             source.game.cheat_action(source, [Hit(enemy, cost)])
         source.game.cheat_action(source, [Destroy(source)])
@@ -265,21 +296,27 @@ class EDR_489:
     # Battlecry: The next card you play costs your OPPONENT'S Health instead of
     # Mana (up to 10).
     # NOTE: there is no engine flag for paying the OPPONENT's Health, so this
-    # approximation makes the next card free (mana-wise, via the aura) and
-    # deals its Cost (capped at 10) to the enemy hero on play.
+    # approximation makes the SINGLE next card free (mana-wise, via the aura)
+    # and deals its ACTUAL Cost (capped at 10) to the enemy hero on play. The
+    # aura callable snapshots each hand card's real effective cost (all
+    # discounts applied) before zeroing it, and a one-shot flag on the
+    # controller guarantees only one card is affected.
     play = _AgamagganMark(SELF)
 
 
 @custom_card
 class EDR_489e:
-    # Agamaggan — next card you play is free; on play, deal its Cost (up to
-    # 10) to the enemy hero. The Refresh zeroes hand-card cost; _AgamagganPay
-    # bills the opponent and tears the aura down.
+    # Agamaggan — the armed next card you play is free; on play, deal its
+    # ACTUAL Cost (up to 10) to the enemy hero. The Refresh aura runs a COST
+    # callable that (a) snapshots the card's real effective cost onto
+    # `_agamaggan_real_cost` and (b) drives cost to 0; _AgamagganPay reads that
+    # snapshot, bills the opponent, clears the one-shot flag and tears the aura
+    # down so only the single next card is affected.
     tags = {
         GameTag.CARDNAME: "Agamaggan",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
-    update = Refresh(FRIENDLY_HAND, {GameTag.COST: -100})
+    update = Refresh(FRIENDLY_HAND, {GameTag.COST: _agamaggan_zero_cost})
     events = OWN_CARD_PLAY.on(_AgamagganPay(Play.CARD))
 
 

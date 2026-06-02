@@ -45,14 +45,27 @@ class _GiveDarkGift(TargetedAction):
 # Minions
 
 
+class _YseraRaiseMaxMana(TargetedAction):
+    """Ysera — increase a player's maximum Mana by 5. The engine hard-caps
+    each player's max_mana to `max_resources` (default 10), so raise the
+    ceiling first, then grant 5 crystals. This preserves the signature
+    beyond-10 ramp: subsequent per-turn ramp can climb toward 15."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        target.max_resources += 5
+        source.game.cheat_action(source, [GainMana(target, 5)])
+
+
 class EDR_000:
     """Ysera, Emerald Aspect"""
 
     # Start of Game: Increase both players' maximum Mana by 5.
     # Battlecry: Gain 3 Mana Crystals.
     def start_of_game(self):
-        yield GainMana(CONTROLLER, 5)
-        yield GainMana(OPPONENT, 5)
+        yield _YseraRaiseMaxMana(CONTROLLER)
+        yield _YseraRaiseMaxMana(OPPONENT)
 
     play = GainMana(CONTROLLER, 3)
 
@@ -125,12 +138,38 @@ class EDR_260t:
     draw = Summon(CONTROLLER, SELF)
 
 
+class _BriarspawnTrampleAttack(TargetedAction):
+    """Briarspawn Drake — attack a random enemy minion (the TARGET); any excess
+    damage (the attacker's Attack beyond the minion's remaining Health) spills
+    onto the enemy hero. The engine's normal Attack routes all combat damage
+    onto the defending minion (overkill stays on the minion), so we record the
+    minion's pre-attack Health, perform the Attack from SELF, then separately
+    Hit the enemy hero for the leftover — no double-counting, since the hero is
+    never otherwise hit by this combat. `source` is the Briarspawn (the
+    OWN_TURN_END trigger owner = SELF)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        targets = target if isinstance(target, (list, tuple)) else [target]
+        if not targets:
+            return
+        defender = targets[0]
+        attacker = source
+        atk = attacker.atk
+        pre_health = defender.health
+        source.game.cheat_action(attacker, [Attack(attacker, defender)])
+        excess = atk - pre_health
+        if excess > 0:
+            source.game.cheat_action(attacker, [Hit(ENEMY_HERO, excess)])
+
+
 class EDR_453:
     """Briarspawn Drake"""
 
     # At the end of your turn, attack a random enemy minion
     # (excess damage hits the enemy hero).
-    events = OWN_TURN_END.on(Attack(SELF, RANDOM(ENEMY_MINIONS)))
+    events = OWN_TURN_END.on(_BriarspawnTrampleAttack(RANDOM(ENEMY_MINIONS)))
 
 
 class EDR_469:
@@ -236,13 +275,34 @@ class EDR_598:
     # honors directly, so no scripting is required.
 
 
+class _BloodthistleSummonGlassCopy(TargetedAction):
+    """Bloodthistle Illusionist — summon an exact copy of SELF that is the
+    "secretly fake" twin: it dies the moment it takes any damage. We stamp the
+    summoned copy with `_glass_dies = True`, which the engine Damage.do hook
+    (shared with Audiopocalypse Reverberations) consumes to Destroy it on first
+    damage. Exactly ONE of the two resulting minions (the copy) is marked, so
+    the original takes damage normally."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        # Build an exact copy (buffs + tags) of the original, mark it as the
+        # fragile twin, then summon it. ExactCopy.copy takes the resolved
+        # entity directly (the selector-based .evaluate path expects a selector).
+        copy = ExactCopy(SELF).copy(source, target)
+        copy._glass_dies = True
+        source.game.cheat_action(source, [Summon(ctrl, copy)])
+
+
 class EDR_780:
     """Bloodthistle Illusionist"""
 
     # Battlecry: Summon a copy of this. One secretly dies when it takes damage.
-    # We model "summon a copy of this"; the secret-death twin is cosmetic in
-    # this engine (both copies are real minions).
-    play = Summon(CONTROLLER, ExactCopy(SELF))
+    # The copy is the "secretly fake" twin: it is stamped `_glass_dies` so the
+    # engine Damage hook destroys it on the first damage it takes, while the
+    # original takes damage normally.
+    play = _BloodthistleSummonGlassCopy(SELF)
 
 
 class EDR_800:
@@ -556,6 +616,9 @@ class FIR_959:
                     and getattr(c, "spell_school", None) == SpellSchool.FIRE
                     and c.cost is not None
                     and 0 < c.cost <= budget
+                    # Restrict to Standard-legal Fire spells (the set is
+                    # Standard) so Wild-only Fire spells aren't eligible.
+                    and getattr(c, "is_standard", False)
                 )
             ]
             if not candidates:

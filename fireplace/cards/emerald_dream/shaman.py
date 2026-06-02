@@ -7,38 +7,62 @@ from ..utils import *
 
 class _PlayTopOfDeck(TargetedAction):
     """Ohn'ahra — at end of turn, play the top N cards from your deck for
-    free. Each card is played through the real play pipeline so battlecries /
-    on-play hooks fire; spells auto-target an enemy when one is required."""
+    free.
+
+    Each card is routed through the engine's *real* ``game.play_card`` pipeline
+    (the same entry point a human play uses), so the full Play machinery fires:
+    OWN_MINION_PLAY / play-broadcast events, Combo, Outcast, Rewind, Colossal
+    limb-summons, Miniaturize/Gigantify tokens, and targeted battlecries. The
+    card is briefly moved into HAND (so cost-mods, hand-position snapshots and
+    ``requires_target`` all evaluate in their normal context) and its Cost is
+    pinned to 0 for the duration of the play (Ohn'ahra plays them for free).
+
+    Targeting mirrors ``CastSpellTargetsEnemiesIfPossible``: if the card needs
+    a target, prefer a random enemy among its valid targets, else any valid
+    target. A card that needs a target but has none available fizzles its
+    effect (matching the real game — Ohn'ahra can't pick targets that don't
+    exist), but the body still lands on the board for minions.
+    """
 
     TARGET = ActionArg()
     AMOUNT = IntArg()
 
+    def _auto_target(self, source, card):
+        # Only pick a target when the card's play action actually requires one.
+        if not card.requires_target():
+            return None
+        targets = card.play_targets
+        if not targets:
+            return None
+        enemy = [t for t in targets if t.controller == source.controller.opponent]
+        pool = enemy or targets
+        return source.game.random.choice(pool)
+
     def do(self, source, target, amount):
         ctrl = source.controller
-        # deck[-1] is the top (next draw). Snapshot before playing — each play
-        # mutates the deck.
+        # deck[-1] is the top (next draw). Each play mutates the deck, so we
+        # re-read the top each iteration.
         for _ in range(amount):
             if not ctrl.deck:
                 break
             card = ctrl.deck[-1]
-            if card.type == CardType.SPELL:
-                copy_zone_card = card
-                copy_zone_card.zone = Zone.HAND
-                source.game.cheat_action(
-                    source, [CastSpellTargetsEnemiesIfPossible(copy_zone_card)]
-                )
-            elif card.type == CardType.MINION:
-                if len(ctrl.field) >= 7:
-                    # Board full — leave the rest in the deck.
-                    break
-                card.zone = Zone.HAND
-                source.game.cheat_action(source, [Summon(ctrl, card)])
-                if card.zone == Zone.PLAY and getattr(card, "has_battlecry", False):
-                    source.game.cheat_action(source, [Battlecry(card, None)])
-            else:
-                # Weapons / heroes / locations: equip / replay.
-                card.zone = Zone.HAND
-                source.game.cheat_action(source, [Replay(card)])
+            if card.type == CardType.MINION and len(ctrl.field) >= 7:
+                # Board full — a minion can't be played; leave it (and the rest)
+                # in the deck, just as the real game stops here.
+                break
+            # Move into hand so the real Play pipeline sees a normal hand card
+            # (cost-mods, hand snapshots, requires_target all key off HAND).
+            card.zone = Zone.HAND
+            # Pin the cost to 0 for the free play. `cost` clamps to max(0, ...),
+            # so a large negative base override guarantees 0 regardless of any
+            # in-hand cost-mod, and is undone right after the play resolves.
+            saved_cost = getattr(card, "_cost", 0)
+            card._cost = -1000
+            play_target = self._auto_target(source, card)
+            source.game.play_card(card, play_target, None, None)
+            # Restore the base-cost override on the off chance the card is still
+            # reachable (e.g. a minion bounced back to hand by its own effect).
+            card._cost = saved_cost
 
 
 class _BuffTopDeckMinions(TargetedAction):
@@ -169,10 +193,18 @@ class EDR_529:
 
     # If this would transform into a minion, it transforms into one that
     # costs (2) more.
-    # NOTE: the transform-upgrade redirect is an engine-side Morph hook
-    # (mirrors Baroness Vashj's REV_925 special-case) and is not wired for
-    # EDR_529 in this engine. Shipped as the printed 1/1/2 body; the upgrade
-    # rider is inert. See uncertainties.
+    #
+    # ACCEPTED (status=watch): there is no card-readable mechanism to wire
+    # this. The only transform-interception in the engine is a hard-coded
+    # `id == "REV_925"` branch inside Morph.do (actions.py ~L2938) — and even
+    # that implements a *different* effect (Baroness Vashj summons the would-be
+    # morph instead of being replaced). Morph.do never consults any per-card
+    # attribute or script hook, and the actual "+2 cost" rider would have to be
+    # applied at the moment a *different* card's transform effect picks its
+    # random/target minion (e.g. an Evolve/Devolve-style pick), which the card
+    # script cannot reach. Honouring this requires an engine-side Morph
+    # interception hook (read-only here), so the rider stays inert and the body
+    # ships as the printed 1/1/2. See review.csv row 508.
 
 
 ##

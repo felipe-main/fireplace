@@ -171,6 +171,20 @@ def test_unleash_the_colossus_only_counts_exactly_2():
     assert quest.progress == 0
 
 
+def test_add_progress_on_player_is_a_noop_not_a_crash():
+    # Regression (soak crash): progress lives on cards (quests/upgradeables),
+    # never on a Player. A few quests gate AddProgress behind a Find() over a
+    # player-returning selector, and on rare paths a Player slipped through as
+    # the target -> AttributeError: 'Player' has no attribute 'add_progress'.
+    # AddProgress must now ignore a non-progressable target instead of crashing.
+    from fireplace.actions import AddProgress
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    game.queue_actions(p1.hero, [AddProgress(p1, None, 1)])  # target = a Player
+    # No exception; the game is still live.
+    assert game.player1 is p1
+
+
 def test_gorishi_colossus_doubles_2_damage_to_enemy():
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1 = game.player1

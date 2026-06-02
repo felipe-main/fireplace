@@ -3900,6 +3900,14 @@ class AddProgress(TargetedAction):
         log.info("%r add progress from %r", target, card)
         if not target:
             return
+        # Progress is tracked on cards (quests / upgradeable cards), never on a
+        # Player. A few quests gate AddProgress behind a Find() over a
+        # player-returning selector (e.g. TLC_631 Unleash the Colossus uses
+        # `Find(CURRENT_PLAYER + CONTROLLER) & AddProgress(SELF, 1)`); on rare
+        # evaluation paths a Player can slip through as the target. Ignore any
+        # target that can't take progress rather than crashing.
+        if not hasattr(target, "add_progress"):
+            return
         target.add_progress(card, amount)
         source.game.manager.targeted_action(self, source, target, card, amount)
 

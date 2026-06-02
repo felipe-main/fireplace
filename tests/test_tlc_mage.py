@@ -149,6 +149,36 @@ def test_titanographer_osk_body():
     assert osk.health == osk.data.health
 
 
+def test_titanographer_osk_vanilla_play_no_battlecry():
+    # ACCEPTED DATA LIMITATION (review.csv 537): the random-Titan-ability graft
+    # is an unenumerable/unscripted pool, so Osk ships as a vanilla body with
+    # no battlecry. This test pins that: playing Osk from hand must produce no
+    # extra board/hand/health side-effects beyond the body landing.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    osk = p1.give("TLC_452")
+    pre_hand = len(p1.hand)          # includes Osk itself
+    pre_field = len(p1.field)
+    pre_p1_hp = p1.hero.health
+    pre_p2_hp = p2.hero.health
+    pre_enemy_field = len(p2.field)
+    osk.play()
+    # No choice/Discover was triggered.
+    assert not p1.choice
+    # Exactly Osk entered play; nothing else summoned, drawn, healed, or hit.
+    assert len(p1.field) == pre_field + 1
+    assert osk in p1.field
+    assert len(p1.hand) == pre_hand - 1            # only Osk left hand
+    assert len(p2.field) == pre_enemy_field
+    assert p1.hero.health == pre_p1_hp
+    assert p2.hero.health == pre_p2_hp
+    # Body is exactly the data stats, untouched by any graft.
+    assert osk.atk == osk.data.atk
+    assert osk.health == osk.data.health
+    # No 'play' battlecry actions are scripted onto Osk.
+    assert not osk.get_actions("play")
+
+
 # ---------------------------------------------------------------------------
 # TLC_460 The Forbidden Sequence — Quest: Discover 8 cards. Reward: The Origin
 # Stone.
@@ -183,6 +213,55 @@ def test_forbidden_sequence_quest():
     assert len(reward) == 1
     # Reward is the 0/8/3 Origin Stone weapon (durability on the HEALTH tag).
     assert reward[0].data.health == 8
+
+
+# ---------------------------------------------------------------------------
+# TLC_460t The Origin Stone — quest-reward weapon body.
+# ACCEPTED DATA LIMITATION (review.csv 538): "After you Discover a card, this
+# plays the other options. Lose 1 Durability." The un-chosen Discover options
+# are never exposed card-side (engine surfaces only the chosen card), so the
+# replay-and-drain effect is not modelled. The weapon ships as an inert
+# 0-attack / 8-durability body. These tests pin both the body and the
+# (deliberate) absence of the Discover-driven durability drain / replay.
+# ---------------------------------------------------------------------------
+
+def test_origin_stone_weapon_body():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    stone = p1.give("TLC_460t")
+    stone.play()
+    # Equips as the active weapon with 0 attack and full 8 durability.
+    assert p1.weapon is stone
+    assert stone.zone == Zone.PLAY
+    assert stone.atk == 0
+    assert stone.durability == 8
+    assert stone.max_durability == 8
+
+
+def test_origin_stone_discover_is_inert():
+    # Discovering while The Origin Stone is equipped must NOT drain its
+    # durability and must NOT replay un-chosen options (accepted gap).
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    stone = p1.give("TLC_460t")
+    stone.play()
+    assert stone.durability == 8
+    pre_field = len(p1.field)
+    pre_enemy_field = len(p2.field)
+    pre_p2_hp = p2.hero.health
+    # Trigger a Discover via Scrappy Scavenger and resolve it.
+    p1.give("TLC_461").play()
+    _resolve_choices(p1)
+    assert p1.discovers_this_turn == 1
+    # Inert weapon: durability unchanged, weapon still equipped, no un-chosen
+    # options replayed onto the board or face.
+    assert stone.durability == 8
+    assert p1.weapon is stone
+    # The only board change is Scrappy itself (a 1-cost minion); no extra
+    # minions summoned and no damage dealt by a phantom replay.
+    assert len(p1.field) == pre_field + 1
+    assert len(p2.field) == pre_enemy_field
+    assert p2.hero.health == pre_p2_hp
 
 
 # ---------------------------------------------------------------------------

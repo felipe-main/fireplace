@@ -29,12 +29,18 @@ class _RazidirDiscard(TargetedAction):
 
 
 class _UnderfelRiftActivate(TargetedAction):
-    """Underfel Rift activate."""
+    """Underfel Rift activation: throw a card in (discard one random card from
+    hand) and summon 2 random Fel Beasts. The Rift is a persistent untouchable
+    MINION on the board (data: TLC_446t1, HEALTH 1, UNTOUCHABLE, USES_CHARGES);
+    it activates once per turn. We model the once-per-turn cadence at the end of
+    the controller's turn rather than as a one-shot vanishing spell."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        hand = [c for c in source.controller.hand if c is not source]
+        # `source` is the Rift minion; throw in a card from its controller's
+        # hand, never the Rift itself (it lives in PLAY, not hand).
+        hand = list(source.controller.hand)
         actions = []
         if hand:
             actions.append(Discard(source.game.random.choice(hand)))
@@ -143,8 +149,14 @@ class TLC_446:
 class TLC_446t1:
     """Underfel Rift"""
 
-    # Throw a card in to summon 2 random Fel Beasts. (Approximation.)
-    play = _UnderfelRiftActivate(SELF)
+    # Select the Rift to activate. Throw a card in to summon 2 random Fel
+    # Beasts. (Once per turn.)
+    #
+    # In data this is a persistent untouchable MINION (HEALTH 1) that sits on
+    # the board, NOT a one-shot spell. It is activated once per turn; we model
+    # that activation at the end of the controller's turn (throw a card in,
+    # summon 2 Fel Beasts) while the Rift body stays in play.
+    events = OWN_TURN_END.on(_UnderfelRiftActivate(SELF))
 
 
 class TLC_447:

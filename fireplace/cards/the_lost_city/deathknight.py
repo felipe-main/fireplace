@@ -258,12 +258,17 @@ class TLC_432e:
 class TLC_439e:
     # Wave of Tar - +2 cost on an enemy hand minion until that player's next
     # turn ends. Not in data: register a name + COST tag + expiry trigger.
+    # The enchant's CONTROLLER is the caster (the Wave of Tar player), but the
+    # tax must persist through the *taxed minion's* controller's turn — so the
+    # expiry triggers on OWNER_CONTROLLER's EndTurn (the enemy), not the
+    # caster's OWN_TURN_END (which would lift the tax before the enemy's turn
+    # even began).
     tags = {
         GameTag.CARDNAME: "Tar-Covered",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
         GameTag.COST: 2,
     }
-    events = OWN_TURN_END.on(Destroy(SELF))
+    events = EndTurn(OWNER_CONTROLLER).on(Destroy(SELF))
 
 
 ##

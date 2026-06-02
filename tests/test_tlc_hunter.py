@@ -96,35 +96,74 @@ def test_dinositter_reduces_beast_cost_at_turn_end():
 def test_cower_in_fear_damage_and_discount():
     game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
     p1 = game.current_player
+    # A Beast already in hand BEFORE Cower is cast must receive the discount.
+    beast = p1.give(PLAIN_BEAST)             # Bloodfen Raptor, base cost 2
+    base = beast.cost
     target = p1.opponent.summon("CS2_182")   # Chillwind Yeti 4/5
     p1.give("TLC_823").play(target=target)
     assert target.damage == 3                # exactly 3, survives
+    # Genuine cost reduction: displayed cost drops by 2 (clamped at 0) BEFORE
+    # payment — not a refund-after-pay.
+    assert beast.cost == max(0, base - 2)
 
-    beast = p1.give(PLAIN_BEAST)
-    cost = beast.cost
     p1.max_mana = 10
     p1.used_mana = 0
     beast.play()
-    # Paid (cost) then refunded min(cost, 2) -> net used_mana = cost - 2.
-    assert p1.used_mana == max(0, cost - 2)
+    # Net mana actually spent equals the (already reduced) displayed cost.
+    assert p1.used_mana == max(0, base - 2)
+
+
+def test_cower_in_fear_enables_unaffordable_play():
+    # The key behaviour a true cost-discount enables that a refund cannot:
+    # a Beast you could not otherwise afford becomes castable.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.current_player
+    beast = p1.give("TSC_935")               # Selfish Shellfish, 4/7/7 Beast
+    base = beast.cost
+    target = p1.opponent.summon("CS2_182")
+    p1.give("TLC_823").play(target=target)
+    assert beast.cost == base - 2            # reduced before payment
+    # Only (base - 2) mana available: refund-after-pay would reject this play.
+    p1.max_mana = base - 2
+    p1.used_mana = 0
+    beast.play()
+    assert beast.zone == Zone.PLAY           # successfully played
+    assert p1.used_mana == base - 2
 
 
 def test_cower_in_fear_discount_only_first_beast():
     game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
     p1 = game.current_player
+    first = p1.give(PLAIN_BEAST)
+    second = p1.give(PLAIN_BEAST)
+    base = first.cost
     target = p1.opponent.summon("CS2_182")
     p1.give("TLC_823").play(target=target)
+    # Both Beasts in hand are discounted while armed...
+    assert first.cost == max(0, base - 2)
+    assert second.cost == max(0, base - 2)
     p1.max_mana = 10
     p1.used_mana = 0
-    first = p1.give(PLAIN_BEAST)
-    c1 = first.cost
     first.play()
-    after_first = p1.used_mana                # = c1 - 2
-    second = p1.give(PLAIN_BEAST)
-    c2 = second.cost
+    # ...but once the first Beast is played, the leftover discount is stripped
+    # from the second: it pays full price.
+    assert second.cost == base
+    p1.used_mana = 0
     second.play()
-    # Second Beast pays full price (no remaining discount).
-    assert p1.used_mana == after_first + c2
+    assert p1.used_mana == base
+
+
+def test_cower_in_fear_discount_clears_at_turn_end():
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.current_player
+    beast = p1.give(PLAIN_BEAST)
+    base = beast.cost
+    target = p1.opponent.summon("CS2_182")
+    p1.give("TLC_823").play(target=target)
+    assert beast.cost == max(0, base - 2)
+    game.end_turn()                          # unused discount expires
+    game.end_turn()
+    assert beast.cost == base                # back to full price next turn
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +261,15 @@ def test_story_of_carnassa_shuffles_ten_raptors():
     raptors = [c for c in p1.deck if c.id == "UNG_920t2"]
     assert len(raptors) == 10
     assert all(r.cost == 1 and r.atk == 3 and r.health == 2 for r in raptors)
+    # Behaviour is exact (data's COLLECTION_RELATED_CARD_DATABASE_ID for
+    # Story of Carnassa resolves to UNG_920t2 itself); only the printed token
+    # name differs. Defensive check on the "Battlecry: Draw a card" body.
+    assert all(Race.BEAST in r.races for r in raptors)
+    raptor = p1.give("UNG_920t2")
+    hand_before = len(p1.hand)
+    raptor.play()
+    # Played the Raptor (-1) but its Battlecry drew a card (+1) -> net unchanged.
+    assert len(p1.hand) == hand_before
 
 
 # ---------------------------------------------------------------------------

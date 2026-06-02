@@ -180,6 +180,28 @@ class _TimesShuffled(LazyNum):
         return self.num(getattr(source.controller, "_tlc_times_shuffled", 0))
 
 
+class _WayOfTheShellDraw(TargetedAction):
+    """Way of the Shell (Master Dusk hero power) — draw up to 2 cards from your
+    deck that didn't start in your deck (generated / shuffled-in cards). Cards
+    that were part of the opening decklist carry `_started_in_deck = True`
+    (stamped at game setup in game.py); anything minted afterwards has it
+    False, so those are the valid draw candidates."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        # deck[-1] is the top of the deck; honour draw order (top first) so the
+        # picks line up with what the player would naturally draw next.
+        candidates = [
+            c
+            for c in reversed(list(ctrl.deck))
+            if not getattr(c, "_started_in_deck", False)
+        ]
+        for card in candidates[:2]:
+            source.game.cheat_action(source, [ForceDraw(card)])
+
+
 class _OpuFanOfKnives(TargetedAction):
     """Opu the Unseen — cast Fan of Knives (EX1_129). Routed through the
     controller's hero as the cast source so it fires correctly from the
@@ -274,6 +296,15 @@ class TLC_513t:
     )
 
 
+class TLC_513hp:
+    """Way of the Shell"""
+
+    # Hero Power (equipped by the Master Dusk hero TLC_513t): Draw 2 cards that
+    # didn't start in your deck. Hero powers fire their `activate` script (see
+    # PlayHeroPower.get_actions("activate")), not `play`.
+    activate = _WayOfTheShellDraw(CONTROLLER)
+
+
 class TLC_513t2:
     """Tortollan Ninja"""
 
@@ -303,11 +334,15 @@ class TLC_517:
 
     # Deal $@ damage to a minion (improved for each time you've shuffled cards
     # into your deck).
+    #
+    # The $@ magnitude carries a base floor of 1 (data TAG_SCRIPT_DATA_NUM_1 = 1),
+    # improved by one for each card you've shuffled into your deck. So at 0
+    # shuffles it still deals 1, and N shuffles deals 1 + N.
     requirements = {
         PlayReq.REQ_TARGET_TO_PLAY: 0,
         PlayReq.REQ_MINION_TARGET: 0,
     }
-    play = Hit(TARGET, _TimesShuffled())
+    play = Hit(TARGET, _TimesShuffled() + 1)
 
 
 class TLC_518:
@@ -442,6 +477,12 @@ class DINO_407e2:
     # Sets the copied minion's stats to 3/4 (Mirrex is always a 3/4 copy).
     atk = lambda self, i: 3
     max_health = lambda self, i: 4
+    # Mirrex stays a 3-mana card even though it Morphs into the copied minion's
+    # full card (which would otherwise inherit that minion's cost). Pinning cost
+    # here keeps the in-hand copy at Mirrex's printed 3 mana — you can't cheat
+    # out an expensive body for free. This enchant is only ever applied to the
+    # Mirrex copy (see _dino_refresh_mirrex), so the cost pin is scoped to it.
+    cost = lambda self, i: 3
 
 
 ##

@@ -229,28 +229,36 @@ def test_reach_equilibrium_holy_quest_rewards_lifes_breath():
 
 
 def test_reach_equilibrium_both_quests_complete():
-    # Casting 5 Holy and 5 Shadow spells delivers both halves and removes the
-    # quest from the secret zone.
+    # Casting 4 Holy and 4 Shadow spells completes both halves and removes the
+    # quest from the secret zone. With both halves landing in hand together they
+    # immediately combine into Sol'etos, Cycle's Rebirth (TLC_817t5).
     game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
     p1 = game.player1
     p1.discard_hand()
     p1.give("TLC_817").play()
     quest = next(c for c in p1.secrets if c.id == "TLC_817")
-    rewards = set()
+    # Complete the Holy half first (its reward, Life's Breath, lands in hand);
+    # keep it there so completing the Shadow half triggers the combine.
     for i in range(5):
         p1.used_mana = 0
         p1.give(CONSECRATION).play()
+    assert any(c.id == "TLC_817t3" for c in p1.hand)
+    # Now finish the Shadow half — Death's Touch is delivered into a hand that
+    # already holds Life's Breath, so the two fuse on arrival.
+    for i in range(5):
         p1.used_mana = 0
         p1.give(THOUGHTSTEAL).play()
-        # Stash reward tokens and clear the rest so the hand never fills up
-        # (Thoughtsteal adds 2 cards per cast).
+        # Thoughtsteal adds 2 cards per cast; trim everything except the
+        # Sol'etos pieces so the hand never overflows.
         for c in list(p1.hand):
-            if c.id in ("TLC_817t3", "TLC_817t4"):
-                rewards.add(c.id)
-        p1.discard_hand()
-    assert "TLC_817t3" in rewards
-    assert "TLC_817t4" in rewards
+            if c.id not in ("TLC_817t3", "TLC_817t4", "TLC_817t5"):
+                c.discard()
     assert quest.zone != Zone.SECRET
+    # Combined: neither half remains; the fused body is in hand instead.
+    ids = {c.id for c in p1.hand}
+    assert "TLC_817t5" in ids
+    assert "TLC_817t3" not in ids
+    assert "TLC_817t4" not in ids
 
 
 def test_soletos_lifes_breath_battlecry_copies_itself():
@@ -272,4 +280,53 @@ def test_soletos_deaths_touch_deathrattle_deals_5():
     touch.destroy()
     game.process_deaths()
     # Reborn brings it back; the deathrattle 5 damage hit the only enemy (hero).
+    assert p2.hero.health == enemy_hp - 5
+
+
+def test_soletos_combines_when_holding_both_halves():
+    # "If you're holding both halves of Sol'etos, combine!" — the moment the
+    # second half enters hand, the pair fuses into Sol'etos, Cycle's Rebirth.
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.give("TLC_817t3")          # Life's Breath — no second half yet, no combine
+    assert {c.id for c in p1.hand} == {"TLC_817t3"}
+    p1.give("TLC_817t4")          # Death's Touch arrives -> combine fires
+    ids = [c.id for c in p1.hand]
+    assert ids == ["TLC_817t5"]   # exactly one card: the fused body
+    assert "TLC_817t3" not in ids and "TLC_817t4" not in ids
+
+
+def test_soletos_single_half_does_not_combine():
+    # Holding only one half must never combine.
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.give("TLC_817t3")
+    # Draw/generate other unrelated cards; still no partner half -> no combine.
+    p1.give(WISP)
+    p1.give(CONSECRATION)
+    ids = {c.id for c in p1.hand}
+    assert "TLC_817t3" in ids
+    assert "TLC_817t5" not in ids
+
+
+def test_soletos_combined_body_taunt_reborn_battlecry_deathrattle():
+    # The fused TLC_817t5 keeps both halves' effects: Taunt + Reborn, the
+    # Battlecry copy, and the 5-damage Deathrattle.
+    game = prepare_empty_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1, p2 = game.player1, game.player2
+    p1.discard_hand()
+    p1.give("TLC_817t3")
+    combined = p1.give("TLC_817t4")  # not necessarily the surviving object
+    fused = next(c for c in p1.hand if c.id == "TLC_817t5")
+    fused.play()                     # Battlecry: summon a copy of this
+    assert len(p1.field) == 2
+    body = p1.field[0]
+    assert body.taunt and body.reborn
+    assert all(m.id == "TLC_817t5" for m in p1.field)
+    # Deathrattle: 5 damage to a random enemy (only the enemy hero is present).
+    enemy_hp = p2.hero.health
+    body.destroy()
+    game.process_deaths()
     assert p2.hero.health == enemy_hp - 5

@@ -58,6 +58,25 @@ def test_sizzling_swarm():
     assert len(p1.field) == pre + 3
 
 
+def test_sizzling_swarm_scales_with_spell_damage():
+    # "Summon that many" scales: with +1 Spell Damage the hit deals 4 and the
+    # card summons 4 Cinders (damage and Cinder count stay in lock-step).
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    _clear_board(game, p1)
+    _clear_board(game, p2)
+    p1.summon(KOBOLD_GEOMANCER)  # +1 Spell Damage
+    p2.hero.max_health = 80
+    p2.hero.damage = 0
+    p1.give("TLC_221").play()
+    # 3 + 1 Spell Damage = 4 damage to the only enemy (the hero)...
+    assert p2.hero.health == 76
+    # ...and exactly 4 Cinders (count tracks the damage actually dealt).
+    cinders = [m for m in p1.field if m.id == SIZZLING_CINDER]
+    assert len(cinders) == 4
+    assert all(c.atk == 2 and c.health == 1 for c in cinders)
+
+
 # ---------------------------------------------------------------------------
 # TLC_222 Flight of the Firehawk - Draw two minions of different minion types.
 # Give them +2/+2.
@@ -260,6 +279,54 @@ def test_spirit_of_the_mountain_duplicate_types_dont_progress():
     # A second Beast does not add a new unique type.
     p1.give(BEAST).play()
     assert quest.progress == 1
+
+
+# ---------------------------------------------------------------------------
+# TLC_229t14 Ashalon, Ridge Guardian (Spirit of the Mountain reward) -
+# Rush. Battlecry: Adapt twice. For the rest of the game, give minions you
+# play those Adaptations.
+#
+# Rush + Adapt-twice are scripted. The persistent "give future minions those
+# Adaptations" clause is NOT modeled (engine concern - no card-reachable hook
+# records the specific Adaptation the player picks from Adapt's choice UI), so
+# this test pins the directly observable battlecry: two Adapt choices, each an
+# Adaptation token, applied to Ashalon - not a vanilla 8/8 body.
+# ---------------------------------------------------------------------------
+
+def test_ashalon_battlecry_adapts_twice():
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    # Seed for a deterministic Adapt offer (so the assertion is exact, not
+    # "at least one of these").
+    game.random.seed(999)
+    ashalon = p1.give("TLC_229t14").play()
+    # Rush comes from card data.
+    assert ashalon.rush
+
+    # Exactly two Adapt prompts fire, each offering 3 Adaptation tokens
+    # (UNG_999t*). Always pick the first.
+    prompts = 0
+    while p1.choice:
+        prompts += 1
+        cards = p1.choice.cards
+        assert len(cards) == 3
+        assert all(c.id.startswith("UNG_999t") for c in cards), [c.id for c in cards]
+        p1.choice.choose(cards[0])
+    assert prompts == 2
+
+    # Both chosen Adaptations were applied to Ashalon (one enchant per Adapt),
+    # proving the battlecry adapted twice instead of entering as a vanilla body.
+    adapt_buffs = [b.id for b in ashalon.buffs if b.id.startswith("UNG_999t")]
+    assert adapt_buffs == ["UNG_999t2e", "UNG_999t8e"]
+
+
+def test_ashalon_summoned_directly_is_not_vanilla():
+    # When summoned (not played) the battlecry is bypassed, but the card still
+    # has its scripted play action wired (regression guard: TLC_229t14 must be
+    # a real script class, not a missing-script vanilla body).
+    from fireplace.cards import db
+    assert getattr(db["TLC_229t14"], "scripts", None) is not None
+    assert db["TLC_229t14"].scripts.play is not None
 
 
 # ---------------------------------------------------------------------------

@@ -155,10 +155,70 @@ def test_tlc_235_life_cycle_replaces_with_same_cost():
 
     # Original is gone.
     assert target.zone == Zone.GRAVEYARD
-    # A replacement 4-cost minion appears on the opponent's board.
-    replacements = [m for m in p2.field if m.cost == 4]
-    assert len(replacements) == 1
-    assert replacements[0] is not target
+    # Net board count is unchanged: exactly one replacement, on the
+    # opponent's board, of the same Cost, and it is a different minion.
+    assert len(p2.field) == 1
+    replacement = p2.field[0]
+    assert replacement is not target
+    assert replacement.cost == 4
+
+
+def test_tlc_235_life_cycle_replacement_lands_in_vacated_slot():
+    # The replacement should appear in the *destroyed minion's* position,
+    # not tacked on to the end of the board. The old script summoned the
+    # replacement before the destroy, so it landed at the end instead.
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1, p2 = game.player1, game.player2
+    left = p2.summon("CS2_171")        # Stonetusk Boar, cost 1 (index 0)
+    target = p2.summon("CS2_182")      # Chillwind Yeti, cost 4 (index 1)
+    right = p2.summon("CS2_171")       # Stonetusk Boar, cost 1 (index 2)
+    assert p2.field.index(target) == 1
+    game.end_turn()
+    game.end_turn()
+
+    spell = p1.give("TLC_235")
+    spell.play(target=target)
+    game.process_deaths()
+
+    assert target.zone == Zone.GRAVEYARD
+    assert len(p2.field) == 3
+    # The two survivors keep their relative order; the replacement sits
+    # between them in the slot the Yeti vacated (index 1).
+    replacement = p2.field[1]
+    assert replacement is not left and replacement is not right
+    assert replacement.cost == 4
+    assert p2.field[0] is left
+    assert p2.field[2] is right
+
+
+def test_tlc_235_life_cycle_works_on_full_board():
+    # Edge case: the target's controller already has a full (7-minion)
+    # board. The printed card destroys first, freeing a slot, so the
+    # same-Cost replacement must still appear. The old "summon before
+    # destroy" script silently dropped the replacement here, because a
+    # 7-minion board makes the summon a no-op.
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1, p2 = game.player1, game.player2
+    # Seven minions; the 4-cost Yeti sits in the middle (index 3).
+    minions = [p2.summon("CS2_171") for _ in range(3)]
+    target = p2.summon("CS2_182")      # Chillwind Yeti, cost 4 (index 3)
+    minions += [p2.summon("CS2_171") for _ in range(3)]
+    assert len(p2.field) == 7
+    assert p2.field.index(target) == 3
+    game.end_turn()
+    game.end_turn()
+
+    spell = p1.give("TLC_235")
+    spell.play(target=target)
+    game.process_deaths()
+
+    assert target.zone == Zone.GRAVEYARD
+    # Still a full board (one out, one in) — the replacement was NOT
+    # dropped, and it has the same Cost as the destroyed Yeti.
+    assert len(p2.field) == 7
+    replacement = p2.field[3]
+    assert replacement not in minions
+    assert replacement.cost == 4
 
 
 def test_tlc_236_hybridization_draws_four_costs_no_kindred():

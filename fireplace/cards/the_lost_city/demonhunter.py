@@ -234,42 +234,40 @@ class TLC_903e:
 
 
 class _SaucierDiscount(TargetedAction):
-    """Skittish Saucier battlecry: reduce the Cost of the cards that were
-    adjacent to it in hand by (1).
+    """Skittish Saucier battlecry: reduce the Cost of its two physical hand
+    neighbours by (1).
 
-    The battlecry fires *after* the Saucier has left the hand (it is already in
-    PLAY). The engine's generic hand-adjacency pass (``Play.do``) stamps each of
-    the two physical neighbours' ``adjacent_plays_this_turn`` the instant before
-    the Saucier leaves hand, and the two neighbours collapse to *consecutive*
-    slots in the now-shorter hand. We therefore look for the freshly-bumped
-    neighbour cluster: a run of one or two consecutive hand cards that were both
-    flanking the gap. ``_saucier_adj_seen`` snapshots the prior counter so a card
-    that merely flanked an *earlier* play this turn is not mistaken for a current
-    neighbour."""
+    The battlecry fires *after* the Saucier has left the hand (``Play.do`` set
+    ``card.zone = PLAY`` before invoking the battlecry). But ``Play.do`` first
+    snapshots the Saucier's exact hand position into ``_play_hand_index`` (its
+    0-based slot) and ``_play_hand_size`` (the hand size *including* the
+    Saucier). We use that snapshot to identify the true left/right neighbours:
+
+      - The left neighbour sat at original index ``idx - 1``. Cards *before*
+        the gap don't shift when the Saucier is removed, so it is still at
+        index ``idx - 1`` in the now-shorter hand.
+      - The right neighbour sat at original index ``idx + 1``. Removing the
+        Saucier shifts everything after the gap down by one, so it is now at
+        index ``idx`` in the current hand.
+
+    Edge plays (left-most / right-most) simply have only one neighbour."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         player = source.controller
         hand = list(player.hand)
-        # Cards whose adjacency counter just advanced because of THIS play.
-        fresh = []
-        for i, card in enumerate(hand):
-            seen = getattr(card, "_saucier_adj_seen", 0)
-            if card.adjacent_plays_this_turn > seen:
-                fresh.append(i)
-            card._saucier_adj_seen = card.adjacent_plays_this_turn
-        # The Saucier sat between its two neighbours, so after removal they are
-        # consecutive. Take the contiguous run of freshly-bumped indices (1 for
-        # an edge play, 2 for a middle play).
-        neighbors = []
-        for i in fresh:
-            if not neighbors or i == neighbors[-1] + 1:
-                neighbors.append(i)
-            else:
-                break
-        for i in neighbors:
-            source.game.queue_actions(source, [Buff(hand[i], "DINO_137e")])
+        idx = getattr(source, "_play_hand_index", -1)
+        if idx < 0:
+            return
+        # Current-hand positions of the two original physical neighbours.
+        neighbor_positions = []
+        if idx - 1 >= 0:
+            neighbor_positions.append(idx - 1)        # left neighbour, unshifted
+        if idx <= len(hand) - 1:
+            neighbor_positions.append(idx)            # right neighbour, shifted down 1
+        for pos in neighbor_positions:
+            source.game.queue_actions(source, [Buff(hand[pos], "DINO_137e")])
 
 
 class _HornOfFeasting(TargetedAction):

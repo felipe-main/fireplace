@@ -76,7 +76,8 @@ def test_neferset_weaponsmith_combo():
 
 
 # ---------------------------------------------------------------------------
-# TLC_517 Knockback — deal damage equal to times shuffled into deck.
+# TLC_517 Knockback — deal (1 + times shuffled into deck) damage to a minion.
+# Base floor of 1 (data TAG_SCRIPT_DATA_NUM_1 = 1), improved per shuffle.
 # ---------------------------------------------------------------------------
 def test_knockback_scales_with_shuffles():
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
@@ -90,10 +91,11 @@ def test_knockback_scales_with_shuffles():
     target.damage = 0
     kb = p1.give("TLC_517")
     kb.play(target=target)
-    assert target.damage == 3
+    # Base 1 + 3 shuffles = 4.
+    assert target.damage == 4
 
 
-def test_knockback_zero_when_no_shuffles():
+def test_knockback_base_floor_one_with_no_shuffles():
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     p1 = game.player1
     assert getattr(p1, "_tlc_times_shuffled", 0) == 0
@@ -102,7 +104,8 @@ def test_knockback_zero_when_no_shuffles():
     target.damage = 0
     kb = p1.give("TLC_517")
     kb.play(target=target)
-    assert target.damage == 0
+    # No shuffles still deals the base 1 damage.
+    assert target.damage == 1
 
 
 # ---------------------------------------------------------------------------
@@ -310,3 +313,118 @@ def test_cultist_map_discovers_from_own_deck():
     assert len(p1.deck) == deck_before - 1
     assert len(p1.hand) == hand_before + 1
     assert any(c.id == chosen.id for c in p1.hand)
+
+
+def test_cultist_map_secondary_clause_accepted():
+    """ACCEPTED approximation (review row): the secondary clause 'If you play
+    it this turn, also pick one of the others' is not modelled — it needs a
+    deferred re-offer keyed on whether the discovered card is played this turn.
+    Defensive test pins the primary effect: Discover offers ONLY cards from
+    your own deck and never auto-grants the leftover pick."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    for c in list(p1.deck):
+        c.zone = Zone.REMOVEDFROMGAME
+    for cid in ("CS2_171", "CS2_172", "CS2_173"):
+        card = p1.card(cid); card.controller = p1; card.zone = Zone.DECK
+    hand_before = len(p1.hand)
+    p1.give("TLC_515").play()
+    assert p1.choice is not None
+    p1.choice.choose(p1.choice.cards[0])
+    assert p1.choice is None
+    # Exactly one card was granted (no bonus second pick from the unmodelled
+    # secondary clause), and no follow-up choice is pending.
+    assert len(p1.hand) == hand_before + 1
+    assert p1.choice is None
+
+
+# ---------------------------------------------------------------------------
+# TLC_513hp Way of the Shell — Master Dusk hero power: draw 2 cards that didn't
+# start in your deck.
+# ---------------------------------------------------------------------------
+def test_way_of_the_shell_draws_generated_cards():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    p1.discard_hand()
+    # Clear the original deck. Then seed it with cards that were generated
+    # (not part of the opening decklist): brand-new Wisps whose
+    # `_started_in_deck` flag is False (never stamped at game setup). Wisps have
+    # no draw trigger, so they land in hand on draw (unlike Summoned-When-Drawn
+    # ninjas), letting us read the hand delta exactly.
+    for c in list(p1.deck):
+        c.zone = Zone.REMOVEDFROMGAME
+    generated = []
+    for _ in range(3):
+        w = p1.card(WISP)
+        w.controller = p1
+        w.zone = Zone.DECK
+        generated.append(w)
+    assert len(p1.deck) == 3
+    assert all(not getattr(c, "_started_in_deck", False) for c in p1.deck)
+    # Install the Master Dusk hero (equips Way of the Shell hero power).
+    p1.summon("TLC_513t")
+    _clear_choices(p1)
+    assert p1.hero.power.id == "TLC_513hp"
+    hand_before = len(p1.hand)
+    deck_before = len(p1.deck)
+    p1.hero.power.use()
+    # Drew exactly 2 generated cards into hand; deck shrank by 2.
+    assert len(p1.hand) == hand_before + 2
+    assert len(p1.deck) == deck_before - 2
+    assert all(c.id == WISP for c in p1.hand)
+
+
+def test_way_of_the_shell_skips_cards_that_started_in_deck():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    p1.discard_hand()
+    # Starting-deck cards (stamped _started_in_deck = True at game setup) are
+    # NOT valid draw targets. Leave the original deck intact and add zero
+    # generated cards → the hero power should draw nothing.
+    assert all(getattr(c, "_started_in_deck", False) for c in p1.deck)
+    p1.summon("TLC_513t")
+    _clear_choices(p1)
+    assert p1.hero.power.id == "TLC_513hp"
+    hand_before = len(p1.hand)
+    p1.hero.power.use()
+    assert len(p1.hand) == hand_before  # nothing qualifies → no draw
+
+
+# ---------------------------------------------------------------------------
+# Times-shuffled counter (engine-wide) — defensive once-over.
+# ---------------------------------------------------------------------------
+def test_times_shuffled_counter_counts_each_card():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    assert getattr(p1, "_tlc_times_shuffled", 0) == 0
+    # Interrogation shuffles 3 cards → counter += 3 (per card, not per event).
+    p1.give("TLC_518").play()
+    assert p1._tlc_times_shuffled == 3
+    # A second Interrogation → +3 more.
+    p1.give("TLC_518").play()
+    assert p1._tlc_times_shuffled == 6
+    # Crystal Tusk shuffles exactly one (left-most hand card) → +1.
+    p1.give(WISP)  # something to be the left-most card
+    p1.give("DINO_408").play()
+    assert p1._tlc_times_shuffled == 7
+
+
+# ---------------------------------------------------------------------------
+# DINO_407 Mirrex, the Crystalline — in-hand 3/4 copy stays Mirrex's 3 mana.
+# ---------------------------------------------------------------------------
+def test_mirrex_copy_keeps_three_mana_cost():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    p2 = game.player2
+    mirrex = p1.give("DINO_407")
+    assert mirrex.cost == 3
+    # Opponent plays an expensive minion: Boulderfist Ogre (CS2_200, 6 mana).
+    game.end_turn()
+    p2.give("CS2_200").play()
+    game.refresh_auras()
+    # Mirrex morphs into a 3/4 copy of the Ogre but stays a 3-mana card
+    # (the Crystalline enchant pins cost to 3, not the copied Ogre's 6).
+    held = next(c for c in p1.hand if getattr(c, "_mirrex", False))
+    assert held.id == "CS2_200"
+    assert held.atk == 3 and held.max_health == 4
+    assert held.cost == 3

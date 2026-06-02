@@ -144,14 +144,40 @@ class TLC_602(QuestRewardProtect):
     reward = Give(CONTROLLER, "TLC_602t")
 
 
+class _LatorviusRewards(TargetedAction):
+    """Latorvius — pick 2 random Quest Rewards from the card's entourage to
+    GIVE to hand, then SHUFFLE the remaining rewards into the controller's
+    deck. A single RNG sample partitions the entourage so the given 2 and the
+    shuffled rest are disjoint (no token is both handed over and shuffled)."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        pool = list(source.entourage)
+        n_give = min(2, len(pool))
+        given = source.game.random.sample(pool, n_give)
+        given_counts = {}
+        for cid in given:
+            given_counts[cid] = given_counts.get(cid, 0) + 1
+        # "the rest" = the entourage minus the exact tokens handed over.
+        rest = []
+        for cid in pool:
+            if given_counts.get(cid, 0) > 0:
+                given_counts[cid] -= 1
+            else:
+                rest.append(cid)
+        actions = [Give(target, cid) for cid in given]
+        actions += [Shuffle(target, cid) for cid in rest]
+        if actions:
+            source.game.queue_actions(source, actions)
+
+
 class TLC_602t:
     """Latorvius, Gaze of the City"""
 
     # Battlecry: Get 2 random 'Journey to Un'Goro' Quest Rewards. Shuffle the
     # rest into your deck.
-    # (Approximation: gives 2 random UNG quest-reward tokens; the "shuffle the
-    # rest into your deck" cosmetic is omitted.)
-    play = Give(CONTROLLER, RandomEntourage()) * 2
+    play = _LatorviusRewards(CONTROLLER)
     entourage = [
         "UNG_116t",   # Barnabus the Stomper (Druid quest reward)
         "UNG_028t",   # Time Warp (Mage)

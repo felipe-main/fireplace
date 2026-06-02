@@ -22,7 +22,7 @@ class _GolakkaSummon(TargetedAction):
     """Dive the Golakka Depths repeatable-quest body.
 
     Each Murloc you summon first gets the accumulated +N/+N (one stack per
-    completed quest), then counts toward the next batch of 5. On the 5th
+    completed quest), then counts toward the next batch of 6. On the 6th
     Murloc since the last completion the stack grows by one. The quest never
     `finishes` (progress_total stays 0) so the engine never destroys it.
     """
@@ -37,7 +37,7 @@ class _GolakkaSummon(TargetedAction):
                 source, [Buff(target, "TLC_426e2", atk=bonus, max_health=bonus)]
             )
         count = getattr(player, "_golakka_count", 0) + 1
-        if count >= 5:
+        if count >= 6:
             count = 0
             player._golakka_bonus = bonus + 1
         player._golakka_count = count
@@ -49,9 +49,6 @@ class _IdoStamp(TargetedAction):
 
     TARGET = ActionArg()
     CARD = CardArg()
-
-    def get_target_args(self, source, target):
-        return [self._args[1]]
 
     def do(self, source, target, card):
         source._ido_token = card
@@ -136,9 +133,6 @@ class _ConsumeMurlocCost(TargetedAction):
     TARGET = ActionArg()
     CARD = CardArg()
 
-    def get_target_args(self, source, target):
-        return [self._args[1]]
-
     def do(self, source, target, played):
         if played is getattr(source, "creator", None):
             return
@@ -151,9 +145,6 @@ class _ConsumeMurlocDS(TargetedAction):
 
     TARGET = ActionArg()
     CARD = CardArg()
-
-    def get_target_args(self, source, target):
-        return [self._args[1]]
 
     def do(self, source, target, played):
         if played is getattr(source, "creator", None):
@@ -169,9 +160,6 @@ class _SubmergedSecondPick(TargetedAction):
 
     TARGET = ActionArg()
     CARD = CardArg()
-
-    def get_target_args(self, source, target):
-        return [self._args[1]]
 
     def do(self, source, target, played):
         player = source.controller
@@ -210,6 +198,10 @@ class TLC_241:
 
     # While this is alive, you get a 2-Cost Holy spell that gives a minion
     # +2/+2 and Divine Shield.
+    # The "remove the token when Ido leaves play" cleanup is modeled as a
+    # deathrattle, but TLC_241 carries no DEATHRATTLE tag in data, so it must
+    # be set explicitly or the engine never fires the cleanup.
+    tags = {GameTag.DEATHRATTLE: True}
     play = Give(CONTROLLER, "TLC_241t").then(_IdoStamp(SELF, Give.CARD))
     deathrattle = _IdoRemove(SELF)
 
@@ -231,14 +223,14 @@ TLC_241e = buff(+2, +2)
 class TLC_428:
     """Hot Spring Glider"""
 
-    # Battlecry: Your next Murloc costs (2) less.
+    # Battlecry: Your next Murloc costs (1) less.
     # Kindred: And gains Divine Shield.
     play = Buff(CONTROLLER, "TLC_428e"), Kindred() & Buff(CONTROLLER, "TLC_428e2")
 
 
 class TLC_428e:
-    # Your next Murloc this turn costs (2) less.
-    update = Refresh(FRIENDLY_HAND + MURLOC, {GameTag.COST: -2})
+    # Your next Murloc this turn costs (1) less.
+    update = Refresh(FRIENDLY_HAND + MURLOC, {GameTag.COST: -1})
     events = (
         Play(CONTROLLER, MURLOC).after(_ConsumeMurlocCost(SELF, Play.CARD)),
         OWN_TURN_END.on(Destroy(SELF)),
@@ -287,7 +279,7 @@ class TLC_438:
 class TLC_426:
     """Dive the Golakka Depths"""
 
-    # Repeatable Quest: Summon 5 Murlocs. Reward: Murlocs you summon gain
+    # Repeatable Quest: Summon 6 Murlocs. Reward: Murlocs you summon gain
     # +1/+1. (Never-finishing quest that ticks every summon; see
     # _GolakkaSummon for the repeatable/stacking semantics.)
     quest = Summon(CONTROLLER, MURLOC).after(_GolakkaSummon(Summon.CARD))

@@ -267,6 +267,64 @@ class TLC_835:
 # Quest — Reach Equilibrium (TLC_817) + Sol'etos halves
 
 
+# Ids of the two Sol'etos halves and the combined body they fuse into.
+_SOLETOS_LIFE = "TLC_817t3"   # Sol'etos, Life's Breath  (Taunt / Battlecry copy)
+_SOLETOS_DEATH = "TLC_817t4"  # Sol'etos, Death's Touch  (Reborn / 5-dmg Deathrattle)
+_SOLETOS_COMBINED = "TLC_817t5"  # Sol'etos, Cycle's Rebirth
+
+
+class _SoletosCombine(TargetedAction):
+    """Sol'etos — "If you're holding both halves of Sol'etos, combine!".
+
+    Both halves carry a Hand listener (below) that, whenever a card enters the
+    controller's hand, runs this action. If the controller is holding BOTH
+    Life's Breath and Death's Touch at that moment, the pair fuses into the
+    single combined body Sol'etos, Cycle's Rebirth (TLC_817t5), which replaces
+    them in hand — mirroring the engine's Shatter recombine, but card-side.
+
+    No-op unless exactly the two distinct halves are both present, so it is
+    safe to fire from either half's listener (and twice in a row): the second
+    invocation finds the halves already gone and does nothing.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        player = source.controller
+        # Guard against re-entrancy while we are mid-combine (the Give of the
+        # combined card fires hand listeners again).
+        if getattr(player.game, "_soletos_combining", False):
+            return
+        hand = player.hand
+        life = next((c for c in hand if c.id == _SOLETOS_LIFE), None)
+        death = next((c for c in hand if c.id == _SOLETOS_DEATH), None)
+        if life is None or death is None:
+            return
+        # Remember where the halves sat so the fused card lands there. (Both
+        # halves leave hand before the fused card is created, so there is always
+        # room — the net hand size drops by one.)
+        index = min(hand.index(life), hand.index(death))
+        player.game._soletos_combining = True
+        try:
+            life.zone = Zone.REMOVEDFROMGAME
+            death.zone = Zone.REMOVEDFROMGAME
+            combined = player.card(_SOLETOS_COMBINED, source=source)
+            combined._summon_index = index
+            combined.zone = Zone.HAND
+            combined._summon_index = None
+        finally:
+            player.game._soletos_combining = False
+        source.game.manager.targeted_action(self, source, target)
+
+
+# Each half watches for any card entering the controller's hand (drawn from
+# deck, or given by the quest / a generator) and then attempts the combine.
+_SOLETOS_HAND_EVENTS = (
+    Draw(CONTROLLER).after(_SoletosCombine(SELF)),
+    Give(CONTROLLER).after(_SoletosCombine(SELF)),
+)
+
+
 class TLC_817:
     """Reach Equilibrium"""
 
@@ -286,14 +344,22 @@ class TLC_817t3:
     """Sol'etos, Life's Breath"""
 
     # Taunt. Battlecry: Summon a copy of this.
+    # If you're holding both halves of Sol'etos, combine! (handled in Hand)
     play = Summon(CONTROLLER, ExactCopy(SELF))
+
+    class Hand:
+        events = _SOLETOS_HAND_EVENTS
 
 
 class TLC_817t4:
     """Sol'etos, Death's Touch"""
 
     # Reborn. Deathrattle: Deal 5 damage to a random enemy.
+    # If you're holding both halves of Sol'etos, combine! (handled in Hand)
     deathrattle = Hit(RANDOM_ENEMY_CHARACTER, 5)
+
+    class Hand:
+        events = _SOLETOS_HAND_EVENTS
 
 
 class TLC_817t5:

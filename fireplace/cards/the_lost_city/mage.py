@@ -29,11 +29,18 @@ class TLC_452:
 
     # Gains a random Titan ability in your hand that changes each turn.
     #
-    # APPROXIMATION: the printed card grafts one of 35 unscripted 7/7/7
-    # "Titan ability" battlecry tokens (TLC_452t1..t35) onto Osk while it is
-    # in hand, re-rolling the choice every turn, and fires that battlecry when
-    # Osk is played. Those tokens' battlecries are not scripted, so we ship
-    # Osk as a vanilla 7/7/7 body. Tracked in review.csv.
+    # ACCEPTED DATA LIMITATION: the printed card grafts one of the "Titan
+    # ability" battlecry tokens (TLC_452t1..t35; t10/t11/t12/t25 are absent
+    # from this build's data) onto Osk while it is in hand, re-rolling the
+    # choice every turn, and fires that battlecry when Osk is played. Those
+    # tokens carry printed *text* in data but have NO Python script — none of
+    # the 31 present tokens defines a `play`/battlecry (verified), so there is
+    # nothing to graft or fire. Independently scripting all 31 is out of scope
+    # and several need engine extensions absent here (remove-from-game,
+    # force-attack, mind-control). Building only the rotate-and-graft scaffold
+    # would yield a no-op battlecry. This is a Discover-pool-style unenumerable
+    # pool: we ship Osk as the rebalanced vanilla body (6/6 in Patch 33.2).
+    # Tracked in review.csv (row 537).
     pass
 
 
@@ -146,10 +153,18 @@ class TLC_460t:
     # After you Discover a card, this plays the other options. Lose 1
     # Durability.
     #
-    # APPROXIMATION: the printed weapon replays the two un-chosen Discover
-    # options and loses durability each time you Discover. Replaying arbitrary
-    # un-chosen options is not modelled; we ship the 0/8/3 weapon body so the
-    # quest reward still resolves. Tracked in review.csv.
+    # ACCEPTED DATA LIMITATION: the headline effect replays the two UN-CHOSEN
+    # Discover options each time you Discover (paying 1 durability per Discover
+    # as the cost). The engine's Discover only exposes the *chosen* card to
+    # listeners: `Discovered(player, chosen_card)` broadcasts the picked card,
+    # and the un-chosen options live transiently inside `Discover.cards` during
+    # the choice and are dropped afterwards — never surfaced card-side. This is
+    # the same Discover-leftover gap as the Map cards. Wiring ONLY the
+    # durability drain (cleanly possible via a Discovered listener that does
+    # `weapon.damage += 1`) without the replay would misrepresent a benefit
+    # card as a pure self-destruct downside, so we deliberately ship the inert
+    # 0/8/3 weapon body — the quest reward still resolves correctly. Tracked in
+    # review.csv (row 538).
     pass
 
 

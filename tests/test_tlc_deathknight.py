@@ -165,6 +165,38 @@ def test_reanimated_pterrordax_costs_corpses_not_mana():
     assert ptero.lifesteal
 
 
+def test_reanimated_pterrordax_spends_exactly_three_when_surplus():
+    # With more than the 3-Corpse alternate cost available, exactly 3 are
+    # consumed on play (not all of them).
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.corpses = 7
+    ptero = p1.give("TLC_436")
+    ptero.play()
+    assert ptero.zone == Zone.PLAY
+    assert p1.corpses == 4  # 7 - 3
+
+
+def test_reanimated_pterrordax_free_play_below_three_is_engine_gap():
+    # KNOWN APPROXIMATION (review.csv row 528, status=watch): the printed card
+    # is unplayable without 3 Corpses, but the alternate-cost gate
+    # (REQ_MINIMUM_CORPSES / CARD_ALTERNATE_COST) is not enforced by the engine
+    # is_playable/can_pay_cost path (both read-only here). With the mana cost
+    # zeroed it plays at 0 Corpses, and SpendCorpses clamps to 0. This test
+    # PINS that documented behaviour so a future engine fix is noticed here.
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.corpses = 0
+    ptero = p1.give("TLC_436")
+    assert ptero.cost == 0
+    assert ptero.is_playable()  # gap: should be False on the printed card
+    ptero.play()
+    assert ptero.zone == Zone.PLAY
+    assert p1.corpses == 0  # nothing to spend; SpendCorpses clamps
+
+
 # TLC_439 — Deal 2 damage to all enemy minions. Enemy minions cost (2) more
 # next turn.
 def test_wave_of_tar_damages_board_and_taxes_hand():
@@ -183,6 +215,44 @@ def test_wave_of_tar_damages_board_and_taxes_hand():
     assert a.damage == 2
     assert b.damage == 2
     assert hand_minion.cost == base_cost + 2
+
+
+def test_wave_of_tar_tax_expires_after_enemy_turn():
+    # The +2-cost enchant lasts through the opponent's next turn and reverts
+    # when that turn ends. The enchant expires on EndTurn(OWNER_CONTROLLER) —
+    # the taxed minion's controller (the enemy) — NOT the caster's turn end,
+    # which would lift the tax before the enemy's turn even started.
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1, p2 = game.player1, game.player2
+    hand_minion = p2.give(CHILLWIND)
+    base_cost = hand_minion.cost
+    spell = p1.give("TLC_439")
+    spell.play()
+    assert hand_minion.cost == base_cost + 2
+    # p1 ends turn -> p2's turn -> p2 ends turn: the tax now reverts.
+    game.end_turn()   # p1 -> p2
+    assert hand_minion.cost == base_cost + 2  # still taxed during p2's turn
+    game.end_turn()   # p2 -> p1: enchant destroyed on p2's OWN_TURN_END
+    assert hand_minion.cost == base_cost
+
+
+def test_wave_of_tar_future_draw_not_taxed_is_engine_gap():
+    # KNOWN APPROXIMATION (review.csv row 530, status=watch): the printed card
+    # taxes the opponent's minions "next turn", including ones drawn/created
+    # that turn. Our card-only Buff(ENEMY_HAND + MINION, ...) only tags minions
+    # already in hand at cast time; a turn-scoped cost aura on the player would
+    # need an engine hook (read-only). This pins the gap: a minion drawn AFTER
+    # the cast carries no tax.
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1, p2 = game.player1, game.player2
+    p2.discard_hand()
+    future = p2.card(CHILLWIND, zone=Zone.DECK)
+    base_cost = future.cost
+    spell = p1.give("TLC_439")
+    spell.play()
+    # Drawn only after the spell resolved -> never received the +2 enchant.
+    future.zone = Zone.HAND
+    assert future.cost == base_cost  # gap: printed card would tax it
 
 
 # TLC_440 — Deal 4 damage and draw a card. Kindred: Draw another.

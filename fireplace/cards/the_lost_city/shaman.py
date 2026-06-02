@@ -169,9 +169,14 @@ class TLC_221:
 
     # Deal $3 damage. Summon that many 2/1 Sizzling Cinders.
     # (No target requirement in data -> hits a random enemy.)
+    #
+    # "Summon that many" scales with Spell Damage: both the Hit (routes through
+    # get_spell_damage) and the Cinder count use 3 + board Spell Damage, so the
+    # two stay in lock-step (e.g. +1 SP -> 4 damage and 4 Cinders). Mirrors the
+    # Scholomance "Molten Blast" pattern (Summon * SPELL_DAMAGE(N)).
     play = (
         Hit(RANDOM_ENEMY_CHARACTER, 3),
-        Summon(CONTROLLER, SIZZLING_CINDER) * 3,
+        Summon(CONTROLLER, SIZZLING_CINDER) * SPELL_DAMAGE(3),
     )
 
 
@@ -236,6 +241,25 @@ class TLC_229:
     def clear_progress(self):
         self._tlc_quest_types = set()
         self.progress = 0
+
+
+class TLC_229t14:
+    """Ashalon, Ridge Guardian"""
+
+    # Rush. Battlecry: Adapt twice. For the rest of the game, give minions you
+    # play those Adaptations.
+    #
+    # Rush comes straight from card data (RUSH=1). The double Adapt is fully
+    # scripted: Adapt(SELF) * 2 fires two Adapt choices on Ashalon itself.
+    #
+    # PARTIAL: the persistent "for the rest of the game, give minions you play
+    # those Adaptations" clause is NOT modeled. It requires capturing the two
+    # chosen Adaptation cards and re-applying their battlecries to every future
+    # friendly minion played — there is no card-reachable hook to record the
+    # specific adaptation the player picked from Adapt's choice UI (Adapt.choose
+    # consumes the pick internally), so it is an engine concern. The directly
+    # observable battlecry (Adapt twice on Ashalon) is faithful.
+    play = Adapt(SELF) * 2
 
 
 ##

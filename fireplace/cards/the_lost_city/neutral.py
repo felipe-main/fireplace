@@ -319,8 +319,11 @@ class _RavenousDevilsaur(TargetedAction):
 
 
 class _PterrordaxSteal(TargetedAction):
-    """The summoned Pterrordax steals 1 Health from all OTHER minions: deal
-    1 damage to each other minion and gain +1 Health per minion hit."""
+    """The summoned Pterrordax steals 1 Health from all OTHER minions: this is
+    a permanent Health *steal* (mirror the GDB K'ara pattern) — each other
+    minion has its max Health reduced by 1 (TLC_831e "Pterrified | Reduced
+    Health."), and the Pterrordax gains +1 max Health per minion stolen from.
+    It is NOT removable damage: victims end undamaged at their new lower max."""
 
     TARGET = ActionArg()
 
@@ -333,7 +336,9 @@ class _PterrordaxSteal(TargetedAction):
         if not others:
             return
         for m in others:
-            source.game.queue_actions(source, [Hit(m, 1)])
+            source.game.queue_actions(
+                source, [Buff(m, "TLC_831e", max_health=-1)]
+            )
         source.game.queue_actions(
             source, [Buff(pterrordax, "TLC_831e_dyn", max_health=len(others))]
         )

@@ -58,6 +58,30 @@ def test_spelunker_only_affects_one_temporary():
     assert second.cost == 4       # no longer discounted
 
 
+def test_spelunker_net_one_discount_with_two_in_hand():
+    # review.csv row 559 (cosmetic): the host aura visually discounts ALL
+    # Temporary cards in hand at once, but the NET realized effect is a single
+    # -2 discount: the host is destroyed on the first Temporary play, so the
+    # second Temporary pays full cost. Defensive test of that invariant.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    p1.give("TLC_450").play()
+    assert "TLC_450host" in [b.id for b in p1.hero.buffs]
+
+    first = p1.give(YETI)         # base cost 4
+    second = p1.give(YETI)        # base cost 4
+    _make_temporary(first)
+    _make_temporary(second)
+    # Cosmetic over-display: while held, both show the -2 aura.
+    assert first.cost == 2
+    assert second.cost == 2
+
+    first.play()                  # consumes the host
+    assert "TLC_450host" not in [b.id for b in p1.hero.buffs]
+    # NET invariant: only ONE -2 discount realized — the second pays full.
+    assert second.cost == 4
+
+
 # ---------------------------------------------------------------------------
 # TLC_463 Razidir - Battlecry: Discard a random card from your hand.
 # Kindred: Your opponent's hand instead.
@@ -247,21 +271,56 @@ def test_escape_the_underfel_ignores_non_temporary():
 
 
 # ---------------------------------------------------------------------------
-# TLC_446t1 Underfel Rift - throw a card in to summon 2 random Fel Beasts.
+# TLC_446t1 Underfel Rift - persistent untouchable MINION (data HEALTH 1).
+# Once per turn it throws a card in (discards one random card from hand) and
+# summons 2 random Fel Beasts. We model the once-per-turn cadence at end of
+# the controller's turn; the Rift body stays on the board.
 # ---------------------------------------------------------------------------
 
-def test_underfel_rift_summons_two_fel_beasts():
+FEL_BEASTS = ("TLC_446t2", "TLC_446t3", "TLC_446t4")
+
+
+def test_underfel_rift_is_persistent_minion():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
+    rift = p1.summon("TLC_446t1")
+    # Data shape: a 0/1 untouchable minion that stays in play.
+    assert rift.type == CardType.MINION
+    assert rift.zone == Zone.PLAY
+    assert rift in p1.field
+    assert rift.max_health == 1
+    assert rift.data.tags.get(GameTag.UNTOUCHABLE)
+
+
+def test_underfel_rift_activates_each_turn():
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    # Make sure it is p1's turn so the next end_turn is p1's own turn end.
+    if game.current_player is not p1:
+        game.end_turn()
     for c in list(p1.hand):
         c.discard()
+    rift = p1.summon("TLC_446t1")
+
+    # First turn: two cards in hand, one is thrown in, 2 Fel Beasts summoned.
     p1.give(YETI)                   # a card to "throw in"
-    rift = p1.give("TLC_446t1")
-    rift.play()
-    beasts = [m for m in p1.field if m.id in ("TLC_446t2", "TLC_446t3", "TLC_446t4")]
+    p1.give(BOAR)                   # survives
+    hand_before = len(p1.hand)      # 2
+    game.end_turn()                 # p1's turn ends -> Rift activates
+    beasts = [m for m in p1.field if m.id in FEL_BEASTS]
     assert len(beasts) == 2
-    # The Yeti was thrown in (discarded); hand is now empty.
-    assert len(p1.hand) == 0
+    assert len(p1.hand) == hand_before - 1   # exactly one card thrown in
+    assert rift in p1.field         # Rift persists
+
+    game.end_turn()                 # opponent turn (p1 draws at next begin)
+    # Second of our turns ends -> Rift activates AGAIN (once per turn).
+    hand_before = len(p1.hand)
+    assert hand_before >= 1         # at least one card available to throw in
+    game.end_turn()
+    beasts = [m for m in p1.field if m.id in FEL_BEASTS]
+    assert len(beasts) == 4         # 2 more summoned -> per-turn cadence
+    assert len(p1.hand) == hand_before - 1   # exactly one more card thrown in
+    assert rift in p1.field
 
 
 # ---------------------------------------------------------------------------

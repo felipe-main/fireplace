@@ -592,8 +592,13 @@ def test_pterrordax_egg():
     pter = [m for m in p1.field if m.id == "TLC_831t"][0]
     # 3/3 base + steals 1 health from each of the 2 other minions => +2 health.
     assert (pter.atk, pter.health) == (3, 5)
-    assert other.health == 4
-    assert enemy.health == 4
+    assert pter.max_health == 5
+    # The steal is PERMANENT (lowers max Health), not removable damage: each
+    # 4/5 Yeti ends as a 4/4 that is undamaged (health == max_health == 4).
+    assert (other.atk, other.health, other.max_health) == (4, 4, 4)
+    assert other.damage == 0
+    assert (enemy.atk, enemy.health, enemy.max_health) == (4, 4, 4)
+    assert enemy.damage == 0
 
 
 # ---------------------------------------------------------------------------

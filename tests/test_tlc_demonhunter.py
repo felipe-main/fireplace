@@ -241,3 +241,91 @@ def test_hive_map_discovers_fel_spell():
     p1.choice.choose(chosen)
     held = [c for c in p1.hand if c.id == chosen.id]
     assert len(held) == 1
+
+
+# --------------------------------------------------------------------------
+# DINO_137 — Skittish Saucier: snapshot-based neighbour discount (review #562)
+# --------------------------------------------------------------------------
+# The discount must hit the Saucier's *physical* hand neighbours captured at
+# play time (via _play_hand_index/_play_hand_size), NOT a heuristic that can be
+# fooled by an earlier play this turn bumping a non-neighbour.
+
+
+def test_skittish_saucier_discounts_exact_neighbors_after_prior_play():
+    """A card played earlier this turn must not be mistaken for a neighbour:
+    only the Saucier's two physical hand neighbours at play time get (1) off."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    _clear_hand(p1)
+    # Play a Beast FIRST this turn (perturbs any adjacency counters), then set
+    # up the Saucier's hand. The fix must ignore this prior play entirely.
+    p1.give(BEAST).play()
+    far_left = p1.give(RACELESS)   # index 0 — not adjacent
+    left = p1.give(RACELESS)       # index 1 — left neighbour
+    saucier = p1.give("DINO_137")  # index 2 — played from the middle
+    right = p1.give(RACELESS)      # index 3 — right neighbour
+    far_right = p1.give(RACELESS)  # index 4 — not adjacent
+    base = far_left.cost
+    assert left.cost == base and right.cost == base
+    saucier.play()
+    assert left.cost == base - 1
+    assert right.cost == base - 1
+    assert far_left.cost == base
+    assert far_right.cost == base
+
+
+def test_skittish_saucier_right_edge_single_neighbor():
+    """Saucier at the right edge of hand has only a left neighbour."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    _clear_hand(p1)
+    other = p1.give(RACELESS)      # index 0 — not adjacent
+    left = p1.give(RACELESS)       # index 1 — left neighbour
+    saucier = p1.give("DINO_137")  # index 2 — right edge
+    base = other.cost
+    saucier.play()
+    assert left.cost == base - 1
+    assert other.cost == base
+
+
+# --------------------------------------------------------------------------
+# DINO_138 — Diabolus Rex: base Kindred behaviour (review #561 — accepted)
+# --------------------------------------------------------------------------
+# next_kindred_double (set by Primalfin Challenger) is NOT consulted by the
+# Kindred() evaluator — that wiring lives in dsl/ (engine, out of card scope).
+# This test pins the base gating + 6-damage outermost hit so a regression in
+# the un-doubled path is caught.
+
+
+def test_diabolus_rex_base_kindred_hits_outermost_only():
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    p2 = game.player2
+    # Activate Kindred: a Beast played last turn.
+    p1.give(BEAST).play()
+    game.end_turn(); game.end_turn()
+    assert Race.BEAST in p1.races_played_last_turn
+    left = p2.summon(RACELESS)
+    middle = p2.summon(RACELESS)
+    right = p2.summon(RACELESS)
+    for m in (left, middle, right):
+        m.max_health = 30
+        m.damage = 0
+    p1.give("DINO_138").play()
+    # Exactly 6 to each outermost enemy; the middle is untouched (no doubling).
+    assert left.damage == 6
+    assert right.damage == 6
+    assert middle.damage == 0
+
+
+def test_diabolus_rex_inactive_kindred_no_damage():
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    p2 = game.player2
+    game.end_turn(); game.end_turn()
+    assert Race.BEAST not in p1.races_played_last_turn
+    foe = p2.summon(RACELESS)
+    foe.max_health = 30
+    foe.damage = 0
+    p1.give("DINO_138").play()
+    assert foe.damage == 0

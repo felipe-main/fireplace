@@ -5,21 +5,41 @@ from ..utils import *
 # Custom engine-internal actions for this class' cards
 
 
-class _NextBeastDiscount(TargetedAction):
-    """Cower in Fear refund: arm a one-shot Beast discount on the controller;
-    the first Beast played this turn refunds up to 2 mana (clamped to paid)."""
+_BEAST_DISCOUNT_ENCHANT = "TLC_823e2"
+
+
+def _arm_beast_in_hand(card):
+    """Attach the (2)-less Cost discount enchant to a single Beast in hand,
+    unless it already carries it. Returns nothing; mutates via Buff."""
+    if any(b.id == _BEAST_DISCOUNT_ENCHANT for b in card.buffs):
+        return
+    card.game.cheat_action(card, [Buff(card, _BEAST_DISCOUNT_ENCHANT)])
+
+
+def _strip_beast_discount(card):
+    """Remove the Cower (2)-less enchant from a card, if present."""
+    for buff in list(card.buffs):
+        if buff.id == _BEAST_DISCOUNT_ENCHANT:
+            buff.remove()
+
+
+class _ArmBeastDiscount(TargetedAction):
+    """Cower in Fear — genuine cost reduction. Stamp every Beast currently in
+    the controller's hand with the (2)-less Cost enchant (TLC_823e2). The
+    enchant lowers the *displayed* cost before payment, so an 8-Cost Beast
+    becomes castable with 6 mana (unlike a refund-after-pay)."""
 
     TARGET = ActionArg()
-    AMOUNT = IntArg()
 
-    def do(self, source, target, amount=2):
-        target._next_beast_discount = getattr(
-            target, "_next_beast_discount", 0
-        ) + amount
+    def do(self, source, target):
+        for card in list(target.hand):
+            if card.type == CardType.MINION and Race.BEAST in card.races:
+                _arm_beast_in_hand(card)
 
 
-class _ConsumeNextBeastDiscount(TargetedAction):
-    """Refund the armed Beast discount when a Beast is played, then disarm."""
+class _ArmDrawnBeastDiscount(TargetedAction):
+    """While the discount is armed, a Beast drawn this turn also gains the
+    (2)-less enchant (so it qualifies as the next Beast you play)."""
 
     TARGET = ActionArg()
     CARD = ActionArg()
@@ -27,23 +47,23 @@ class _ConsumeNextBeastDiscount(TargetedAction):
     def do(self, source, target, card):
         if isinstance(card, list):
             card = card[0] if card else None
-        disc = getattr(target, "_next_beast_discount", 0)
-        if disc <= 0 or card is None:
+        if card is None:
             return
-        paid = max(0, card.cost)
-        refund = min(paid, disc)
-        if refund:
-            source.game.cheat_action(source, [SpendMana(target, -refund)])
-        target._next_beast_discount = 0
+        if card.type == CardType.MINION and Race.BEAST in card.races:
+            _arm_beast_in_hand(card)
 
 
 class _ClearBeastDiscount(TargetedAction):
-    """Disarm the next-Beast discount (end of turn, if unused)."""
+    """Disarm the next-Beast discount: strip the (2)-less enchant from every
+    Beast left in the controller's hand. Used both when the first Beast is
+    played (the played one already consumed its reduced cost and left hand) and
+    at end of turn (unused). The controller marker self-destroys separately."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        target._next_beast_discount = 0
+        for card in list(target.hand):
+            _strip_beast_discount(card)
 
 
 class _NiriDoubleStats(TargetedAction):
@@ -294,26 +314,43 @@ class TLC_823:
     }
     play = (
         Hit(TARGET, 3),
-        _NextBeastDiscount(CONTROLLER, 2),
+        _ArmBeastDiscount(CONTROLLER),
         Buff(CONTROLLER, "TLC_823e"),
     )
 
 
 @custom_card
 class TLC_823e:
-    # Controller-attached marker that refunds the armed Beast discount when a
-    # Beast is played this turn, then removes itself (one-shot; expires at end
-    # of turn). Lives on the controller so it survives Cower leaving the hand.
+    # Controller-attached marker driving the genuine (2)-less Cost discount.
+    # Lives on the controller so it survives Cower leaving the hand. It:
+    #   * stamps later-drawn Beasts with the discount enchant (so a Beast drawn
+    #     this turn can still be "the next Beast you play"),
+    #   * when the first Beast is played, strips the leftover enchant from every
+    #     other Beast still in hand (only the next Beast benefits) and removes
+    #     itself,
+    #   * at end of turn, strips any leftover enchants and removes itself.
     tags = {
         GameTag.CARDNAME: "Cower in Fear",
         GameTag.CARDTYPE: CardType.ENCHANTMENT,
     }
     events = (
-        Play(OWNER, BEAST).after(
-            _ConsumeNextBeastDiscount(OWNER, Play.CARD), Destroy(SELF)
-        ),
+        Draw(OWNER).after(_ArmDrawnBeastDiscount(OWNER, Draw.CARD)),
+        Play(OWNER, BEAST).after(_ClearBeastDiscount(OWNER), Destroy(SELF)),
         OWN_TURN_END.on(_ClearBeastDiscount(OWNER), Destroy(SELF)),
     )
+
+
+@custom_card
+class TLC_823e2:
+    # Cower in Fear — the actual (2)-less Cost discount enchant landed on a Beast
+    # in hand. Genuine cost reduction: GameTag.COST folds into the displayed
+    # cost via card.py's cost getter (proven by Dinositter's TLC_822e), so the
+    # Beast is castable for 2 less *before* paying — not refunded after.
+    tags = {
+        GameTag.CARDNAME: "Cower in Fear",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+        GameTag.COST: -2,
+    }
 
 
 class TLC_824:

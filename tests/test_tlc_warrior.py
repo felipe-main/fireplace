@@ -274,6 +274,47 @@ def test_tlc_602t_latorvius_gives_two_rewards():
         assert c.id in pool
 
 
+def test_tlc_602t_latorvius_shuffles_the_rest_into_deck():
+    # Printed: "Get 2 random 'Journey to Un'Goro' Quest Rewards. Shuffle the
+    # rest into your deck." Verify BOTH halves: exactly 2 rewards enter hand,
+    # and the remaining 7 entourage tokens are shuffled into the deck — with
+    # the two sets disjoint (no token is both given and shuffled).
+    game = prepare_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.player1
+    _clear_hand(p1)
+    # Empty the deck so we can read off exactly what got shuffled in.
+    for card in list(p1.deck):
+        card.discard()
+    assert len(p1.deck) == 0
+
+    latorvius = p1.give("TLC_602t")
+    entourage = list(latorvius.entourage)
+    n_total = len(entourage)  # 9 UNG quest rewards
+
+    latorvius.play()
+    while p1.choice:
+        p1.choice.choose(p1.choice.cards[0])
+
+    hand_ids = sorted(c.id for c in p1.hand)
+    deck_ids = sorted(c.id for c in p1.deck)
+
+    # Exactly 2 rewards in hand, exactly the rest shuffled into the deck.
+    assert len(hand_ids) == 2
+    assert len(deck_ids) == n_total - 2  # 7 shuffled in
+
+    # Every card in hand and deck is a real entourage reward token.
+    pool = sorted(entourage)
+    for cid in hand_ids:
+        assert cid in pool
+    for cid in deck_ids:
+        assert cid in pool
+
+    # Given (hand) and shuffled (deck) are disjoint and together cover the
+    # whole entourage exactly once (a multiset partition).
+    assert set(hand_ids).isdisjoint(set(deck_ids))
+    assert sorted(hand_ids + deck_ids) == pool
+
+
 ##
 # TLC_632 — Story of Sulfuras (Hero Power swap)
 

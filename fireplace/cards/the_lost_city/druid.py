@@ -109,6 +109,49 @@ class TLC_232:
     events = OWN_TURN_BEGIN.on(Summon(CONTROLLER, "TLC_237t") * 3, Destroy(SELF))
 
 
+class _LifeCycleReplace(TargetedAction):
+    """Life Cycle - destroy the target, then summon a random minion of the
+    *same Cost* into the freed slot.
+
+    The naive script summoned the replacement *before* the destroy resolved,
+    which had two problems:
+      1. A full board (7 minions including the target) made the summon a
+         no-op — `is_summonable()` returns False at 7 minions, so the
+         replacement was silently dropped, and only the destroy ran. The
+         printed card frees the slot first, so a same-Cost minion always
+         appears.
+      2. The replacement landed beside the original rather than in its
+         vacated position.
+
+    This action snapshots the target's Cost up front (so cost auras at cast
+    time are honoured even though the minion is gone by summon time), destroys
+    the target, processes the death so its slot frees and `_dead_position` is
+    recorded, then summons a same-Cost minion into that freed slot on the
+    target's controller's side.
+    """
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        cost = target.cost
+        controller = target.controller
+        source.game.cheat_action(source, [Destroy(target)])
+        source.game.process_deaths()
+        # Place the replacement into the vacated slot (HS slides the new
+        # minion into the destroyed minion's position).
+        dead_pos = getattr(target, "_dead_position", None)
+        pick = RandomMinion(cost=cost).evaluate(source)
+        if not pick:
+            return
+        card_id = pick[0] if isinstance(pick, (list, tuple)) else pick
+        if len(controller.field) >= source.game.MAX_MINIONS_ON_FIELD:
+            return
+        replacement = controller.card(card_id, source=source)
+        if dead_pos is not None:
+            replacement._summon_index = dead_pos
+        source.game.cheat_action(source, [Summon(controller, replacement)])
+
+
 class TLC_235:
     """Life Cycle"""
 
@@ -117,12 +160,10 @@ class TLC_235:
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_TARGET_TO_PLAY: 0,
     }
-    # Summon the replacement (same Cost) on the destroyed minion's side, then
-    # destroy the original. COST(TARGET) is read before the destroy resolves.
-    play = (
-        Summon(Controller(TARGET), RandomMinion(cost=COST(TARGET))),
-        Destroy(TARGET),
-    )
+    # Destroy the target first (freeing its board slot, so the replacement
+    # always lands even from a full board), then summon a same-Cost minion
+    # into the vacated position. Cost is snapshotted before the destroy.
+    play = _LifeCycleReplace(TARGET)
 
 
 class TLC_236:

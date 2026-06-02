@@ -228,19 +228,24 @@ class CATA_476t:
 
 class _UltraxionHerald(TargetedAction):
     """Ultraxion — Herald, then reduce Deathwing's Cost by (heralds_this_game).
-    We bump the Herald counter, then buff every Deathwing (CATA_190h) in hand
-    with a cost reduction equal to the new Herald count."""
+    Banks the reduction on a per-player accumulator
+    (Player.deathwing_cost_reduction) instead of stamping the in-hand copy, so a
+    Deathwing (CATA_190h) drawn AFTER the reduction still benefits (Deathwing's
+    cost_mod reads the accumulator)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
         ctrl.heralds_this_game += 1
-        n = ctrl.heralds_this_game
-        for c in ctrl.hand:
-            if getattr(c, "id", None) == "CATA_190h":
-                for _ in range(n):
-                    source.game.cheat_action(source, [Buff(c, "CATA_497e")])
+        ctrl.deathwing_cost_reduction += ctrl.heralds_this_game
+
+
+class _DeathwingDiscount(LazyNum):
+    """Ultraxion's banked Deathwing cost reduction for the holder's controller."""
+
+    def evaluate(self, source):
+        return self.num(getattr(source.controller, "deathwing_cost_reduction", 0))
 
 
 class CATA_497:
@@ -592,8 +597,10 @@ class CATA_190t13e:
 class CATA_190h:
     "Deathwing, Worldbreaker"
     # Battlecry: Choose {0} Cataclysm(s) to unleash! Herald twice to upgrade.
-    # Cost reduced by heralds_this_game (handled by Ultraxion's CATA_497e
-    # cost buffs stamped onto this card in hand).
+    # Cost reduced by the controller's banked Ultraxion reduction
+    # (Player.deathwing_cost_reduction) — applies wherever this card is held or
+    # drawn (the engine clamps cost at 0).
+    cost_mod = -_DeathwingDiscount()
     play = _DeathwingUnleash(SELF)
 
 

@@ -5,23 +5,25 @@ from ..utils import *
 # "Spent N Mana while holding this" mechanic (Cataclysm Druid)
 #
 # Several Druid cards check whether the controller has spent a threshold of
-# Mana while the card was held in hand. The engine has no per-card "mana spent
-# while holding" tracker (only spell-specific `spells_cast_while_holding`), so
-# we approximate it with a Hand.events listener: each time a friendly card is
-# played while this card is in hand, accumulate that card's printed cost on a
-# per-card `_cata_mana_spent` attribute. The card's `play`/battlecry then reads
-# that attribute against its threshold.
+# Mana while the card was held in hand. We track the ACTUAL Mana spent: a
+# Hand.events listener on SpendMana(CONTROLLER) accumulates every Mana payment
+# the controller makes while this card sits in hand (card plays AND hero-power
+# uses, post-discount, including Coin/temporary Mana — exactly what HS counts
+# as "Mana spent") onto a per-card `_cata_mana_spent` attribute.
 #
-# Approximation notes:
-#  - We count the *printed cost* of each played card, not the literal Mana
-#    spent (cost reductions / Coin / armor-payment edge cases diverge).
-#  - The accumulator is per-card-instance and resets when the card leaves hand
-#    (it's a plain attribute, recreated on a fresh draw), matching the printed
-#    "while holding this".
+# Playing the card itself also fires one SpendMana (its own cost is paid while
+# it is still in hand), so `_spent_while_holding` subtracts the card's locked-in
+# `_played_cost` to exclude the cost of playing it — the threshold counts Mana
+# spent *before* this card, not the Mana that plays it.
+#
+# The accumulator is per-card-instance and resets when the card leaves hand
+# (it's a plain attribute, recreated on a fresh draw), matching "while holding
+# this". (A card that pays Health instead of Mana — e.g. War'loc — fires no
+# SpendMana; such a card is never in this Druid trio, an accepted edge.)
 
 
 class _CataSpentWatch(TargetedAction):
-    """Accumulate the cost of a card played while a 'spent N Mana' card is held."""
+    """Accumulate Mana spent by the controller while a 'spent N Mana' card is held."""
 
     TARGET = ActionArg()
     AMOUNT = IntArg()
@@ -31,15 +33,17 @@ class _CataSpentWatch(TargetedAction):
 
 
 def _spent_while_holding(card):
-    return getattr(card, "_cata_mana_spent", 0)
+    spent = getattr(card, "_cata_mana_spent", 0)
+    # Exclude the Mana paid to play THIS card (counted because the payment
+    # happens while the card is still in hand).
+    own = getattr(card, "_played_cost", 0) or 0
+    return max(0, spent - own)
 
 
 # A reusable Hand.events listener factory: bump the held card's accumulator by
-# the cost of any *other* friendly card played.
-_SPENT_HAND_EVENTS = OWN_CARD_PLAY.on(
-    lambda self, player, card, *rest: _CataSpentWatch(SELF, max(0, card.cost))
-    if card is not self
-    else None
+# the actual amount of every Mana payment the controller makes.
+_SPENT_HAND_EVENTS = SpendMana(CONTROLLER).after(
+    lambda self, player, amount: _CataSpentWatch(SELF, amount) if amount > 0 else None
 )
 
 
@@ -47,26 +51,17 @@ _SPENT_HAND_EVENTS = OWN_CARD_PLAY.on(
 # Minions
 
 
-class _CrystalspineCheck(TargetedAction):
-    """Crystalspine Cub — at end of turn, if the controller is tapped out (no
-    Mana left, i.e. spent their last crystal), gain +1/+1."""
-
-    TARGET = ActionArg()
-
-    def do(self, source, target):
-        if source.controller.mana == 0:
-            source.game.cheat_action(source, [Buff(source, "CATA_130e")])
-
-
 class CATA_130:
     """Crystalspine Cub"""
 
-    # Whenever you spend your last Mana Crystal, gain +1/+1.
-    # Approximated as: at the end of your turn, if you have no Mana left (you
-    # spent your last Mana Crystal this turn), gain +1/+1. The printed trigger
-    # fires per spend; we collapse it to once per turn when tapped out, the
-    # common-case interpretation.
-    events = OWN_TURN_END.on(_CrystalspineCheck(SELF))
+    # Whenever you spend your last Mana Crystal, gain +1/+1. Fires each time a
+    # Mana payment leaves the controller at 0 Mana (i.e. the spend that empties
+    # them) — a real per-spend trigger, not a once-per-turn end-of-turn check.
+    events = SpendMana(CONTROLLER).after(
+        lambda self, player, amount: Buff(SELF, "CATA_130e")
+        if amount > 0 and player.mana == 0
+        else None
+    )
 
 
 class CATA_130e:

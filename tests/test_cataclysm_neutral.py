@@ -207,6 +207,31 @@ def test_ultraxion_heralds_and_discounts_deathwing():
     assert dw.cost == 9  # reduced by 1
 
 
+def test_ultraxion_discount_applies_to_deathwing_drawn_later():
+    # The reduction is banked on the player, so a Deathwing acquired AFTER
+    # Ultraxion still benefits (not just one already in hand).
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.player1
+    p1.give("CATA_497").play()  # no Deathwing held yet
+    assert p1.deathwing_cost_reduction == 1
+    dw = p1.give("CATA_190h")  # acquired afterwards
+    assert dw.cost == 9
+
+
+def test_ultraxion_discount_accumulates_by_herald_count():
+    # Each Ultraxion reduces by the current Herald count: +1 then +2 = -3 total.
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1 = game.player1
+    p1.max_mana = 10
+    p1.used_mana = 0
+    p1.give("CATA_497").play()  # herald 1 -> reduction 1
+    p1.used_mana = 0
+    p1.give("CATA_497").play()  # herald 2 -> reduction 1+2 = 3
+    assert p1.deathwing_cost_reduction == 3
+    dw = p1.give("CATA_190h")
+    assert dw.cost == 7  # 10 - 3
+
+
 # ---------------------------------------------------------------------------
 # CATA_556 Carrier Whelp — get a cheap dragon
 # ---------------------------------------------------------------------------

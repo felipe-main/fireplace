@@ -10,26 +10,39 @@ def _resolve_choices(player):
 
 
 # ---------------------------------------------------------------------------
-# CATA_130 Crystalspine Cub — tap out -> +1/+1 at end of turn
+# CATA_130 Crystalspine Cub — +1/+1 each time a spend empties your Mana
 # ---------------------------------------------------------------------------
-def test_crystalspine_cub_taps_out():
+def test_crystalspine_cub_buffs_on_emptying_spend():
     game = prepare_game(CardClass.DRUID, CardClass.DRUID)
     cub = game.player1.summon("CATA_130")
     assert cub.atk == 1 and cub.health == 2
-    # Spend all mana (max_mana is 10 from turn 1). Drain to 0.
-    game.player1.used_mana = game.player1.max_mana
-    assert game.player1.mana == 0
-    game.end_turn()
+    # Set Mana so a single 1-cost play empties the pool.
+    game.player1.max_mana = 1
+    game.player1.used_mana = 0
+    game.player1.give("CS2_171").play()  # Stonetusk Boar, cost 1 -> Mana to 0
+    # Buff applies immediately on the emptying spend (not at end of turn).
     assert cub.atk == 2 and cub.health == 3
 
 
 def test_crystalspine_cub_no_buff_with_mana_left():
     game = prepare_game(CardClass.DRUID, CardClass.DRUID)
     cub = game.player1.summon("CATA_130")
-    # Leave mana available.
+    game.player1.max_mana = 3
     game.player1.used_mana = 0
-    game.end_turn()
+    game.player1.give("CS2_171").play()  # cost 1 -> Mana 3->2, still > 0
+    assert cub.atk == 1 and cub.health == 2  # no buff, Mana remains
+
+
+def test_crystalspine_cub_fires_once_per_emptying():
+    # Two 1-cost plays with 2 Mana: only the SECOND (the emptying spend) buffs.
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    cub = game.player1.summon("CATA_130")
+    game.player1.max_mana = 2
+    game.player1.used_mana = 0
+    game.player1.give("CS2_171").play()  # 2 -> 1, no buff
     assert cub.atk == 1 and cub.health == 2
+    game.player1.give("CS2_171").play()  # 1 -> 0, buff fires once
+    assert cub.atk == 2 and cub.health == 3
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +70,23 @@ def test_felwood_treant_permanent_when_spent_4():
     base_max = game.player1.max_mana
     card.play()
     # Permanent crystal: max_mana +1.
+    assert game.player1.max_mana == base_max + 1
+
+
+def test_felwood_treant_counts_actual_mana_spent_not_own_cost():
+    # Integration: real Mana spent on OTHER plays accumulates while held; the
+    # Treant's own play-cost does NOT count toward the threshold.
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    game.player1.max_mana = 6
+    game.player1.used_mana = 0
+    treant = game.player1.give("CATA_131")  # held the whole time
+    # Spend 4 Mana on other cards while holding the Treant: two 2-cost minions.
+    game.player1.give("CS2_182").play()  # Chillwind Yeti, cost 4 -> spend 4
+    assert treant._cata_mana_spent == 4  # tracked the real payment
+    # Now play the Treant (cost 2): its own 2 is added then subtracted out, so
+    # spent_while_holding stays 4 -> permanent crystal.
+    base_max = game.player1.max_mana
+    treant.play()
     assert game.player1.max_mana == base_max + 1
 
 

@@ -405,6 +405,11 @@ class Player(Entity, TargetableByAuras):
         # Health instead of Mana." One-shot, NO time limit — consumed in
         # pay_cost when the next qualifying Murloc is played.
         self.next_cheap_murloc_costs_health = False
+        # Cataclysm — Ultraxion: cumulative cost reduction applied to Deathwing
+        # (CATA_190h) wherever it is held or drawn. Each Ultraxion battlecry adds
+        # the current Herald count; Deathwing's cost_mod reads this, so a copy
+        # drawn AFTER the reductions still benefits. Per game.
+        self.deathwing_cost_reduction = 0
         # Cataclysm — Cleansing Cleric: "Your healing effects restore 2 more
         # Health this game." Additive bonus per heal, applied in Heal.do; per
         # game, never reset.

@@ -62,8 +62,8 @@ class _FelSpellsCastThisGame(LazyNum):
 class _BroxigarLastStand(TargetedAction):
     """Broxigar's Last Stand — deal 1 damage to all minions, then draw a card
     for each minion that died as a result. Snapshot the board, hit each for 1,
-    let deaths process, then count how many of the snapshot left PLAY and draw
-    that many."""
+    let deaths process, then count how many of the snapshot actually died and
+    draw that many."""
 
     TARGET = ActionArg()
 
@@ -75,7 +75,10 @@ class _BroxigarLastStand(TargetedAction):
         # Deaths are only moved to the graveyard once the action stack drains;
         # force it now so the post-AoE board reflects the kills before we count.
         game.process_deaths()
-        died = sum(1 for m in before if m.zone != Zone.PLAY)
+        # Count minions that actually DIED (now in the graveyard), not merely
+        # ones that left PLAY — a mid-resolution bounce (to hand/deck) is not a
+        # death and must not inflate the draw count.
+        died = sum(1 for m in before if m.zone == Zone.GRAVEYARD)
         if died:
             game.cheat_action(source, [Draw(source.controller) * died])
 

@@ -109,19 +109,21 @@ def test_soldier_of_azshara_token_buffs_hero():
 def test_broxigars_last_stand_draws_per_death():
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1, p2 = game.player1, game.player2
-    # Two 1-health minions (will die) and one big minion (survives).
-    a = p1.summon("CS2_171")   # Stonetusk Boar 1/1
-    b = p2.summon("CS2_171")   # 1/1
-    big = p2.summon("CATA_528t")  # 3/3 Naga Monstrosity — survives 1 dmg
+    # K = 3 one-health minions (all die to the 1-damage AoE) plus one minion
+    # buffed to high health (absorbs the tick, stays in PLAY).
+    K = 3
+    dying = [p1.summon("CS2_171"), p2.summon("CS2_171"), p2.summon("CS2_171")]
+    big = p2.summon("CATA_528t")  # Naga Monstrosity
+    big.max_health = 80
+    big.damage = 0
     pre_hand = len(p1.hand)
-    brox = p1.give("CATA_526")
-    brox.play()
-    # Two 1/1s died, big survives -> draw exactly 2.
-    assert a.zone == Zone.GRAVEYARD
-    assert b.zone == Zone.GRAVEYARD
+    p1.give("CATA_526").play()
+    # Exactly K minions died -> draw exactly K (no over-draw); big survives.
+    for m in dying:
+        assert m.zone == Zone.GRAVEYARD
     assert big.zone == Zone.PLAY
-    assert big.health == 2
-    assert len(p1.hand) == pre_hand + 2
+    assert big.health == 79
+    assert len(p1.hand) == pre_hand + K
 
 
 def test_broxigars_last_stand_no_deaths_no_draw():

@@ -370,7 +370,17 @@ class _ChaosSupplicantCast(TargetedAction):
     TARGET = ActionArg()
 
     def do(self, source, target):
-        cost = target.cost if target is not None else 0
+        # "Same Cost" matches the cast spell's printed/base Cost, not its
+        # discounted play cost. RandomOtherClassSpell filters candidates by
+        # their base cost (db[cid].cost), so read the trigger spell's base
+        # cost from data too — keeps both sides on printed cost and makes a
+        # discounted trigger (e.g. via cost reduction) still match its real
+        # Cost. Fall back to the live cost / 0 if data is unavailable.
+        if target is not None:
+            data = getattr(target, "data", None)
+            cost = data.cost if data is not None and data.cost is not None else target.cost
+        else:
+            cost = 0
         picker = RandomOtherClassSpell(cost=cost)
         source.game.queue_actions(source, [CastSpell(picker)])
 

@@ -237,9 +237,14 @@ class _ConfrontReplay(TargetedAction):
 
     def do(self, source, target):
         ctrl = source.controller
+        # Filter on the EFFECTIVE cost at play time (_played_cost, snapshotted
+        # in Play.do after all discounts), not the printed/base data cost. A
+        # card reduced to 1 when played counts; a printed-1 card discounted to
+        # 0 when played does not. Fall back to data.cost if no snapshot exists.
         originals = [
             c for c in list(ctrl.cards_played_this_game)
-            if (c.data.cost or 0) == 1 and c.id != "CATA_560"
+            if getattr(c, "_played_cost", c.data.cost or 0) == 1
+            and c.id != "CATA_560"
         ]
         for original in originals:
             copy = ctrl.card(original.id, source=source)

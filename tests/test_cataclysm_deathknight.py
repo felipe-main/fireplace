@@ -287,6 +287,42 @@ def test_chow_down_spends_8_corpses_for_rush():
     assert p1.corpses == 0
 
 
+def test_chow_down_full_board_does_not_waste_corpses():
+    # Regression for the summon/Corpse ordering: with a FULL board (7 minions)
+    # no Drakes can be summoned, so no Rush is granted -> the 8 Corpses must NOT
+    # be spent. The old code spent Corpses before the summon loop and would
+    # drop to 0 here; the fixed code summons first and only spends on a grant.
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    for _ in range(7):
+        p1.summon("CS2_182")  # fill the board to 7
+    assert len(p1.field) == 7
+    p1.corpses = 8
+    spell = p1.give("CATA_465")
+    spell.play()
+    drakes = [c for c in p1.field if c.id == "CATA_465t"]
+    assert len(drakes) == 0          # board was full
+    assert p1.corpses == 8           # nothing summoned -> no Rush -> no spend
+
+
+def test_chow_down_partial_board_spends_corpses_and_rushes_summoned():
+    # Six minions on board -> exactly one Drake fits. >= 8 Corpses present, so
+    # the single summoned Drake gets Rush and 8 Corpses are spent.
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    for _ in range(6):
+        p1.summon("CS2_182")  # board at 6 -> room for exactly one Drake
+    p1.corpses = 8
+    spell = p1.give("CATA_465")
+    spell.play()
+    drakes = [c for c in p1.field if c.id == "CATA_465t"]
+    assert len(drakes) == 1
+    assert drakes[0].rush
+    assert p1.corpses == 0
+
+
 # ---------------------------------------------------------------------------
 # CATA_467 Command Claw — after hero attacks, give random friendly +2 Attack
 # ---------------------------------------------------------------------------

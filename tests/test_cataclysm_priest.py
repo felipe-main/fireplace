@@ -190,6 +190,28 @@ def test_alexstrasza_does_not_refire_or_fire_on_partial_heal():
     assert p2.hero.damage == 15  # still 15, not 30
 
 
+def test_alexstrasza_refires_after_dropping_below_full():
+    # "When you reach full Health" repeats: after the hero drops below full and
+    # is healed back to full, the reprisal fires a second time.
+    from fireplace.actions import Heal, Hit
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p1, p2 = game.player1, game.player2
+    # Opponent hero must survive two 15-damage blasts (30 total) without dying.
+    p2.hero.max_health = 80
+    p2.hero.damage = 0
+    p1.give("CATA_307").play()  # hero -> 15 health (damage 15)
+    # First reach to full -> reprisal fires once.
+    game.queue_actions(p1.hero, [Heal(p1.hero, 15)])
+    assert p1.hero.damage == 0
+    assert p2.hero.damage == 15
+    # Drop below full (re-arms the latch), then heal back to full -> fires again.
+    game.queue_actions(p1.hero, [Hit(p1.hero, 4)])
+    assert p1.hero.damage == 4
+    game.queue_actions(p1.hero, [Heal(p1.hero, 4)])
+    assert p1.hero.damage == 0
+    assert p2.hero.damage == 30  # 15 + 15
+
+
 # ---------------------------------------------------------------------------
 # CATA_301 Ruby Sanctum (location) — this turn, healing deals damage instead.
 # ---------------------------------------------------------------------------

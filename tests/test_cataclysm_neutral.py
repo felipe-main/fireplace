@@ -99,13 +99,20 @@ def test_faceless_replicator_transforms_killer():
     p1, p2 = game.player1, game.player2
     fr = p1.summon("CATA_185")  # 3/3
     killer = p2.summon(BOULDERFIST)  # 6/6
+    assert len(p2.field) == 1
     # Killer hits Faceless Replicator dead.
     game.end_turn()  # p1 -> p2 turn so killer (p2) can attack
     killer.attack(fr)
     game.process_deaths()
-    # The Boulderfist that killed it is transformed into a Faceless Replicator.
-    assert any(m.id == "CATA_185" for m in p2.field)
-    assert all(m.id != BOULDERFIST for m in p2.field)
+    # The Boulderfist that killed it is Morphed into a Faceless Replicator: the
+    # killer now sits on p2's board as a token with the printed 3/3 base stats.
+    assert len(p2.field) == 1
+    replica = p2.field[0]
+    assert replica.id == "CATA_185"
+    assert replica.atk == 3 and replica.health == 3
+    # The transformed body is Elusive (cannot be targeted by an enemy spell).
+    fb = p1.give(FIREBALL)
+    assert replica.elusive and replica not in fb.targets
 
 
 def test_faceless_replicator_no_transform_when_killed_by_spell():
@@ -174,6 +181,36 @@ def test_sabotage_aura_follows_hand_position():
     a.discard()                      # now b becomes index 1 (adjacent)
     game.refresh_auras()
     assert b.cost == 7               # 6 + 1, now adjacent to the Sabotage
+
+
+# ---------------------------------------------------------------------------
+# CATA_206 Twisted Monstrosity — keeps its base keywords (Bonus-Effect swap
+# is approximated as a no-op: the "Bonus Effects" pool is NOT enumerated in
+# card data, so the per-turn random swap is accepted as out-of-scope).
+# ---------------------------------------------------------------------------
+
+def test_twisted_monstrosity_keeps_base_keywords():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    # Plays as a vanilla body and carries its data-baked keywords (Taunt).
+    tm = p1.give("CATA_206")
+    tm.play()
+    assert tm.zone == Zone.PLAY
+    assert tm.id == "CATA_206"
+    assert tm.taunt is True
+
+
+def test_twisted_monstrosity_turn_tick_is_a_noop_in_hand():
+    # The per-turn "swap Bonus Effects" tick fires while in hand and must be a
+    # harmless no-op (pool not in data): the card stays itself across a turn.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    tm = p1.give("CATA_206")
+    assert tm.zone == Zone.HAND
+    game.end_turn()
+    game.end_turn()  # back to p1: OWN_TURN_BEGIN fires the Hand tick
+    assert tm.zone == Zone.HAND
+    assert tm.id == "CATA_206"
 
 
 # ---------------------------------------------------------------------------
@@ -342,7 +379,12 @@ def test_shadowed_informant_discovers_spell():
     card.play()
     assert p1.choice is not None
     from hearthstone.enums import CardType
-    assert all(c.type == CardType.SPELL for c in p1.choice.cards)
+    offered = p1.choice.cards
+    # The offered pool is genuinely class-restricted spells: every option is a
+    # SPELL, and all options belong to exactly ONE class (the rotated class).
+    # (The displayed {0} class-name text sync is cosmetic — accepted.)
+    assert all(c.type == CardType.SPELL for c in offered)
+    assert len(set(c.card_class for c in offered)) == 1
     _resolve_choices(p1)
     assert len(p1.hand) == 1
 
@@ -539,6 +581,56 @@ def test_vyranoth_no_split_when_condition_unmet():
     card = p1.give("CATA_213")
     card.play()
     assert card.id == "CATA_213"
+
+
+def _vyranoth_setup(starting_minion_cost):
+    """Build a game where p1's starting minions total `starting_minion_cost`
+    (via 0-or-more cost-20 Molten Giants) and seed 6 Chillwind Yetis in the
+    deck to receive any split. Returns (game, p1, deck_minions)."""
+    from fireplace.card import Card
+
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    for c in list(p1.hand):
+        c.discard()
+    assert starting_minion_cost % 20 == 0
+    starting = []
+    for _ in range(starting_minion_cost // 20):
+        c = Card(MAGMA)  # Molten Giant — cost 20 at full health
+        c.controller = p1
+        starting.append(c)
+    p1.starting_deck = starting
+    deck_minions = []
+    for _ in range(6):
+        m = p1.give(CHILLWIND)  # 4/5 vanilla minion
+        m.zone = Zone.DECK
+        deck_minions.append(m)
+    return game, p1, deck_minions
+
+
+def test_vyranoth_splits_exactly_100_when_starting_cost_is_100():
+    # Gating + payload: starting minions total EXACTLY 100 cost -> distribute
+    # exactly 100 stat points (+1 Atk / +1 Health enchants) across deck minions.
+    game, p1, deck_minions = _vyranoth_setup(100)
+    before = sum(m.atk + m.health for m in deck_minions)
+    enchants_before = sum(len(m.buffs) for m in deck_minions)
+    p1.give("CATA_213").play()
+    after = sum(m.atk + m.health for m in deck_minions)
+    enchants_after = sum(len(m.buffs) for m in deck_minions)
+    # Two independent measures of "100 stats distributed": total stat delta and
+    # the count of +1 enchantments applied. Each random split must total 100.
+    assert after - before == 100
+    assert enchants_after - enchants_before == 100
+
+
+def test_vyranoth_no_split_when_starting_cost_off_by_one_step():
+    # Gating is exact: 80 cost (4 Molten Giants) is NOT 100 -> no buff at all.
+    game, p1, deck_minions = _vyranoth_setup(80)
+    before = sum(m.atk + m.health for m in deck_minions)
+    p1.give("CATA_213").play()
+    after = sum(m.atk + m.health for m in deck_minions)
+    assert after == before
+    assert sum(len(m.buffs) for m in deck_minions) == 0
 
 
 # ---------------------------------------------------------------------------

@@ -173,6 +173,27 @@ def test_mossbinding_summons_and_buffs():
     assert game.player1.mana == 0
 
 
+def test_mossbinding_consumes_temporary_mana():
+    # Regression: temporary Mana (Coin/Innervate) must be COUNTED toward the
+    # buff AND actually CONSUMED, so the player has 0 Mana afterward.
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.player1
+    p1.give("CATA_135")
+    # 4 regular Mana available (used_mana = max - 4) + 3 temporary Mana.
+    p1.used_mana = p1.max_mana - 4
+    p1.temp_mana = 3
+    assert p1.mana == 7  # 4 regular + 3 temp
+    card = [c for c in p1.hand if c.id == "CATA_135"][0]
+    card.play()  # cost 2 paid (temp first: temp 3->1), leaving 4 regular + 1 temp = 5
+    golems = [m for m in p1.field if m.id == "CATA_135t"]
+    assert len(golems) == 2
+    # 5 Mana dumped -> each golem base 1/2 + 5/+5 = 6/7.
+    assert all(m.atk == 6 and m.health == 7 for m in golems)
+    # All Mana, including temporary, is consumed.
+    assert p1.mana == 0
+    assert p1.temp_mana == 0
+
+
 # ---------------------------------------------------------------------------
 # CATA_136 Azshara's Triumph — shuffle 5 big minions doubled
 # ---------------------------------------------------------------------------

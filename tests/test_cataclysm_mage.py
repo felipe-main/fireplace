@@ -2,6 +2,8 @@
 
 from hearthstone.enums import CardClass, CardType, GameTag, SpellSchool, Zone
 
+from fireplace.actions import Buff
+
 from utils import prepare_empty_game, prepare_game
 
 
@@ -217,6 +219,30 @@ def test_unstable_spellcaster_summons_copy_after_spell_damage():
     assert copies == pre + 2
 
 
+def test_unstable_spellcaster_copy_preserves_buffs():
+    # "summon a copy of THIS" must copy the entity (buffs included), not a
+    # fresh card by id. Base CATA_483 is a 2/5; buff it +2/+2 in hand so the
+    # copy is distinguishable from a vanilla summon. The played caster AND its
+    # battlecry copy must both be the buffed 4/7.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    caster = p1.give("CATA_483")   # tracker installed while in hand
+    base_atk, base_health = caster.atk, caster.max_health
+    assert (base_atk, base_health) == (2, 5)
+    # Apply a +2/+2 enchant while in hand (kwargs set the buff's stats before
+    # apply, the same path card scripts use).
+    game.queue_actions(p1.hero, [Buff(caster, "RLK_600e", atk=2, max_health=2)])
+    assert caster.atk == base_atk + 2 and caster.max_health == base_health + 2
+    # Deal spell damage this turn so the battlecry fires.
+    p1.give(FIREBALL).play(target=p2.hero)
+    caster.play()
+    copies = [m for m in p1.field if m.id == "CATA_483"]
+    assert len(copies) == 2
+    for m in copies:
+        assert m.atk == base_atk + 2
+        assert m.max_health == base_health + 2
+
+
 def test_unstable_spellcaster_no_copy_without_spell_damage():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
@@ -331,7 +357,6 @@ def test_conjuration_specialist_splits_a_hand_spell():
     p1 = game.player1
     fb = p1.give(FIREBALL)  # the only spell in hand -> deterministically chosen
     fb_cost = fb.cost
-    pre_ids = [c.id for c in p1.hand]
     p1.give("CATA_979").play()
     ids = [c.id for c in p1.hand]
     # The original Fireball was consumed.
@@ -341,3 +366,21 @@ def test_conjuration_specialist_splits_a_hand_spell():
     assert len(new) == 2
     for c in new:
         assert c.cost == fb_cost
+        assert c.type == CardType.SPELL
+
+
+def test_conjuration_specialist_split_is_not_a_discard():
+    # A split/transform must NOT broadcast a discard: the chosen spell goes to
+    # REMOVEDFROMGAME silently, never to the graveyard, and the DISCARDED tag
+    # (Discard sets target.discarded = True) must remain unset — proving no
+    # Discard action fired and discard-synergy cards would not trigger.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    fb = p1.give(FIREBALL)  # only spell in hand -> deterministically chosen
+    p1.give("CATA_979").play()
+    assert fb not in p1.hand
+    assert fb.zone == Zone.REMOVEDFROMGAME
+    assert fb.zone != Zone.GRAVEYARD
+    # Discard.do stamps the DISCARDED tag (-> card.discarded = True); a silent
+    # split never does, so the attribute stays falsy/unset.
+    assert not getattr(fb, "discarded", False)

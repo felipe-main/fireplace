@@ -157,16 +157,26 @@ CATA_305e = buff(health=3)
 
 
 class _AlexstraszaReprisal(TargetedAction):
-    """Alexstrasza, Guardian of Life — when the controller's hero reaches full
-    Health, deal 15 damage to the opponent's hero. TARGET is the enchantment;
-    its controller's hero is checked."""
+    """Alexstrasza, Guardian of Life — fire ONLY on a genuine transition to full
+    Health. TARGET is the enchantment (SELF); its controller's hero is checked.
+    AMOUNT is the amount actually healed by the triggering Heal.
+
+    The Heal event broadcasts only when a real heal lands (amount > 0, applied
+    after the hero's damage is reduced). So "amount > 0 AND hero.damage == 0"
+    is by construction a below->full transition: the hero must have been below
+    full immediately before (its damage was >= amount > 0). A heal received while
+    already at full is a pure overheal that broadcasts no Heal event at all, so
+    this never re-fires while topped up; and after the hero drops below full and
+    is healed back, the next real heal-to-full fires anew — matching the printed
+    "When you reach full Health" repeating per transition."""
 
     TARGET = ActionArg()
+    AMOUNT = IntArg()
 
-    def do(self, source, target):
+    def do(self, source, target, amount):
         ctrl = target.controller
         hero = ctrl.hero
-        if hero and hero.damage == 0:
+        if hero and amount > 0 and hero.damage == 0:
             source.game.queue_actions(source, [Hit(ctrl.opponent.hero, 15)])
 
 
@@ -184,7 +194,7 @@ class CATA_307:
 class CATA_307e:
     # Cleansed of Corruption — when the controller's hero is healed and is now
     # at full Health, blast the opponent for 15.
-    events = Heal(FRIENDLY_HERO).on(_AlexstraszaReprisal(SELF))
+    events = Heal(FRIENDLY_HERO).on(_AlexstraszaReprisal(SELF, Heal.AMOUNT))
 
 
 ##

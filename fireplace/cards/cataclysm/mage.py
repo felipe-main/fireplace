@@ -78,7 +78,12 @@ class _UnstableSpellcasterBattlecry(TargetedAction):
 
     def do(self, source, target):
         if _spell_dmg_this_turn(source.controller) > 0:
-            source.game.cheat_action(source, [Summon(source.controller, "CATA_483")])
+            # "summon a copy of THIS" — ExactCopy(SELF) preserves any buffs /
+            # enchantments the original carried into play, unlike summoning a
+            # fresh CATA_483 by id (which would reset it to base stats).
+            source.game.cheat_action(
+                source, [Summon(source.controller, ExactCopy(SELF))]
+            )
 
 
 class _RaincallerGain(TargetedAction):
@@ -139,7 +144,13 @@ class _ConjurationSpecialist(TargetedAction):
     def _split(self, source, chosen):
         player = source.controller
         cost = chosen.cost
-        chosen.discard()
+        # The chosen spell is *transformed* (split), not discarded. Removing it
+        # via chosen.discard() would queue a Discard action, broadcast the
+        # on-discard event and stamp the DISCARDED tag — wrongly triggering
+        # discard-synergy cards. Move it straight to REMOVEDFROMGAME instead:
+        # the zone setter just re-buckets the card (hand -> removed) with no
+        # broadcast, so no Discard action ever fires.
+        chosen.zone = Zone.REMOVEDFROMGAME
         for _ in range(2):
             new_id = RandomSpell(cost=cost).evaluate(source)
             if new_id:

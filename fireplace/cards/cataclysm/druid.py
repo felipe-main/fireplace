@@ -330,10 +330,19 @@ class _MossbindingSummon(TargetedAction):
             source.game.cheat_action(source, [Summon(ctrl, "CATA_135t")])
             if len(ctrl.field) > before:
                 golems.append(ctrl.field[-1])
-        # Spend all remaining Mana.
+        # Spend ALL remaining Mana — including temporary (Coin/Innervate)
+        # Mana. `ctrl.mana` already sums the regular pool and temp_mana, so
+        # it is the true magnitude of the buff. We must actually consume both
+        # pools so `ctrl.mana == 0` afterward (mirrors SpendMana's drain):
+        # temporary Mana first, then bump used_mana for the regular remainder.
         spent = ctrl.mana
         if spent > 0:
-            ctrl.used_mana += spent
+            remainder = spent
+            if ctrl.temp_mana:
+                used_temp = min(ctrl.temp_mana, remainder)
+                ctrl.temp_mana -= used_temp
+                remainder -= used_temp
+            ctrl.used_mana = max(ctrl.used_mana + remainder, 0)
             for golem in golems:
                 source.game.cheat_action(
                     source, [Buff(golem, "CATA_135e", atk=spent, max_health=spent)]

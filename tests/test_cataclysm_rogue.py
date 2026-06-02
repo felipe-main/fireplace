@@ -256,6 +256,34 @@ def test_chaos_supplicant_casts_extra_spell():
     assert extra.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
 
 
+def test_chaos_supplicant_matches_printed_cost_not_discounted_cost():
+    # "Same Cost" matches the cast spell's PRINTED Cost, not the discounted
+    # play cost. Cast a printed-cost-2 Rogue spell that has been reduced to 0:
+    # the bonus spell must match cost 2 (the printed cost), proving the trigger
+    # reads data.cost and not the live discounted cost.
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p, o = game.player1, game.player2
+    p.summon("CATA_786")
+    casts_before = len(p.spells_cast_this_game)
+    fan = p.give("EX1_129")  # Fan of Knives — Rogue spell, printed cost 2, no target
+    assert fan.data.cost == 2
+    fan.cost = 0  # discount its play cost to 0; data.cost stays 2
+    assert fan.cost == 0
+    fan.play()
+    _resolve_choices(p)
+    # The played spell plus the bonus same-printed-cost other-class spell.
+    assert len(p.spells_cast_this_game) == casts_before + 2
+    extra = (
+        p.spells_cast_this_game[-1]
+        if p.spells_cast_this_game[-1].id != "EX1_129"
+        else p.spells_cast_this_game[-2]
+    )
+    # (i) a spell, (ii) from another class, (iii) cost == the trigger's PRINTED cost.
+    assert extra.type == CardType.SPELL
+    assert extra.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
+    assert extra.data.cost == 2
+
+
 # ---------------------------------------------------------------------------
 # CATA_154 Sinestra — Colossal +2; other-class spells cast twice; wings give spells
 # ---------------------------------------------------------------------------

@@ -337,6 +337,47 @@ def test_confront_replays_each_1cost_card_played():
     assert len(p1.field) == pre_field + 1
 
 
+def test_confront_replays_card_reduced_to_one_when_played():
+    # A card whose PRINTED cost is 2 but was reduced to 1 at play time IS
+    # replayed — Confront filters on the effective played cost, not the base
+    # data cost. Simulate the discount by stamping the play-time snapshot.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    croc = p1.give("CS2_120")  # River Crocolisk: printed cost 2
+    assert croc.data.cost == 2
+    croc.play()  # 1 minion on board
+    # Reduced-to-1 when played: overwrite the effective-cost snapshot.
+    croc._played_cost = 1
+    pre_field = len(p1.field)
+    p1.give("CATA_560").play()
+    _resolve_choices(p1)
+    # A second River Crocolisk was summoned (replayed), board grew by exactly 1.
+    crocs = [c for c in p1.field if c.id == "CS2_120"]
+    assert len(crocs) == 2
+    assert len(p1.field) == pre_field + 1
+
+
+def test_confront_skips_printed_one_card_discounted_to_zero():
+    # A printed-1 card discounted to 0 at play time is NOT replayed — its
+    # effective played cost was 0, so it falls outside the 1-Cost filter.
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    rallier = p1.give("CATA_558")  # printed cost 1
+    assert rallier.data.cost == 1
+    rallier.play()  # 1 minion on board
+    # Discounted to 0 when played.
+    rallier._played_cost = 0
+    pre_field = len(p1.field)
+    p1.give("CATA_560").play()
+    _resolve_choices(p1)
+    # No extra Rallier: still exactly one, board unchanged.
+    ralliers = [c for c in p1.field if c.id == "CATA_558"]
+    assert len(ralliers) == 1
+    assert len(p1.field) == pre_field
+
+
 # ---------------------------------------------------------------------------
 # Supply Run (Shatter halves)
 # ---------------------------------------------------------------------------

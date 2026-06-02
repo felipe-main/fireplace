@@ -95,23 +95,36 @@ class _BlackwingDeathrattle(TargetedAction):
 
 
 class _ChowDownRush(TargetedAction):
-    """Chow Down — summon five 5/4 Undead Drakes. If the controller has 8
-    Corpses, spend them and give every Drake summoned this way Rush."""
+    """Chow Down — summon five 5/4 Undead Drakes, THEN (only if the controller
+    has >= 8 Corpses) spend 8 and give the Drakes that were actually summoned
+    Rush.
+
+    Ordering matches the printed card: the Drakes are summoned first, so a full
+    board doesn't waste the summon, and Corpses are spent only when Rush is
+    actually granted to at least one summoned Drake.
+    """
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        give_rush = ctrl.corpses >= 8
-        if give_rush:
-            source.game.cheat_action(source, [SpendCorpses(ctrl, 8)])
+        # 1) Summon the Drakes first (board cap stops at 7).
+        summoned = []
         for _ in range(5):
             if len(ctrl.field) >= 7:
                 break
             source.game.cheat_action(source, [Summon(ctrl, "CATA_465t")])
             drake = ctrl.field[-1] if ctrl.field else None
-            if give_rush and drake is not None and drake.id == "CATA_465t":
-                source.game.cheat_action(source, [SetTags(drake, {GameTag.RUSH: True})])
+            if drake is not None and drake.id == "CATA_465t":
+                summoned.append(drake)
+        # 2) Only if we have >= 8 Corpses AND there are Drakes to buff: spend 8
+        #    and grant Rush. Corpses are never spent unless Rush is granted.
+        if ctrl.corpses >= 8 and summoned:
+            source.game.cheat_action(source, [SpendCorpses(ctrl, 8)])
+            for drake in summoned:
+                source.game.cheat_action(
+                    source, [SetTags(drake, {GameTag.RUSH: True})]
+                )
 
 
 class _NefariusCraft(TargetedAction):

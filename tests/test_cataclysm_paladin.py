@@ -31,7 +31,7 @@ def test_chromatus_colossal_and_keywords():
 
 
 def test_chromatus_head_deathrattles_remove_keywords():
-    game = prepare_game(CardClass.PALADIN, CardClass.PALADIN)
+    game = prepare_game(CardClass.PALADIN, CardClass.MAGE)
     body = game.player1.summon("CATA_432")
     heads = {m.id: m for m in game.player1.field if m.id != "CATA_432"}
     # Green head removes Taunt.
@@ -49,6 +49,13 @@ def test_chromatus_head_deathrattles_remove_keywords():
     heads["CATA_432t4"].destroy()
     game.process_deaths()
     assert not body.divine_shield
+    # Blue head removes Elusive — the body becomes targetable by enemy spells.
+    fb = game.player2.give("CS2_029")  # Fireball
+    assert body.elusive and body not in fb.targets
+    heads["CATA_432t3"].destroy()
+    game.process_deaths()
+    assert not body.elusive
+    assert body in fb.targets
 
 
 ##

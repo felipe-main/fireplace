@@ -101,10 +101,12 @@ class _AscendanceMorph(TargetedAction):
 
     def do(self, source, target):
         controller = source.controller
+        # list(controller.field) is snapshotted at loop start, so the cards we
+        # Morph in are never revisited this cast — no per-minion guard needed.
+        # (A persistent _ascended flag would wrongly block a SECOND Ascendance
+        # later in the game, since the morphed cards would still carry it.)
         for minion in list(controller.field):
             if minion.zone != Zone.PLAY:
-                continue
-            if getattr(minion, "_ascended", False):
                 continue
             original_id = minion.id
             pick = RandomMinion(cost=(minion.cost or 0) + 1).evaluate(source)
@@ -113,7 +115,6 @@ class _AscendanceMorph(TargetedAction):
             if not pick:
                 continue
             new_card = controller.card(pick.id, source=source)
-            new_card._ascended = True
             new_card._ascendance_original = original_id
             source.game.cheat_action(source, [Morph(minion, new_card)])
             new_card.additional_deathrattles.append(

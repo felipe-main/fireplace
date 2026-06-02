@@ -60,6 +60,7 @@ def _summon_colossal_limbs(source, target, parent):
 
     right_offset = 1
     left_offset = 0
+    placed_limbs = []
     for limb_id in limb_ids:
         limb_card = parent.controller.card(limb_id, source)
         limb_card.controller = parent.controller
@@ -71,6 +72,18 @@ def _summon_colossal_limbs(source, target, parent):
             right_offset += 1
         limb_card.zone = Zone.PLAY
         source.game.manager.targeted_action(Summon, source, parent.controller, limb_card)
+        placed_limbs.append(limb_card)
+
+    # A Colossal limb may carry a `summoned` self-effect ("When summoned, …").
+    # The placement above bypasses the Summon broadcast (limbs go straight into
+    # PLAY), so fire each limb's `summoned` actions explicitly here — after all
+    # limbs are placed, so per-limb effects see the full board. Without this the
+    # limbs' when-summoned text (e.g. Azshara's hero +Attack, Sinestra's Wings'
+    # spell gift) would silently never fire when the parent is played/summoned.
+    for limb_card in placed_limbs:
+        summoned_actions = limb_card.get_actions("summoned")
+        if summoned_actions:
+            source.game.cheat_action(limb_card, summoned_actions)
 
 
 def _resolve_mini_id(card):

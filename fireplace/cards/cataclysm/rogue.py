@@ -127,39 +127,13 @@ class _IsorathDevour(TargetedAction):
 # Cards
 
 
-class _SinestraWingsGetSpells(TargetedAction):
-    """Sinestra — her two Colossal Wings each say "when summoned, get a random
-    spell from another class (costing Heralds less)". The Wings are summoned by
-    the engine's Colossal hook, which bypasses the Summon broadcast, so the
-    per-Wing summon trigger can't fire on its own. We net the effect onto
-    Sinestra's play: give one discounted other-class spell per Wing that
-    actually came down beside her."""
-
-    TARGET = ActionArg()
-
-    def do(self, source, target):
-        player = source.controller
-        wings = sum(
-            1 for m in player.field if m.id in ("CATA_154t", "CATA_154t1")
-        )
-        discount = min(getattr(player, "heralds_this_game", 0), 2)
-        for _ in range(wings):
-            before = len(player.hand)
-            source.game.cheat_action(
-                source, [Give(player, RandomOtherClassSpell())]
-            )
-            if len(player.hand) > before and discount:
-                spell = player.hand[-1]
-                spell._cost = getattr(spell, "_cost", 0) - discount
-
-
 class CATA_154:
     """Sinestra"""
 
     # Colossal +2. Your spells from other classes cast twice.
-    # Colossal limbs (CATA_154t / CATA_154t1) are summoned by the engine; we
-    # net their "get a random other-class spell" effect onto Sinestra's play.
-    play = _SinestraWingsGetSpells(SELF)
+    # Colossal limbs (CATA_154t / CATA_154t1) are summoned by the engine and
+    # fire their own "get a random other-class spell" effect via the `summoned`
+    # hook (see the tokens below), so the parent needs no netting play.
     update = _SinestraDoubleAura(CONTROLLER)
 
 
@@ -185,20 +159,24 @@ class _SinestraWingSummon(TargetedAction):
             spell = player.hand[-1]
             discount = min(getattr(player, "heralds_this_game", 0), 2)
             if discount:
-                spell.cost_mod = -discount
+                # Mirror Sinestra's own path: an instance `cost_mod` attr is
+                # never read by the cost property — only `_cost` is honored.
+                spell._cost = getattr(spell, "_cost", 0) - discount
 
 
 class CATA_154t:
     """Sinestra's Wing"""
 
     # When summoned, get a random spell from another class. It costs less.
-    events = OWN_SUMMON.on(Find(SELF) & _SinestraWingSummon(SELF))
+    # `summoned` fires the effect on the token's own summon (works for the
+    # engine's Colossal-limb summon, which OWN_SUMMON would miss).
+    summoned = _SinestraWingSummon(SELF)
 
 
 class CATA_154t1:
     """Sinestra's Wing"""
 
-    events = OWN_SUMMON.on(Find(SELF) & _SinestraWingSummon(SELF))
+    summoned = _SinestraWingSummon(SELF)
 
 
 class CATA_158:
@@ -212,7 +190,7 @@ class CATA_158t:
     """Soldier of Sinestra"""
 
     # When summoned, get a random spell from another class. It costs less.
-    events = OWN_SUMMON.on(Find(SELF) & _SinestraWingSummon(SELF))
+    summoned = _SinestraWingSummon(SELF)
 
 
 class CATA_200:
@@ -250,6 +228,28 @@ class CATA_203:
     play = Destroy(TARGET)
 
 
+class _DazeMark(TargetedAction):
+    """Stop the bounced minion being played on its owner's next turn.
+
+    The actual lock uses the engine's ``unplayable_next_turn`` counter (the
+    same primitive Renferal/Coilfang use), which ``is_playable`` honors and
+    which ticks down at the owner's begin_turn — value 2 blocks exactly their
+    next turn. The CATA_215e enchant is only the visual "Dazed" marker; it is
+    anchored to the OWNER (not the caster) so its OWN_TURN_END self-destroy
+    lines up with the owner's turn rather than vanishing on the caster's turn.
+    (The enchant's CANT_PLAY tag does not propagate to the host, so it can't be
+    the gate on its own.)"""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        if hasattr(target, "unplayable_next_turn"):
+            target.unplayable_next_turn = 2
+        ench = target.controller.card("CATA_215e", source)
+        ench.source = source
+        ench.apply(target)
+
+
 class CATA_215:
     """Daze"""
 
@@ -259,13 +259,14 @@ class CATA_215:
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_ENEMY_TARGET: 0,
     }
-    play = Bounce(TARGET).then(Buff(Bounce.TARGET, "CATA_215e"))
+    play = Bounce(TARGET).then(_DazeMark(Bounce.TARGET))
 
 
 class CATA_215e:
     """Dazed"""
 
-    # Can't be played this turn. Expires at the end of the card-owner's turn.
+    # Can't be played this turn. Expires at the end of the card-owner's turn
+    # (the enchant is anchored to the bounced minion's owner via _DazeMark).
     tags = {GameTag.CANT_PLAY: True}
     events = OWN_TURN_END.on(Destroy(SELF))
 

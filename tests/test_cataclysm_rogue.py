@@ -65,6 +65,49 @@ def test_daze_bounces_and_marks():
     assert any(b.id == "CATA_215e" for b in em.buffs)
 
 
+def test_daze_restriction_gates_opponents_next_turn():
+    # The "can't play it next turn" marker must survive the CASTER's turn end
+    # and actually block the opponent on THEIR next turn, then expire at the
+    # end of that turn. (Regression: the enchant used to be controlled by the
+    # caster, so OWN_TURN_END destroyed it on the caster's own turn — before
+    # the opponent ever got a turn — and never gated anything.)
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)  # p1 starts
+    p, o = game.player1, game.player2
+    em = o.summon("CS2_172")  # 4/3
+    p.give("CATA_215").play(target=em)
+    bounced = o.hand[-1]
+    assert bounced.id == "CS2_172"
+    # Caster ends their turn -> opponent's NEXT turn begins. The lock must still
+    # be active here (the bug: it expired on the caster's own turn, never
+    # reaching the opponent).
+    game.end_turn()  # -> opponent's turn
+    assert any(b.id == "CATA_215e" for b in bounced.buffs)
+    assert not bounced.is_playable()  # opponent genuinely can't play it
+    # Cycle back to the opponent's FOLLOWING turn; the lock has ticked out.
+    game.end_turn()  # -> caster's turn
+    game.end_turn()  # -> opponent's next turn again
+    assert bounced.unplayable_next_turn == 0
+    assert not any(b.id == "CATA_215e" for b in bounced.buffs)
+    assert bounced.is_playable()  # restriction lifted
+
+
+def test_sinestra_wing_summoned_standalone_gives_discounted_spell():
+    # A Wing summoned on its own (not as Sinestra's Colossal limb) fires its
+    # own "when summoned, get a discounted other-class spell" via the `summoned`
+    # hook. (Regression: it used OWN_SUMMON — which never fires on self-summon —
+    # and the discount used a no-op `cost_mod` instance attr.)
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.player1
+    p.discard_hand()
+    p.heralds_this_game = 2
+    p.summon("CATA_154t")
+    assert len(p.hand) == 1
+    spell = p.hand[0]
+    assert spell.type == CardType.SPELL
+    assert spell.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
+    assert spell.cost == max(0, (spell.data.cost or 0) - 2)
+
+
 # ---------------------------------------------------------------------------
 # CATA_200 Agent of the Old Ones — Battlecry: transform a hand card into a Coin
 # ---------------------------------------------------------------------------

@@ -120,11 +120,9 @@ class CATA_432t3:
     """Blue Head of Chromatus"""
 
     # Elusive. Deathrattle: Remove Elusive from Chromatus.
-    # NOTE: the engine's targeting check reads Elusive off the *static* card
-    # data (target.data.tags[GameTag.ELUSIVE]), which can't be toggled per
-    # entity, so clearing the live tag here is cosmetic — the body stays
-    # untargetable. Documented approximation (the other three heads remove
-    # Taunt / Lifesteal / Divine Shield correctly, as those read live tags).
+    # The live `elusive` attribute is seeded from data at init and is what
+    # targeting reads, so setting it False here genuinely makes the body
+    # targetable again (matching the other three heads' keyword removals).
     deathrattle = _RemoveChromatusKeyword(SELF, GameTag.ELUSIVE)
 
 

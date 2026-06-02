@@ -65,11 +65,13 @@ def is_valid_target(self, target, requirements=None):
             return False
         # ELUSIVE (GameTag 1211) is the modern consolidated tag that means
         # "can't be targeted by spells OR hero powers". Build 29.0 migrated
-        # cards like Faerie Dragon (and Whizbang's Virus Module) onto it, so
-        # honor it in addition to the legacy split flags.
-        elusive = getattr(target, "elusive", False) or target.data.tags.get(
-            GameTag.ELUSIVE
-        )
+        # cards like Faerie Dragon (and Whizbang's Virus Module) onto it. The
+        # live `elusive` attribute is seeded from data at init (managers.py map
+        # + card.py tags.update) and is the single source of truth, so an
+        # explicit removal (Chromatus' Blue Head deathrattle setting it False)
+        # correctly un-elusives the body rather than being overridden by the
+        # static data tag.
+        elusive = getattr(target, "elusive", False)
         if self.type == CardType.SPELL and (
             target.cant_be_targeted_by_abilities or elusive
         ):

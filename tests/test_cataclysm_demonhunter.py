@@ -19,10 +19,11 @@ def test_azshara_colossal_and_hero_windfury():
     assert azshara in p1.field
     # Hero has Windfury while Azshara is in play.
     assert p1.hero.windfury
-    # NOTE: the limbs' "When summoned, +Attack to hero" does NOT fire when they
-    # arrive via the engine's Colossal-limb placement (that path bypasses the
-    # Summon broadcast — see _summon_colossal_limbs). The tentacle/soldier
-    # token's when-summoned buff is covered by the dedicated token tests below.
+    # Each Tentacle's "When summoned, give your hero +Attack this turn" fires
+    # when the limbs arrive via the engine's Colossal-limb placement
+    # (_summon_colossal_limbs now runs each limb's `summoned` actions). With 0
+    # Heralds each tentacle grants +1, so two tentacles give the hero +2.
+    assert p1.hero.atk == 2
 
 
 def test_azshara_tentacle_attack_scales_with_heralds():

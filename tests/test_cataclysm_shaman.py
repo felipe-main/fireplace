@@ -158,6 +158,27 @@ def test_ascendance_transform_and_deathrattle():
     assert any(m.id == "CS2_171" for m in p1.field)
 
 
+def test_ascendance_transforms_again_on_second_cast():
+    # Regression: a persistent per-minion `_ascended` flag used to block a
+    # SECOND Ascendance in the same game (the already-morphed minions kept the
+    # flag), so the second cast transformed nothing. Each cast must transform
+    # all current friendly minions.
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    p1.summon("CS2_171")  # 1-cost Boar
+    p1.give("CATA_567").play()
+    _resolve_choices(p1)
+    after_first = [m.id for m in p1.field]
+    assert after_first and after_first[0] != "CS2_171"
+    first_id = after_first[0]
+    # Second Ascendance must transform the (already-morphed) minion again.
+    p1.give("CATA_567").play()
+    _resolve_choices(p1)
+    after_second = [m.id for m in p1.field]
+    assert len(after_second) == 1
+    assert after_second[0] != first_id  # genuinely re-transformed
+
+
 def test_muradin_cost_reduction():
     # Costs (1) less per friendly attack this game.
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)

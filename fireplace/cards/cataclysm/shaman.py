@@ -213,7 +213,7 @@ class CATA_564:
     play = Buff(TARGET, "CATA_564e")
 
 
-class CATA_565:
+class CATA_565(HeraldCountCardtext):
     """Skywall Sentinel"""
 
     # Taunt (data). Battlecry: Herald {0}.
@@ -249,7 +249,7 @@ class CATA_724:
 # ---------------------------------------------------------------------------
 
 
-class CATA_561:
+class CATA_561(HeraldCountCardtext):
     """Ritual of Power"""
 
     # Herald {0}. Get two 1/1 Elementals with Rush.

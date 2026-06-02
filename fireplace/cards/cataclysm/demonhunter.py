@@ -116,7 +116,7 @@ class CATA_151e:
     tags = {GameTag.WINDFURY: True}
 
 
-class CATA_151t:
+class CATA_151t(HeraldAttackTierCardtext):
     """Azshara's Tentacle"""
 
     # When summoned, give your hero +N Attack this turn (N scales with Heralds).
@@ -140,14 +140,14 @@ class CATA_151te:
 # ---------------------------------------------------------------------------
 
 
-class CATA_525:
+class CATA_525(HeraldCountCardtext):
     """Armored Bloodletter"""
 
     # Rush (data). Battlecry: Herald.
     play = Herald(CONTROLLER)
 
 
-class CATA_525t:
+class CATA_525t(HeraldAttackTierCardtext):
     """Soldier of Azshara"""
 
     # When summoned, give your hero +N Attack this turn (N scales with Heralds).
@@ -263,7 +263,7 @@ class CATA_529:
 # ---------------------------------------------------------------------------
 
 
-class CATA_530:
+class CATA_530(HeraldCountCardtext):
     """Fel Infusion"""
 
     # Herald. Your hero has Lifesteal this turn.

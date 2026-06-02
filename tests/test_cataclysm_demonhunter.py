@@ -325,3 +325,27 @@ def test_dread_leviathan_steals_health_three_times():
     assert victim.max_health == 21
     # Dread Leviathan gained 9 Health (6 -> 15).
     assert lev.max_health == 15
+
+
+# ---------------------------------------------------------------------------
+# Cosmetic — Herald {0} progress text renders the live Herald count / +Atk tier
+# ---------------------------------------------------------------------------
+def test_herald_progress_text_renders_count_and_tier():
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p = game.player1
+    p.heralds_this_game = 2
+    # "Herald {0}." cards render the current count, not a literal {0}.
+    for cid in ("CATA_525", "CATA_530"):
+        desc = p.give(cid).description
+        assert "{0}" not in desc
+        assert "Herald</b> 2" in desc
+    # Azshara token: +{0} Attack -> tier 1 + min(heralds, 2) = 3, no upgrade tail.
+    tent = p.give("CATA_151t")
+    assert "{0}" not in tent.description
+    assert "+3 Attack" in tent.description
+    assert "to upgrade" not in tent.description  # tier maxed at 2+ heralds
+    # At 0 heralds the tier is +1 with the "twice to upgrade" tail.
+    p.heralds_this_game = 0
+    sol = p.give("CATA_525t")
+    assert "+1 Attack" in sol.description
+    assert "twice to upgrade" in sol.description

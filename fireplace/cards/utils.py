@@ -448,6 +448,36 @@ class SpellSchoolCountCardtextMixin:
     }
 
 
+class HeraldCountCardtext:
+    """Cataclysm — cards whose text is "<b>Herald</b> {0}.": render {0} as the
+    controller's current Herald count (Player.heralds_this_game), so the
+    placeholder shows a live number in hand instead of the literal `{0}`."""
+
+    def custom_cardtext(self):
+        n = getattr(getattr(self, "controller", None), "heralds_this_game", 0)
+        return self.data.description.replace("{0}", str(n))
+
+    tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
+
+
+class HeraldAttackTierCardtext:
+    """Cataclysm — Soldier of Azshara (CATA_525t) / Azshara's Tentacle
+    (CATA_151t) tokens: "When summoned, give your hero +{0} Attack this turn"
+    with three `@`-delimited tails (Herald twice / once / done to upgrade).
+
+    {0} is the +Attack tier = 1 + min(heralds, 2) (matching `_HeraldAttack`),
+    and the tail segment is picked by how many upgrades remain."""
+
+    def custom_cardtext(self):
+        heralds = getattr(getattr(self, "controller", None), "heralds_this_game", 0)
+        tier = 1 + min(heralds, 2)
+        segments = self.data.description.split("@")
+        idx = min(min(heralds, 2), len(segments) - 1)
+        return segments[idx].replace("{0}", str(tier))
+
+    tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
+
+
 class JadeGolemUtils:
     def custom_cardtext(self):
         return self.data.description.split("@")[0]

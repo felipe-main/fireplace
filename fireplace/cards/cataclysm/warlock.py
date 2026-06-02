@@ -171,11 +171,13 @@ class CATA_492:
 
 
 class _SoulConsumeGain(LazyNum):
-    """+N/+N gain = base TAG_SCRIPT_DATA_NUM_1 (2) plus heralds this game."""
+    """+N/+N gain = base TAG_SCRIPT_DATA_NUM_1 (2) plus Heralds, capped at two
+    upgrades ("Herald twice to upgrade" then "once") = base + min(heralds, 2),
+    matching every sibling Cataclysm Herald-upgrade token."""
 
     def evaluate(self, source):
         base = source.data.tags.get(GameTag.TAG_SCRIPT_DATA_NUM_1, 2)
-        return base + source.controller.heralds_this_game
+        return base + min(source.controller.heralds_this_game, 2)
 
 
 class _SoulConsume(TargetedAction):

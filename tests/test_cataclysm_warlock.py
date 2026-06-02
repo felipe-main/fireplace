@@ -293,6 +293,22 @@ def test_chogall_arm_gain_scales_with_heralds():
     assert arm.health == pre_health + 4
 
 
+def test_chogall_arm_gain_caps_at_two_heralds():
+    # Regression: the gain used base + heralds with NO cap, so 3 heralds gave
+    # +5/+5. The printed card upgrades only twice ("Herald twice to upgrade"
+    # then "once"), so it caps at base 2 + min(heralds, 2) = +4/+4.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    game.player1.discard_hand()
+    game.player1.heralds_this_game = 3
+    arm = game.player1.summon("CATA_726t1")
+    victim = game.player1.summon("CS2_182")
+    pre_atk, pre_health = arm.atk, arm.health
+    game.end_turn()
+    assert victim.dead
+    assert arm.atk == pre_atk + 4  # capped, not +5
+    assert arm.health == pre_health + 4
+
+
 ##
 # CATA_725t — Soldier of Cho'gall: same end-of-turn consume effect.
 

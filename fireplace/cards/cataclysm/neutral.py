@@ -69,21 +69,37 @@ class CATA_185:
 
 class CATA_186:
     "Stickybomb Saboteur"
-    # Battlecry: Give your opponent a 2-Cost Sabotage. Cards next to it cost
-    # (1) more. (Hand-adjacency aura is unsupported — we give the Sabotage
-    # token; its own adjacency aura is approximated/omitted.)
+    # Battlecry: Give your opponent a 2-Cost Sabotage. Cards next to it in hand
+    # cost (1) more (live hand-adjacency aura on the Sabotage token).
     play = Give(OPPONENT, "CATA_186t")
+
+
+def _sabotage_hand_neighbors(entities, source):
+    """The cards immediately left and right of `source` in its owner's hand."""
+    hand = source.controller.hand
+    if source not in hand:
+        return []
+    i = hand.index(source)
+    return [hand[j] for j in (i - 1, i + 1) if 0 <= j < len(hand)]
+
+
+_SABOTAGE_NEIGHBORS = FuncSelector(_sabotage_hand_neighbors)
 
 
 class CATA_186t:
     "Sabotage!"
-    # Cards adjacent to this in hand cost (1) more. (Adjacency-in-hand aura is
-    # not modelled by the engine — vanilla 2-cost spell with no effect.)
+    # Cards adjacent to this in hand cost (1) more — a live hand-position aura
+    # refreshed every tick (Hand.update): whichever cards currently sit
+    # immediately left/right of the Sabotage get +1 Cost, and the buff is
+    # auto-removed the moment they stop being adjacent (hand shuffles / plays).
+    class Hand:
+        update = Refresh(_SABOTAGE_NEIGHBORS, {GameTag.COST: 1})
 
 
 class CATA_186te:
     "Sabotaged"
-    # Costs (1) more.
+    # Costs (1) more. (Unused now that the aura applies an inline COST buff;
+    # kept as the data enchant declaration.)
     tags = {GameTag.COST: 1}
 
 

@@ -122,6 +122,42 @@ def test_stickybomb_gives_opponent_sabotage():
     assert any(c.id == "CATA_186t" for c in p2.hand)
 
 
+def test_sabotage_taxes_adjacent_hand_cards():
+    # The Sabotage's hand-adjacency aura: only the cards immediately left/right
+    # of it cost (1) more; a non-adjacent card is untouched; removing the
+    # Sabotage reverts the tax.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p2 = game.player2
+    for c in list(p2.hand):
+        c.discard()
+    left = p2.give(CHILLWIND)       # cost 4
+    sab = p2.give("CATA_186t")      # sits between left and right
+    right = p2.give(CHILLWIND)      # cost 4
+    far = p2.give(BOULDERFIST)      # cost 6, not adjacent (index 3)
+    game.refresh_auras()
+    assert left.cost == 5 and right.cost == 5   # +1 each (adjacent)
+    assert far.cost == 6                        # untouched (not adjacent)
+    sab.discard()
+    game.refresh_auras()
+    assert left.cost == 4 and right.cost == 4   # tax reverts when Sabotage gone
+
+
+def test_sabotage_aura_follows_hand_position():
+    # When the neighbor leaves, the next card to become adjacent is taxed.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p2 = game.player2
+    for c in list(p2.hand):
+        c.discard()
+    sab = p2.give("CATA_186t")      # index 0
+    a = p2.give(CHILLWIND)          # index 1 — adjacent
+    b = p2.give(BOULDERFIST)        # index 2 — not adjacent
+    game.refresh_auras()
+    assert a.cost == 5 and b.cost == 6
+    a.discard()                      # now b becomes index 1 (adjacent)
+    game.refresh_auras()
+    assert b.cost == 7               # 6 + 1, now adjacent to the Sabotage
+
+
 # ---------------------------------------------------------------------------
 # CATA_208 Selfless Protector — takes 1 extra damage
 # ---------------------------------------------------------------------------

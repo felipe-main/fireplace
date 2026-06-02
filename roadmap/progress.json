@@ -170,8 +170,8 @@
       "kind": "expansion",
       "parent_pkg": "cataclysm",
       "build": "237510.1",
-      "phase": "soak",
-      "status": "in-progress",
+      "phase": "done",
+      "status": "done",
       "attempts": 0,
       "assumptions": [
         "Herald = per-game counter (heralds_this_game); cap min(heralds,2) on all upgrade tokens",
@@ -181,7 +181,7 @@
       ],
       "openRows": 0,
       "card_count": 135,
-      "notes": "Full pipeline done through audit+tierfix+docs. 135 CATA_ cards, new cataclysm pkg. NOVEL: Herald (heralds_this_game + Deathwing payoff), Shatter (Draw.do split hook), `summoned` token-self-effect primitive (now also fires for Colossal limbs), ELUSIVE live attr. Full adversarial audit (12-class finders + refute panel): 8 real bugs FIXED (Schism dc7b9345, Earthen Roar soak-crash f5304262, Chromatus Elusive + Colossal-summoned + Sinestra wings + Daze + Ascendance 511690b2, Cho'gall cap 9ec72f49); review.csv 8 fixed/30 watch/0 open (96768541). Suite 4200+ passed/2 skipped. README+data Patch 35.0.237510. Final soak running."
+      "notes": "Full pipeline done through audit+tierfix+docs. 135 CATA_ cards, new cataclysm pkg. NOVEL: Herald (heralds_this_game + Deathwing payoff), Shatter (Draw.do split hook), `summoned` token-self-effect primitive (now also fires for Colossal limbs), ELUSIVE live attr. Full adversarial audit (12-class finders + refute panel): 8 real bugs FIXED (Schism dc7b9345, Earthen Roar soak-crash f5304262, Chromatus Elusive + Colossal-summoned + Sinestra wings + Daze + Ascendance 511690b2, Cho'gall cap 9ec72f49); review.csv 8 fixed/30 watch/0 open (96768541). Suite 4200+ passed/2 skipped. README+data Patch 35.0.237510. Final soak 1000/1000 (0 tracebacks). DONE — final set closed."
     }
   ]
 }

@@ -383,16 +383,23 @@ def test_consume_removes_durability_and_heals_8():
     assert p1.hero.damage == 12
 
 
-def test_consume_no_location_no_heal():
+def test_consume_unplayable_without_a_friendly_location():
+    # The printed REQ_FRIENDLY_LOCATION gate: with no friendly Location in play
+    # the spell is NOT playable (can't be wasted to no effect).
+    from fireplace.exceptions import InvalidAction
     game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
     p1.hero.max_health = 80
     p1.hero._max_health = 80
     p1.hero.damage = 20
     spell = p1.give("SC_020")
-    spell.play()
-    # No friendly location -> nothing happens.
-    assert p1.hero.damage == 20
+    assert not spell.is_playable()
+    with pytest.raises(InvalidAction):
+        spell.play()
+    assert p1.hero.damage == 20  # nothing happened
+    # Once a Location is in play, it becomes playable.
+    p1.give("SC_019").play()
+    assert spell.is_playable()
 
 
 # SC_023 — Spine Crawler: Taunt. Can't attack. Has +3 Attack if you control a

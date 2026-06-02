@@ -896,6 +896,10 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             if not self.controller.graveyard.filter(has_deathrattle=True):
                 return False
 
+        if PlayReq.REQ_FRIENDLY_LOCATION in self.requirements:
+            if self.controller.location is None:
+                return False
+
         return self.is_summonable()
 
     def play(self, target=None, index=None, choose=None):

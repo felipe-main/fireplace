@@ -194,6 +194,13 @@ class PlayReq(IntEnum):
     # cannot express "a Wisp").
     REQ_TARGET_WITH_CARD_NAME = 250
 
+    # Custom (not in CardXML): the card is only playable while you control a
+    # friendly Location in play (e.g. Heroes of StarCraft — Consume removes
+    # Durability from a friendly Location). The printed card carries this gate
+    # but CardXML's location PlayReq isn't parsed, so we model it as a script
+    # requirement.
+    REQ_FRIENDLY_LOCATION = 251
+
     # Renamed
     REQ_ENCHANTED_TARGET = REQ_MAX_SECRETS
     REQ_ENTIRE_ENTOURAGE_NOT_IN_PLAY = REQ_ALL_BASIC_TOTEMS_NOT_IN_PLAY

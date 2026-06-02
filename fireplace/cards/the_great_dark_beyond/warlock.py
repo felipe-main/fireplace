@@ -248,7 +248,10 @@ class SC_020:
     """Consume"""
 
     # Remove 1 Durability from a friendly location to restore 8 Health to your
-    # hero.
+    # hero. Only playable while you control a friendly Location (the printed
+    # REQ the engine doesn't auto-load from data), so it can't be wasted with
+    # no Location in play.
+    requirements = {PlayReq.REQ_FRIENDLY_LOCATION: 0}
     play = _Consume(SELF)
 
 

@@ -973,17 +973,28 @@ class _Grunty(TargetedAction):
             new = [m for m in ctrl.field if m not in before and m.id == cid]
             if new:
                 murlocs.append(new[0])
-        # Shoot each summoned Murloc at an enemy minion. "You pick the targets"
-        # — with no interactive picker available, fire at a random enemy minion;
-        # each shot deals that Murloc's Attack as damage.
-        for murloc in murlocs:
+        # Shoot each summoned Murloc at an enemy minion ("You pick the
+        # targets!"). Each shot is a player-chosen board target dealing that
+        # Murloc's Attack; the shots are chained (each pick fires the next) so
+        # all four choices don't collapse onto a single player.choice. The
+        # soak's auto-chooser picks at random, matching the old behaviour.
+        def _shoot(index):
+            if index >= len(murlocs):
+                return
+            murloc = murlocs[index]
             enemies = [
                 m for m in ENEMY_MINIONS.eval(source.game, source) if not m.dead
             ]
             if not enemies:
-                break
-            victim = source.game.random.choice(enemies)
-            source.game.cheat_action(source, [Hit(victim, murloc.atk)])
+                return
+
+            def _apply(src, victim):
+                src.game.cheat_action(src, [Hit(victim, murloc.atk)])
+                _shoot(index + 1)
+
+            choose_card(source, enemies, _apply)
+
+        _shoot(0)
 
 
 class _GhostDestroyLowestCost(TargetedAction):
@@ -995,7 +1006,11 @@ class _GhostDestroyLowestCost(TargetedAction):
         hand = list(source.controller.opponent.hand)
         if not hand:
             return
-        victim = min(hand, key=lambda c: c.cost)
+        # Destroy the lowest-Cost card; on a Cost tie the real card picks at
+        # random (not hand-order-deterministic).
+        min_cost = min(c.cost for c in hand)
+        candidates = [c for c in hand if c.cost == min_cost]
+        victim = source.game.random.choice(candidates)
         source.game.cheat_action(source, [Destroy(victim)])
 
 

@@ -1032,6 +1032,26 @@ def test_kerrigan_summons_two_brood_queens_and_aoe():
     assert p1.hero.power.id == "SC_004hp"
 
 
+def test_kerrigan_ravage_hero_power_total_is_base_plus_zerg():
+    # Once-over confirm: Ravage deals (3 + your Zerg minions) total, split 1 at
+    # a time among all enemies. Pin the implemented formula against the engine's
+    # own Zerg count (the +1/Zerg scaling is wiki-based, not data-encoded).
+    from fireplace.dsl.selector import FRIENDLY_MINIONS, ZERG
+    game = prepare_empty_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    if game.current_player is not p1:
+        game.end_turn()
+    enemy = p2.summon("CS2_182"); enemy.max_health = 200; enemy.damage = 0
+    p2.hero.max_health = 200; p2.hero.damage = 0
+    p1.give("SC_004").play()  # Kerrigan -> 2 Brood Queens, hero power Ravage
+    zerg = len((FRIENDLY_MINIONS + ZERG).eval(game, p1.hero))
+    enemy.damage = 0; p2.hero.damage = 0  # reset Kerrigan's battlecry AoE
+    p1.used_mana = 0
+    p1.hero.power.use()
+    # Every shot lands on an enemy (hero or the lone minion); total is exact.
+    assert enemy.damage + p2.hero.damage == 3 + zerg
+
+
 # ---------------------------------------------------------------------------
 # SC_010 — Zergling (1/1): Battlecry: Summon a copy of this.
 # ---------------------------------------------------------------------------
@@ -1063,9 +1083,32 @@ def test_grunty_summons_four_murlocs_and_shoots_them():
     # at least the four directly summoned exist).
     assert len(murlocs) >= 4
     # Every directly-summoned Murloc shot the boss; total damage > 0 and the
-    # boss absorbed it all (still alive).
+    # boss absorbed it all (still alive). (Single enemy minion -> each shot's
+    # target choice auto-resolves to the boss.)
     assert boss.damage > 0
     assert not boss.dead
+
+
+def test_grunty_shots_are_player_chosen_with_multiple_enemies():
+    # With more than one enemy minion, each Murloc's shot is a real player
+    # choice. Direct every shot at `a`; the choice mechanism must engage.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    a = p2.summon("CS2_182"); a.max_health = 300; a.damage = 0
+    b = p2.summon("CS2_182"); b.max_health = 300; b.damage = 0
+    p1.give("SC_013").play()
+    shots_directed = 0
+    # Drain the choice chain: shot-choices (candidates are the enemy minions)
+    # go to `a`; any other incidental choice (a Murloc battlecry) is auto-picked.
+    while p1.choice:
+        ch = p1.choice
+        if a in ch.cards or b in ch.cards:
+            ch.choose(a)
+            shots_directed += 1
+        else:
+            ch.choose(ch.cards[0])
+    assert shots_directed >= 1   # at least one shot was a player-directed choice
+    assert a.damage > 0          # the chosen target absorbed the directed shots
 
 
 # ---------------------------------------------------------------------------
@@ -1188,6 +1231,27 @@ def test_ghost_no_destroy_when_not_building_starship():
     ghost = p1.give("SC_408")
     ghost.play()
     assert low.zone == Zone.HAND
+
+
+def test_ghost_tie_break_destroys_one_of_the_lowest_cost():
+    # On a Cost tie among the lowest-Cost cards, exactly one of the tied cards
+    # is destroyed (picked at random) and a higher-Cost card survives.
+    game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
+    p1, p2 = game.player1, game.player2
+    for c in list(p2.hand):
+        c.discard()
+    tie1 = p2.give("SC_010")  # cost 1
+    tie2 = p2.give("SC_010")  # cost 1 (tie)
+    high = p2.give("SC_013")  # cost 8
+    bank_piece = p1.summon("GDB_100")
+    bank_piece.destroy()
+    game.process_deaths()
+    assert p1.is_building_starship
+    p1.give("SC_408").play()
+    # Exactly one of the two cost-1 cards destroyed; the cost-8 card untouched.
+    destroyed = [c for c in (tie1, tie2) if c.zone == Zone.GRAVEYARD]
+    assert len(destroyed) == 1
+    assert high.zone == Zone.HAND
 
 
 # ---------------------------------------------------------------------------

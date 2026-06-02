@@ -10,7 +10,8 @@ A Hearthstone simulator and implementation, written in Python.
 
 ## Cards Implementation
 
-Now updated to [Patch 34.2.233275](https://hearthstone.wiki.gg/wiki/Patch_34.2.233275)
+Now updated to [Patch 35.0.237510](https://hearthstone.wiki.gg/wiki/Patch_35.0.237510)
+* **100%** Cataclysm (135 of 135 cards) — adds the Herald keyword (summon escalating Soldiers of Azshara), the Shatter keyword (a card splits into two playable halves when drawn), and the "summoned" token-self-effect engine primitive
 * **100%** Across the Timeways mini-set / End Time (38 of 38 cards) — reuses Rewind/Imbue/Kindred/Dark Gift/Corpses, adds Imbued Hero Powers for Rogue and Death Knight, and Morchie (Rewinds keep both outcomes)
 * **100%** Across the Timeways (145 of 145 cards) — adds the Rewind keyword (after a card's effect resolves, choose to keep the outcome or rewind and re-run it once) plus the Fabled legendary tier
 * **100%** Lost City of Un'Goro mini-set / Dinosaurs (38 of 38 cards) — reuses Kindred, adds the Masks (set-stats) sub-theme and Egg break-counters

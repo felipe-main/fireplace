@@ -840,8 +840,11 @@ class Play(GameAction):
         # Across the Timeways — Precise Shot: snapshot the exact hand position
         # at play time so "exactly in the center of your hand" can be checked
         # for any hand size (the left/right-most booleans only see size 1/3).
-        card._play_hand_index = card.controller.hand.index(card)
-        card._play_hand_size = len(card.controller.hand)
+        # Guard: some play paths reach here with the card not in hand (echo /
+        # recast / play-from-deck) — leave the defaults (-1/0) in that case.
+        if card in card.controller.hand:
+            card._play_hand_index = card.controller.hand.index(card)
+            card._play_hand_size = len(card.controller.hand)
 
         card.zone = Zone.PLAY
 

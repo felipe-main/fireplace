@@ -302,7 +302,11 @@ def test_time_lost_glaive_deathrattle_gives_demon():
 # ---------------------------------------------------------------------------
 
 
-def test_eternal_hold_gives_expensive_demon_and_zeroes_cost():
+def test_eternal_hold_next_minion_free_when_no_deck_minions():
+    # Deck has NO minions -> the (0) is a discount on the NEXT minion the
+    # player plays (a global "your next minion costs (0)"), NOT a cost buff on
+    # the obtained Demon. The flag drives it and is consumed by exactly one
+    # minion play, so a different minion played first takes the discount.
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1 = game.player1
     _clear_deck_minions(p1)
@@ -316,13 +320,30 @@ def test_eternal_hold_gives_expensive_demon_and_zeroes_cost():
     demon = p1.hand[0]
     assert demon.type == CardType.MINION and Race.DEMON in demon.races
     assert demon.data.cost >= 5  # printed cost 5+
-    assert demon.cost == 0  # Jailbreak zeroed it (no minions in deck)
+    # The discount lives on the player, NOT as a cost buff on the obtained
+    # Demon.
+    assert p1.next_minion_costs_zero is True
+    assert not any(b.id == "TIME_446e" for b in demon.buffs)
+
+    # Play ANY minion from hand: it costs 0 (used_mana does not move).
+    p1.used_mana = 0
+    yeti = p1.give("CS2_182")  # 4-cost Chillwind Yeti
+    assert yeti.cost == 0  # next-minion discount applies to whatever is next
+    yeti.play()
+    assert p1.used_mana == 0  # paid 0 mana
+    # Flag consumed: a SECOND minion pays full.
+    assert p1.next_minion_costs_zero is False
+    yeti2 = p1.give("CS2_182")
+    assert yeti2.cost == 4
 
 
 def test_eternal_hold_no_discount_with_deck_minions():
+    # Deck WITH a minion -> no discount at all; the obtained Demon costs its
+    # normal printed cost and the next-minion flag stays False.
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1 = game.player1
     assert any(c.type == CardType.MINION for c in p1.deck)
+    assert p1.next_minion_costs_zero is False
     loc = p1.give("TIME_446")
     loc.play()
     game.end_turn()
@@ -331,9 +352,14 @@ def test_eternal_hold_no_discount_with_deck_minions():
     loc.use()
     assert len(p1.hand) == 1
     demon = p1.hand[0]
-    # Deck still has minions -> Jailbreak (cost-0) did NOT apply.
+    # Deck still has minions -> no next-minion discount, no cost buff, and the
+    # obtained Demon is NOT zeroed (Irebound Brute & friends may carry their own
+    # printed cost-reducers, so compare against "not free" rather than the raw
+    # data cost).
+    assert p1.next_minion_costs_zero is False
     assert not any(b.id == "TIME_446e" for b in demon.buffs)
     assert demon.data.cost >= 5
+    assert demon.cost > 0  # Jailbreak did NOT zero the obtained Demon
 
 
 # ---------------------------------------------------------------------------

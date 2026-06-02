@@ -220,6 +220,26 @@ def test_highborne_pupil_casts_taught_spell():
     assert any(s.id == "CS2_029" for s in p1.spells_cast_this_game[pre:])
 
 
+def test_highborne_pupil_cardtext_fills_taught_spell_name():
+    # Printed text is "<b>Battlecry:</b> Cast {0}." — once taught, {0} must
+    # render the taught spell's printed name and not the literal placeholder.
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.player1
+    pupil = p1.give("TIME_704t")
+
+    # Un-taught: must not crash, and leaves the base "{0}" placeholder intact.
+    # `card.description` is the rendered accessor — it invokes custom_cardtext.
+    untaught_text = pupil.description
+    assert "{0}" in untaught_text
+
+    # Taught with Waveshaping (TIME_701, printed name "Waveshaping").
+    pupil._taught_spell = "TIME_701"
+    text = pupil.description
+    assert "Waveshaping" in text
+    assert "{0}" not in text
+    assert text == "<b>Battlecry:</b> Cast Waveshaping."
+
+
 # ---------------------------------------------------------------------------
 # TIME_705 Krona, Keeper of Eons — Taunt Battlecry: Set the Costs of the
 # bottom 5 cards of your deck to (1).

@@ -185,13 +185,16 @@ class TIME_046e:
 
 class _EnemyHeroDamageThisTurn(LazyNum):
     """Devious Coyote cost reduction. The printed card reduces cost by 1 for
-    each *time* the enemy hero took damage this turn; the engine only tracks
-    total damage taken (``hero_damage_taken_this_turn``), not the instance
-    count, so this approximates 1-per-damage-point (audit-noted)."""
+    each *time* the enemy hero took damage this turn. The engine tracks the
+    distinct damage-EVENT count on each player (``times_hero_damaged_this_turn``,
+    bumped +1 per hero-damage event in Damage.do), so read that — not the total
+    damage *points* (``hero_damage_taken_this_turn``), which would wrongly
+    reduce cost by the size of a single hit. "Enemy hero" = the controller's
+    opponent's hero (Coyote sits in the controller's hand)."""
 
     def evaluate(self, source):
         opp = source.controller.opponent
-        value = getattr(opp, "hero_damage_taken_this_turn", 0)
+        value = getattr(opp, "times_hero_damaged_this_turn", 0)
         # Honour the LazyNum sign/scale set by the unary minus in cost_mod.
         return self.num(value)
 
@@ -293,14 +296,53 @@ class TIME_056:
 
 class _ResetCosts(TargetedAction):
     """Wizened Truthseeker — reset every card in both hands to its printed
-    (data) Cost via a dynamic cost buff (delta = base - current)."""
+    (data) Cost.
+
+    Two-stage, card-only reset so it reverses *any* cost mod, including a
+    set-to-0 (a persistent ``GameTag.COST: -100`` enchantment). A plain
+    additive delta (base - current) cannot undo COST:-100: the engine clamps
+    the visible cost at 0, so the delta reads as ``base - 0 = base`` yet the
+    new total is ``base + (-100) + base`` which still clamps to 0.
+
+    Stage 1 strips every *pure cost-only* enchantment (one that changes Cost
+    and nothing else) — this cleanly removes set-to-0 and ordinary cost
+    discounts/markups carried by dedicated cost enchantments, returning the
+    card to its data base. Stat-bearing buffs (e.g. a +2/+2 that also shifts
+    Cost) are left intact, matching "reset only the Cost".
+
+    Stage 2 applies the remaining additive delta for any residual mismatch
+    (e.g. a mixed stat+cost buff, or a cost_mod) so the printed Cost is hit
+    exactly even when no pure-cost enchant is present."""
 
     TARGET = ActionArg()
+
+    @staticmethod
+    def _is_cost_only(buff):
+        # An enchantment is "cost-only" if its Cost contribution is non-zero
+        # and it carries no stat/keyword payload we'd otherwise wipe. Read the
+        # RAW underlying deltas (``_cost`` / ``_atk`` / …): the public `.cost`
+        # property clamps at 0, so a set-to-0 (``_cost == -100``) would read
+        # back as 0 and be missed.
+        if getattr(buff, "_cost", 0) == 0:
+            return False
+        for attr in ("_atk", "_max_health", "_spellpower"):
+            if getattr(buff, attr, 0):
+                return False
+        # Don't strip enchants that grant keywords / deathrattles etc.
+        if getattr(buff, "has_deathrattle", False):
+            return False
+        return True
 
     def do(self, source, target):
         for player in source.game.players:
             for card in list(player.hand):
                 base = card.data.cost
+                # Stage 1: drop pure cost-only enchantments (reverses COST:-100).
+                for buff in list(card.buffs):
+                    if self._is_cost_only(buff):
+                        buff.remove()
+                # Stage 2: additive correction for any residual (mixed buffs,
+                # cost_mod, etc.) so the card lands exactly on its base Cost.
                 delta = base - card.cost
                 if delta != 0:
                     source.game.queue_actions(

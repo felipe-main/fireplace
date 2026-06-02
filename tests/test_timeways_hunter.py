@@ -41,36 +41,90 @@ def test_infinite_banana_buffs_and_returns():
     assert p.hand[0].id == "TIME_042t"
 
 
-def test_precise_shot_off_center():
-    """TIME_600 Precise Shot — 3 damage when NOT exactly centered in hand."""
-    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+def _precise_shot_setup(game):
+    """Beefy enemy target so 3 vs 5 damage is unambiguous; empty caster hand."""
     p = game.player1
     p.discard_hand()
-    target = game.player2.summon("CS2_182")  # 4/5
-    # Even-sized hand (2 cards) → no single center → 3 damage.
-    p.give("CS2_122")
-    shot = p.give("TIME_600")
-    assert len(p.hand) == 2
-    shot.play(target=target)
-    assert target.damage == 3
-    assert target.health == 2
-
-
-def test_precise_shot_dead_center():
-    """TIME_600 Precise Shot — 5 damage when EXACTLY in the center of hand."""
-    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
-    p = game.player1
-    p.discard_hand()
-    target = game.player2.summon("CS2_182")  # 4/5
+    target = game.player2.summon("CS2_182")  # Chillwind Yeti
     target.max_health = 20
     target.damage = 0
-    # Hand of 3 with the shot in the middle slot (index 1).
-    p.give("CS2_122")
+    return p, target
+
+
+def _give_hand(p, *, center_at, size):
+    """Fill p's hand with `size` cards, Precise Shot at index `center_at`.
+
+    Returns the Precise Shot card. Order of give() determines hand index, so
+    we give `center_at` filler, then the shot, then the rest.
+    """
+    for _ in range(center_at):
+        p.give("CS2_122")  # Raid Leader filler
     shot = p.give("TIME_600")
-    p.give("CS2_122")
-    assert p.hand.index(shot) == 1 and len(p.hand) == 3
+    for _ in range(size - center_at - 1):
+        p.give("CS2_122")
+    assert len(p.hand) == size
+    assert p.hand.index(shot) == center_at
+    return shot
+
+
+def test_precise_shot_five_card_dead_center():
+    """TIME_600 — 5-card hand, shot at index 2 (dead center) → 5 damage.
+
+    This is the case the old left/right-edge heuristic got wrong (it could
+    only detect center for hand sizes 1 and 3).
+    """
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p, target = _precise_shot_setup(game)
+    shot = _give_hand(p, center_at=2, size=5)
     shot.play(target=target)
     assert target.damage == 5
+
+
+def test_precise_shot_five_card_off_center_index0():
+    """TIME_600 — 5-card hand, shot at index 0 (leftmost) → 3 damage."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p, target = _precise_shot_setup(game)
+    shot = _give_hand(p, center_at=0, size=5)
+    shot.play(target=target)
+    assert target.damage == 3
+
+
+def test_precise_shot_five_card_off_center_index1():
+    """TIME_600 — 5-card hand, shot at index 1 (just left of center) → 3."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p, target = _precise_shot_setup(game)
+    shot = _give_hand(p, center_at=1, size=5)
+    shot.play(target=target)
+    assert target.damage == 3
+
+
+def test_precise_shot_three_card_center():
+    """TIME_600 — 3-card hand, shot at index 1 (center) → 5 damage."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p, target = _precise_shot_setup(game)
+    shot = _give_hand(p, center_at=1, size=3)
+    shot.play(target=target)
+    assert target.damage == 5
+
+
+def test_precise_shot_single_card_is_center():
+    """TIME_600 — sole card in hand (size 1) is its own center → 5 damage."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p, target = _precise_shot_setup(game)
+    shot = _give_hand(p, center_at=0, size=1)
+    shot.play(target=target)
+    assert target.damage == 5
+
+
+def test_precise_shot_even_hand_no_center():
+    """TIME_600 — even hand (4 cards) has no exact center → 3 damage."""
+    game = prepare_game(CardClass.HUNTER, CardClass.HUNTER)
+    p, target = _precise_shot_setup(game)
+    # index 2 of 4 is as close to center as any slot, but even hands never
+    # have an exact center.
+    shot = _give_hand(p, center_at=2, size=4)
+    shot.play(target=target)
+    assert target.damage == 3
 
 
 def test_arrow_retriever_draws_until_three():

@@ -448,6 +448,25 @@ class TIME_704t:
         if taught:
             yield CastSpell(taught)
 
+    def custom_cardtext(self):
+        # Printed text is "<b>Battlecry:</b> Cast {0}." — fill {0} with the
+        # taught spell's printed name. `_taught_spell` is the spell's card id
+        # (set by `_TeachPupil`), but be defensive: it may also be a card
+        # object or None (un-taught) — render the base "{0}" form gracefully.
+        taught = getattr(self, "_taught_spell", None)
+        name = None
+        if taught is not None:
+            if isinstance(taught, str):
+                if taught in db:
+                    name = db[taught].name
+            else:
+                name = getattr(taught, "name", None)
+        if not name:
+            return self.data.description
+        return self.data.description.replace("{0}", name)
+
+    tags = {enums.CUSTOM_CARDTEXT: custom_cardtext}
+
 
 class TIME_705:
     """Krona, Keeper of Eons"""

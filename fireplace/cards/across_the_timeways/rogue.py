@@ -109,17 +109,36 @@ class _ShapeshifterMorph(TargetedAction):
     """Shapeshifter — each of your turns while this is in hand, transform into
     a copy of a random minion in your opponent's hand. We morph into a fresh
     card created from the picked minion's id (not the opponent's actual entity,
-    which would steal it out of their hand)."""
+    which would steal it out of their hand).
+
+    Zerus-style recurrence (mirrors Showdown's WW_337 Mirage): the morphed card
+    is a brand-new entity that no longer carries TIME_876's Hand.events, so we
+    re-apply the trigger-carrying TIME_876e enchant to it via the Morph
+    callback. TIME_876e itself re-runs this same action every turn, re-buffing
+    the next morph — so the transform repeats every turn the card sits in hand,
+    not just once."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        opp = source.controller.opponent
+        ctrl = source.controller
+        opp = ctrl.opponent
         minions = [c for c in opp.hand if c.type == CardType.MINION]
         if not minions:
             return
         chosen = source.game.random.choice(minions)
+        # Morph the in-hand card into a fresh copy of the chosen minion, then
+        # re-apply the recurring TIME_876e trigger to whatever card now occupies
+        # the slot. We can't rely on `Morph(...).then(Buff(Morph.CARD, ...))`
+        # here: this method already runs inside an event-trigger block, so the
+        # nested callback's Morph.CARD resolves against the OUTER action's args
+        # and the buff misses. Instead we diff the controller's hand to find the
+        # freshly morphed entity and buff it directly.
+        before = set(ctrl.hand)
         source.game.cheat_action(source, [Morph(target, chosen.id)])
+        new = [c for c in ctrl.hand if c not in before]
+        for card in new:
+            source.buff(card, "TIME_876e")
 
 
 class _GaronaBattlecry(TargetedAction):
@@ -334,6 +353,18 @@ class TIME_770e:
 class TIME_876e:
     "Shapeshifting"
     # Transforming into a random minion in your opponent's hand.
+    #
+    # Persistent re-transform marker (Zerus-style, mirrors WW_337e). While the
+    # morphed card sits in hand, at the start of each of the owner's turns it
+    # transforms again into a random minion in the opponent's hand. The morph
+    # action (_ShapeshifterMorph) re-applies THIS enchant to the freshly morphed
+    # card, so the trigger persists across every transform — without it the
+    # card would morph once and then go inert (the new entity loses TIME_876's
+    # own Hand.events).
+    class Hand:
+        events = OWN_TURN_BEGIN.on(_ShapeshifterMorph(OWNER))
+
+    events = REMOVED_IN_PLAY
 
 
 ##

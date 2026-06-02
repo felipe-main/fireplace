@@ -269,22 +269,25 @@ class TIME_444:
 
 class _EternalHold(TargetedAction):
     """The Eternal Hold — get a Demon that costs (5) or more. If your deck has
-    no minions, your next one costs (0) (modelled by zeroing the cost of the
-    Demon you just got)."""
+    no minions, the player's NEXT minion played costs (0).
+
+    The "(0)" is a global "your next minion costs (0)" discount (data TIME_446e
+    is an AURA), NOT a discount on the specific Demon just obtained — if the
+    player plays a different minion first, that one must take the discount. So
+    we flip the engine's `next_minion_costs_zero` flag rather than buffing the
+    gotten Demon; Play.do applies the -100 cost and consumes the flag on
+    whichever minion is actually played next."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         player = source.controller
         demon = RandomDemon(custom_filter=lambda c: (c.cost or 0) >= 5)
-        before = set(player.hand)
         source.game.cheat_action(source, [Give(player, demon)])
         deck_has_minion = any(c.type == CardType.MINION for c in player.deck)
         if deck_has_minion:
             return
-        given = [c for c in player.hand if c not in before]
-        for c in given:
-            source.game.cheat_action(source, [Buff(c, "TIME_446e")])
+        player.next_minion_costs_zero = True
 
 
 class TIME_446:
@@ -298,8 +301,9 @@ class TIME_446:
 class TIME_446e:
     """Jailbreak"""
 
-    # Your next minion costs (0). (Modelled as a cost-0 buff on the Demon you
-    # got from The Eternal Hold.)
+    # Your next minion costs (0). (Data AURA marker; the actual discount is
+    # applied by the engine via player.next_minion_costs_zero — see
+    # _EternalHold and the cost block in card.py.)
     tags = {GameTag.COST: -100}
 
 

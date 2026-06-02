@@ -11,27 +11,17 @@ class _HandCenterBonus(LazyNum):
     """Precise Shot — 3 damage normally, 5 if this card was EXACTLY in the
     center of your hand when cast.
 
-    The engine only snapshots `play_left_most` / `play_right_most` before the
-    card leaves the hand (it is already in PLAY by the time this script runs),
-    so the exact middle index is not recoverable for hands of 5+ without an
-    engine change. We compute center EXACTLY for the cases the edge snapshot
-    determines unambiguously:
-      * original hand size 1 -> the lone card is the center;
-      * original hand size 3 -> center == the only non-edge slot, i.e. neither
-        leftmost nor rightmost.
-    For odd hands of 5+, a non-edge card could be off-center, so we
-    conservatively DON'T grant the bonus (documented approximation). Even hands
-    have no center and never qualify.
+    `Play.do` snapshots the 0-based hand index (`_play_hand_index`) and the
+    hand size including this card (`_play_hand_size`) BEFORE it leaves the
+    hand. The card is dead-center iff the hand size is ODD and the index is
+    the exact middle slot `(size - 1) // 2`. Even hand sizes have no exact
+    center and never qualify.
     """
 
     def evaluate(self, source) -> int:
-        left = getattr(source, "play_left_most", False)
-        right = getattr(source, "play_right_most", False)
-        # Original hand size was remaining + 1 (this card has left the hand).
-        original = len(source.controller.hand) + 1
-        if original == 1:
-            return 5
-        if original == 3 and not left and not right:
+        size = getattr(source, "_play_hand_size", 0)
+        index = getattr(source, "_play_hand_index", -1)
+        if size % 2 == 1 and index == (size - 1) // 2:
             return 5
         return 3
 

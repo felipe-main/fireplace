@@ -73,18 +73,52 @@ def test_shadows_of_yesterday_rewind_reruns():
 
 
 # ---------------------------------------------------------------------------
-# TIME_611 Timestop - Deal 3 damage to a random enemy minion; Freeze two
-# random enemy minions.
+# TIME_611 Timestop - Deal 3 damage to a random enemy CHARACTER (hero
+# included); Freeze two random enemy minions.
 # ---------------------------------------------------------------------------
 
-def test_timestop():
+def test_timestop_empty_board_hits_hero():
+    # No enemy minions -> the only enemy character is the hero, so the 3
+    # damage must land on the hero. Freeze has no minions to hit.
+    game = _dk_game()
+    caster = game.player1
+    opp = caster.opponent
+    assert len(opp.field) == 0
+    hp0 = opp.hero.health
+    card = caster.give("TIME_611")
+    card.play()
+    assert hp0 - opp.hero.health == 3
+
+
+def test_timestop_damage_can_hit_hero_or_minion():
+    # One enemy minion + hero: the 3 damage lands on exactly one of them.
+    # Both are beefed so the tick is fully absorbed; assert the total damage
+    # dealt across hero + minion is exactly 3. Freeze hits the single minion.
+    game = _dk_game()
+    caster = game.player1
+    opp = caster.opponent
+    minion = _beef(opp.summon(YETI))
+    hp0 = opp.hero.health
+    card = caster.give("TIME_611")
+    card.play()
+    total = minion.damage + (hp0 - opp.hero.health)
+    assert total == 3
+    # Only one enemy minion exists, so Freeze (two random enemy minions) hits
+    # it exactly once and it ends up frozen.
+    assert minion.frozen is True
+
+
+def test_timestop_freezes_two_minions():
     game = _dk_game()
     caster = game.player1
     opp = caster.opponent
     minions = [_beef(opp.summon(YETI)) for _ in range(3)]
     card = caster.give("TIME_611")
     card.play()
-    assert sum(m.damage for m in minions) == 3
+    # 3 damage hits a random enemy character (hero or a minion); total damage
+    # across hero + all minions is exactly 3.
+    hero_dmg = opp.hero.max_health - opp.hero.health
+    assert sum(m.damage for m in minions) + hero_dmg == 3
     assert sum(1 for m in minions if m.frozen) == 2
 
 
@@ -216,6 +250,31 @@ def test_chronochiller_skips_start_draw():
     assert len(caster.hand) == hand_before
 
 
+def test_chronochiller_only_cancels_start_draw_not_other_draws():
+    # The start-of-turn draw is cancelled, but an explicit extra draw the same
+    # turn still succeeds — only the one start draw is skipped.
+    game = _dk_game()
+    caster = game.player1
+    caster.summon("TIME_617")
+    # Seed the deck so explicit draws have a card to pull.
+    for _ in range(3):
+        caster.card(YETI).zone = Zone.DECK
+    if game.current_player is caster:
+        game.end_turn()
+        game.end_turn()
+    else:
+        game.end_turn()
+    assert game.current_player is caster
+    game.end_turn()  # opp turn
+    hand_before = len(caster.hand)
+    game.end_turn()  # back to caster: start-of-turn draw skipped
+    assert game.current_player is caster
+    assert len(caster.hand) == hand_before  # no start draw
+    # An explicit draw this same turn must still work.
+    caster.draw()
+    assert len(caster.hand) == hand_before + 1
+
+
 def test_chronochiller_opponent_draws_normally():
     game = _dk_game()
     caster = game.player1
@@ -311,6 +370,38 @@ def test_bwonsamdi_deathrattle_summons_four_cost():
     game.process_deaths()
     summoned = caster.field[-1]
     assert summoned.data.cost == 4
+    assert summoned.type == CardType.MINION
+
+
+def test_bwonsamdi_deathrattle_one_boon_summons_six_cost():
+    # One Boon applied -> summon cost surcharge of 2 -> 4 + 2 = 6-Cost bracket.
+    # RandomMinion(cost=6) filters to exactly cost-6 minions, so whichever is
+    # rolled has data.cost == 6.
+    game = _dk_game()
+    caster = game.player1
+    bw = caster.summon("TIME_619t")
+    token = caster.give("TIME_619t3")  # Boon of Power
+    token.play()
+    assert bw._bwonsamdi_boon_cost == 2
+    bw.destroy()
+    game.process_deaths()
+    summoned = caster.field[-1]
+    assert summoned.data.cost == 6
+    assert summoned.type == CardType.MINION
+
+
+def test_bwonsamdi_deathrattle_two_boons_summons_eight_cost():
+    # Two Boons applied -> surcharge 4 -> 4 + 4 = 8-Cost bracket.
+    game = _dk_game()
+    caster = game.player1
+    bw = caster.summon("TIME_619t")
+    caster.give("TIME_619t3").play()  # Boon of Power
+    caster.give("TIME_619t5").play()  # Boon of Speed
+    assert bw._bwonsamdi_boon_cost == 4
+    bw.destroy()
+    game.process_deaths()
+    summoned = caster.field[-1]
+    assert summoned.data.cost == 8
     assert summoned.type == CardType.MINION
 
 

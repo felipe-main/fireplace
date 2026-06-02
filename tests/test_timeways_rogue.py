@@ -365,6 +365,51 @@ def test_shapeshifter_transforms():
     assert not any(c.id == "TIME_876" for c in me.hand)
 
 
+def test_shapeshifter_retransforms_every_turn():
+    # Zerus-style recurrence: the card must transform on EACH of the owner's
+    # turns, not just the first. We swap the (frozen) enemy hand between the
+    # two morphs so the second transform is provably a *fresh* morph — if the
+    # card morphed only once it would still read CS2_182 after turn 3, but a
+    # re-transform makes it read CS2_222 (the new sole enemy minion).
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    me, opp = _both(game)
+    me.discard_hand()
+    opp.discard_hand()
+    # Freeze BOTH hands entirely (no draws, no fatigue churn) so the only cards
+    # that move are the Shapeshifter morphs — the in-hand morphed card is then
+    # the sole entity in `me.hand` and we can assert its id exactly.
+    for p in (me, opp):
+        for c in list(p.deck):
+            c.zone = Zone.REMOVEDFROMGAME
+        p.cant_draw = True
+        p.cant_fatigue = True
+
+    # First morph target: Chillwind Yeti is the sole enemy minion.
+    yeti = opp.give("CS2_182")
+    shifter = me.give("TIME_876")
+    assert shifter.id == "TIME_876"
+    assert len(me.hand) == 1  # only the Shapeshifter
+
+    # First own-turn-begin (turn 3): TIME_876 -> CS2_182.
+    _advance_to_own_turn_begin(game, me)
+    assert len(me.hand) == 1
+    assert me.hand[0].id == "CS2_182"
+    assert not any(c.id == "TIME_876" for c in me.hand)
+
+    # Swap the (still frozen) enemy hand to a different sole minion so the next
+    # transform must land on CS2_222, proving the trigger re-fired rather than
+    # leaving the card frozen as CS2_182.
+    yeti.discard()
+    opp.give("CS2_222")  # Stormwind Champion — new sole enemy minion
+
+    # Second own-turn-begin (turn 5): CS2_182 -> CS2_222 (re-transform).
+    _advance_to_own_turn_begin(game, me)
+    assert len(me.hand) == 1
+    assert me.hand[0].id == "CS2_222"
+    # Still no original Shapeshifter lingering.
+    assert not any(c.id == "TIME_876" for c in me.hand)
+
+
 def test_shapeshifter_no_enemy_minions():
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     me, opp = _both(game)

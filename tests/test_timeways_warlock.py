@@ -171,6 +171,44 @@ def test_murloc_rafaam_next_rafaam_costs_3_less():
     assert nonraf.cost == 2     # non-Rafaam unaffected
 
 
+def test_murloc_rafaam_single_realized_discount_net_invariant():
+    # Row 578 watch (accepted, net-correct): the discount enchant's
+    # `update = Refresh(FRIENDLY_HAND + RAFAAM, {COST: -3})` visually shows -3
+    # on EVERY held Rafaam at once, but the discount is realized only once —
+    # consumed when the next Rafaam is played. This regression pins the NET
+    # invariant: holding TWO Rafaams, the total realized discount is exactly 3
+    # (the first one pays 3 less, the second then pays full), never 6.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    _clear_hand(p1)
+    r1 = p1.give("TIME_005t9")   # Archmage Rafaam, base cost 9
+    r2 = p1.give("TIME_005t9")   # second Archmage Rafaam, base cost 9
+    murloc = p1.give("TIME_005t8")
+    murloc.play()
+    # Visual over-display: both currently read -3 (cosmetic, accepted).
+    assert r1.cost == 6 and r2.cost == 6
+    # Play the first Rafaam — it pays 9 - 3 = 6, then the discount is consumed.
+    r1.cost = 0  # bypass mana; play() still fires the consume event
+    r1.play()
+    _resolve_choices(p1)
+    # The SECOND Rafaam now pays full: total realized discount is exactly 3.
+    assert r2.cost == 9
+
+
+def test_murloc_rafaam_self_does_not_consume_discount():
+    # The enchant's creator (Murloc Rafaam itself) must NOT consume the
+    # discount when it resolves its own Play — only the *next* Rafaam does.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    _clear_hand(p1)
+    nxt = p1.give("TIME_005t9")   # base cost 9
+    murloc = p1.give("TIME_005t8")
+    murloc.play()
+    _resolve_choices(p1)
+    # Discount survives Murloc's own play and still applies to the next Rafaam.
+    assert nxt.cost == 6
+
+
 def test_archmage_rafaam_transforms_non_rafaam_to_sheep():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
@@ -352,3 +390,38 @@ def test_chronogor_splits_high_and_low():
     assert hi2.zone == Zone.HAND and hi2.controller is p1
     assert lo1.zone == Zone.HAND and lo1.controller is p2
     assert lo2.zone == Zone.HAND and lo2.controller is p2
+
+
+def test_chronogor_net_outcome_exact_ids_and_costs():
+    # Row 579 watch (accepted, net-correct): the opponent's two drawn cards are
+    # relocated via SETASIDE rather than the real draw pipeline (no draw
+    # triggers / fatigue / overdraw-burn for the opponent), and the controller's
+    # own two highest use ForceDraw. Only those edge draw-trigger/fatigue
+    # semantics differ — the NET hand state is correct. This regression pins the
+    # exact NET result by controlling the whole deck: controller gains its two
+    # HIGHEST-cost cards, opponent gains the controller's two LOWEST-cost cards.
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1, p2 = game.player1, game.player2
+    _clear_hand(p1)
+    _clear_hand(p2)
+    for c in list(p1.deck):
+        c.zone = Zone.REMOVEDFROMGAME
+    # Distinct, well-separated costs so the high/low split is unambiguous.
+    lo1 = _deck_card(p1, "TIME_026")  # cost 1
+    lo2 = _deck_card(p1, "TIME_027")  # cost 2
+    hi1 = _deck_card(p1, "TIME_032")  # cost 6
+    hi2 = _deck_card(p1, "TIME_005")  # cost 10
+    assert (lo1.cost, lo2.cost, hi1.cost, hi2.cost) == (1, 2, 6, 10)
+    chrono = p1.give("TIME_032")
+    chrono.play()
+    # Controller's hand == exactly the two highest-cost cards.
+    assert sorted(c.id for c in p1.hand) == ["TIME_005", "TIME_032"]
+    assert sorted(c.cost for c in p1.hand) == [6, 10]
+    assert all(c.controller is p1 for c in p1.hand)
+    # Opponent's hand == exactly the controller's two lowest-cost cards.
+    assert sorted(c.id for c in p2.hand) == ["TIME_026", "TIME_027"]
+    assert sorted(c.cost for c in p2.hand) == [1, 2]
+    assert all(c.controller is p2 for c in p2.hand)
+    # The relocated cards left the controller's deck entirely.
+    assert hi1 in p1.hand and hi2 in p1.hand
+    assert lo1 in p2.hand and lo2 in p2.hand

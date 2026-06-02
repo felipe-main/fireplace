@@ -82,30 +82,17 @@ class _FillUndeadCostHealth(TargetedAction):
             source.game.cheat_action(source, [Buff(card, "TIME_615e")])
 
 
-class _ChronochillerSkipDraw(TargetedAction):
-    """Chronochiller - at the start of the controller's turn, suppress that
+class _ChronochillerSkipStartDraw(TargetedAction):
+    """Chronochiller - at the start of the controller's turn, cancel ONLY that
     turn's start-of-turn draw. OWN_TURN_BEGIN fires (in BeginTurn.do) BEFORE
-    _begin_turn performs player.draw(), so setting cant_draw here blocks the
-    draw, and OWN_TURN_END restores it.
-
-    Approximation: this blocks every draw the controller makes between their
-    turn-begin and turn-end while Chronochiller is in play, not only the
-    start-of-turn draw. In practice the routine draw in that window is the
-    start-of-turn draw this card is meant to cancel."""
+    _begin_turn performs the start draw, so setting `skip_next_start_draw` here
+    makes the engine consume exactly that one draw. Other draws this turn
+    (explicit card effects) are unaffected."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        target.cant_draw = True
-
-
-class _ChronochillerRestoreDraw(TargetedAction):
-    """Chronochiller - clear the draw suppression at the controller's turn end."""
-
-    TARGET = ActionArg()
-
-    def do(self, source, target):
-        target.cant_draw = False
+        target.skip_next_start_draw = True
 
 
 class _HuskHeroDeathrattle(TargetedAction):
@@ -197,6 +184,21 @@ class _BoonChoice(TargetedAction):
         source.game.queue_actions(source, [choice])
 
 
+class _BwonsamdiDeathrattle(TargetedAction):
+    """Bwonsamdi — Deathrattle: summon a random minion from the (4 + 2N)-Cost
+    bracket, where N is the number of Boons applied (each Boon bumps
+    `_bwonsamdi_boon_cost` by 2). A fresh RandomMinion is built at the computed
+    cost each time; if no minion exists at that cost it simply summons nothing."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        cost = 4 + getattr(source, "_bwonsamdi_boon_cost", 0)
+        source.game.cheat_action(
+            source, [Summon(source.controller, RandomMinion(cost=cost))]
+        )
+
+
 class _TalanjiDrawBwonsamdi(TargetedAction):
     """Talanji of the Graves - draw Bwonsamdi (TIME_619t) from the deck, or if
     none is in the deck, get a fresh copy in hand (the "resurrect him if he has
@@ -229,9 +231,10 @@ class TIME_610:
 class TIME_611:
     """Timestop"""
 
-    # Deal $3 damage. Freeze two random enemy minions.
+    # Deal $3 damage (to a random enemy, hero included). Freeze two random
+    # enemy minions.
     play = (
-        Hit(RANDOM(ENEMY_MINIONS), 3),
+        Hit(RANDOM(ENEMY_CHARACTERS), 3),
         Freeze(RANDOM(ENEMY_MINIONS) * 2),
     )
 
@@ -290,10 +293,7 @@ class TIME_617:
     """Chronochiller"""
 
     # You no longer draw a card at the start of your turn.
-    events = (
-        OWN_TURN_BEGIN.on(_ChronochillerSkipDraw(CONTROLLER)),
-        OWN_TURN_END.on(_ChronochillerRestoreDraw(CONTROLLER)),
-    )
+    events = OWN_TURN_BEGIN.on(_ChronochillerSkipStartDraw(CONTROLLER))
 
 
 class TIME_618:
@@ -325,8 +325,9 @@ class TIME_610t2:
 class TIME_619t:
     """Bwonsamdi"""
 
-    # Deathrattle: Summon a random 4-Cost minion. (Cost = 4 in data.)
-    deathrattle = Summon(CONTROLLER, RandomMinion(cost=4))
+    # Deathrattle: Summon a random 4-Cost minion. Each Boon makes the
+    # summoned minion cost (2) more -> summon from the (4 + 2N)-Cost bracket.
+    deathrattle = _BwonsamdiDeathrattle(SELF)
 
 
 class TIME_619t2:

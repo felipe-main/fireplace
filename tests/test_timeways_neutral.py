@@ -238,14 +238,46 @@ def test_cyborg_patriarch_dormant_three_turns():
 
 
 def test_devious_coyote_cost_reduction():
+    # Coyote reduces cost by 1 per *distinct* enemy-hero damage EVENT this
+    # turn — not per damage point. Two separate hits of differing size (1 then
+    # 5) are two events => cost - 2 (NOT - 6).
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    coyote = p1.give("TIME_047")  # base cost 5
+    base = coyote.data.cost
+    assert coyote.cost == base
+    assert coyote.stealthed
+    # p2 is Coyote's controller's opponent => p2.hero is the "enemy hero".
+    game.queue_actions(p1.hero, [Hit(p2.hero, 1)])
+    game.queue_actions(p1.hero, [Hit(p2.hero, 5)])
+    assert p2.times_hero_damaged_this_turn == 2
+    # Exactly base - 2 (two events), NOT base - 6 (the summed damage points).
+    assert coyote.cost == base - 2
+
+
+def test_devious_coyote_single_big_hit_is_one_event():
+    # A single large hit is ONE event => cost reduced by exactly 1.
     game = prepare_game()
     p1, p2 = game.player1, game.player2
     coyote = p1.give("TIME_047")
-    assert coyote.cost == 5
-    p2.hero.damage = 3  # enemy hero took 3 damage worth this turn
-    p2.hero_damage_taken_this_turn = 3
-    assert coyote.cost == 2
-    assert coyote.stealthed
+    base = coyote.data.cost
+    game.queue_actions(p1.hero, [Hit(p2.hero, 5)])
+    assert p2.times_hero_damaged_this_turn == 1
+    assert coyote.cost == base - 1
+
+
+def test_devious_coyote_event_count_resets_across_turns():
+    # The damage-event count is a per-turn counter, reset at each turn start,
+    # so Coyote's discount does not persist into a later turn.
+    game = prepare_game()
+    p1, p2 = game.player1, game.player2
+    coyote = p1.give("TIME_047")
+    base = coyote.data.cost
+    game.queue_actions(p1.hero, [Hit(p2.hero, 2)])
+    assert coyote.cost == base - 1
+    game.end_turn(); game.end_turn()  # back to p1; counters reset both sides
+    assert p2.times_hero_damaged_this_turn == 0
+    assert coyote.cost == base
 
 
 # ---------------------------------------------------------------------------
@@ -381,16 +413,60 @@ def test_whelp_of_the_bronze_keywords():
 
 
 def test_wizened_truthseeker_resets_costs():
+    # Common case: ordinary additive cost buffs/debuffs on cards in BOTH hands
+    # are all reverted to the printed (data) Cost, exactly.
     game = prepare_game()
     p1, p2 = game.player1, game.player2
     _clear_hand(p1)
     _clear_hand(p2)
     cheap = p1.give(FIREBALL)  # printed cost 4
-    cheap.buff_cost = 0
     game.queue_actions(p1.hero, [Buff(cheap, "TIME_057e", cost=-3)])
     assert cheap.cost == 1
+    # A debuff (cost increase) on an opponent's card, too.
+    pricey = p2.give(WISP)  # printed cost 0
+    game.queue_actions(p2.hero, [Buff(pricey, "TIME_057e", cost=4)])
+    assert pricey.cost == 4
     p1.give("TIME_057").play()
-    assert cheap.cost == 4
+    assert cheap.cost == cheap.data.cost == 4
+    assert pricey.cost == pricey.data.cost == 0
+
+
+def test_wizened_truthseeker_reverses_set_to_zero():
+    # Edge case: a persistent set-to-(0) enchantment (GameTag.COST: -100) cannot
+    # be undone by an additive delta (engine clamps at 0). The card-only reset
+    # strips the pure cost-only enchant so the printed Cost is restored exactly.
+    game = prepare_game()
+    p1 = game.player1
+    _clear_hand(p1)
+    fireball = p1.give(FIREBALL)  # printed cost 4
+    # Pure cost-only enchant setting cost to 0 (delta -100, clamped at 0).
+    game.queue_actions(p1.hero, [Buff(fireball, "TIME_057e", cost=-100)])
+    assert fireball.cost == 0  # clamped set-to-0
+    p1.give("TIME_057").play()
+    assert fireball.cost == fireball.data.cost == 4
+
+
+def test_wizened_truthseeker_preserves_stat_buffs():
+    # The reset touches only Cost. A pure stat buff (no cost delta) is left
+    # untouched, and a MIXED buff carrying both +stats and a cost delta keeps
+    # its stats while the cost lands back on the printed base via the additive
+    # correction stage (the mixed buff is NOT stripped).
+    game = prepare_game()
+    p1 = game.player1
+    _clear_hand(p1)
+    yeti = p1.give("CS2_182")  # 4-cost 4/5 Chillwind Yeti
+    base = yeti.data.cost
+    # Pure stat buff (survives).
+    game.queue_actions(p1.hero, [Buff(yeti, "TIME_003e")])  # +2/+2
+    # Mixed buff: +1 atk AND -2 cost (must survive its stats, lose its cost).
+    game.queue_actions(p1.hero, [Buff(yeti, "TIME_054e", cost=-2)])  # +1/+1 -2cost
+    assert yeti.cost == base - 2
+    pre_atk, pre_health = yeti.atk, yeti.health  # 4+2+1=7 / 5+2+1=8
+    assert pre_atk == 7 and pre_health == 8
+    p1.give("TIME_057").play()
+    assert yeti.cost == yeti.data.cost == base
+    # Stats from both buffs preserved.
+    assert yeti.atk == pre_atk and yeti.health == pre_health
 
 
 # ---------------------------------------------------------------------------

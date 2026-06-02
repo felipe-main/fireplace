@@ -12,27 +12,14 @@ class CATA_111:
 
 
 class _WarlocCostHealth(TargetedAction):
-    """War'loc — flag the next friendly Murloc in hand costing (3) or less to
-    pay Health instead of Mana. Engine has no hand-targeting, so we approximate
-    by stamping a random eligible Murloc currently in hand (the engine's
-    ``card_costs_health`` per-card flag, same machinery as Blood Crusader)."""
+    """War'loc — arm "your next Murloc that costs (3) or less costs Health
+    instead of Mana": a per-player one-shot flag consumed in pay_cost when the
+    next qualifying Murloc is played (whenever it is drawn). No time limit."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ctrl = source.controller
-        pool = [
-            c
-            for c in ctrl.hand
-            if Race.MURLOC in getattr(c, "races", [])
-            and (c.cost or 0) <= 3
-            and c is not source
-        ]
-        if not pool:
-            return
-        pick = source.game.random.choice(pool)
-        pick.card_costs_health = True
-        source.game.cheat_action(source, [Buff(pick, "CATA_180e")])
+        source.controller.next_cheap_murloc_costs_health = True
 
 
 class CATA_180:
@@ -44,8 +31,8 @@ class CATA_180:
 
 class CATA_180e:
     "Doom!"
-    # Costs Health instead of Mana. (The actual flag is set imperatively on the
-    # target card in _WarlocCostHealth; this enchant is purely cosmetic.)
+    # Costs Health instead of Mana. (Cosmetic marker; the cost substitution is
+    # driven by the controller's next_cheap_murloc_costs_health flag.)
 
 
 class _FacelessReplicatorDeathrattle(TargetedAction):

@@ -4,6 +4,38 @@ from hearthstone.enums import CardClass, GameTag, Zone, Race
 
 
 # ---------------------------------------------------------------------------
+# CATA_001 Tichondrius — Immune hero; next Demon this turn costs (0)
+# ---------------------------------------------------------------------------
+
+
+def test_tichondrius_next_demon_costs_zero_then_reverts():
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    imp1 = p1.give("EX1_319")  # Flame Imp — 1-cost Demon
+    imp2 = p1.give("EX1_319")
+    assert imp1.cost == 1
+    p1.give("CORE_CATA_001").play()  # Tichondrius (only the CORE reprint exists)
+    assert p1.hero.immune                      # hero is Immune while in play
+    assert imp1.cost == 0 and imp2.cost == 0   # next Demon armed (shown on both)
+    imp1.play()                                 # plays for 0
+    assert imp2.cost == 1                        # one-shot consumed -> reverts
+    # The effect is "this turn" only.
+    game.end_turn(); game.end_turn()
+    imp3 = p1.give("EX1_319")
+    assert imp3.cost == 1
+
+
+def test_tichondrius_does_not_discount_non_demons():
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    p1.discard_hand()
+    yeti = p1.give("CS2_182")  # Chillwind Yeti — 4-cost, not a Demon
+    p1.give("CORE_CATA_001").play()
+    assert yeti.cost == 4      # untouched
+
+
+# ---------------------------------------------------------------------------
 # CATA_151 Azshara, Ocean Lord — Colossal +2, hero Windfury; tentacle tokens
 # ---------------------------------------------------------------------------
 

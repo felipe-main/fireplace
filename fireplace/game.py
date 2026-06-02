@@ -434,6 +434,10 @@ class BaseGame(Entity):
         self.current_player.minions_cost_armor_this_turn = False
         self.current_player.next_paladin_minion_costs_health_this_turn = False
         self.current_player.next_concoction_costs_zero = False
+        # Cataclysm — Tichondrius: "next Demon costs (0)" lasts only this turn.
+        # (War'loc's next_cheap_murloc_costs_health has no time limit, so it is
+        # NOT reset here.)
+        self.current_player.next_demon_free_this_turn = False
         # MotLK — Silvermoon Arcanist: "Your spells can't target heroes
         # this turn" — one-turn marker, clear on own turn end.
         self.current_player.spells_cant_target_heroes_this_turn = False

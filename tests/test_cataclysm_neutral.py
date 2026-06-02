@@ -53,15 +53,41 @@ def test_darkscale_broodmother_no_dragon_no_refresh():
 # CATA_180 War'loc — next cheap Murloc costs Health
 # ---------------------------------------------------------------------------
 
-def test_warloc_flags_cheap_murloc():
-    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+def test_warloc_next_cheap_murloc_costs_health():
+    # Battlecry arms "your next Murloc that costs (3) or less costs Health."
+    # The next qualifying Murloc you play pays Health (not Mana), wherever it
+    # came from; the flag is then consumed.
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
-    for c in list(p1.hand):
-        c.discard()
-    murloc = p1.give("EX1_506")  # Murloc Tidehunter, 2-cost murloc
-    card = p1.give("CATA_180")
-    card.play()
-    assert murloc.card_costs_health is True
+    p1.discard_hand()
+    p1.give("CATA_180").play()
+    assert p1.next_cheap_murloc_costs_health is True
+    murloc = p1.give("CS2_168")  # Murloc Raider — 1-cost Murloc
+    hp, mana = p1.hero.health, p1.mana
+    murloc.play()
+    assert p1.hero.health == hp - 1          # paid 1 Health
+    assert p1.mana == mana                   # no Mana spent
+    assert p1.next_cheap_murloc_costs_health is False  # consumed
+    # A second Murloc pays Mana normally.
+    murloc2 = p1.give("CS2_168")
+    hp2, mana2 = p1.hero.health, p1.mana
+    murloc2.play()
+    assert p1.hero.health == hp2             # no Health paid
+    assert p1.mana == mana2 - 1              # Mana spent
+
+
+def test_warloc_skips_murloc_costing_more_than_3():
+    # A Murloc costing 4+ does not qualify -> pays Mana, and the flag stays
+    # armed for the next cheap Murloc.
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.give("CATA_180").play()
+    big = p1.give("AT_076")  # Murloc Knight — 4-cost Murloc
+    hp = p1.hero.health
+    big.play()
+    assert p1.hero.health == hp                       # paid Mana, not Health
+    assert p1.next_cheap_murloc_costs_health is True  # still armed
 
 
 # ---------------------------------------------------------------------------

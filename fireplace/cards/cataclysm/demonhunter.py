@@ -14,23 +14,23 @@ except NameError:
 
 # Tichondrius — only the CORE reprint (CORE_CATA_001) exists in this data; its
 # script resolves to the bare CATA_001 id (get_script_definition strips CORE_).
-@custom_card
-class CATA_001e:
-    tags = {
-        GameTag.CARDNAME: "Tichondrius",
-        GameTag.CARDTYPE: CardType.ENCHANTMENT,
-        GameTag.COST: -100,  # set cost to 0 (engine clamps)
-        GameTag.TAG_ONE_TURN_EFFECT: True,
-    }
+class _TichondriusNextDemonFree(TargetedAction):
+    """Battlecry: arm "your next Demon this turn costs (0)" — a per-player
+    one-shot flag consumed by the next Demon's cost (card.py + Play.do), reset
+    at OWN_TURN_END."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        source.controller.next_demon_free_this_turn = True
 
 
 class CATA_001:
     """Tichondrius"""
 
     # Your hero is Immune. Battlecry: Your next Demon this turn costs (0).
-    # (Approximation: every Demon in your hand costs (0) this turn.)
     update = Refresh(FRIENDLY_HERO, {GameTag.IMMUNE: 1})
-    play = Buff(FRIENDLY_HAND + DEMON, "CATA_001e")
+    play = _TichondriusNextDemonFree(SELF)
 
 
 # ---------------------------------------------------------------------------

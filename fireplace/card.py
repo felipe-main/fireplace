@@ -598,6 +598,14 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             ):
                 ret -= self.controller.next_demon_discount
                 self.received_demon_discount = True
+            # Cataclysm — Tichondrius: your next Demon this turn costs (0).
+            if (
+                self.type == CardType.MINION
+                and Race.DEMON in getattr(self, "races", [])
+                and getattr(self.controller, "next_demon_free_this_turn", False)
+            ):
+                ret -= 100  # clamped to 0 below
+                self.received_demon_free = True
             # The Great Dark Beyond — Interstellar Wayfarer / Starslicer:
             # Librams cost less for the rest of the game.
             if getattr(self, "libram", False) and getattr(

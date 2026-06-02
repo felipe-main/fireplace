@@ -1141,6 +1141,16 @@ class Play(GameAction):
         ):
             player.next_demon_discount -= 1
             card.received_demon_discount = False
+        # Cataclysm — Tichondrius: consume the one-shot "next Demon costs (0)"
+        # when a Demon that took it is played.
+        if (
+            card.type == CardType.MINION
+            and Race.DEMON in getattr(card, "races", [])
+            and getattr(player, "next_demon_free_this_turn", False)
+            and getattr(card, "received_demon_free", False)
+        ):
+            player.next_demon_free_this_turn = False
+            card.received_demon_free = False
         # The Great Dark Beyond — Space Pirate: consume the next-weapon discount
         # when a weapon is played.
         if card.type == CardType.WEAPON and player.next_weapon_discount > 0:

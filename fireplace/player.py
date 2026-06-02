@@ -1,7 +1,15 @@
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from hearthstone.enums import CardClass, CardType, GameTag, PlayState, SpellSchool, Zone
+from hearthstone.enums import (
+    CardClass,
+    CardType,
+    GameTag,
+    PlayState,
+    Race,
+    SpellSchool,
+    Zone,
+)
 
 from .actions import Concede, Draw, Fatigue, Give, Hit, SpendMana, Steal, Summon
 from .aura import TargetableByAuras
@@ -389,6 +397,14 @@ class Player(Entity, TargetableByAuras):
         self.minions_cost_armor_this_turn = False
         self.next_paladin_minion_costs_health_this_turn = False
         self.next_concoction_costs_zero = False
+        # Cataclysm — Tichondrius: "Your next Demon this turn costs (0)."
+        # One-shot, consumed by the next Demon's cost (card.py) + Play.do;
+        # reset at OWN_TURN_END (game.py).
+        self.next_demon_free_this_turn = False
+        # Cataclysm — War'loc: "Your next Murloc that costs (3) or less costs
+        # Health instead of Mana." One-shot, NO time limit — consumed in
+        # pay_cost when the next qualifying Murloc is played.
+        self.next_cheap_murloc_costs_health = False
         # MotLK — Silvermoon Arcanist: one-turn marker, while True the
         # Spell.play() target picker filters heroes out. Set by the
         # battlecry, cleared at OWN_TURN_END.
@@ -813,6 +829,14 @@ class Player(Entity, TargetableByAuras):
             return self.hero.health > card.cost
         if card.card_costs_health:
             return self.hero.health > card.cost
+        # Cataclysm — War'loc: the next Murloc costing (3) or less pays Health.
+        if (
+            getattr(self, "next_cheap_murloc_costs_health", False)
+            and card.type == CardType.MINION
+            and Race.MURLOC in getattr(card, "races", [])
+            and (card.cost or 0) <= 3
+        ):
+            return self.hero.health > card.cost
         # The Great Dark Beyond — Exarch Maladaar: the next card pays Corpses.
         if getattr(self, "next_card_costs_corpses", 0) > 0:
             return self.corpses >= card.cost
@@ -933,6 +957,18 @@ class Player(Entity, TargetableByAuras):
             return amount
         if getattr(source, "card_costs_health", False):
             self.log("%s cards cost %i health", source, amount)
+            self.game.queue_actions(self, [Hit(self.hero, amount)])
+            return amount
+        # Cataclysm — War'loc: the next Murloc costing (3) or less pays Health
+        # instead of Mana (one-shot, consumed here on the qualifying Murloc).
+        if (
+            getattr(self, "next_cheap_murloc_costs_health", False)
+            and source.type == CardType.MINION
+            and Race.MURLOC in getattr(source, "races", [])
+            and (source.cost or 0) <= 3
+        ):
+            self.next_cheap_murloc_costs_health = False
+            self.log("%s Murloc %r pays %i health (War'loc)", self, source, amount)
             self.game.queue_actions(self, [Hit(self.hero, amount)])
             return amount
         if getattr(self, "pays_health_for_cards_turns_left", 0) > 0:

@@ -36,10 +36,16 @@ def _run_one(_index: int) -> tuple[bool, str, str]:
 
 def _worker_init():
     """Initialize card DB once per worker process."""
+    # Soak only cares about crashes, not gameplay logs — silence the verbose
+    # per-action logging so the run is fast and the output file stays small.
+    import logging
+    logging.disable(logging.CRITICAL)
     cards.db.initialize()
 
 
 def main(numgames: int, workers: int) -> int:
+    import logging
+    logging.disable(logging.CRITICAL)
     cards.db.initialize()
     failures: Counter[str] = Counter()
     sample: dict[str, str] = {}

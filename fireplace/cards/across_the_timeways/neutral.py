@@ -1137,9 +1137,11 @@ class END_036:
     "Morchie"
     # Your Rewinds keep BOTH potential outcomes. Battlecry: Discover a Rewind
     # card from any class.
-    # The "keep BOTH outcomes" rule has no engine hook (the Rewind choice keeps
-    # exactly one); the marker enchant is applied for fidelity and the Discover
-    # is faithful.
+    # "Keep BOTH outcomes" IS implemented as an aura in Play.do (actions.py):
+    # while a Morchie (END_036) is on the controller's field, a Rewind card
+    # skips the Keep/Rewind choice and re-runs its Battlecry once, so the effect
+    # resolves twice. END_036e is a cosmetic marker only (the hook keys off the
+    # minion's field presence, not the enchant); the Discover is faithful.
     play = Buff(FRIENDLY_HERO, "END_036e"), DISCOVER(
         RandomCard(
             collectible=True,
@@ -1155,11 +1157,11 @@ class END_036e:
 
 
 class _MurozondFillDragons(TargetedAction):
-    """Endtime Murozond — fill the controller's board with random Dragons, then
-    fully heal the hero. "Skip your next turn" has no clean engine primitive;
-    it is approximated by granting the opponent an extra turn (inserting them
-    at the front of the turn queue), so play effectively passes to the opponent
-    twice in a row (audit-noted approximation)."""
+    """Endtime Murozond — fill the controller's board with random Dragons, fully
+    heal the hero, then skip the controller's next turn. The skip uses the real
+    engine primitive (player._skip_next_turn, consumed in game.py turn-advance),
+    so the controller genuinely loses a turn rather than the opponent gaining
+    one — their start-of-turn triggers, mana ramp and draw are all skipped."""
 
     TARGET = ActionArg()
 
@@ -1173,8 +1175,8 @@ class _MurozondFillDragons(TargetedAction):
             if len(ctrl.field) <= before:
                 break
         source.game.cheat_action(source, [Heal(ctrl.hero, 30)])
-        # Approximate "Skip your next turn": let the opponent take an extra turn.
-        source.game.next_players.insert(0, ctrl.opponent)
+        # "Skip your next turn."
+        ctrl._skip_next_turn = True
 
 
 class END_037:

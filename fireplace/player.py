@@ -458,6 +458,12 @@ class Player(Entity, TargetableByAuras):
         # was consumed this turn (latch never flipped).
         self._love_everlasting_active = False
         self._love_everlasting_consumed_this_turn = False
+        # Across the Timeways — Endtime Murozond (END_037) "Skip your next
+        # turn." Set when the effect resolves; consumed in game.py turn-advance
+        # the next time it would be this player's turn (handing it to the
+        # opponent instead), so the player genuinely loses a turn rather than
+        # the opponent gaining one.
+        self._skip_next_turn = False
         # MotLK — count of Outcast cards played from leftmost/rightmost
         # slot this game. Bumped in Play.do when card.has_outcast and
         # card.play_outcast. Read by Vengeful Walloper's cost_mod.

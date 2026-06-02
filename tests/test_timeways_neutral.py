@@ -1154,6 +1154,40 @@ def test_morchie_discovers_rewind_card():
     assert any(b.id == "END_036e" for b in p1.hero.buffs)
 
 
+def test_morchie_rewind_keeps_both_outcomes():
+    # "Your Rewinds keep BOTH potential outcomes." TIME_004 Conflux Crasher is a
+    # Rewind card: "Deal 7 damage to a random enemy." Clearing the enemy board
+    # leaves the enemy hero as the only enemy character, so every hit lands on
+    # it and the damage is a deterministic count of resolutions.
+    def play_crasher(with_morchie):
+        game = prepare_game()
+        p1, p2 = game.player1, game.player2
+        for m in list(p2.field):
+            m.destroy()
+        p2.hero.max_health = 200
+        p2.hero._max_health = 200
+        p2.hero.damage = 0
+        if with_morchie:
+            morchie = p1.summon("END_036")
+            assert morchie in p1.field
+        p1.give("TIME_004").play()
+        offered_choice = p1.choice is not None
+        while p1.choice:  # resolve the no-op "Keep Timeline" for the solo case
+            p1.choice.choose(p1.choice.cards[0])
+        return p2.hero.damage, offered_choice
+
+    solo_dmg, solo_choice = play_crasher(False)
+    morchie_dmg, morchie_choice = play_crasher(True)
+
+    # Solo: one resolution (7), and the Keep/Rewind choice is offered.
+    assert solo_dmg == 7
+    assert solo_choice
+    # With Morchie: BOTH outcomes kept -> exactly two resolutions (14), and the
+    # choice is skipped entirely (the aura auto-applies the rewind).
+    assert morchie_dmg == 14
+    assert not morchie_choice
+
+
 def test_endtime_murozond_fills_board_and_heals():
     game = prepare_game()
     p1, p2 = game.player1, game.player2
@@ -1165,3 +1199,26 @@ def test_endtime_murozond_fills_board_and_heals():
     assert len(dragons) >= 1
     # Hero fully healed.
     assert p1.hero.damage == 0
+
+
+def test_endtime_murozond_skips_controller_next_turn():
+    # "Skip your next turn." The controller genuinely loses a turn (the opponent
+    # takes two in a row), via the real engine skip flag — not by donating the
+    # opponent an extra turn.
+    game = prepare_game()
+    controller = game.current_player
+    opponent = controller.opponent
+    controller.give("END_037").play()
+    while controller.choice:
+        controller.choice.choose(controller.choice.cards[0])
+    assert controller._skip_next_turn is True
+
+    # Sequence: controller -> opponent -> (controller's turn skipped) opponent
+    # -> controller.
+    game.end_turn()
+    assert game.current_player is opponent
+    game.end_turn()
+    assert game.current_player is opponent      # controller skipped
+    assert controller._skip_next_turn is False  # flag consumed exactly once
+    game.end_turn()
+    assert game.current_player is controller     # controller resumes

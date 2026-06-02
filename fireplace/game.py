@@ -492,6 +492,16 @@ class BaseGame(Entity):
             next_player = self.next_players.pop(0)
         else:
             next_player = self.current_player.opponent
+        # Skip-a-turn (Endtime Murozond "Skip your next turn"): if the player
+        # due to begin must skip, consume the flag and pass the turn to their
+        # opponent instead — the flagged player genuinely loses a turn. Bounded
+        # by player count so two simultaneous skips cannot loop forever.
+        for _ in range(len(self.players)):
+            if getattr(next_player, "_skip_next_turn", False):
+                next_player._skip_next_turn = False
+                next_player = next_player.opponent
+            else:
+                break
         self.begin_turn(next_player)
 
     def skip_turn(self):

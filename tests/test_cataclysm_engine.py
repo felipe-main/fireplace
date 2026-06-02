@@ -20,8 +20,10 @@ def test_shatter_card_splits_into_two_halves_on_draw():
     game = prepare_game()
     p1 = game.player1
     assert p1.shatters_this_game == 0
-    # Put a Shatter spell (Arcane Flow) on top of the deck, then draw it.
-    card = p1.give("CATA_489")  # Arcane Flow — Shatter
+    # Seed a Shatter spell (Arcane Flow) directly onto the deck — use card()
+    # (SETASIDE) not give(), since giving it to HAND would itself shatter it
+    # via the generation hook. Then draw it.
+    card = p1.card("CATA_489")  # Arcane Flow — Shatter
     card.zone = Zone.DECK
     p1.draw()
     # The full card shattered into its two "Shattered" halves.

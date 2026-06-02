@@ -209,11 +209,30 @@ class CATA_201:
     play = Bounce(ENEMY_MINIONS)
 
 
+class _StolenPowerGive(TargetedAction):
+    """Give a random other-class Shatter card, but "already combined" — the
+    engine's generation-shatter hook is suppressed for this one Give via the
+    per-game ``_giving_combined_shatter`` guard, so the whole card is handed
+    over instead of being split into its halves."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        game = source.game
+        game._giving_combined_shatter = True
+        try:
+            game.cheat_action(
+                source, [Give(target, RandomOtherClassShatter())]
+            )
+        finally:
+            game._giving_combined_shatter = False
+
+
 class CATA_202:
     """Stolen Power"""
 
     # Get a random Shatter card from another class. (It's already combined.)
-    play = Give(CONTROLLER, RandomOtherClassShatter())
+    play = _StolenPowerGive(CONTROLLER)
 
 
 class CATA_203:

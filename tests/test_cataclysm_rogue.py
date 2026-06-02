@@ -211,6 +211,8 @@ def test_stolen_power_gets_other_class_shatter():
     assert len(p.hand) == 1
     got = p.hand[0]
     # It is a Shatter card and from another class (not Rogue, not Neutral).
+    # "It's already combined": the generation-shatter hook is suppressed, so
+    # the WHOLE card is handed over rather than being split into halves.
     assert got.data.tags.get(GameTag.SHATTER, 0)
     assert got.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
 

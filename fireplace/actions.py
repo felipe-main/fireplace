@@ -2637,6 +2637,7 @@ class Give(TargetedAction):
     def do(self, source, target, cards):
         log.info("Giving %r to %s", cards, target)
         ret = []
+        to_shatter = []
         if not hasattr(cards, "__iter__"):
             # Support Give on multiple cards at once (eg. Echo of Medivh)
             cards = [cards]
@@ -2665,6 +2666,20 @@ class Give(TargetedAction):
             # target already holds another Concoction, transform the
             # held one into the corresponding Mixed Concoction.
             _concoction_mix_on_give(target, card)
+            # Cataclysm — Shatter: a Shatter card also splits when GENERATED
+            # into hand (Discover, "get a card", etc.), not just when drawn.
+            # Skip a recombined card (_no_reshatter), a card handed over
+            # "already combined" (Stolen Power sets _giving_combined_shatter),
+            # and re-entrant gives from a split already in progress.
+            if (
+                card.data.tags.get(GameTag.SHATTER, 0)
+                and not getattr(card, "_no_reshatter", False)
+                and not getattr(source.game, "_giving_combined_shatter", False)
+                and not getattr(source.game, "_shattering", False)
+            ):
+                to_shatter.append((card, target))
+        for scard, starget in to_shatter:
+            _shatter_into_halves(scard, starget)
         return ret
 
 

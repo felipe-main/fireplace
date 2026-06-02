@@ -311,6 +311,18 @@ def test_schism_recombine_combines_cost_reductions():
     assert parent.cost == 0                 # printed 4 minus the 4 discount
 
 
+def test_schism_shatters_when_generated_into_hand():
+    # Shatter also fires on GENERATION (Discover / "get a card"), not only on
+    # draw: a Schism handed to hand splits into its two halves.
+    game = prepare_game(CardClass.PRIEST, CardClass.PRIEST)
+    p = game.player1
+    p.discard_hand()
+    p.give("CATA_306")  # generate the whole card into hand
+    ids = sorted(c.id for c in p.hand)
+    assert ids == ["CATA_306t1", "CATA_306t2"]
+    assert "CATA_306" not in ids
+
+
 def test_schism_recombined_card_never_shatters_again():
     # The permanent "won't Shatter again" marker survives a shuffle back into
     # the deck: re-drawing the recombined card yields the whole card, not halves.

@@ -221,7 +221,7 @@ class TIME_016:
 
     play = Discover(
         CONTROLLER,
-        RandomMinion(card_class=CardClass.PALADIN, race=Race.MECHANICAL),
+        RandomMinion(card_class=CardClass.PALADIN, race=Race.MECHANICAL, from_past=True),
     ).then(Give(CONTROLLER, Discover.CARD), Buff(Discover.CARD, "TIME_016e"))
 
 

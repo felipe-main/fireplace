@@ -67,7 +67,7 @@ class _DiscoCastSecret(TargetedAction):
 	def do(self, source, target):
 		ctrl = source.controller
 		for _ in range(5):
-			picker = RandomSpell(secret=True)
+			picker = RandomSpell(secret=True, from_past=True)
 			pick = picker.evaluate(source)
 			cid = pick[0] if isinstance(pick, list) else pick
 			if not cid:

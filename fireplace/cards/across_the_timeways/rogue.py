@@ -98,7 +98,9 @@ class _FlashbackSummon(TargetedAction):
         combo = ctrl.combo and getattr(source, "has_combo", False)
         for _ in range(2):
             before = set(ctrl.field)
-            source.game.cheat_action(source, [Summon(ctrl, RandomMinion(cost=1))])
+            source.game.cheat_action(
+                source, [Summon(ctrl, RandomMinion(cost=1, from_past=True))]
+            )
             new = [m for m in ctrl.field if m not in before]
             if combo:
                 for m in new:

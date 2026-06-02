@@ -59,7 +59,15 @@ class RandomCardPicker(LazyValue):
         else:
             new_filters = filters.copy()
 
-        if source.game.is_standard and "is_standard" not in new_filters:
+        # "From the past" pools (cards whose text says e.g. "Get a random Demon
+        # from the past") draw from the full historic Wild pool — every
+        # collectible card ever printed, INCLUDING today's Standard cards. The
+        # from_past flag suppresses the auto-Standard narrowing below so the
+        # pool stays Wild-inclusive even inside a Standard game. It is popped
+        # here so it is never passed on as a card-attribute filter.
+        from_past = new_filters.pop("from_past", False)
+
+        if source.game.is_standard and not from_past and "is_standard" not in new_filters:
             new_filters["is_standard"] = True
 
         for k, v in new_filters.items():

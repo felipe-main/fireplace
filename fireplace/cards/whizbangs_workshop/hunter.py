@@ -30,39 +30,18 @@ class _CanvasaurBonus(TargetedAction):
 
 class _HemetLegendaryBeast(TargetedAction):
     """Hemet, Foam Marksman trigger. After a friendly Beast dies, add a
-    random Legendary Beast "from the past" (a Wild-rotated collectible
-    Legendary Beast) to the controller's hand, costing (2) less. The
-    Standard set list is read from `is_standard` on the data card so the
-    pool tracks future-patch rotations automatically."""
+    random Legendary Beast "from the past" to the controller's hand,
+    costing (2) less. "From the past" -> the full historic Wild-inclusive
+    pool (from_past=True keeps Standard Legendary Beasts eligible too);
+    the picker also drops Titans/subset-excluded cards correctly."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        from .. import db as _db
-
-        pool = [
-            cid
-            for cid, c in _db.items()
-            if c.collectible
-            and c.type == CardType.MINION
-            and Race.BEAST in getattr(c, "races", [])
-            and c.rarity == Rarity.LEGENDARY
-            and not getattr(c, "is_standard", False)
-        ]
-        if not pool:
-            # Fallback: any collectible Legendary Beast (avoids a no-op if
-            # the data parser doesn't carry is_standard on this patch).
-            pool = [
-                cid
-                for cid, c in _db.items()
-                if c.collectible
-                and c.type == CardType.MINION
-                and Race.BEAST in getattr(c, "races", [])
-                and c.rarity == Rarity.LEGENDARY
-            ]
-        if not pool:
+        pick = RandomBeast(rarity=Rarity.LEGENDARY, from_past=True).evaluate(source)
+        cid = pick[0] if isinstance(pick, list) else pick
+        if not cid:
             return
-        cid = source.game.random.choice(pool)
         source.game.cheat_action(
             source,
             [Give(source.controller, cid).then(Buff(Give.CARD, "TOY_355e2"))],

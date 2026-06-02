@@ -282,6 +282,7 @@ class _AlternateReality(TargetedAction):
             card.zone = Zone.SETASIDE
         picker = RandomCard(
             collectible=True,
+            from_past=True,
             custom_filter=lambda c: c.tags.get(GameTag.CHOOSE_ONE, 0) == 1,
         )
 
@@ -434,7 +435,10 @@ class TIME_704:
         Give(CONTROLLER, "TIME_704t"),
         Discover(
             CONTROLLER,
-            RandomSpell(custom_filter=lambda c: c.cost is not None and c.cost >= 7),
+            RandomSpell(
+                from_past=True,
+                custom_filter=lambda c: c.cost is not None and c.cost >= 7,
+            ),
         ).then(_TeachPupil(Discover.CARD)),
     )
 

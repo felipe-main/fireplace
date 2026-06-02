@@ -202,10 +202,11 @@ class END_027:
     """Wings of Eternity"""
 
     # Discover a Dragon from the past with a Dark Gift.
-    # "From the past" is flavour — the data pool is collectible Dragons. The
-    # Discovered Dragon receives a random Dark Gift via the shared set-wide
+    # "From the past" -> the full historic Wild-inclusive Dragon pool
+    # (from_past=True bypasses the Standard narrowing). The Discovered Dragon
+    # receives a random Dark Gift via the shared set-wide
     # `_GiveDarkGift` helper (same modelling as every EDR Dark-Gift card).
     play = Discover(
         CONTROLLER,
-        RandomDragon(),
+        RandomDragon(from_past=True),
     ).then(Give(CONTROLLER, Discover.CARD).then(_GiveDarkGift(Give.CARD)))

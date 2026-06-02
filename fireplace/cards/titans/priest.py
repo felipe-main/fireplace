@@ -255,9 +255,11 @@ class TTN_484:
     """False Disciple"""
 
     # Battlecry: Discover a Legendary Priest minion from the past.
-    # Approximation: Discover any collectible Legendary Priest minion
-    # (no set filter for "past" — covers all historical pools).
-    play = DISCOVER(RandomLegendaryMinion(card_class=CardClass.PRIEST))
+    # "From the past" -> the full historic Wild-inclusive pool
+    # (from_past=True keeps Standard cards eligible even in a Standard game).
+    play = DISCOVER(
+        RandomLegendaryMinion(card_class=CardClass.PRIEST, from_past=True)
+    )
 
 
 ##

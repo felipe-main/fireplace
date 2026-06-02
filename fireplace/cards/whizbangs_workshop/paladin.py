@@ -353,10 +353,10 @@ class MIS_700:
     """Whack-A-Gnoll"""
 
     # Discover a Paladin weapon from the past. Give it +1/+1. ("From the
-    # past" = any collectible Paladin weapon, so suppress the standard-only
-    # restriction with is_standard=None.)
+    # past" = the full historic Wild-inclusive Paladin-weapon pool, so
+    # suppress the Standard narrowing with from_past=True.)
     play = Discover(
-        CONTROLLER, RandomWeapon(card_class=CardClass.PALADIN, is_standard=None)
+        CONTROLLER, RandomWeapon(card_class=CardClass.PALADIN, from_past=True)
     ).then(Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "MIS_700e")))
 
 

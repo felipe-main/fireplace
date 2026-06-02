@@ -289,7 +289,7 @@ class GDB_857:
 
     # Discover a 10-Cost minion from the past. Set its Cost to (1).
     play = Discover(
-        CONTROLLER, RandomMinion(cost=10, is_standard=None)
+        CONTROLLER, RandomMinion(cost=10, from_past=True)
     ).then(Give(CONTROLLER, Discover.CARD).then(_SetGivenCostToOne(Give.CARD)))
 
 

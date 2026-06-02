@@ -75,7 +75,7 @@ class TIME_855:
 
 
 _ALTER_TIME_DISCOVER = Discover(
-    CONTROLLER, RandomSpell(spell_school=SpellSchool.ARCANE)
+    CONTROLLER, RandomSpell(spell_school=SpellSchool.ARCANE, from_past=True)
 ).then(Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "TIME_857e")))
 
 
@@ -301,7 +301,7 @@ class _TokiGetSpells(TargetedAction):
         ctrl._toki_next_group = gid + 1
         marked = []
         for _ in range(4):
-            picker = RandomSpell()
+            picker = RandomSpell(from_past=True)
             pick = picker.evaluate(source)
             cid = pick[0] if isinstance(pick, list) else pick
             if not cid:

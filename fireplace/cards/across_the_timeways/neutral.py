@@ -95,7 +95,7 @@ class TIME_038t3:
 class TIME_040:
     "Fading Memory"
     # Deathrattle: Get a random 5-Cost minion from the past.
-    deathrattle = Give(CONTROLLER, RandomMinion(cost=5))
+    deathrattle = Give(CONTROLLER, RandomMinion(cost=5, from_past=True))
 
 
 class _ForefatherGuess(TargetedAction):
@@ -262,7 +262,7 @@ class TIME_051e:
 class TIME_052:
     "Amber Warden"
     # Taunt Deathrattle: Summon a random minion from the past.
-    deathrattle = Summon(CONTROLLER, RandomMinion())
+    deathrattle = Summon(CONTROLLER, RandomMinion(from_past=True))
 
 
 class TIME_053:

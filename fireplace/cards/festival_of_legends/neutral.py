@@ -597,39 +597,6 @@ class _MerchSellerPutSpellOnTop(TargetedAction):
         opp.deck.append(card)
 
 
-class _UnpopularHasBeenSummon(TargetedAction):
-    """Unpopular Has-Been Deathrattle — summon a random 5-cost minion
-    "from the past" (i.e. Wild-rotated cards). Filters to collectible
-    5-cost minions whose card set is NOT in the modern Standard
-    rotation. The Standard set list is read from `is_standard` on the
-    data card so the pool tracks future-patch rotations automatically."""
-
-    TARGET = ActionArg()
-
-    def do(self, source, target):
-        from .. import db as _db
-        pool = [
-            cid for cid, c in _db.items()
-            if c.collectible
-            and c.type == CardType.MINION
-            and (c.cost or 0) == 5
-            and not getattr(c, "is_standard", False)
-        ]
-        if not pool:
-            # Fallback: any 5-cost collectible (avoids no-op if the
-            # data parser doesn't carry is_standard on this patch).
-            pool = [
-                cid for cid, c in _db.items()
-                if c.collectible
-                and c.type == CardType.MINION
-                and (c.cost or 0) == 5
-            ]
-        if not pool:
-            return
-        cid = source.game.random.choice(pool)
-        source.game.cheat_action(source, [Summon(source.controller, cid)])
-
-
 class _BoomWrenchDraw(TargetedAction):
     """Boom Wrench — whenever you summon a Mech, draw a card."""
 
@@ -917,7 +884,9 @@ class ETC_336(_TrailingProgressCardtextMixin):
 class ETC_349:
     """Unpopular Has-Been"""
 
-    deathrattle = _UnpopularHasBeenSummon(SELF)
+    # "From the past" -> the full historic Wild-inclusive 5-Cost pool
+    # (from_past=True keeps Standard minions eligible too).
+    deathrattle = Summon(CONTROLLER, RandomMinion(cost=5, from_past=True))
 
 
 # Battlecry: Give +1/+1 to a minion of each type in your hand.

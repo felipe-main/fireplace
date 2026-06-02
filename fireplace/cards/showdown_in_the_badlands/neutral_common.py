@@ -167,8 +167,10 @@ class WW_428:
     """Eroded Sediment"""
 
     # Battlecry: If you played an Elemental last turn, Discover an
-    # Elemental from the past.
-    play = ELEMENTAL_PLAYED_LAST_TURN & DISCOVER(RandomElemental(is_standard=False))
+    # Elemental from the past. "From the past" -> the full historic
+    # Wild-inclusive pool (Standard Elementals stay eligible); the prior
+    # Wild-only filter was wrong as it excluded every Standard Elemental.
+    play = ELEMENTAL_PLAYED_LAST_TURN & DISCOVER(RandomElemental(from_past=True))
 
 
 class WW_433:

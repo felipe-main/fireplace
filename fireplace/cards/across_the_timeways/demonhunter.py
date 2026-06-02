@@ -264,7 +264,7 @@ class TIME_444:
     """Time-Lost Glaive"""
 
     # Deathrattle: Get a random Demon from the past.
-    deathrattle = Give(CONTROLLER, RandomDemon())
+    deathrattle = Give(CONTROLLER, RandomDemon(from_past=True))
 
 
 class _EternalHold(TargetedAction):

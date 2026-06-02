@@ -106,7 +106,7 @@ class TIME_013:
     # Elusive (in data). After you cast a spell, Discover a Nature spell from
     # the past.
     events = OWN_SPELL_PLAY.after(
-        DISCOVER(RandomSpell(spell_school=SpellSchool.NATURE))
+        DISCOVER(RandomSpell(spell_school=SpellSchool.NATURE, from_past=True))
     )
 
 

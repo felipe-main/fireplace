@@ -255,6 +255,7 @@ class MIS_307t1(MIS_307):
 class MIS_701:
     """Wave of Nostalgia"""
 
-    # Transform ALL minions into random Legendary ones from the past (any
-    # collectible Legendary minion — suppress the standard-only restriction).
-    play = Morph(ALL_MINIONS, RandomLegendaryMinion(is_standard=None))
+    # Transform ALL minions into random Legendary ones from the past (the
+    # full historic Wild-inclusive Legendary pool — from_past=True suppresses
+    # the Standard narrowing).
+    play = Morph(ALL_MINIONS, RandomLegendaryMinion(from_past=True))

@@ -209,6 +209,7 @@ class VAC_336:
             type=CardType.HERO,
             collectible=True,
             card_class=FOREIGN_CLASS,
+            from_past=True,
         )
     )
 

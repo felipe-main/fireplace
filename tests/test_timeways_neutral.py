@@ -1222,3 +1222,65 @@ def test_endtime_murozond_skips_controller_next_turn():
     assert controller._skip_next_turn is False  # flag consumed exactly once
     game.end_turn()
     assert game.current_player is controller     # controller resumes
+
+
+# ---------------------------------------------------------------------------
+# TIME_064 Chrono-Lord Deios — "Your Battlecries, Deathrattles, Hero Power, and
+# end of turn effects trigger twice." End-of-turn doubling rides the engine's
+# EXTRA_END_TURN_EFFECT flag.
+# ---------------------------------------------------------------------------
+
+def test_deios_doubles_end_of_turn_effects():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.current_player
+    # Hourglass Attendant (TIME_100): at end of your turn, +1/+1 to hand minions.
+    p.summon("TIME_100")
+    raptor = p.give("CS2_172")  # Bloodfen Raptor 3/2 in hand
+    assert (raptor.atk, raptor.health) == (3, 2)
+    p.summon("TIME_064")  # Chrono-Lord Deios
+    game.end_turn()
+    # End-of-turn effect fires TWICE -> +2/+2.
+    assert (raptor.atk, raptor.health) == (5, 4)
+
+
+def test_deios_absent_end_of_turn_fires_once():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.current_player
+    p.summon("TIME_100")
+    raptor = p.give("CS2_172")
+    game.end_turn()  # no Deios -> single +1/+1
+    assert (raptor.atk, raptor.health) == (4, 3)
+
+
+# ---------------------------------------------------------------------------
+# TIME_101 Misplaced Pyromancer — "Whenever you Shatter a card, deal 2 damage to
+# all enemy minions." Driven by the engine Shatter signal.
+# ---------------------------------------------------------------------------
+
+def test_misplaced_pyromancer_damages_on_shatter():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.current_player
+    opp = p.opponent
+    p.summon("TIME_101")  # Misplaced Pyromancer
+    yeti = opp.summon("CS2_182")  # Chillwind Yeti
+    yeti.max_health = 50
+    yeti.damage = 0
+    # Draw a SHATTER card (Wildwood Circle) -> it shatters -> Pyromancer fires.
+    shatter_card = p.card("CATA_134")
+    shatter_card.zone = Zone.DECK
+    before = yeti.damage
+    p.draw()
+    assert yeti.damage - before == 2
+
+
+def test_no_pyromancer_no_shatter_damage():
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p = game.current_player
+    opp = p.opponent
+    yeti = opp.summon("CS2_182")
+    yeti.max_health = 50
+    yeti.damage = 0
+    shatter_card = p.card("CATA_134")
+    shatter_card.zone = Zone.DECK
+    p.draw()
+    assert yeti.damage == 0

@@ -456,12 +456,17 @@ class TIME_064:
     "Chrono-Lord Deios"
     # Your Battlecries, Deathrattles, Hero Power, and end of turn effects
     # trigger twice.
-    # Battlecries + Deathrattles use the engine's EXTRA_* slot flags; the Hero
-    # Power is doubled by re-running the activated power. (End-of-turn doubling
-    # has no general engine hook — audit-noted approximation.)
+    # Battlecries + Deathrattles use the engine's EXTRA_* slot flags; end-of-turn
+    # effects double via the EXTRA_END_TURN_EFFECT flag (EndTurn.do re-broadcasts
+    # the ON event when the ending player has it set); the Hero Power is doubled
+    # by re-running the activated power.
     update = Refresh(
         CONTROLLER,
-        {enums.EXTRA_BATTLECRIES: True, GameTag.EXTRA_DEATHRATTLES: True},
+        {
+            enums.EXTRA_BATTLECRIES: True,
+            GameTag.EXTRA_DEATHRATTLES: True,
+            enums.EXTRA_END_TURN_EFFECT: True,
+        },
     )
     events = Activate(FRIENDLY_HERO_POWER).after(
         PlayHeroPower(Activate.CARD, Activate.TARGET)
@@ -491,11 +496,9 @@ class TIME_100e:
 class TIME_101:
     "Misplaced Pyromancer"
     # Whenever you Shatter a card, deal 2 damage to all enemy minions.
-    # NOTE: "Shatter" is a Timeways keyword with no engine event/action yet, and
-    # no neutral-scope card actually Shatters a card, so there is nothing to
-    # listen for. Implemented as a vanilla body; wiring the trigger would
-    # require an engine Shatter primitive (audit-noted approximation).
-    pass
+    # The engine broadcasts actions.Shatter at the end of _shatter_into_halves
+    # whenever the controller shatters a card.
+    events = Shatter(CONTROLLER).on(Hit(ENEMY_MINIONS, 2))
 
 
 class _MetaphysicalTick(TargetedAction):

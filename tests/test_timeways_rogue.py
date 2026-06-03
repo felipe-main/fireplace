@@ -490,3 +490,57 @@ def test_blessing_of_the_bronze_scales_with_imbue_level():
     assert got.card_class not in (CardClass.ROGUE, CardClass.NEUTRAL)
     # Level 2 => costs (2) less.
     assert got.cost == max(0, got.data.cost - 2)
+
+
+# ---------------------------------------------------------------------------
+# TIME_875 Garona Halforcen + TIME_875t King Llane.
+# King Llane "Start of Game: Hide from Garona in the enemy's deck" relocates
+# from your deck into the opponent's deck during setup. Garona "Battlecry: If
+# your opponent is holding King Llane, destroy him and cut their Health in half."
+# ---------------------------------------------------------------------------
+
+def test_king_llane_relocates_to_enemy_deck_at_start():
+    from fireplace.player import Player
+    from utils import BaseTestGame
+
+    deck1 = ["TIME_875t"] + ["CS2_172"] * 25
+    deck2 = ["CS2_172"] * 25
+    p1 = Player("P1", deck1, CardClass.ROGUE.default_hero)
+    p2 = Player("P2", deck2, CardClass.ROGUE.default_hero)
+    game = BaseTestGame(players=(p1, p2))
+    game.start()
+    for player in game.players:
+        if player.choice:
+            player.choice.choose()
+    # King Llane has left p1 entirely.
+    assert not any(c.id == "TIME_875t" for c in p1.deck)
+    assert not any(c.id == "TIME_875t" for c in p1.hand)
+    # ...and now belongs to the opponent (in their deck, or already drawn to hand
+    # if they are the first player and took their opening draw).
+    assert any(c.id == "TIME_875t" for c in p2.deck + p2.hand)
+    llane = next(c for c in p2.deck + p2.hand if c.id == "TIME_875t")
+    assert llane.controller is p2
+
+
+def test_garona_destroys_king_llane_and_halves_enemy_health():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.current_player
+    opp = p.opponent
+    llane = opp.give("TIME_875t")  # opponent is holding King Llane
+    opp.hero.max_health = 30
+    opp.hero.damage = 0  # full 30 Health
+    garona = p.give("TIME_875")
+    garona.play()
+    assert llane not in opp.hand          # King Llane destroyed
+    assert opp.hero.health == 15          # Health cut in half (rounded up)
+
+
+def test_garona_does_nothing_without_king_llane():
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p = game.current_player
+    opp = p.opponent
+    opp.hero.max_health = 30
+    opp.hero.damage = 0
+    garona = p.give("TIME_875")
+    garona.play()
+    assert opp.hero.health == 30          # untouched

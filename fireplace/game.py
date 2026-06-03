@@ -375,6 +375,23 @@ class BaseGame(Entity):
             for card in list(player.deck) + list(player.hand):
                 card._started_in_deck = True
 
+        # Across the Timeways — King Llane (TIME_875t) "Start of Game: Hide from
+        # Garona in the enemy's deck." Any King Llane that started in a player's
+        # deck or opening hand relocates into the opponent's deck (becoming their
+        # card), so the opponent can draw it and Garona (TIME_875) can find it.
+        # Snapshot every relocation BEFORE moving any card — otherwise the second
+        # player's pass would find the just-moved King Llane and send it back.
+        _llane_moves = [
+            (card, player.opponent)
+            for player in self.players
+            for card in list(player.deck) + list(player.hand)
+            if card.id == "TIME_875t"
+        ]
+        for card, target in _llane_moves:
+            card.zone = Zone.SETASIDE
+            card.controller = target
+            card.zone = Zone.DECK
+
         if self.is_standard:
             self.skin = self.random.choice(standard_board_skins)
         else:

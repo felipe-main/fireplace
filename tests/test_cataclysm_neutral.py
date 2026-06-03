@@ -184,33 +184,67 @@ def test_sabotage_aura_follows_hand_position():
 
 
 # ---------------------------------------------------------------------------
-# CATA_206 Twisted Monstrosity — keeps its base keywords (Bonus-Effect swap
-# is approximated as a no-op: the "Bonus Effects" pool is NOT enumerated in
-# card data, so the per-turn random swap is accepted as out-of-scope).
+# CATA_206 Twisted Monstrosity — each turn in hand it swaps its two Bonus-Effect
+# keywords for two new random ones from the eight-keyword pool (Divine Shield,
+# Elusive, Lifesteal, Poisonous, Reborn, Rush, Taunt, Windfury). Starts with
+# Taunt + Elusive.
 # ---------------------------------------------------------------------------
 
-def test_twisted_monstrosity_keeps_base_keywords():
+_TWISTED_POOL_TAGS = (
+    GameTag.DIVINE_SHIELD,
+    GameTag.LIFESTEAL,
+    GameTag.POISONOUS,
+    GameTag.REBORN,
+    GameTag.RUSH,
+    GameTag.TAUNT,
+    GameTag.WINDFURY,
+)
+
+
+def _twisted_active_keywords(card):
+    n = sum(1 for t in _TWISTED_POOL_TAGS if card.tags.get(t, 0))
+    if card.elusive:
+        n += 1
+    return n
+
+
+def test_twisted_monstrosity_starts_taunt_and_elusive():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
-    p1 = game.player1
-    # Plays as a vanilla body and carries its data-baked keywords (Taunt).
-    tm = p1.give("CATA_206")
-    tm.play()
-    assert tm.zone == Zone.PLAY
-    assert tm.id == "CATA_206"
+    tm = game.player1.give("CATA_206")
     assert tm.taunt is True
+    assert tm.elusive is True
+    assert _twisted_active_keywords(tm) == 2
 
 
-def test_twisted_monstrosity_turn_tick_is_a_noop_in_hand():
-    # The per-turn "swap Bonus Effects" tick fires while in hand and must be a
-    # harmless no-op (pool not in data): the card stays itself across a turn.
+def test_twisted_monstrosity_swaps_to_exactly_two_pool_keywords():
+    # The per-turn tick replaces the current pair with two random pool keywords:
+    # the card always carries EXACTLY two of the eight Bonus Effects afterwards.
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     tm = p1.give("CATA_206")
     assert tm.zone == Zone.HAND
     game.end_turn()
-    game.end_turn()  # back to p1: OWN_TURN_BEGIN fires the Hand tick
+    game.end_turn()  # back to p1: OWN_TURN_BEGIN fires the Hand swap tick
     assert tm.zone == Zone.HAND
-    assert tm.id == "CATA_206"
+    assert _twisted_active_keywords(tm) == 2
+    # the recorded pair is two distinct pool keywords
+    assert len(set(tm._twisted_keywords)) == 2
+    _valid = {"DIVINE_SHIELD", "LIFESTEAL", "POISONOUS", "REBORN", "RUSH",
+              "TAUNT", "WINDFURY", "ELUSIVE"}
+    assert all(k in _valid for k in tm._twisted_keywords)
+
+
+def test_twisted_monstrosity_swapped_keywords_carry_into_play():
+    # Whatever two keywords it holds after a swap are the keywords it enters
+    # play with (same entity), so it always has exactly two on the board too.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    tm = p1.give("CATA_206")
+    game.end_turn()
+    game.end_turn()
+    tm.play()
+    assert tm.zone == Zone.PLAY
+    assert _twisted_active_keywords(tm) == 2
 
 
 # ---------------------------------------------------------------------------

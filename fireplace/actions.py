@@ -551,6 +551,19 @@ class BeginTurn(GameAction):
             source._begin_turn(player)
 
 
+class Shatter(GameAction):
+    """Signal fired when a card Shatters (splits into its two halves). The split
+    itself is performed by ``_shatter_into_halves``; this action is broadcast
+    immediately afterwards so cards like Misplaced Pyromancer (TIME_101) — "Whenever
+    you Shatter a card, ..." — can listen via ``events = Shatter(CONTROLLER)``."""
+
+    PLAYER = CardArg()
+    CARD = CardArg()
+
+    def do(self, source, player, card):
+        pass
+
+
 class Concede(GameAction):
     """
     Make \a player concede
@@ -3747,6 +3760,9 @@ def _shatter_into_halves(card, player):
     finally:
         game._shattering = False
     player.shatters_this_game += 1
+    # Fire the Shatter signal so "Whenever you Shatter a card" listeners
+    # (Misplaced Pyromancer) trigger. The split is already complete.
+    Shatter(player, card).broadcast(player, EventListener.ON, player, card)
 
 
 # Lazily-built map: Shattered-half id -> (parent id, tuple of all half ids).

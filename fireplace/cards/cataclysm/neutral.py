@@ -103,22 +103,44 @@ class CATA_186te:
     tags = {GameTag.COST: 1}
 
 
+# Twisted Monstrosity's "Bonus Effects" pool (per hearthstone.wiki.gg): the
+# eight grantable keywords. Elusive is a live boolean_property, not a GameTag,
+# so it is applied separately.
+_TWISTED_TAG_KEYWORDS = {
+    "DIVINE_SHIELD": GameTag.DIVINE_SHIELD,
+    "LIFESTEAL": GameTag.LIFESTEAL,
+    "POISONOUS": GameTag.POISONOUS,
+    "REBORN": GameTag.REBORN,
+    "RUSH": GameTag.RUSH,
+    "TAUNT": GameTag.TAUNT,
+    "WINDFURY": GameTag.WINDFURY,
+}
+_TWISTED_POOL = list(_TWISTED_TAG_KEYWORDS) + ["ELUSIVE"]
+
+
 class _TwistedMonstrositySwap(TargetedAction):
-    """Twisted Monstrosity — each turn in hand, swap between two random Bonus
-    Effects. The card already carries Taunt + Elusive (its two DYNAMIC_KEYWORD
-    slots) from data; the per-turn random re-roll is purely cosmetic, so this
-    is a no-op tick (keeps the printed keywords)."""
+    """Twisted Monstrosity — each turn in hand, swap its two Bonus-Effect
+    keywords for two new random ones from the eight-keyword pool (Divine Shield,
+    Elusive, Lifesteal, Poisonous, Reborn, Rush, Taunt, Windfury). It starts
+    with Taunt + Elusive (its data keywords); each tick re-rolls two distinct
+    keywords (which may repeat across turns)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        return
+        new = tuple(source.game.random.sample(_TWISTED_POOL, 2))
+        # Set every pool tag-keyword on/off in one pass so the previous pair is
+        # cleared and the new pair applied; Elusive rides its own property.
+        tagvals = {gt: (name in new) for name, gt in _TWISTED_TAG_KEYWORDS.items()}
+        source.game.cheat_action(source, [SetTags(target, tagvals)])
+        target.elusive = "ELUSIVE" in new
+        target._twisted_keywords = new
 
 
 class CATA_206:
     "Twisted Monstrosity"
     # Taunt, Elusive. Each turn this is in your hand, swap between two random
-    # Bonus Effects. (Keywords carried by data; swap approximated as no-op.)
+    # Bonus Effects (the 8-keyword pool).
     class Hand:
         events = OWN_TURN_BEGIN.on(_TwistedMonstrositySwap(SELF))
 

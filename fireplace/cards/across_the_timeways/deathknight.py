@@ -95,19 +95,16 @@ class _ChronochillerSkipStartDraw(TargetedAction):
         target.skip_next_start_draw = True
 
 
-class _HuskHeroDeathrattle(TargetedAction):
-    """Husk, Eternal Reaper - the hero deathrattle granted by TIME_618e.
-    Spend up to 20 Corpses; the spent amount is the Health the hero would
-    resurrect with. Reviving a dead hero is not expressible with available
-    primitives, so this approximates by spending the Corpses."""
+class _GrantHuskRevive(TargetedAction):
+    """Husk, Eternal Reaper — grant the hero one pending "cheat death" revive.
+    The actual resurrection (spend up to 20 Corpses, come back with that much
+    Health) is handled by the engine in Deaths.do (actions._husk_revive) BEFORE
+    the loss is finalized; here we just bump the per-hero revive counter."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
-        ctrl = getattr(target, "controller", None) or source.controller
-        spend = min(20, ctrl.corpses)
-        if spend > 0:
-            source.game.cheat_action(source, [SpendCorpses(ctrl, spend)])
+        target._husk_revives = getattr(target, "_husk_revives", 0) + 1
 
 
 # Boon token id -> keyword GameTag granted to Bwonsamdi.
@@ -300,8 +297,9 @@ class TIME_618:
     """Husk, Eternal Reaper"""
 
     # Battlecry: Give your hero "Deathrattle: Spend up to 20 Corpses to
-    # resurrect with that much Health."
-    play = Buff(FRIENDLY_HERO, "TIME_618e")
+    # resurrect with that much Health." The revive itself is handled in the
+    # engine death pipeline (actions._husk_revive); TIME_618e carries the text.
+    play = Buff(FRIENDLY_HERO, "TIME_618e"), _GrantHuskRevive(FRIENDLY_HERO)
 
 
 class TIME_619:
@@ -391,9 +389,10 @@ class TIME_615e:
 class TIME_618e:
     """Eternal Life Player Enchant"""
 
-    # Hero deathrattle: spend up to 20 Corpses to resurrect. Reviving the hero
-    # is an engine limitation; we spend the Corpses.
-    deathrattle = _HuskHeroDeathrattle(FRIENDLY_HERO)
+    # Carries the "Deathrattle: Spend up to 20 Corpses to resurrect with that
+    # much Health" text on the hero. The revive is performed by the engine
+    # (actions._husk_revive) before the loss is finalized, driven by the
+    # per-hero revive counter granted in TIME_618's battlecry.
 
 
 ##

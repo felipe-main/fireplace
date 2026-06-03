@@ -372,29 +372,46 @@ def test_chromatic_broodmother_refreshes_mana_on_attack():
 # ---------------------------------------------------------------------------
 
 
-def test_victor_nefarius_gives_creation_full_cost_without_dragon():
+def _resolve_victor_picks(player):
+    """Resolve Victor's two Discovers (pick the first option each), returning the
+    chosen (dragon, undead) cards so the test can assert the combined statline."""
+    picks = []
+    while player.choice:
+        chosen = player.choice.cards[0]
+        picks.append(chosen)
+        player.choice.choose(chosen)
+    return picks
+
+
+def test_victor_nefarius_combines_discovered_dragon_and_undead():
     game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
-    pre = len(p1.hand)
-    nef = p1.give("CATA_470")
-    nef.play()
-    assert len(p1.hand) == pre + 1  # only the Creation (the played Nefarius left hand)
+    p1.give("CATA_470").play()
+    dragon, undead = _resolve_victor_picks(p1)
+    assert dragon.type == CardType.MINION and Race.DRAGON in dragon.races
+    assert undead.type == CardType.MINION and Race.UNDEAD in undead.races
     creation = next(c for c in p1.hand if c.id == "CATA_470t1")
-    assert creation.cost == 1  # base cost, no Dragon discount
+    # Combined statline: summed Attack/Health, summed Cost capped at 10.
+    assert creation.atk == dragon.atk + undead.atk
+    assert creation.health == dragon.health + undead.health
+    assert creation.cost == min(10, dragon.cost + undead.cost)
+    # The Creation is an Undead Dragon.
+    assert Race.DRAGON in creation.races and Race.UNDEAD in creation.races
 
 
 def test_victor_nefarius_discounts_creation_with_dragon_in_hand():
     game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
-    dragon = p1.give("CATA_465t")  # Hungry Drake — an Undead Dragon
-    assert Race.DRAGON in dragon.races
-    nef = p1.give("CATA_470")
-    nef.play()
+    held = p1.give("CATA_465t")  # Hungry Drake — a Dragon held in hand
+    assert Race.DRAGON in held.races
+    p1.give("CATA_470").play()
+    dragon, undead = _resolve_victor_picks(p1)
     creation = next(c for c in p1.hand if c.id == "CATA_470t1")
-    # Holding a Dragon -> Cost reduced by 3 from base 1, clamped to 0.
-    assert creation.cost == 0
+    # Holding a Dragon -> 3 off the combined Cost (clamped at 0).
+    expected = max(0, min(10, dragon.cost + undead.cost) - 3)
+    assert creation.cost == expected
 
 
 # ---------------------------------------------------------------------------

@@ -127,29 +127,103 @@ class _ChowDownRush(TargetedAction):
                 )
 
 
+# Keyword GameTags merged onto Nefarian's Creation from its two source minions.
+_NEFARIUS_KEYWORDS = (
+    GameTag.TAUNT,
+    GameTag.DIVINE_SHIELD,
+    GameTag.LIFESTEAL,
+    GameTag.RUSH,
+    GameTag.CHARGE,
+    GameTag.WINDFURY,
+    GameTag.POISONOUS,
+    GameTag.REBORN,
+    GameTag.STEALTH,
+    GameTag.CANT_BE_TARGETED_BY_SPELLS,
+)
+
+
+def _nefarius_build(source, dragon, undead):
+    """Build Nefarian's Creation by COMBINING the Discovered Dragon + Undead:
+    summed Attack/Health, summed Cost (capped at 10), the union of their
+    keywords, and the Undead-Dragon type (the token already is one). The two
+    minions' Battlecries/Deathrattles are not merged — fireplace has no generic
+    two-card text-merge primitive — but the combined statline/Cost/keywords is
+    the bulk of the printed effect. -3 Cost if holding a Dragon."""
+    ctrl = source.controller
+    before = len(ctrl.hand)
+    source.game.cheat_action(source, [Give(ctrl, "CATA_470t1")])
+    if len(ctrl.hand) <= before:
+        return
+    creation = ctrl.hand[-1]
+    creation.tags[GameTag.ATK] = (dragon.atk or 0) + (undead.atk or 0)
+    creation.tags[GameTag.HEALTH] = (dragon.health or 0) + (undead.health or 0)
+    creation.damage = 0
+    creation.tags[GameTag.COST] = min(10, (dragon.cost or 0) + (undead.cost or 0))
+    for kw in _NEFARIUS_KEYWORDS:
+        if dragon.tags.get(kw) or undead.tags.get(kw):
+            creation.tags[kw] = True
+    # If the controller is (still) holding a Dragon, knock 3 off the Cost.
+    holding_dragon = any(
+        c is not source and c is not creation
+        and Race.DRAGON in getattr(c, "races", [])
+        for c in ctrl.hand
+    )
+    if holding_dragon:
+        source.game.cheat_action(source, [Buff(creation, "CATA_470e")])
+
+
+class _NefariusBuild(TargetedAction):
+    """Second Discover resolved — build the Creation from the stashed Dragon and
+    the just-Discovered Undead."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, undead):
+        dragon = getattr(source, "_nef_dragon", None)
+        if dragon is None or undead is None:
+            return
+        _nefarius_build(source, dragon, undead)
+        source._nef_dragon = None
+
+
+class _NefariusStashDragon(TargetedAction):
+    """First Discover resolved — stash the chosen Dragon, then Discover an
+    Undead to combine with it."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, dragon):
+        source._nef_dragon = dragon
+        ctrl = source.controller
+        source.game.queue_actions(
+            source,
+            [
+                Discover(ctrl, RandomMinion(race=Race.UNDEAD)).then(
+                    _NefariusBuild(Discover.CARD)
+                )
+            ],
+        )
+
+
 class _NefariusCraft(TargetedAction):
     """Victor Nefarius — "Battlecry: Craft a custom Undead Dragon. If you're
     holding a Dragon, reduce the Creation's Cost by (3)."
 
-    The build-a-card UI isn't expressible, so we approximate: give the
-    controller Nefarian's Creation (CATA_470t1, a 1/1 Undead Dragon) and, if
-    they're holding another Dragon, knock 3 off its Cost.
-    """
+    Two-step Discover (a Dragon, then an Undead) whose stats/Cost/keywords are
+    combined into Nefarian's Creation (CATA_470t1, an Undead Dragon)."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        holding_dragon = any(
-            c is not source and Race.DRAGON in getattr(c, "races", [])
-            for c in ctrl.hand
+        source.game.queue_actions(
+            source,
+            [
+                Discover(ctrl, RandomDragon()).then(
+                    _NefariusStashDragon(Discover.CARD)
+                )
+            ],
         )
-        before = len(ctrl.hand)
-        source.game.cheat_action(source, [Give(ctrl, "CATA_470t1")])
-        if len(ctrl.hand) > before and holding_dragon:
-            source.game.cheat_action(
-                source, [Buff(ctrl.hand[-1], "CATA_470e")]
-            )
 
 
 class _ConsumptionHit(TargetedAction):

@@ -589,6 +589,25 @@ class Disconnect(GameAction):
         source.game.manager.game_action(self, source, player)
 
 
+def _husk_revive(hero):
+    """Across the Timeways — Husk, Eternal Reaper (TIME_618). A hero with a
+    pending revive (``hero._husk_revives`` > 0, granted by Husk's battlecry)
+    cheats death: spend up to 20 Corpses to resurrect with that much Health.
+    Returns True if the hero was revived (its death must then be skipped). One
+    revive is consumed per Husk played; with 0 Corpses the hero dies normally."""
+    if getattr(hero, "_husk_revives", 0) <= 0:
+        return False
+    ctrl = hero.controller
+    spend = min(20, ctrl.corpses)
+    if spend <= 0:
+        return False
+    ctrl.corpses -= spend
+    hero.damage = max(0, hero.max_health - spend)
+    hero.to_be_destroyed = False
+    hero._husk_revives -= 1
+    return True
+
+
 class Deaths(GameAction):
     """
     Process all deaths in the PLAY Zone.
@@ -626,6 +645,13 @@ class Death(GameAction):
     def do(self, source, cards):
         for card in cards:
             if not card.dead:
+                continue
+            # Across the Timeways — Husk, Eternal Reaper: a hero carrying a
+            # pending Husk revive cheats death once by spending up to 20 Corpses
+            # to resurrect with that much Health. This MUST run before the hero
+            # moves to the graveyard + check_for_end_game (below) finalize the
+            # loss, so it happens here at the top of death processing.
+            if card.type == CardType.HERO and _husk_revive(card):
                 continue
             if card.zone == Zone.PLAY:
                 card._dead_position = card.zone_position - 1

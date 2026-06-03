@@ -412,8 +412,11 @@ def test_chronogor_net_outcome_exact_ids_and_costs():
     hi1 = _deck_card(p1, "TIME_032")  # cost 6
     hi2 = _deck_card(p1, "TIME_005")  # cost 10
     assert (lo1.cost, lo2.cost, hi1.cost, hi2.cost) == (1, 2, 6, 10)
+    pre_drawn = p2.cards_drawn_this_turn
     chrono = p1.give("TIME_032")
     chrono.play()
+    # The opponent genuinely DREW their two cards (real draw pipeline fired).
+    assert p2.cards_drawn_this_turn == pre_drawn + 2
     # Controller's hand == exactly the two highest-cost cards.
     assert sorted(c.id for c in p1.hand) == ["TIME_005", "TIME_032"]
     assert sorted(c.cost for c in p1.hand) == [6, 10]

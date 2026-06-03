@@ -295,29 +295,31 @@ def test_chronochiller_opponent_draws_normally():
 # up to 20 Corpses to resurrect with that much Health."
 # ---------------------------------------------------------------------------
 
-def test_husk_grants_hero_deathrattle():
+def test_husk_grants_hero_enchant_and_revive():
     game = _dk_game()
     caster = game.player1
     card = caster.give("TIME_618")
     card.play()
+    # The hero carries the text enchant and one pending engine revive.
     enchants = [e for e in caster.hero.buffs if e.id == "TIME_618e"]
     assert len(enchants) == 1
-    ench = enchants[0]
-    # The granted deathrattle spends up to 20 Corpses when triggered.
-    caster.corpses = 25
-    game.queue_actions(caster.hero, list(ench.get_actions("deathrattle")))
-    assert caster.corpses == 5  # spent exactly 20 (capped)
+    assert getattr(caster.hero, "_husk_revives", 0) == 1
 
 
-def test_husk_deathrattle_caps_at_available_corpses():
+def test_husk_two_copies_grant_two_revives():
     game = _dk_game()
     caster = game.player1
-    card = caster.give("TIME_618")
-    card.play()
-    ench = [e for e in caster.hero.buffs if e.id == "TIME_618e"][0]
-    caster.corpses = 7
-    game.queue_actions(caster.hero, list(ench.get_actions("deathrattle")))
-    assert caster.corpses == 0  # spent all 7 (< 20)
+    caster.give("TIME_618").play()
+    caster.give("TIME_618").play()
+    assert getattr(caster.hero, "_husk_revives", 0) == 2
+    # Each revive is consumed independently across two lethal hits.
+    caster.corpses = 100
+    caster.hero.damage = caster.hero.max_health
+    game.process_deaths()
+    assert caster.hero.health == 20 and getattr(caster.hero, "_husk_revives") == 1
+    caster.hero.damage = caster.hero.max_health
+    game.process_deaths()
+    assert caster.hero.health == 20 and getattr(caster.hero, "_husk_revives") == 0
 
 
 # ---------------------------------------------------------------------------
@@ -553,3 +555,56 @@ def test_blessing_ignores_non_undead():
     u1 = caster.give(UNDEAD_TOKEN)
     u1.play()
     assert u1.atk == 5
+
+
+# ---------------------------------------------------------------------------
+# TIME_618 Husk, Eternal Reaper — Battlecry: Give your hero "Deathrattle: Spend
+# up to 20 Corpses to resurrect with that much Health." The revive is handled by
+# the engine death pipeline (actions._husk_revive) before the loss is finalized.
+# ---------------------------------------------------------------------------
+
+def test_husk_revives_hero_with_spent_corpses_as_health():
+    from hearthstone.enums import State
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.current_player
+    husk = p.give("TIME_618")
+    husk.play()
+    assert getattr(p.hero, "_husk_revives", 0) == 1
+    p.corpses = 12
+    p.hero.damage = p.hero.max_health  # lethal -> Health 0
+    assert p.hero.dead
+    game.process_deaths()
+    # Resurrected with Health == Corpses spent; Corpses consumed; game running.
+    assert p.hero.health == 12
+    assert p.corpses == 0
+    assert not p.hero.dead
+    assert game.state == State.RUNNING
+    # one-time: the revive is consumed
+    assert getattr(p.hero, "_husk_revives", 0) == 0
+
+
+def test_husk_caps_revive_at_20_health():
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.current_player
+    p.give("TIME_618").play()
+    p.corpses = 50
+    p.hero.damage = p.hero.max_health
+    game.process_deaths()
+    assert p.hero.health == 20   # spends at most 20 Corpses
+    assert p.corpses == 30
+
+
+def test_husk_without_corpses_hero_dies():
+    from fireplace.exceptions import GameOver
+    from hearthstone.enums import PlayState
+    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p = game.current_player
+    p.give("TIME_618").play()
+    p.corpses = 0
+    p.hero.damage = p.hero.max_health
+    # No Corpses -> the revive can't pay, the hero dies for real and the game ends.
+    try:
+        game.process_deaths()
+    except GameOver:
+        pass
+    assert p.playstate == PlayState.LOST

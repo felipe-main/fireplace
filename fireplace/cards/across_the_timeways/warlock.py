@@ -304,8 +304,10 @@ class TIME_031:
 
 
 class _ChronogorDraw(TargetedAction):
-    """Chronogor — you draw your 2 highest-Cost cards; your opponent draws
-    your 2 lowest-Cost cards (moved from your deck into their hand)."""
+    """Chronogor — you draw your 2 highest-Cost cards; your opponent DRAWS your
+    2 lowest-Cost cards. The opponent's two cards are re-homed into their deck
+    and then drawn through the real draw pipeline, so their draw triggers,
+    fatigue and overdraw-burn all fire."""
 
     TARGET = ActionArg()
 
@@ -322,16 +324,15 @@ class _ChronogorDraw(TargetedAction):
         for card in lowest:
             if card.zone != Zone.DECK:
                 continue
-            if len(opp.hand) >= opp.max_hand_size:
-                card.discard()
-                continue
-            # Move cross-controller via SETASIDE: removing from p1.deck while
-            # the card still belongs to p1, then re-home it to the opponent's
-            # hand. (Switching controller before leaving the deck would make
-            # _set_zone try to remove it from the opponent's deck and crash.)
+            # Move cross-controller via SETASIDE (removing from your deck while
+            # it is still yours), re-home it into the opponent's deck, then make
+            # them draw it so their draw pipeline (triggers/fatigue/overdraw)
+            # fires. Switching controller before leaving your deck would make
+            # _set_zone try to remove it from the opponent's deck and crash.
             card.zone = Zone.SETASIDE
             card.controller = opp
-            card.zone = Zone.HAND
+            card.zone = Zone.DECK
+            source.game.cheat_action(source, [ForceDraw(card)])
 
 
 class TIME_032:

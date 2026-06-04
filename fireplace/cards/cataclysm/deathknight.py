@@ -10,15 +10,15 @@ from hearthstone.enums import CardClass, GameTag, Race, Rarity
 class _OnyxiaCostLevel(LazyNum):
     """Onyxia's Wing / Soldier of Onyxia — the random minion's Cost.
 
-    Printed text: "get a random {0}-Cost minion". {0} starts at 1 and the
-    wings upgrade with Herald (once -> 2, twice -> 3). We approximate {0} as
-    ``1 + min(heralds_this_game, 2)`` (cap at 3), so the more you've Heralded
-    the bigger the minion you fish out.
+    Printed text: "get a random {0}-Cost minion". The wing token's base {0} is
+    2 (CardXML TAG_SCRIPT_DATA_NUM_1=2) and it "can be Heralded twice to
+    upgrade", so {0} == ``2 + min(heralds_this_game, 2)`` (2 -> 3 -> 4): the
+    more you've Heralded, the bigger the minion you fish out.
     """
 
     def evaluate(self, source) -> int:
         heralds = getattr(source.controller, "heralds_this_game", 0)
-        return self.num(1 + min(heralds, 2))
+        return self.num(2 + min(heralds, 2))
 
 
 class _GetCostHealthMinion(TargetedAction):
@@ -36,7 +36,7 @@ class _GetCostHealthMinion(TargetedAction):
     def do(self, source, target):
         ctrl = source.controller
         heralds = getattr(ctrl, "heralds_this_game", 0)
-        cost = 1 + min(heralds, 2)
+        cost = 2 + min(heralds, 2)  # base 2 (TAG_SCRIPT_DATA_NUM_1), +1 per Herald (cap +2)
         before = len(ctrl.hand)
         source.game.cheat_action(source, [Give(ctrl, RandomMinion(cost=cost))])
         if len(ctrl.hand) > before:

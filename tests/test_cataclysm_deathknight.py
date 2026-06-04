@@ -105,8 +105,9 @@ def test_arisen_onyxia_takes_damage_normally_on_enemy_turn():
 # ---------------------------------------------------------------------------
 
 
-def test_onyxia_wing_token_gives_one_cost_minion_costing_health():
+def test_onyxia_wing_token_gives_two_cost_minion_costing_health():
     # The wing token's own battlecry (when PLAYED directly) gets one minion.
+    # Base {0} is 2 (CardXML TAG_SCRIPT_DATA_NUM_1=2) with no Heralds.
     game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
@@ -116,14 +117,14 @@ def test_onyxia_wing_token_gives_one_cost_minion_costing_health():
     assert len(p1.hand) == 1
     got = p1.hand[-1]
     assert got.type == CardType.MINION
-    assert (got.data.cost or 0) == 1  # heralds == 0 -> 1-Cost
+    assert (got.data.cost or 0) == 2  # heralds == 0 -> base 2-Cost
     # Stamped with Onyxia's Blood -> pays Health instead of Mana this turn.
     assert got.card_costs_health
 
 
 def test_arisen_onyxia_battlecry_gives_two_cost_health_minions():
-    # Playing the parent resolves both wings' rewards: two 1-Cost minions that
-    # cost Health this turn.
+    # Playing the parent resolves both wings' rewards: two base 2-Cost minions
+    # that cost Health this turn (no Heralds yet).
     game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
@@ -133,19 +134,21 @@ def test_arisen_onyxia_battlecry_gives_two_cost_health_minions():
     gained = [c for c in p1.hand]
     assert len(gained) == 2
     for c in gained:
-        assert (c.data.cost or 0) == 1
+        assert (c.data.cost or 0) == 2
         assert c.card_costs_health
 
 
 def test_onyxia_wing_cost_scales_with_heralds():
-    game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
-    p1 = game.player1
-    p1.discard_hand()
-    p1.heralds_this_game = 2  # upgraded twice -> 3-Cost
-    wing = p1.give("CATA_155t")
-    wing.play()
-    assert len(p1.hand) == 1
-    assert (p1.hand[-1].data.cost or 0) == 3
+    # base 2, +1 per Herald, capped at +2: 0->2, 1->3, 2->4, 3->4.
+    for heralds, expected in [(0, 2), (1, 3), (2, 4), (3, 4)]:
+        game = prepare_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+        p1 = game.player1
+        p1.discard_hand()
+        p1.heralds_this_game = heralds
+        wing = p1.give("CATA_155t")
+        wing.play()
+        assert len(p1.hand) == 1
+        assert (p1.hand[-1].data.cost or 0) == expected, (heralds, expected)
 
 
 # ---------------------------------------------------------------------------

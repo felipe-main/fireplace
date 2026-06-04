@@ -172,12 +172,12 @@ def test_murloc_rafaam_next_rafaam_costs_3_less():
 
 
 def test_murloc_rafaam_single_realized_discount_net_invariant():
-    # Row 578 watch (accepted, net-correct): the discount enchant's
-    # `update = Refresh(FRIENDLY_HAND + RAFAAM, {COST: -3})` visually shows -3
-    # on EVERY held Rafaam at once, but the discount is realized only once —
-    # consumed when the next Rafaam is played. This regression pins the NET
-    # invariant: holding TWO Rafaams, the total realized discount is exactly 3
-    # (the first one pays 3 less, the second then pays full), never 6.
+    # "The next Rafaam you play costs (3) less" is a true "next card" discount.
+    # Like Preparation in real Hearthstone, such effects DISPLAY on every
+    # eligible card in hand (any could be the next one played) but are realized
+    # only ONCE — consumed when the first eligible card is played. This pins the
+    # net invariant: holding TWO Rafaams, both read -3, but the total realized
+    # discount is exactly 3 (first pays 3 less, second then pays full), never 6.
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
     _clear_hand(p1)
@@ -185,7 +185,7 @@ def test_murloc_rafaam_single_realized_discount_net_invariant():
     r2 = p1.give("TIME_005t9")   # second Archmage Rafaam, base cost 9
     murloc = p1.give("TIME_005t8")
     murloc.play()
-    # Visual over-display: both currently read -3 (cosmetic, accepted).
+    # Both eligible cards show the discount (matches Preparation-style display).
     assert r1.cost == 6 and r2.cost == 6
     # Play the first Rafaam — it pays 9 - 3 = 6, then the discount is consumed.
     r1.cost = 0  # bypass mana; play() still fires the consume event
@@ -193,6 +193,26 @@ def test_murloc_rafaam_single_realized_discount_net_invariant():
     _resolve_choices(p1)
     # The SECOND Rafaam now pays full: total realized discount is exactly 3.
     assert r2.cost == 9
+
+
+def test_murloc_rafaam_discount_is_a_true_next_effect():
+    # "The next Rafaam you play" has no turn limit and is not a hand snapshot:
+    # the discount persists across turns and applies to a Rafaam acquired LATER,
+    # proving it is a genuine "next card" effect (not one-turn / in-hand-now).
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    _clear_hand(p1)
+    murloc = p1.give("TIME_005t8")
+    murloc.play()  # arm the discount with NO other Rafaam in hand yet
+    _resolve_choices(p1)
+    # Pass a full turn cycle back to p1.
+    game.end_turn(); game.end_turn()
+    # A Rafaam acquired only now still gets the discount.
+    later = p1.give("TIME_005t9")  # base cost 9
+    assert later.cost == 6
+    # A non-Rafaam alongside it is unaffected.
+    nonraf = p1.give("TIME_025")   # base cost 2
+    assert nonraf.cost == 2
 
 
 def test_murloc_rafaam_self_does_not_consume_discount():

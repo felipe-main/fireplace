@@ -201,6 +201,12 @@ class PlayReq(IntEnum):
     # requirement.
     REQ_FRIENDLY_LOCATION = 251
 
+    # Custom (not in CardXML): the target must be a minion that has at least one
+    # minion type / race. Used by "an enemy minion with a minion type" targeting
+    # (Bugsquasher TLC_633) — REQ_TARGET_WITH_RACE only matches a single fixed
+    # race, so "any minion type" needs its own check.
+    REQ_TARGET_WITH_ANY_RACE = 252
+
     # Renamed
     REQ_ENCHANTED_TARGET = REQ_MAX_SECRETS
     REQ_ENTIRE_ENTOURAGE_NOT_IN_PLAY = REQ_ALL_BASIC_TOTEMS_NOT_IN_PLAY

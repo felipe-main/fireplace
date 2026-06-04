@@ -59,10 +59,10 @@ def test_spelunker_only_affects_one_temporary():
 
 
 def test_spelunker_net_one_discount_with_two_in_hand():
-    # review.csv row 559 (cosmetic): the host aura visually discounts ALL
-    # Temporary cards in hand at once, but the NET realized effect is a single
-    # -2 discount: the host is destroyed on the first Temporary play, so the
-    # second Temporary pays full cost. Defensive test of that invariant.
+    # "Your next Temporary card costs (2) less" is a true "next card" discount.
+    # Like Preparation in real Hearthstone, it DISPLAYS the reduction on every
+    # eligible (Temporary) card in hand but is realized only ONCE — the host is
+    # destroyed on the first Temporary played, so the second pays full cost.
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
     p1.give("TLC_450").play()
@@ -72,7 +72,7 @@ def test_spelunker_net_one_discount_with_two_in_hand():
     second = p1.give(YETI)        # base cost 4
     _make_temporary(first)
     _make_temporary(second)
-    # Cosmetic over-display: while held, both show the -2 aura.
+    # Both eligible cards show the discount (matches Preparation-style display).
     assert first.cost == 2
     assert second.cost == 2
 

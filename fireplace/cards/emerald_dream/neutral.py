@@ -434,16 +434,34 @@ class EDR_873:
     )
 
 
+# The 11 Legendary Wild Gods (GameTag 4065), one per class.
+WILD_GOD_IDS = (
+    "EDR_031",   # Ohn'ahra
+    "EDR_209",   # Forest Lord Cenarius
+    "EDR_259",   # Ursol
+    "EDR_421",   # Omen
+    "EDR_430",   # Aessina
+    "EDR_471",   # Tortolla
+    "EDR_480",   # Goldrinn
+    "EDR_489",   # Agamaggan
+    "EDR_527",   # Ashamane
+    "EDR_819",   # Ursoc
+    "EDR_895",   # Aviana, Elune's Chosen
+)
+
+
 class EDR_888:
     """Malorne the Waywatcher"""
 
     # Battlecry: Discover a Legendary Wild God. If you've Imbued your Hero
     # Power 4 times, set its Cost to (1).
     def play(self):
-        picker = RandomMinion(
-            is_standard=None,
-            custom_filter=lambda c: bool(c.tags.get(4065)),
-        )
+        # Offer an EVEN draw from all 11 Wild Gods. A RandomID over a fixed id
+        # list samples the three options uniformly; the dummy `card_class` key
+        # makes Discover skip its neutral/own-class weighting (which would
+        # otherwise bias the offer toward the player's-class Wild God), and
+        # RandomID ignores the key since it draws from its explicit id list.
+        picker = RandomID(*WILD_GOD_IDS, card_class=CardClass.NEUTRAL)
         if self.controller.imbues_this_game >= 4:
             yield Discover(CONTROLLER, picker).then(
                 Give(CONTROLLER, Discover.CARD).then(Buff(Give.CARD, "EDR_888e"))

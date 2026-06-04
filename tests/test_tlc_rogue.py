@@ -435,6 +435,23 @@ def test_times_shuffled_counter_counts_each_card():
     assert p1._tlc_times_shuffled == 7
 
 
+def test_times_shuffled_counter_ignores_opponent_initiated_shuffles():
+    # "each time YOU'VE shuffled cards into your deck": a shuffle driven by the
+    # OPPONENT (their card seeding a card into your deck) must NOT bump your
+    # counter — only shuffles the deck owner initiates count.
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1, p2 = game.player1, game.player2
+    assert getattr(p1, "_tlc_times_shuffled", 0) == 0
+    # An enemy-controlled source shuffles a card into p1's deck.
+    enemy_source = p2.give(WISP)
+    game.queue_actions(enemy_source, [Shuffle(p1, "CS2_231")])
+    # The card entered p1's deck, but p1 did not initiate it -> counter unchanged.
+    assert any(c.id == "CS2_231" for c in p1.deck)
+    assert getattr(p1, "_tlc_times_shuffled", 0) == 0
+    # p2 didn't shuffle into ITS OWN deck either, so p2's counter is also 0.
+    assert getattr(p2, "_tlc_times_shuffled", 0) == 0
+
+
 # ---------------------------------------------------------------------------
 # DINO_407 Mirrex, the Crystalline — in-hand 3/4 copy stays Mirrex's 3 mana.
 # ---------------------------------------------------------------------------

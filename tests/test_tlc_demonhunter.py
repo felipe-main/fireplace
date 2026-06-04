@@ -58,6 +58,20 @@ def test_bugsquasher_deals_6_to_enemy_minion():
     assert foe.damage == 6
 
 
+def test_bugsquasher_only_targets_minions_with_a_minion_type():
+    # "an enemy minion with a minion type": a raced enemy minion is valid, a
+    # raceless one (Chillwind Yeti) is not.
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    beast = game.player2.summon(BEAST)        # Bloodfen Raptor — has a race
+    yeti = game.player2.summon("CS2_182")     # Chillwind Yeti — raceless
+    friendly_beast = p1.summon(BEAST)         # enemy-only, so excluded
+    squasher = p1.give("TLC_633")
+    assert beast in squasher.play_targets
+    assert yeti not in squasher.play_targets
+    assert friendly_beast not in squasher.play_targets
+
+
 def test_gorishi_tunneler_pings_enemy_hero_after_attack():
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
     p1 = game.player1
@@ -88,6 +102,11 @@ def test_entomologist_toru_jars_hand_minions():
     assert jar.cost == 1
     assert (jar.atk, jar.health) == (0, 1)
     assert jar.has_deathrattle
+    # Conditional deathrattle text renders the stored minion's name ("Release
+    # Bloodfen Raptor!"), not the empty-jar variant.
+    beast_name = jar._jarred_minion.data.name
+    assert "Release %s!" % beast_name in jar.description
+    assert "empty jar" not in jar.description
     # Break the jar -> release the original Beast.
     jar.play()
     jar.destroy()

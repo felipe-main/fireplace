@@ -423,6 +423,24 @@ def test_shadowed_informant_discovers_spell():
     assert len(p1.hand) == 1
 
 
+def test_shadowed_informant_class_swaps_each_turn():
+    # "(Swaps class each turn!)" — the offered class is keyed to the turn count,
+    # so playing the Informant on consecutive own-turns offers different classes.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    seen = []
+    for _ in range(3):
+        for c in list(p1.hand):
+            c.discard()
+        p1.give("CATA_614").play()
+        assert p1.choice is not None
+        seen.append(p1.choice.cards[0].card_class)
+        _resolve_choices(p1)
+        game.end_turn(); game.end_turn()  # advance a full cycle back to p1
+    # The rotation advanced each turn — not all three offers were the same class.
+    assert len(set(seen)) > 1
+
+
 # ---------------------------------------------------------------------------
 # CATA_615 Genn, Cursed King — transform when hand all-even/all-odd
 # ---------------------------------------------------------------------------

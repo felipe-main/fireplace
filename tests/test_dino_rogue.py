@@ -51,6 +51,11 @@ def test_mirrex_copies_opponent_last_minion_as_3_3():
     assert copy.id == YETI
     assert copy.atk == 3
     assert copy.max_health == 4
+    # It carries BOTH the "Crystalline" stat-pin (DINO_407e2) and the cosmetic
+    # "Reflecting" defining enchant (DINO_407e) the real card has while in hand.
+    buff_ids = [b.id for b in copy.buffs]
+    assert "DINO_407e2" in buff_ids
+    assert "DINO_407e" in buff_ids
 
 
 def test_mirrex_resyncs_when_opponent_plays_a_new_minion():

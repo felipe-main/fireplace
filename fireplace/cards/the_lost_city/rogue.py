@@ -19,9 +19,13 @@ if not getattr(Shuffle, "_tlc_count_patched", False):
         before = len(target.deck)
         result = _tlc_orig_shuffle_do(self, source, target, cards)
         # Count each card that actually entered the deck (deck-full shuffles
-        # are no-ops and must not advance the counter).
+        # are no-ops and must not advance the counter). Credit the deck owner
+        # only for shuffles THEY initiated ("each time YOU'VE shuffled cards
+        # into your deck"): a shuffle driven by an opponent's effect (an enemy
+        # curse seeding cards into your deck) must not bump your counter.
         added = len(target.deck) - before
-        if added > 0:
+        initiator = getattr(source, "controller", source)
+        if added > 0 and initiator is target:
             target._tlc_times_shuffled = (
                 getattr(target, "_tlc_times_shuffled", 0) + added
             )
@@ -426,8 +430,13 @@ def _dino_refresh_mirrex(player):
             copy.controller = player
             copy._mirrex = True
             copy._mirrex_shows = last_id
+            # DINO_407e2 "Crystalline" pins the copy to 3/4 at Cost 3; DINO_407e
+            # "Reflecting" is the cosmetic defining enchant the real card carries
+            # while in hand (tag-only — no stats, completes the display fidelity).
             player.game.cheat_action(
-                entity, [Morph(entity, copy), Buff(copy, "DINO_407e2")]
+                entity,
+                [Morph(entity, copy), Buff(copy, "DINO_407e2"),
+                 Buff(copy, "DINO_407e")],
             )
     finally:
         player._mirrex_refreshing = False

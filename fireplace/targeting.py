@@ -2,7 +2,7 @@
 Targeting logic
 """
 
-from hearthstone.enums import CardType, GameTag, Rarity
+from hearthstone.enums import CardType, GameTag, Race, Rarity
 
 from .enums import PlayReq
 
@@ -138,6 +138,14 @@ def is_valid_target(self, target, requirements=None):
                 return False
         elif req == PlayReq.REQ_TARGET_WITH_RACE:
             if target.type != CardType.MINION or param not in target.races:
+                return False
+        elif req == PlayReq.REQ_TARGET_WITH_ANY_RACE:
+            # "a minion with a minion type" — at least one real race; raceless
+            # minions (Yeti, Boulderfist Ogre, …) carry only Race.INVALID and
+            # are not valid targets.
+            if target.type != CardType.MINION or not any(
+                r != Race.INVALID for r in target.races
+            ):
                 return False
         elif req == PlayReq.REQ_TARGET_WITH_CARD_NAME:
             if getattr(getattr(target, "data", None), "name", None) != param:

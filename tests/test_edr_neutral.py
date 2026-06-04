@@ -740,28 +740,37 @@ def test_fyrakk_battlecry_casts_about_twenty_mana_of_fire():
 
 
 # EDR_888 — Malorne the Waywatcher (defensive once-over): the Discover pool is
-# exactly the 11 Legendary Wild Gods (tag 4065); all are reachable. The
-# imbues>=4 cost-to-1 buff (EDR_888e) is gated on the per-game imbue counter.
+# exactly the 11 Legendary Wild Gods (tag 4065), offered with an EVEN draw (no
+# neutral/own-class weighting). The imbues>=4 cost-to-1 buff (EDR_888e) is gated
+# on the per-game imbue counter.
 def test_malorne_pool_is_eleven_wild_gods():
-    from fireplace.dsl.random_picker import RandomMinion
-    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
-    p1 = game.player1
-    mal = p1.give("EDR_888")
-    # Reproduce the picker the battlecry constructs and evaluate its eligible
-    # pool. is_standard=None means the standard restriction is NOT applied, so
-    # Wild Gods are reachable regardless of game mode.
-    picker = RandomMinion(
-        is_standard=None,
-        custom_filter=lambda c: bool(c.tags.get(4065)),
-    )
-    pool = set(picker.find_cards(mal))
+    from fireplace.cards.emerald_dream.neutral import WILD_GOD_IDS
+    # The hard-coded pool matches exactly the collectible tag-4065 Wild Gods.
     expected = {
         cid for cid, c in _cards.db.items()
         if c.collectible and bool(c.tags.get(4065))
     }
     assert len(expected) == 11
-    # Every Wild God is reachable; the pool is exactly the 11.
-    assert pool == expected
+    assert set(WILD_GOD_IDS) == expected
+
+
+def test_malorne_offers_three_distinct_wild_gods_unweighted():
+    # The offer is three DISTINCT Wild Gods drawn evenly. Run as a class whose
+    # own Wild God exists (Mage -> Aessina EDR_430): the even RandomID draw must
+    # not force/over-offer the own-class God, and never repeats.
+    from fireplace.cards.emerald_dream.neutral import WILD_GOD_IDS
+    for seed in range(8):
+        game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+        p1 = game.player1
+        p1.hand[:] = []
+        game.random.seed(seed)
+        p1.give("EDR_888").play()
+        assert p1.choice is not None
+        offered = [c.id for c in p1.choice.cards]
+        assert len(offered) == 3
+        assert len(set(offered)) == 3                  # distinct
+        assert all(cid in WILD_GOD_IDS for cid in offered)
+        p1.choice.choose(p1.choice.cards[0])
 
 
 def test_malorne_buff_gated_on_imbue_count():

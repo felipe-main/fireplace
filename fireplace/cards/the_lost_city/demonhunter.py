@@ -77,13 +77,13 @@ class TLC_633:
     """Bugsquasher"""
 
     # <b>Battlecry:</b> Deal 6 damage to an enemy minion with a minion type.
-    # NOTE: the engine's REQ_TARGET_WITH_RACE needs a *specific* race param, so
-    # "any minion type" can't be a targeting filter; we require an enemy minion
-    # target and deal the damage (the race restriction is cosmetic targeting).
+    # REQ_TARGET_WITH_ANY_RACE enforces "with a minion type": only enemy minions
+    # that have at least one race are valid targets (a raceless Yeti is not).
     requirements = {
         PlayReq.REQ_TARGET_IF_AVAILABLE: 0,
         PlayReq.REQ_MINION_TARGET: 0,
         PlayReq.REQ_ENEMY_TARGET: 0,
+        PlayReq.REQ_TARGET_WITH_ANY_RACE: 0,
     }
     play = Hit(TARGET, 6)
 
@@ -114,11 +114,29 @@ class TLC_903:
 # Tokens
 
 
+def _specimen_jar_cardtext(self):
+    # Data text: "<empty-jar variant>@<b>Deathrattle:</b> Release {5}!" — two
+    # `@`-delimited segments. Render the filled variant with the stored
+    # minion's name substituted for {5}; if the jar is empty, the empty variant.
+    segments = self.data.description.split("@")
+    stored = getattr(self, "_jarred_minion", None)
+    if stored is None or len(segments) < 2:
+        return segments[0]
+    name = getattr(getattr(stored, "data", None), "name", None) or stored.id
+    return segments[1].replace("{5}", name)
+
+
 class TLC_841t:
     """Specimen Jar"""
 
-    # <b>Deathrattle:</b> Release the stored minion.
-    tags = {GameTag.DEATHRATTLE: True}
+    # <b>Deathrattle:</b> Release the stored minion. The printed deathrattle
+    # text is conditional — "Release <stored minion>!" when a minion is jarred,
+    # or "Release nothing. (It's just an empty jar.)" when empty — rendered via
+    # custom_cardtext from the {5} = stored minion's name.
+    tags = {
+        GameTag.DEATHRATTLE: True,
+        enums.CUSTOM_CARDTEXT: _specimen_jar_cardtext,
+    }
     deathrattle = _ReleaseJarredMinion(SELF)
 
 

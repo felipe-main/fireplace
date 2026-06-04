@@ -79,6 +79,10 @@ def test_arisen_onyxia_converts_self_damage_to_max_health_on_own_turn():
     game.queue_actions(p1.hero, [Hit(hero, 3)])
     assert hero.damage == 0
     assert hero.max_health == base_max + 3
+    # Multiple on-turn health-loss sources stack: a second hit adds again.
+    game.queue_actions(p1.hero, [Hit(hero, 5)])
+    assert hero.damage == 0
+    assert hero.max_health == base_max + 3 + 5
 
 
 def test_arisen_onyxia_takes_damage_normally_on_enemy_turn():

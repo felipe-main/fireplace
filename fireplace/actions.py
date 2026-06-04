@@ -1855,6 +1855,18 @@ class Damage(TargetedAction):
                 bc_player, "_shudder_no_enemy_hero_dmg", False
             ):
                 amount = 0
+        # The Lost City of Un'Goro — Bralma Searstone (TLC_228): "Your
+        # Elementals deal 1 extra damage." Each friendly Bralma in play adds +1
+        # to damage dealt by a friendly Elemental minion — combat AND effect
+        # damage alike, without raising the Elemental's displayed Attack.
+        if (
+            amount
+            and getattr(source, "type", None) == CardType.MINION
+            and Race.ELEMENTAL in getattr(source, "races", ())
+        ):
+            bralma = sum(1 for m in source.controller.field if m.id == "TLC_228")
+            if bralma:
+                amount += bralma
         amount = target._hit(amount)
         target.predamage = 0
         # TITANS — Fate Splitter: record the source of the killing blow so

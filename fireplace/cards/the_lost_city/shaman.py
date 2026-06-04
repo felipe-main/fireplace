@@ -141,12 +141,11 @@ class TLC_228:
 
     # Your Elementals deal 1 extra damage.
     #
-    # APPROXIMATION: the engine has no outgoing-damage hook reachable from a
-    # card script (OUTGOING_DAMAGE_ADJUSTMENT is unread), so we model "deal 1
-    # extra damage" as a +1 Attack aura on friendly Elementals. Exact for
-    # combat damage; does not cover an Elemental's effect damage, and it
-    # raises displayed Attack. Aura removed when Bralma leaves play.
-    update = Refresh(FRIENDLY_MINIONS + ELEMENTAL - SELF, {GameTag.ATK: 1})
+    # Implemented engine-side in Damage.do: while a Bralma is in play, any
+    # damage a friendly Elemental minion deals (combat AND effect damage) is
+    # raised by +1 per Bralma — without touching the Elemental's displayed
+    # Attack. The effect needs no card script beyond Bralma's mere presence on
+    # the board (Damage.do counts friendly TLC_228 minions).
 
 
 class TLC_482:

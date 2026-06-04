@@ -204,31 +204,76 @@ def test_lava_flow_three_hits_lowest_health():
 
 # ---------------------------------------------------------------------------
 # TLC_228 Bralma Searstone - Your Elementals deal 1 extra damage.
-# (Approximated as a +1 Attack aura on friendly Elementals.)
+# Engine hook in Damage.do: +1 per friendly Bralma to any damage a friendly
+# Elemental deals (combat AND effect), WITHOUT raising displayed Attack.
 # ---------------------------------------------------------------------------
 
-def test_bralma_searstone_buffs_elementals():
+def test_bralma_searstone_elemental_combat_damage():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
-    p1 = game.player1
+    p1, p2 = game.player1, game.player2
     ele = p1.summon(ELEMENTAL)  # Flame Elemental 1/2
-    assert ele.atk == 1
+    ele.charge = True
     p1.summon("TLC_228")
-    # Elemental now deals +1 (modeled as +1 Attack).
-    assert ele.atk == 2
-    # A non-Elemental is unaffected.
-    wisp = p1.summon(WISP)
-    assert wisp.atk == 1
+    # Bralma does NOT raise displayed Attack.
+    assert ele.atk == 1
+    victim = p2.summon(TARGET_DUMMY)  # 0/4, no counter-attack damage
+    victim.max_health = 30
+    victim.damage = 0
+    ele.attack(victim)
+    # 1 base Attack + 1 from Bralma == 2 combat damage dealt.
+    assert victim.damage == 2
 
 
-def test_bralma_searstone_aura_removed_on_death():
+def test_bralma_searstone_effect_damage_and_stacking():
     game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
-    p1 = game.player1
+    p1, p2 = game.player1, game.player2
+    ele = p1.summon(ELEMENTAL)
+    target = p2.summon(TARGET_DUMMY)
+    target.max_health = 30
+    target.damage = 0
+    # No Bralma: effect damage from the Elemental is unmodified.
+    game.queue_actions(ele, [Hit(target, 3)])
+    assert target.damage == 3
+    # One Bralma: +1 to the Elemental's effect damage.
+    target.damage = 0
+    p1.summon("TLC_228")
+    game.queue_actions(ele, [Hit(target, 3)])
+    assert target.damage == 4
+    # Two Bralmas stack: +2.
+    target.damage = 0
+    p1.summon("TLC_228")
+    game.queue_actions(ele, [Hit(target, 3)])
+    assert target.damage == 5
+
+
+def test_bralma_searstone_only_buffs_elementals():
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
+    p1.summon("TLC_228")
+    wisp = p1.summon(WISP)  # no tribe -> not an Elemental
+    target = p2.summon(TARGET_DUMMY)
+    target.max_health = 30
+    target.damage = 0
+    # A non-Elemental source deals its plain damage (no Bralma bonus).
+    game.queue_actions(wisp, [Hit(target, 3)])
+    assert target.damage == 3
+
+
+def test_bralma_searstone_bonus_gone_when_bralma_dies():
+    game = prepare_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1, p2 = game.player1, game.player2
     ele = p1.summon(ELEMENTAL)
     bralma = p1.summon("TLC_228")
-    assert ele.atk == 2
+    target = p2.summon(TARGET_DUMMY)
+    target.max_health = 30
+    target.damage = 0
+    game.queue_actions(ele, [Hit(target, 2)])
+    assert target.damage == 3  # 2 + 1 Bralma
     bralma.destroy()
     game.process_deaths()
-    assert ele.atk == 1
+    target.damage = 0
+    game.queue_actions(ele, [Hit(target, 2)])
+    assert target.damage == 2  # Bralma gone -> no bonus
 
 
 # ---------------------------------------------------------------------------

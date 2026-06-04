@@ -911,6 +911,10 @@ class PlayableCard(BaseCard, Entity, TargetableByAuras):
             if self.controller.location is None:
                 return False
 
+        if PlayReq.REQ_MINIMUM_CORPSES in self.requirements:
+            if self.controller.corpses < self.requirements[PlayReq.REQ_MINIMUM_CORPSES]:
+                return False
+
         return self.is_summonable()
 
     def play(self, target=None, index=None, choose=None):

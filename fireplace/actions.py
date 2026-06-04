@@ -2452,6 +2452,10 @@ class Discover(TargetedAction):
         # The Great Dark Beyond — Discover tracking + "After you Discover" event.
         self.player.discovers_this_game += 1
         self.player.discovers_this_turn += 1
+        # Retain the un-chosen options so "after you Discover" effects (The
+        # Origin Stone) and "pick one of the others" riders (the Map cards) can
+        # reach them — the engine otherwise drops them after the choice.
+        self.player._discover_leftovers = [c for c in self.cards if c is not card]
         for action in self._callback:
             self.source.game.trigger(
                 self.source, [action], [self.target, self.cards, card]
@@ -2984,6 +2988,18 @@ class Morph(TargetedAction):
                 target.controller, [Summon(target.controller, card)]
             )
             return card
+        # Into the Emerald Dream — Plucky Podling (EDR_529): "If this would
+        # transform into a minion, it transforms into one that costs (2) more."
+        # Swap the would-be minion for a random minion costing 2 more (same
+        # id-check approach as Baroness Vashj above; no general transform-
+        # interception hook exists). Falls back to the original target if no
+        # minion exists at the higher Cost.
+        if getattr(target, "id", None) == "EDR_529" and card.type == CardType.MINION:
+            upgraded = RandomMinion(cost=(card.cost or 0) + 2).evaluate(source)
+            if upgraded:
+                card = target.controller.card(upgraded[0], source=source)
+                card.controller = target.controller
+                log.info("Plucky Podling upgrades transform to %r", card)
         target_zone = target.zone
         if card.zone != target_zone:
             # Transfer the zone position

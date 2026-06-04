@@ -151,7 +151,11 @@ class Player(Entity, TargetableByAuras):
         self.schools_played_this_turn = set()
         self.schools_played_last_turn = set()
         # Primalfin Challenger — "your next Kindred triggers twice".
+        # next_kindred_double is the charge count; _kindred_double_source is
+        # the card currently spending it, so a single Kindred card with
+        # several Kindred gates doubles them all but only burns one charge.
         self.next_kindred_double = 0
+        self._kindred_double_source = None
         self.cards_drawn_this_turn = 0
         self.cards_played_this_turn = 0
         self.cards_played_this_game = CardList()
@@ -279,6 +283,9 @@ class Player(Entity, TargetableByAuras):
         # whenever the player resolves a Discover; per-turn count resets each turn.
         self.discovers_this_game = 0
         self.discovers_this_turn = 0
+        # The un-chosen options from the most recent Discover, retained so
+        # "after you Discover" / "pick one of the others" effects can use them.
+        self._discover_leftovers = []
         # The Great Dark Beyond — Starship building state. `starship` is the
         # current Permanent Starship entity on the board (or None); the dead
         # Starship Pieces banked into it since the last launch are tracked on

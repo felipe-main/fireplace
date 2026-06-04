@@ -178,23 +178,21 @@ def test_reanimated_pterrordax_spends_exactly_three_when_surplus():
     assert p1.corpses == 4  # 7 - 3
 
 
-def test_reanimated_pterrordax_free_play_below_three_is_engine_gap():
-    # KNOWN APPROXIMATION (review.csv row 528, status=watch): the printed card
-    # is unplayable without 3 Corpses, but the alternate-cost gate
-    # (REQ_MINIMUM_CORPSES / CARD_ALTERNATE_COST) is not enforced by the engine
-    # is_playable/can_pay_cost path (both read-only here). With the mana cost
-    # zeroed it plays at 0 Corpses, and SpendCorpses clamps to 0. This test
-    # PINS that documented behaviour so a future engine fix is noticed here.
+def test_reanimated_pterrordax_unplayable_below_three_corpses():
+    # The alternate cost (3 Corpses) is now enforced via REQ_MINIMUM_CORPSES:
+    # with fewer than 3 Corpses the card is not playable, regardless of the
+    # zeroed mana cost.
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
-    p1.corpses = 0
     ptero = p1.give("TLC_436")
     assert ptero.cost == 0
-    assert ptero.is_playable()  # gap: should be False on the printed card
-    ptero.play()
-    assert ptero.zone == Zone.PLAY
-    assert p1.corpses == 0  # nothing to spend; SpendCorpses clamps
+    for n in (0, 1, 2):
+        p1.corpses = n
+        assert not ptero.is_playable()
+    # Exactly 3 Corpses makes it playable.
+    p1.corpses = 3
+    assert ptero.is_playable()
 
 
 # TLC_439 — Deal 2 damage to all enemy minions. Enemy minions cost (2) more

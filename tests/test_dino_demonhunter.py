@@ -134,6 +134,37 @@ def test_diabolus_rex_kindred_active_hits_outermost_enemies():
     assert middle.damage == 0
 
 
+def test_diabolus_rex_kindred_doubled_by_primalfin_challenger():
+    """Primalfin Challenger's "next Kindred triggers twice" → Diabolus Rex
+    deals 6 to each outermost enemy TWICE (12 total), and the charge is spent."""
+    game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    p2 = game.player2
+    # Beast last turn arms Kindred for Diabolus Rex.
+    p1.give(BEAST).play()
+    game.end_turn()
+    leftmost = p2.summon(YETI)
+    middle = p2.summon(YETI)
+    rightmost = p2.summon(YETI)
+    for m in (leftmost, middle, rightmost):
+        m.max_health = 80
+        m.damage = 0
+    game.end_turn()  # back to p1
+    assert Race.BEAST in p1.races_played_last_turn
+    # Arm the doubling, then play Diabolus Rex.
+    p1.give("TLC_251").play()
+    assert p1.next_kindred_double == 1
+    rex = p1.give("DINO_138")
+    assert kindred_active(rex)
+    rex.play()
+    # 6 damage applied twice to each outermost enemy; middle untouched.
+    assert leftmost.damage == 12
+    assert rightmost.damage == 12
+    assert middle.damage == 0
+    # The charge is consumed exactly once.
+    assert p1.next_kindred_double == 0
+
+
 def test_diabolus_rex_kindred_inactive_no_damage():
     """Kindred inactive (no matching type played last turn) → no damage."""
     game = prepare_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)

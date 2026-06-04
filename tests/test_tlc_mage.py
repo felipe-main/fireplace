@@ -149,34 +149,122 @@ def test_titanographer_osk_body():
     assert osk.health == osk.data.health
 
 
-def test_titanographer_osk_vanilla_play_no_battlecry():
-    # ACCEPTED DATA LIMITATION (review.csv 537): the random-Titan-ability graft
-    # is an unenumerable/unscripted pool, so Osk ships as a vanilla body with
-    # no battlecry. This test pins that: playing Osk from hand must produce no
-    # extra board/hand/health side-effects beyond the body landing.
-    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
-    p1, p2 = game.player1, game.player2
+def test_titanographer_osk_rotates_ability_in_hand():
+    # While in hand, Osk holds a valid Titan ability that is (re-)rolled at the
+    # start of each of your turns.
+    from fireplace.cards.the_lost_city.mage import OSK_ABILITY_IDS
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
     osk = p1.give("TLC_452")
-    pre_hand = len(p1.hand)          # includes Osk itself
-    pre_field = len(p1.field)
-    pre_p1_hp = p1.hero.health
-    pre_p2_hp = p2.hero.health
-    pre_enemy_field = len(p2.field)
+    game.end_turn()
+    game.end_turn()  # back to p1 → OWN_TURN_BEGIN reroll fires
+    assert getattr(osk, "_titan_ability", None) in OSK_ABILITY_IDS
+
+
+def _play_osk(ability_id, setup=None):
+    """Play Osk with a forced Titan ability, auto-resolving any choices."""
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1, p2 = game.player1, game.player2
+    if setup:
+        setup(game, p1, p2)
+    osk = p1.give("TLC_452")
+    osk._titan_ability = ability_id
     osk.play()
-    # No choice/Discover was triggered.
-    assert not p1.choice
-    # Exactly Osk entered play; nothing else summoned, drawn, healed, or hit.
-    assert len(p1.field) == pre_field + 1
-    assert osk in p1.field
-    assert len(p1.hand) == pre_hand - 1            # only Osk left hand
-    assert len(p2.field) == pre_enemy_field
-    assert p1.hero.health == pre_p1_hp
-    assert p2.hero.health == pre_p2_hp
-    # Body is exactly the data stats, untouched by any graft.
-    assert osk.atk == osk.data.atk
-    assert osk.health == osk.data.health
-    # No 'play' battlecry actions are scripted onto Osk.
-    assert not osk.get_actions("play")
+    _resolve_choices(p1)
+    _resolve_choices(p2)
+    return game, p1, p2, osk
+
+
+def test_titanographer_osk_every_ability_fires_without_crashing():
+    # Force each of the 31 Titan abilities in turn and confirm Osk's battlecry
+    # resolves cleanly (Osk lands in play, no exception).
+    from fireplace.cards.the_lost_city.mage import OSK_ABILITY_IDS
+
+    def setup(game, p1, p2):
+        # Give both sides a couple of bodies so targeted/board abilities have
+        # something to act on.
+        for _ in range(2):
+            m = p2.summon("CS2_182")  # Chillwind Yeti 4/5
+            m.max_health = 40
+            m.damage = 0
+        p1.summon(WISP)
+
+    for aid in OSK_ABILITY_IDS:
+        game, p1, p2, osk = _play_osk(aid, setup)
+        assert osk.zone == Zone.PLAY, "ability %s did not resolve" % aid
+
+
+# --- exact-effect spot checks across a representative spread of abilities ---
+
+def test_osk_t13_deal_5_to_enemy_face():
+    # No enemy minions → the only enemy character is the hero; it takes 5.
+    game, p1, p2, osk = _play_osk("TLC_452t13")
+    assert p2.hero.health == 25
+
+
+def test_osk_t17_buffs_other_minions():
+    def setup(game, p1, p2):
+        p1.summon(WISP)  # a 1/1 ally
+    game, p1, p2, osk = _play_osk("TLC_452t17", setup)
+    wisp = [m for m in p1.field if m.id == WISP][0]
+    assert wisp.atk == 3 and wisp.health == 3  # +2/+2
+    # Osk buffs "other" minions, not itself.
+    assert osk.atk == osk.data.atk and osk.health == osk.data.health
+
+
+def test_osk_t8_restores_hero_to_full():
+    def setup(game, p1, p2):
+        p1.hero.damage = 12
+    game, p1, p2, osk = _play_osk("TLC_452t8", setup)
+    assert p1.hero.health == 30
+
+
+def test_osk_t30_gain_health_and_armor():
+    game, p1, p2, osk = _play_osk("TLC_452t30")
+    assert osk.health == osk.data.health + 5
+    assert p1.hero.armor == 5
+
+
+def test_osk_t3_summons_two_undead():
+    game, p1, p2, osk = _play_osk("TLC_452t3")
+    undead = [m for m in p1.field if m.id == "TLC_452t3t"]
+    assert len(undead) == 2
+    for m in undead:
+        assert m.atk == 3 and m.health == 3
+        assert m.taunt and m.reborn
+
+
+def test_osk_t28_summons_two_infernals():
+    game, p1, p2, osk = _play_osk("TLC_452t28")
+    infernals = [m for m in p1.field if m.id == "EX1_tk34"]
+    assert len(infernals) == 2
+    for m in infernals:
+        assert m.atk == 6 and m.health == 6
+
+
+def test_osk_t9_refreshes_mana():
+    def setup(game, p1, p2):
+        p1.used_mana = p1.max_mana  # drain to 0
+    game, p1, p2, osk = _play_osk("TLC_452t9")
+    # After paying 7 for Osk then refreshing, mana is back to full.
+    assert p1.mana == p1.max_mana
+
+
+def test_osk_t35_steals_enemy_minion():
+    def setup(game, p1, p2):
+        p2.summon("CS2_182")  # lone enemy minion
+    game, p1, p2, osk = _play_osk("TLC_452t35", setup)
+    assert len(p2.field) == 0
+    assert any(m.id == "CS2_182" for m in p1.field)
+
+
+def test_osk_t16_sets_enemy_minions_to_2():
+    def setup(game, p1, p2):
+        p2.summon("CS2_182")  # 4/5 Yeti
+        p2.summon("CS2_182")
+    game, p1, p2, osk = _play_osk("TLC_452t16", setup)
+    for m in p2.field:
+        assert m.atk == 2 and m.health == 2
 
 
 # ---------------------------------------------------------------------------
@@ -216,14 +304,15 @@ def test_forbidden_sequence_quest():
 
 
 # ---------------------------------------------------------------------------
-# TLC_460t The Origin Stone — quest-reward weapon body.
-# ACCEPTED DATA LIMITATION (review.csv 538): "After you Discover a card, this
-# plays the other options. Lose 1 Durability." The un-chosen Discover options
-# are never exposed card-side (engine surfaces only the chosen card), so the
-# replay-and-drain effect is not modelled. The weapon ships as an inert
-# 0-attack / 8-durability body. These tests pin both the body and the
-# (deliberate) absence of the Discover-driven durability drain / replay.
+# TLC_460t The Origin Stone — quest-reward weapon.
+# "After you Discover a card, this plays the other options. Lose 1 Durability."
+# The engine now retains the un-chosen Discover options on
+# player._discover_leftovers (Discover.choose); the weapon replays them and
+# spends 1 durability per Discover.
 # ---------------------------------------------------------------------------
+
+WISP = "CS2_231"  # 1/1 vanilla, no battlecry — clean replay marker
+
 
 def test_origin_stone_weapon_body():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
@@ -238,30 +327,56 @@ def test_origin_stone_weapon_body():
     assert stone.max_durability == 8
 
 
-def test_origin_stone_discover_is_inert():
-    # Discovering while The Origin Stone is equipped must NOT drain its
-    # durability and must NOT replay un-chosen options (accepted gap).
+def test_discover_retains_unchosen_options():
+    # Engine primitive: after a Discover resolves, the two un-chosen options
+    # are retained on player._discover_leftovers (no Origin Stone needed).
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
-    p1, p2 = game.player1, game.player2
+    p1 = game.player1
+    p1.give("TLC_461").play()  # Scrappy Scavenger → Discover
+    assert p1.choice
+    offered = list(p1.choice.cards)
+    chosen = offered[0]
+    p1.choice.choose(chosen)
+    assert p1._discover_leftovers == [offered[1], offered[2]]
+
+
+def test_origin_stone_plays_other_options_and_drains_durability():
+    # The two un-chosen options are played (here: two Wisps summoned) and the
+    # weapon loses exactly 1 durability.
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
     stone = p1.give("TLC_460t")
     stone.play()
     assert stone.durability == 8
-    pre_field = len(p1.field)
-    pre_enemy_field = len(p2.field)
-    pre_p2_hp = p2.hero.health
-    # Trigger a Discover via Scrappy Scavenger and resolve it.
-    p1.give("TLC_461").play()
+    assert len(p1.field) == 0
+    # Simulate the leftovers from a just-resolved Discover, then fire the
+    # Discovered event the weapon listens for.
+    leftovers = [p1.card(WISP), p1.card(WISP)]
+    for c in leftovers:
+        c.controller = p1
+    p1._discover_leftovers = leftovers
+    game.cheat_action(stone, [Discovered(p1, p1.card(WISP))])
+    # Both un-chosen Wisps are summoned; durability drops by exactly 1.
+    assert len(p1.field) == 2
+    assert all(m.id == WISP for m in p1.field)
+    assert stone.durability == 7
+    # Leftovers are consumed (not replayed again on the next Discover).
+    assert p1._discover_leftovers == []
+
+
+def test_origin_stone_end_to_end_drains_on_real_discover():
+    # Full path through a real Discover: durability drops by 1 and the retained
+    # leftovers are consumed by the weapon.
+    game = prepare_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    stone = p1.give("TLC_460t")
+    stone.play()
+    assert stone.durability == 8
+    p1.give("TLC_461").play()  # Scrappy Scavenger → Discover
     _resolve_choices(p1)
     assert p1.discovers_this_turn == 1
-    # Inert weapon: durability unchanged, weapon still equipped, no un-chosen
-    # options replayed onto the board or face.
-    assert stone.durability == 8
-    assert p1.weapon is stone
-    # The only board change is Scrappy itself (a 1-cost minion); no extra
-    # minions summoned and no damage dealt by a phantom replay.
-    assert len(p1.field) == pre_field + 1
-    assert len(p2.field) == pre_enemy_field
-    assert p2.hero.health == pre_p2_hp
+    assert stone.durability == 7
+    assert p1._discover_leftovers == []
 
 
 # ---------------------------------------------------------------------------

@@ -115,10 +115,11 @@ class TLC_432:
 class TLC_436:
     """Reanimated Pterrordax"""
 
-    # Rush, Lifesteal (data). Costs Corpses instead of Mana. Approximation:
-    # zero the mana cost and spend its Corpse cost on play. The Corpse cost is
-    # the CARD_ALTERNATE_COST tag (3), NOT the mana COST tag (5).
+    # Rush, Lifesteal (data). Costs Corpses instead of Mana. The Corpse cost is
+    # the CARD_ALTERNATE_COST tag (3), NOT the mana COST tag (5): zero the mana
+    # cost, gate playability on having >= 3 Corpses, and spend exactly 3 on play.
     cost = SET(0)
+    requirements = {PlayReq.REQ_MINIMUM_CORPSES: 3}
     play = SpendCorpses(CONTROLLER, 3)
 
 

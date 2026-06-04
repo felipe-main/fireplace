@@ -303,22 +303,45 @@ def test_plucky_podling_is_vanilla_body():
     assert len(p1.field) == 1
 
 
-# EDR_529 — ACCEPTED (status=watch): the "transforms into one costing (2) more"
-# rider is unwired (it would need an engine-side Morph interception hook that
-# does not exist; the only such hook is a hard-coded REV_925 branch in
-# Morph.do). This test pins the *current* honest behaviour: when something
-# transforms Plucky Podling, it becomes exactly that minion with no +2-cost
-# upgrade applied. If a future engine change wires the rider, this test should
-# be revisited.
-def test_plucky_podling_transform_has_no_cost_upgrade():
+# EDR_529 — "If this would transform into a minion, it transforms into one that
+# costs (2) more." Wired in Morph.do: the would-be minion is swapped for a
+# random minion costing 2 more.
+def test_plucky_podling_transform_costs_two_more():
     from fireplace.actions import Morph
     game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
     p1 = game.player1
     podling = p1.summon("EDR_529")
-    # Transform it into a plain Wisp (CS2_231). With the rider inert the result
-    # is exactly a Wisp — not a 2-Cost-higher minion.
+    # Transform it into a 0-Cost Wisp — the rider bumps that to a random 2-Cost
+    # minion instead.
     game.queue_actions(p1, [Morph(podling, WISP)])
     field = p1.field
     assert len(field) == 1
-    assert field[0].id == WISP
-    assert field[0].cost == 0  # Wisp's printed cost, no +2 applied
+    assert field[0].id != WISP
+    assert field[0].cost == 2  # Wisp's 0 Cost + 2
+
+
+def test_plucky_podling_transform_upgrade_relative_to_target():
+    # The +2 is relative to the would-be minion's Cost: morphing into a 4-Cost
+    # Chillwind Yeti yields a random 6-Cost minion.
+    from fireplace.actions import Morph
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    podling = p1.summon("EDR_529")
+    game.queue_actions(p1, [Morph(podling, "CS2_182")])  # Chillwind Yeti, 4-Cost
+    field = p1.field
+    assert len(field) == 1
+    assert field[0].cost == 6  # Yeti's 4 Cost + 2
+
+
+def test_non_podling_transform_unaffected():
+    # The rider is Podling-specific: transforming a plain Wisp into a Yeti
+    # leaves a Yeti (no +2 upgrade).
+    from fireplace.actions import Morph
+    game = prepare_empty_game(CardClass.SHAMAN, CardClass.SHAMAN)
+    p1 = game.player1
+    wisp = p1.summon(WISP)
+    game.queue_actions(p1, [Morph(wisp, "CS2_182")])  # Chillwind Yeti
+    field = p1.field
+    assert len(field) == 1
+    assert field[0].id == "CS2_182"
+    assert field[0].cost == 4

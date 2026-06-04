@@ -241,6 +241,33 @@ class Kindred(Evaluator):
     def check(self, source):
         return kindred_active(source)
 
+    def evaluate(self, source):
+        ret = self.check(source)
+        if self._neg:
+            ret = not ret
+        if not ret:
+            return self._else
+        if self._if is None:
+            return None
+        actions = self._if
+        if not hasattr(actions, "__iter__"):
+            actions = (actions,)
+        else:
+            actions = tuple(actions)
+        # Primalfin Challenger — "your next Kindred triggers twice." Spend one
+        # charge per Kindred card (keyed to the source so a card with multiple
+        # Kindred gates doubles every gate but only burns a single charge),
+        # then run the bonus a second time.
+        controller = source.controller
+        charge = getattr(controller, "next_kindred_double", 0)
+        already = getattr(controller, "_kindred_double_source", None) is source
+        if charge > 0 or already:
+            if not already:
+                controller.next_kindred_double = charge - 1
+                controller._kindred_double_source = source
+            return actions + actions
+        return actions
+
 
 class OddCost(Evaluator):
     """

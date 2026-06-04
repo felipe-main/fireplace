@@ -194,17 +194,10 @@ class EDR_529:
     # If this would transform into a minion, it transforms into one that
     # costs (2) more.
     #
-    # ACCEPTED (status=watch): there is no card-readable mechanism to wire
-    # this. The only transform-interception in the engine is a hard-coded
-    # `id == "REV_925"` branch inside Morph.do (actions.py ~L2938) — and even
-    # that implements a *different* effect (Baroness Vashj summons the would-be
-    # morph instead of being replaced). Morph.do never consults any per-card
-    # attribute or script hook, and the actual "+2 cost" rider would have to be
-    # applied at the moment a *different* card's transform effect picks its
-    # random/target minion (e.g. an Evolve/Devolve-style pick), which the card
-    # script cannot reach. Honouring this requires an engine-side Morph
-    # interception hook (read-only here), so the rider stays inert and the body
-    # ships as the printed 1/1/2. See review.csv row 508.
+    # Wired engine-side in Morph.do (actions.py): when a transform effect would
+    # morph this card (EDR_529) into a minion, the would-be minion is replaced
+    # with a random minion costing 2 more — same id-check approach as Baroness
+    # Vashj's transform-interception branch.
 
 
 ##

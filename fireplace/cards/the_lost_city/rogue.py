@@ -88,9 +88,10 @@ class _MerchantOfLegend(TargetedAction):
 
 
 class _CultistMapDiscoverDeck(TargetedAction):
-    """Cultist Map — Discover a card from the controller's own deck, then draw
-    the real copy out of the deck. (The secondary "if you play it this turn,
-    also pick one of the others" upside is an approximation — see review.)"""
+    """Cultist Map — Discover a card from the controller's own deck and draw the
+    real copy out. If you play it this turn, also pick one of the other two deck
+    cards shown (DiscoverPickOtherDraw stamps the drawn card and arms the
+    one-turn watcher; the second pick is likewise a real deck draw)."""
 
     TARGET = ActionArg()
 
@@ -103,23 +104,10 @@ class _CultistMapDiscoverDeck(TargetedAction):
             source,
             [
                 Discover(CONTROLLER, RandomID(*ids)).then(
-                    _CultistMapDrawChosen(SELF, Discover.CARD)
+                    DiscoverPickOtherDraw(SELF, Discover.CARDS, Discover.CARD)
                 )
             ],
         )
-
-
-class _CultistMapDrawChosen(TargetedAction):
-    """Pull the actual deck card matching the Discovered id into hand."""
-
-    TARGET = ActionArg()
-    CARD = CardArg()
-
-    def do(self, source, target, card):
-        ctrl = source.controller
-        real = next((c for c in ctrl.deck if c.id == card.id), None)
-        if real is not None:
-            source.game.cheat_action(source, [ForceDraw(real)])
 
 
 class _EyesInTheSkyPeek(TargetedAction):

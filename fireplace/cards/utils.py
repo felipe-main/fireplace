@@ -601,3 +601,117 @@ class QuestRewardProtect:
             and self.progress >= self.progress_total
             and len(self.controller.hand) < self.controller.max_hand_size
         )
+
+
+##
+# "Discover X. If you play it this turn, also pick one of the others."
+# Shared machinery for the Lost City Map cards (Crypt/Hive/Cultist/Mountain).
+# The first Discover's chosen card is stamped with the two un-chosen option ids;
+# a one-turn player watcher re-Discovers one of those exact options when the
+# stamped card is played this turn. The engine retains the un-chosen options via
+# Discover.choose, but here we capture them directly from the Discover.CARDS
+# callback arg, so no leftover bookkeeping is needed.
+
+
+class DiscoverPickOther(TargetedAction):
+    """Give the chosen Discover option (a fresh copy), stamp it with the two
+    runner-up ids, and arm the one-turn "pick one of the others" watcher.
+
+    Subclass with DRAW = True to instead pull the *real* chosen card out of the
+    controller's deck (Cultist Map), keeping the second pick a real deck draw.
+    Use as ``Discover(...).then(DiscoverPickOther(SELF, Discover.CARDS,
+    Discover.CARD))``."""
+
+    DRAW = False
+    TARGET = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, cards, card):
+        if isinstance(card, list):
+            card = card[0] if card else None
+        if card is None:
+            return
+        ctrl = source.controller
+        runners = [c.id for c in cards if c is not card] if cards else []
+        if self.DRAW:
+            delivered = next((c for c in ctrl.deck if c.id == card.id), None)
+            if delivered is None:
+                return
+            delivered._pick_other_runners = runners
+            delivered._pick_other_draw = True
+            source.game.cheat_action(source, [ForceDraw(delivered)])
+        else:
+            delivered = ctrl.card(card.id)
+            delivered._pick_other_runners = runners
+            delivered._pick_other_draw = False
+            ctrl.give(delivered)
+        if runners:
+            source.game.cheat_action(source, [Buff(ctrl, "_PickOtherWatcher")])
+
+
+class DiscoverPickOtherDraw(DiscoverPickOther):
+    # ActionArgs must be redeclared: ActionMeta builds ARGS from each class's
+    # own namespace, so a bare subclass would lose TARGET/CARDS/CARD.
+    DRAW = True
+    TARGET = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+
+class _PickOtherSecond(TargetedAction):
+    """When a Map-stamped card is played this turn, Discover one of the two
+    remembered runner-up options (drawing the real deck copy if the original
+    came from the deck)."""
+
+    TARGET = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, card):
+        if isinstance(card, list):
+            card = card[0] if card else None
+        if card is None:
+            return
+        runners = getattr(card, "_pick_other_runners", None)
+        if not runners:
+            return
+        card._pick_other_runners = None
+        ctrl = source.controller
+        if getattr(card, "_pick_other_draw", False):
+            deliver = _PickOtherDrawReal(SELF, Discover.CARD)
+        else:
+            deliver = Give(ctrl, Discover.CARD)
+        source.game.cheat_action(
+            source, [Discover(ctrl, RandomID(*runners)).then(deliver)]
+        )
+
+
+class _PickOtherDrawReal(TargetedAction):
+    """Pull the real deck card matching the second-pick Discover into hand."""
+
+    TARGET = ActionArg()
+    CARD = CardArg()
+
+    def do(self, source, target, card):
+        if isinstance(card, list):
+            card = card[0] if card else None
+        if card is None:
+            return
+        ctrl = source.controller
+        real = next((c for c in ctrl.deck if c.id == card.id), None)
+        if real is not None:
+            source.game.cheat_action(source, [ForceDraw(real)])
+
+
+@custom_card
+class _PickOtherWatcher:
+    # One-turn player enchant: when the stamped card is played, fire the second
+    # pick; self-removes at end of turn ("if you play it THIS turn").
+    tags = {
+        GameTag.CARDNAME: "Cartographer's Insight",
+        GameTag.CARDTYPE: CardType.ENCHANTMENT,
+    }
+    events = (
+        Play(OWNER).after(_PickOtherSecond(OWNER, Play.CARD)),
+        OWN_TURN_END.on(Destroy(SELF)),
+    )

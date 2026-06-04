@@ -424,14 +424,29 @@ class TLC_480e_dyn:
 # Minions
 
 
+class _EliseCraftLocation(TargetedAction):
+    """Elise the Navigator — craft the location only if the starting deck held
+    at least 10 cards of different Costs (>= 10 distinct Cost values). The
+    location-customization (pick location / cost tier / two effects) remains
+    approximated by the fixed Un'Goro Jungle body."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        starting = getattr(ctrl, "starting_deck", None) or []
+        costs = {(c.cost or 0) for c in starting}
+        if len(costs) >= 10:
+            source.game.cheat_action(source, [Summon(ctrl, "TLC_100t1")])
+
+
 class TLC_100:
     """Elise the Navigator"""
 
     # Battlecry: If your deck started with 10 cards of different Costs, craft
-    # a custom location.
-    # Approximation: the "10 different costs" deckbuilding constraint is not
-    # checked; we always craft the basic Un'Goro Jungle custom location.
-    play = Summon(CONTROLLER, "TLC_100t1")
+    # a custom location. (Deckbuild precondition now enforced; the location's
+    # custom build is still approximated by the basic Un'Goro Jungle body.)
+    play = _EliseCraftLocation(CONTROLLER)
 
 
 class TLC_101:
@@ -441,12 +456,54 @@ class TLC_101:
     update = Find(SELF + DAMAGED) & Refresh(SELF, {GameTag.ATK: 3})
 
 
+class _TorgaDraw(TargetedAction):
+    """Torga — Draw a Kindred card, then draw another card that activates it
+    (one sharing a minion type or spell school, so the Kindred condition can be
+    turned on). Falls back to plain draws if the deck lacks a Kindred card or a
+    matching activator."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        ctrl = source.controller
+        kindred = [
+            c for c in ctrl.deck if c.data.tags.get(GameTag.KINDRED, 0)
+        ]
+        if not kindred:
+            source.game.cheat_action(source, [Draw(ctrl), Draw(ctrl)])
+            return
+        kc = source.game.random.choice(kindred)
+        source.game.cheat_action(source, [ForceDraw(kc)])
+
+        kc_races = {r for r in getattr(kc, "races", []) if r != Race.INVALID}
+        kc_school = getattr(kc, "spell_school", SpellSchool.NONE)
+
+        def activates(c):
+            if c is kc:
+                return False
+            races = {r for r in getattr(c, "races", []) if r != Race.INVALID}
+            if kc_races & races:
+                return True
+            school = getattr(c, "spell_school", SpellSchool.NONE)
+            return (
+                kc_school != SpellSchool.NONE and school == kc_school
+            )
+
+        activators = [c for c in ctrl.deck if activates(c)]
+        if activators:
+            source.game.cheat_action(
+                source, [ForceDraw(source.game.random.choice(activators))]
+            )
+        else:
+            # No activator available — draw any remaining card.
+            source.game.cheat_action(source, [Draw(ctrl)])
+
+
 class TLC_102:
     """Torga"""
 
     # Battlecry: Draw a Kindred card and another card that activates it.
-    # Approximation: draws two cards (no Kindred-pair identification).
-    play = Draw(CONTROLLER) * 2
+    play = _TorgaDraw(CONTROLLER)
 
 
 class TLC_106:

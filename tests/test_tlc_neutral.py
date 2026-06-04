@@ -34,18 +34,39 @@ def _kindred_setup(player, game, token_id=BLOODFEN):
 
 
 # ---------------------------------------------------------------------------
-# TLC_100 — Elise the Navigator: craft a custom location (approx).
+# TLC_100 — Elise the Navigator: craft a location only if the deck started
+# with 10 cards of different Costs.
 # ---------------------------------------------------------------------------
-def test_elise_the_navigator():
-    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
-    p1 = game.player1
-    p1.give("TLC_100").play()
-    locations = [
+class _CostStub:
+    def __init__(self, cost):
+        self.cost = cost
+
+
+def _elise_locations(game):
+    return [
         c for c in game.entities
         if getattr(c, "id", None) == "TLC_100t1" and c.zone == Zone.PLAY
     ]
+
+
+def test_elise_crafts_with_ten_distinct_costs():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    # Starting deck spanning Costs 0..9 → 10 distinct Costs.
+    p1.starting_deck = [_CostStub(i) for i in range(10)]
+    p1.give("TLC_100").play()
+    locations = _elise_locations(game)
     assert len(locations) == 1
     assert locations[0].type == CardType.LOCATION
+
+
+def test_elise_no_craft_without_ten_distinct_costs():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    # Only 9 distinct Costs (a duplicate Cost doesn't add a new value).
+    p1.starting_deck = [_CostStub(i) for i in range(9)] + [_CostStub(0)]
+    p1.give("TLC_100").play()
+    assert _elise_locations(game) == []
 
 
 # ---------------------------------------------------------------------------
@@ -65,16 +86,32 @@ def test_undercover_cultist():
 
 
 # ---------------------------------------------------------------------------
-# TLC_102 — Torga: draw two cards (Kindred-pair approx).
+# TLC_102 — Torga: draw a Kindred card + a card that activates it.
 # ---------------------------------------------------------------------------
-def test_torga():
+def test_torga_draws_kindred_card_and_activator():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
-    for _ in range(3):
-        p1.card(YETI, zone=Zone.DECK)
-    pre = len(p1.hand)
+    p1.discard_hand()
+    # Deck: a Kindred Beast (Diabolus Rex), a Beast activator (Bloodfen Raptor),
+    # and a raceless Yeti that activates nothing.
+    p1.card("DINO_138", zone=Zone.DECK)
+    p1.card(BLOODFEN, zone=Zone.DECK)
+    p1.card(YETI, zone=Zone.DECK)
     p1.give("TLC_102").play()
-    assert len(p1.hand) == pre + 2
+    hand_ids = [c.id for c in p1.hand]
+    assert "DINO_138" in hand_ids        # the Kindred card
+    assert BLOODFEN in hand_ids          # the Beast activator (shares a type)
+    assert YETI not in hand_ids          # raceless minion can't activate it
+
+
+def test_torga_falls_back_to_two_draws_without_kindred():
+    game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
+    p1 = game.player1
+    p1.discard_hand()
+    for _ in range(3):
+        p1.card(YETI, zone=Zone.DECK)  # no Kindred card in deck
+    p1.give("TLC_102").play()
+    assert len(p1.hand) == 2  # plain two draws
 
 
 # ---------------------------------------------------------------------------

@@ -7,28 +7,82 @@ from hearthstone.enums import CardClass, GameTag, Race
 # Custom actions
 
 
-class _PaleomancyKeepAll(TargetedAction):
-    """Paleomancy - Discover an Undead. If the controller has at least 5
-    Corpses, spend them and add all 3 of the Discover options to hand
-    instead of choosing one."""
+@custom_card
+class _PaleoKeepAll:
+    tags = {GameTag.CARDNAME: "Keep All Three", GameTag.CARDTYPE: CardType.SPELL}
+
+
+@custom_card
+class _PaleoJustOne:
+    tags = {GameTag.CARDNAME: "Keep Just One", GameTag.CARDTYPE: CardType.SPELL}
+
+
+class _PaleomancyDiscover(TargetedAction):
+    """Paleomancy - Discover an Undead. With >= 5 Corpses the player may instead
+    spend 5 Corpses to keep all three options (offered as a choice AFTER the
+    Discover, so the three kept are exactly the three shown - the chosen card
+    plus the two un-chosen ones). The keep-all is a player option, never forced;
+    the player may still keep just the one."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         ctrl = source.controller
-        if ctrl.corpses >= 5:
-            picker = RandomMinion(race=Race.UNDEAD) * 3
-            cards = picker.evaluate(source)
-            ctrl.game.cheat_action(source, [SpendCorpses(ctrl, 5)])
-            for cid in cards:
-                ctrl.game.cheat_action(source, [Give(ctrl, cid)])
-        else:
-            ctrl.game.queue_actions(
-                source,
-                [Discover(ctrl, RandomMinion(race=Race.UNDEAD)).then(
-                    Give(ctrl, Discover.CARD)
-                )],
+        source.game.cheat_action(
+            source,
+            [Discover(ctrl, RandomMinion(race=Race.UNDEAD)).then(
+                _PaleomancyAfterDiscover(SELF, Discover.CARDS, Discover.CARD)
+            )],
+        )
+
+
+class _PaleomancyAfterDiscover(TargetedAction):
+    """Give the chosen Undead; if >= 5 Corpses, offer the keep-all-3 choice."""
+
+    TARGET = ActionArg()
+    CARDS = ActionArg()
+    CARD = ActionArg()
+
+    def do(self, source, target, cards, card):
+        if isinstance(card, list):
+            card = card[0] if card else None
+        if card is None:
+            return
+        ctrl = source.controller
+        leftovers = [c.id for c in cards if c is not card] if cards else []
+        source.game.cheat_action(source, [Give(ctrl, card.id)])
+        if ctrl.corpses >= 5 and leftovers:
+            ctrl._paleo_leftovers = leftovers
+            keep = ctrl.card("_PaleoKeepAll", source=source)
+            one = ctrl.card("_PaleoJustOne", source=source)
+            source.game.queue_actions(source, [_PaleomancyChoice(ctrl, [keep, one])])
+
+
+class _PaleomancyChoice(Choice):
+    """Spend 5 Corpses to keep all 3 (also grant the two un-chosen options), or
+    keep just the one already given. Both option tokens are discarded after the
+    pick; only "keep all" spends Corpses."""
+
+    def choose(self, card):
+        if card not in self.cards:
+            raise InvalidAction(
+                "%r is not a valid choice (one of %r)" % (card, self.cards)
             )
+        self.player.choice = None
+        keep_all = self.cards[0]  # index 0 == "keep all three"
+        for token in self.cards:
+            token.discard()
+        ctrl = self.player
+        if card is keep_all and ctrl.corpses >= 5:
+            leftovers = getattr(ctrl, "_paleo_leftovers", []) or []
+            self.game.cheat_action(self.source, [SpendCorpses(ctrl, 5)])
+            for cid in leftovers:
+                self.game.cheat_action(self.source, [Give(ctrl, cid)])
+        ctrl._paleo_leftovers = []
+        for action in self._callback:
+            self.game.trigger(self.source, [action], [self.player, self.cards, card])
+        self.callback = self._callback
+        self.trigger_choice_callback()
 
 
 class _SummonTwoDeathrattleFight(TargetedAction):
@@ -167,21 +221,21 @@ class TLC_434:
     """Paleomancy"""
 
     # Discover an Undead. Spend 5 Corpses to keep all 3 instead.
-    play = _PaleomancyKeepAll(CONTROLLER)
+    play = _PaleomancyDiscover(CONTROLLER)
 
 
 class TLC_435:
     """Crypt Map"""
 
-    # Discover a Frost Rune card. (The "play it this turn -> pick another"
-    # follow-up is a noted approximation; we Discover one Frost Rune DK card.)
+    # Discover a Frost Rune card. If you play it this turn, also pick one of the
+    # others (handled by the shared DiscoverPickOther machinery).
     play = Discover(
         CONTROLLER,
         RandomCollectible(
             card_class=CardClass.DEATHKNIGHT,
             custom_filter=lambda c: c.tags.get(GameTag.COST_FROST, 0) >= 1,
         ),
-    ).then(Give(CONTROLLER, Discover.CARD))
+    ).then(DiscoverPickOther(SELF, Discover.CARDS, Discover.CARD))
 
 
 class TLC_439:

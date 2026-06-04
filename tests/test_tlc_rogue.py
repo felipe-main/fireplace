@@ -315,12 +315,40 @@ def test_cultist_map_discovers_from_own_deck():
     assert any(c.id == chosen.id for c in p1.hand)
 
 
-def test_cultist_map_secondary_clause_accepted():
-    """ACCEPTED approximation (review row): the secondary clause 'If you play
-    it this turn, also pick one of the others' is not modelled — it needs a
-    deferred re-offer keyed on whether the discovered card is played this turn.
-    Defensive test pins the primary effect: Discover offers ONLY cards from
-    your own deck and never auto-grants the leftover pick."""
+def test_cultist_map_second_pick_when_played():
+    """'If you play it this turn, also pick one of the others': playing the
+    Discovered deck card this turn re-offers the two un-chosen deck cards and
+    draws the real copy of the pick out of the deck."""
+    game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
+    p1 = game.player1
+    for c in list(p1.deck):
+        c.zone = Zone.REMOVEDFROMGAME
+    # Seed three distinct vanilla minions (safe to play, no targets/battlecries).
+    for cid in ("CS2_171", "CS2_172", "CS2_173"):  # Boar / Raptor / Bluegill
+        card = p1.card(cid); card.controller = p1; card.zone = Zone.DECK
+    p1.give("TLC_515").play()
+    assert p1.choice is not None
+    offered = list(p1.choice.cards)
+    chosen = offered[0]
+    others = sorted(c.id for c in offered if c is not chosen)
+    p1.choice.choose(chosen)
+    assert p1.choice is None
+    drawn = next(c for c in p1.hand if c.id == chosen.id)
+    assert sorted(drawn._pick_other_runners) == others
+    # Play it this turn → second pick of exactly the two un-chosen deck cards.
+    drawn.play()
+    assert p1.choice is not None
+    assert sorted(c.id for c in p1.choice.cards) == others
+    deck_before = len(p1.deck)
+    pick = p1.choice.cards[0]
+    p1.choice.choose(pick)
+    # The real deck copy of the second pick is pulled into hand.
+    assert len(p1.deck) == deck_before - 1
+    assert any(c.id == pick.id for c in p1.hand)
+
+
+def test_cultist_map_no_second_pick_without_play():
+    # Not playing the Discovered card this turn → no bonus second pick.
     game = prepare_game(CardClass.ROGUE, CardClass.ROGUE)
     p1 = game.player1
     for c in list(p1.deck):
@@ -332,8 +360,6 @@ def test_cultist_map_secondary_clause_accepted():
     assert p1.choice is not None
     p1.choice.choose(p1.choice.cards[0])
     assert p1.choice is None
-    # Exactly one card was granted (no bonus second pick from the unmodelled
-    # secondary clause), and no follow-up choice is pending.
     assert len(p1.hand) == hand_before + 1
     assert p1.choice is None
 

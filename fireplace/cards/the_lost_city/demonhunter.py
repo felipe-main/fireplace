@@ -184,18 +184,10 @@ class TLC_900:
     """Hive Map"""
 
     # <b>Discover</b> a Fel spell. If you play it this turn, also pick one of
-    # the others.
+    # the others — the two un-chosen Fel spells, via the shared
+    # DiscoverPickOther machinery.
     play = Discover(CONTROLLER, RandomSpell(spell_school=SpellSchool.FEL)).then(
-        Give(CONTROLLER, Discover.CARD),
-        Buff(Discover.CARD, "TLC_900e"),
-    )
-
-
-class TLC_900e:
-    # Marks a Hive Map-discovered spell: when played this turn, present a
-    # choice of two more Fel spells (approximation of "pick one of the others").
-    events = Play(OWNER).after(
-        GenericChoice(CONTROLLER, RandomSpell(spell_school=SpellSchool.FEL) * 2)
+        DiscoverPickOther(SELF, Discover.CARDS, Discover.CARD)
     )
 
 

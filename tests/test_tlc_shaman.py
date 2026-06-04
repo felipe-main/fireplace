@@ -349,10 +349,25 @@ def test_mountain_map_discovers_unplayed_type():
         races = [r for r in getattr(c, "races", []) if r != Race.INVALID]
         assert races, c.id
         assert any(r not in played for r in races), (c.id, races)
-    chosen = p1.choice.cards[0]
+    offered = list(p1.choice.cards)
+    chosen = offered[0]
+    others = sorted(c.id for c in offered if c is not chosen)
     p1.choice.choose(chosen)
-    # Chosen card lands in hand.
-    assert p1.hand[-1].id == chosen.id
+    # Chosen card lands in hand, stamped with the two un-chosen ids.
+    held = p1.hand[-1]
+    assert held.id == chosen.id
+    assert sorted(held._pick_other_runners) == others
+    # Playing it this turn triggers a second pick offering exactly those two.
+    target = held.play_targets[0] if held.requires_target() else None
+    held.play(target=target)
+    while p1.choice and sorted(c.id for c in p1.choice.cards) != others:
+        # auto-resolve any battlecry-driven choice from the played minion first
+        p1.choice.choose(p1.choice.cards[0])
+    assert p1.choice is not None
+    assert sorted(c.id for c in p1.choice.cards) == others
+    pick = p1.choice.cards[0]
+    p1.choice.choose(pick)
+    assert any(c.id == pick.id for c in p1.hand)
 
 
 # ---------------------------------------------------------------------------

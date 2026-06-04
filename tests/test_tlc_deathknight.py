@@ -98,19 +98,45 @@ def test_reanimate_the_terror_partial_spend_no_reward():
 
 
 # TLC_434 — Discover an Undead. Spend 5 Corpses to keep all 3 instead.
-def test_paleomancy_keeps_all_three_with_five_corpses():
+def test_paleomancy_keep_all_three_is_an_offered_choice():
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
     p1.corpses = 5
-    spell = p1.give("TLC_434")
-    spell.play()
-    # No Discover choice opened; all three Undead landed in hand and 5
-    # Corpses were spent.
+    p1.give("TLC_434").play()
+    # First a normal Discover of three Undead.
+    assert p1.choice is not None
+    undead = list(p1.choice.cards)
+    assert len(undead) == 3
+    assert all(Race.UNDEAD in c.races for c in undead)
+    shown = sorted(c.id for c in undead)
+    p1.choice.choose(undead[0])
+    # Then a keep-all-3 vs keep-one choice (offered only at >= 5 Corpses).
+    assert p1.choice is not None
+    assert len(p1.choice.cards) == 2
+    p1.choice.choose(p1.choice.cards[0])  # index 0 == "keep all three"
     assert p1.choice is None
-    assert len(p1.hand) == 3
-    assert all(Race.UNDEAD in c.races for c in p1.hand)
+    # All three SHOWN Undead are now in hand (chosen + the two others); 5 spent.
+    assert sorted(c.id for c in p1.hand) == shown
     assert p1.corpses == 0
+
+
+def test_paleomancy_may_keep_just_one_despite_corpses():
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.corpses = 5
+    p1.give("TLC_434").play()
+    assert p1.choice is not None
+    chosen = p1.choice.cards[0]
+    p1.choice.choose(chosen)
+    # Keep-all is offered but the player may decline (index 1 == "keep just one").
+    assert p1.choice is not None and len(p1.choice.cards) == 2
+    p1.choice.choose(p1.choice.cards[1])
+    assert p1.choice is None
+    # Only the one chosen Undead is in hand; no Corpses spent.
+    assert [c.id for c in p1.hand] == [chosen.id]
+    assert p1.corpses == 5
 
 
 def test_paleomancy_discovers_one_without_corpses():
@@ -141,8 +167,17 @@ def test_crypt_map_discovers_frost_rune_card():
     # Every option is a DK card with at least one Frost Rune.
     for c in p1.choice.cards:
         assert c.data.tags.get(GameTag.COST_FROST, 0) >= 1
-    p1.choice.choose(p1.choice.cards[0])
+    offered = list(p1.choice.cards)
+    chosen = offered[0]
+    others = sorted(c.id for c in offered if c is not chosen)
+    p1.choice.choose(chosen)
     assert len(p1.hand) == 1
+    # "If you play it this turn, also pick one of the others": the chosen card
+    # is stamped with the two un-chosen ids and a one-turn watcher is armed.
+    held = p1.hand[0]
+    assert held.id == chosen.id
+    assert sorted(held._pick_other_runners) == others
+    assert any(b.id == "_PickOtherWatcher" for b in p1.buffs)
 
 
 # TLC_436 — Rush, Lifesteal. Costs Corpses instead of Mana.

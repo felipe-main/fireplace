@@ -206,12 +206,11 @@ class TLC_464:
     """Mountain Map"""
 
     # Discover a minion with a type you haven't played. If you play it this
-    # turn, also pick one of the others.
-    #
-    # APPROXIMATION: the "If you play it this turn, also pick one of the others"
-    # follow-up Discover is not modeled - we resolve only the primary Discover
-    # (a minion whose tribe is one you haven't played this game).
-    play = _MountainMapDiscover(CONTROLLER).then(Give(CONTROLLER, Discover.CARD))
+    # turn, also pick one of the others (the two un-chosen minions), via the
+    # shared DiscoverPickOther machinery.
+    play = _MountainMapDiscover(CONTROLLER).then(
+        DiscoverPickOther(SELF, Discover.CARDS, Discover.CARD)
+    )
 
 
 class TLC_229:

@@ -237,10 +237,15 @@ def test_hive_map_discovers_fel_spell():
     for card in p1.choice.cards:
         assert card.spell_school == SpellSchool.FEL
         assert card.type == CardType.SPELL
-    chosen = p1.choice.cards[0]
+    offered = list(p1.choice.cards)
+    chosen = offered[0]
+    others = sorted(c.id for c in offered if c is not chosen)
     p1.choice.choose(chosen)
     held = [c for c in p1.hand if c.id == chosen.id]
     assert len(held) == 1
+    # "If you play it this turn, also pick one of the others": stamp + watcher.
+    assert sorted(held[0]._pick_other_runners) == others
+    assert any(b.id == "_PickOtherWatcher" for b in p1.buffs)
 
 
 # --------------------------------------------------------------------------

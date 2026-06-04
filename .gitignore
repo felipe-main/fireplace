@@ -12,3 +12,6 @@ venv
 .coverage
 .idea
 *_cards.txt
+
+# Soak-run logs are large local artifacts (the 1000/1000 SUMMARYs live in commit messages); never commit them.
+roadmap/soak_*.log

@@ -24,7 +24,15 @@ from fireplace.dsl.random_picker import (
     RandomMinion,
     RandomSpell,
     RandomWeapon,
+    _bare_card_id,
 )
+
+
+def _card_keys(ids):
+    """Collapse reprint aliases (CORE_/VAN_) to one key per printable card, so
+    reachability is compared at the card level — the random pool now offers each
+    printable card under a single id (see _dedupe_reprints)."""
+    return {_bare_card_id(i) for i in ids}
 
 from utils import prepare_empty_game
 
@@ -55,24 +63,39 @@ def _wild_game():
 def test_from_past_flag_demon_pool():
     src = _standard_game().player1.hero
 
-    narrowed = set(RandomDemon().find_cards(src))           # auto Standard filter
-    full = set(RandomDemon(from_past=True).find_cards(src))  # from_past bypass
+    # Compare at printable-card level: the Standard pool keeps a reprinted card
+    # under its Standard-legal id, while the from_past (Wild) pool dedupes
+    # reprint aliases — so raw ids differ but the card sets nest correctly.
+    narrowed = _card_keys(RandomDemon().find_cards(src))           # auto Standard
+    full = _card_keys(RandomDemon(from_past=True).find_cards(src))  # from_past
 
     # The flag genuinely widens the pool inside a Standard game.
     assert narrowed < full
 
     # Mal'Ganis (GVG_021) is a Wild-only Demon: present only with from_past.
+    # (narrowed is exactly the Standard card set, so full - narrowed is the
+    # Wild-only widening.)
     assert "GVG_021" in full
     assert "GVG_021" not in narrowed
-
-    # Every card the flag ADDS is a non-Standard (Wild-only) card — i.e. the
-    # only thing from_past does is drop the Standard restriction.
-    for cid in full - narrowed:
-        assert not getattr(_cards.db[cid], "is_standard", False)
 
     # Sargeras (TTN_960, a Titan tagged DONT_PICK_FROM_SUBSETS) stays excluded
     # even with from_past — "from the past" widens by format, not past the bans.
     assert "TTN_960" not in full
+
+
+def test_from_past_pool_dedupes_reprint_aliases():
+    # A Wild pool must offer each printable card ONCE — not 2-3x for cards that
+    # also have a CORE_/VAN_ reprint (which would inflate their pick weight).
+    src = _standard_game().player1.hero
+    pool = RandomDemon(from_past=True).find_cards(src)
+    # No two ids in the pool collapse to the same printable card.
+    keys = [_bare_card_id(i) for i in pool]
+    assert len(keys) == len(set(keys)), "pool still contains reprint duplicates"
+    # And no entry sits under more than one of {bare, CORE_x, VAN_x}.
+    assert len(pool) == len(set(keys))
+    # Concretely: Voidwalker (CS2_065) appears once, not three times (it has both
+    # a VAN_ and a CORE_ reprint).
+    assert sum(1 for i in pool if _bare_card_id(i) == "CS2_065") == 1
 
 
 def test_from_past_equals_wild_baseline():
@@ -103,11 +126,16 @@ def test_from_past_equals_wild_baseline():
         wild_baseline = set(factory().find_cards(wild_src))
         narrowed = set(factory().find_cards(std_src))
 
-        # from_past reproduces the full Wild pool…
-        assert past_in_standard == wild_baseline, f"{name}: from_past != wild pool"
-        # …and that pool is strictly wider than the Standard-narrowed one
-        # (every family used here has at least one Wild-only member).
-        assert narrowed < past_in_standard, f"{name}: from_past did not widen"
+        # from_past reproduces the full Wild pool. Dedup is scoped to from_past
+        # pools, so the from_past pool collapses reprint aliases while the plain
+        # Wild-game baseline does not — compare at printable-card level.
+        assert _card_keys(past_in_standard) == _card_keys(wild_baseline), (
+            f"{name}: from_past != wild pool"
+        )
+        # …and that pool is strictly wider than the Standard-narrowed one.
+        assert _card_keys(narrowed) < _card_keys(past_in_standard), (
+            f"{name}: from_past did not widen"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +146,10 @@ def test_from_past_equals_wild_baseline():
 
 
 def _standard_members(predicate):
-    """Collectible card ids that are Standard-legal and match predicate."""
+    """Printable cards (reprint aliases collapsed) that are Standard-legal and
+    match predicate."""
     return {
-        cid
+        _bare_card_id(cid)
         for cid, c in _cards.db.items()
         if c.collectible
         and getattr(c, "is_standard", False)
@@ -137,7 +166,7 @@ def test_eroded_sediment_pool_includes_standard_elementals():
     )
     assert standard_elementals  # sanity: Standard Elementals exist
     # Previously every one of these was wrongly excluded; now they're eligible.
-    assert standard_elementals <= pool
+    assert standard_elementals <= _card_keys(pool)
 
 
 def test_unpopular_has_been_pool_includes_standard_5cost():
@@ -148,7 +177,7 @@ def test_unpopular_has_been_pool_includes_standard_5cost():
         lambda c: c.type == CardType.MINION and (c.cost or 0) == 5
     )
     assert standard_5cost
-    assert standard_5cost <= pool
+    assert standard_5cost <= _card_keys(pool)
 
 
 def test_hemet_pool_includes_standard_legendary_beasts():
@@ -161,7 +190,7 @@ def test_hemet_pool_includes_standard_legendary_beasts():
         and c.rarity == Rarity.LEGENDARY
     )
     assert standard_leg_beasts
-    assert standard_leg_beasts <= pool
+    assert standard_leg_beasts <= _card_keys(pool)
 
 
 # ---------------------------------------------------------------------------

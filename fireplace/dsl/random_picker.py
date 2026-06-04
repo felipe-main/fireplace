@@ -6,6 +6,52 @@ from .lazynum import LazyValue
 from .selector import Selector
 
 
+# Reprint namespaces: a printable card can appear in the data under its original
+# id AND a Core-set reprint (CORE_* / Core_*) AND/OR a Legacy reprint (VAN_*).
+_REPRINT_PREFIXES = ("CORE_", "Core_", "VAN_")
+
+
+def _bare_card_id(cid):
+    """Strip a reprint namespace so a card's original id and its Core/Legacy
+    reprints collapse to one key (mirrors the CORE_ stripping in
+    cards.get_script_definition)."""
+    for prefix in _REPRINT_PREFIXES:
+        if cid.startswith(prefix):
+            return cid[len(prefix):]
+    return cid
+
+
+def _dedupe_reprints(ids):
+    """Collapse reprint aliases so each printable card appears once in a pool.
+    Without this, a card with a Core (CORE_*) and/or Legacy (VAN_*) reprint in
+    addition to its original printing would sit in a Wild pool under two or three
+    ids and be picked that many times more often.
+
+    When a group has more than one id, pick a single representative by rank:
+    a Standard-legal printing first, then the bare (original) id, then the first
+    seen. Preferring the Standard-legal id keeps a Wild pool's representative for
+    a card identical to the id a Standard pool uses for it. Order is preserved
+    (deterministic)."""
+    from .. import cards as _c
+
+    def rank(cid):
+        card = _c.db[cid] if cid in _c.db else None
+        is_standard = bool(getattr(card, "is_standard", False))
+        is_bare = cid == _bare_card_id(cid)
+        return (is_standard, is_bare)
+
+    chosen = {}
+    order = []
+    for cid in ids:
+        key = _bare_card_id(cid)
+        if key not in chosen:
+            chosen[key] = cid
+            order.append(key)
+        elif rank(cid) > rank(chosen[key]):
+            chosen[key] = cid
+    return [chosen[k] for k in order]
+
+
 class RandomCardPicker(LazyValue):
     """
     Store filters and generate a random card matching the filters on pick()
@@ -78,7 +124,17 @@ class RandomCardPicker(LazyValue):
 
         from .. import cards
 
-        return cards.filter(**new_filters)
+        pool = cards.filter(**new_filters)
+        # A "from the past" pool draws from the full historic Wild card set, where
+        # a printable card can appear under its original id AND its CORE_/VAN_
+        # reprint ids — weighting it 2-3x. Collapse reprint aliases so each card
+        # is offered exactly once (e.g. Time-Lost Glaive's Demon pool 223 -> 181).
+        # Scoped to from_past: it is these pools the effect is defined over, and
+        # confining the dedup here keeps every other random pool's outcomes
+        # (and RNG stream) untouched.
+        if from_past:
+            pool = _dedupe_reprints(pool)
+        return pool
 
     def find_card_sets(self, source, cards):
         if cards:

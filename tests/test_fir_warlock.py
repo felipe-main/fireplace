@@ -49,18 +49,15 @@ def test_shadowflame_stalker_discovers_demon_with_dark_gift():
         assert card.races and Race.DEMON in card.races
 
     chosen = p1.choice.cards[0]
-    base_tags = {t for t in _GIFT_TAGS if chosen.data.tags.get(t)}
     p1.choice.choose(chosen)
 
-    # The chosen Demon copy lands in hand...
+    # The chosen Demon copy is gifted. With game.random seeded to 0 the rolled
+    # gift is not "Sweet Dreams", so the copy lands in hand.
     assert chosen.zone == Zone.HAND
     assert len(p1.hand) == pre_hand + 1
     assert Race.DEMON in chosen.races
 
-    # ...carrying exactly one new Dark-Gift keyword (recorded on the minion).
-    live_tags = {t for t in _GIFT_TAGS if chosen.tags.get(t)}
-    granted = live_tags - base_tags
-    assert len(granted) == 1
+    # ...carrying exactly one real Dark Gift (recorded on the minion).
     assert len(getattr(chosen, "_dark_gifts", [])) == 1
 
 

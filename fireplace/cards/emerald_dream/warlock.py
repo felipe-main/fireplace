@@ -3,6 +3,7 @@ from ..utils import *
 from hearthstone.enums import CardType, GameTag, Race
 
 from .neutral import _GiveDarkGift
+from ._dark_gift import apply_dark_gift
 
 
 ##
@@ -104,17 +105,17 @@ class _WallowAbsorb(TargetedAction):
     def do(self, source, target):
         absorbed = set(getattr(source, "_wallow_absorbed", set()))
         for minion in source.controller.field:
-            # Each gift is a raw tag-dict (as applied by _GiveDarkGift via
-            # SetTags); key by (minion identity, slot index) since dicts are
-            # unhashable. Re-apply the same tags to Wallow and record them so
-            # Wallow itself reads as a Dark-Gift minion.
-            for idx, tags in enumerate(getattr(minion, "_dark_gifts", [])):
+            # Each gift is a gift id (as applied by _GiveDarkGift through
+            # `apply_dark_gift`); key by (minion identity, slot index). Re-run
+            # the same gift on Wallow so it gains the real effect, and record
+            # it so Wallow itself reads as a Dark-Gift minion. `apply_dark_gift`
+            # already appends to `source._dark_gifts`.
+            for idx, gift in enumerate(getattr(minion, "_dark_gifts", [])):
                 key = (id(minion), idx)
                 if key in absorbed:
                     continue
                 absorbed.add(key)
-                source.game.cheat_action(source, [SetTags(source, tags)])
-                source._dark_gifts = getattr(source, "_dark_gifts", []) + [tags]
+                apply_dark_gift(source, source, gift)
         source._wallow_absorbed = absorbed
 
 

@@ -11,51 +11,34 @@ from utils import *
 
 from hearthstone.enums import CardType, GameTag, Zone, Race
 
-from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
-
-
-# Union of every keyword tag a rolled Dark Gift (Nightmare Bonus Effect) can add.
-_BONUS_TAGS = set()
-for _spec in BONUS_EFFECTS:
-    _BONUS_TAGS |= set(_spec)
-
-
 # FIR_900 — Cremate: Discover a minion with a Dark Gift. It costs (2) less.
 def test_cremate_discovers_minion_costs_two_less_and_dark_gift():
-    # Deterministic seed search: find a seed whose rolled Dark Gift adds a
-    # keyword the discovered minion's base card lacked (avoids the rare
-    # collision where the gift duplicates an existing base keyword).
-    for seed in range(50):
-        game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
-        p1 = game.player1
-        p1.discard_hand()
-        game.random.seed(seed)
-        spell = p1.give("FIR_900")
-        spell.play()
-        assert p1.choice is not None
-        # Every Discover option is a minion.
-        for c in p1.choice.cards:
-            assert c.type == CardType.MINION
-        chosen = p1.choice.cards[0]
-        chosen_id = chosen.id
-        base_cost = p1.card(chosen_id).cost
-        p1.choice.choose(chosen)
-        assert p1.choice is None
-        card = [c for c in p1.hand if c.id == chosen_id][0]
-        # It costs (2) less (clamped at 0 by the engine).
-        assert card.cost == max(base_cost - 2, 0)
-        assert "FIR_900e" in [b.id for b in card.buffs]
-        # A Dark Gift marker was recorded on the discovered minion.
-        assert getattr(card, "_dark_gifts", None)
-        base = p1.card(chosen_id)
-        gained = {
-            t for t in _BONUS_TAGS
-            if card.tags.get(t) and not base.tags.get(t)
-        }
-        if gained:
-            break
-    else:
-        raise AssertionError("no seed produced a fresh Dark Gift keyword")
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    spell = p1.give("FIR_900")
+    spell.play()
+    assert p1.choice is not None
+    # Every Discover option is a minion.
+    for c in p1.choice.cards:
+        assert c.type == CardType.MINION
+    chosen = p1.choice.cards[0]
+    chosen_id = chosen.id
+    base_cost = p1.card(chosen_id).cost
+    p1.choice.choose(chosen)
+    assert p1.choice is None
+    # The gifted minion usually lands in hand, but the "Sweet Dreams" gift
+    # relocates it to the top of the deck — locate it wherever it ended up.
+    card = [c for c in (list(p1.hand) + list(p1.deck)) if c.id == chosen_id][0]
+    # Cremate's own -2 enchant is applied.
+    assert "FIR_900e" in [b.id for b in card.buffs]
+    # Exactly one real Dark Gift was recorded.
+    gifts = getattr(card, "_dark_gifts", [])
+    assert len(gifts) == 1
+    # Final cost = base - 2 (Cremate), minus another 2 if the gift is the
+    # "Short Claws" Dark Gift (EDR_100t2, which also reduces Cost by 2).
+    expected = base_cost - 2 - (2 if gifts[0] == "EDR_100t2" else 0)
+    assert card.cost == max(expected, 0)
 
 
 # FIR_901 — Frostburn Matriarch: Battlecry: If you're holding a minion with a
@@ -78,7 +61,7 @@ def test_frostburn_matriarch_with_dark_gift_minion_summons_two_taunt_dragons():
     p1.discard_hand()
     # Give a held minion an explicit Dark Gift marker (what _GiveDarkGift sets).
     gifted = p1.give(WISP)
-    gifted._dark_gifts = [{GameTag.TAUNT: 1}]
+    gifted._dark_gifts = ["EDR_100t3"]  # gift id marker (Bundled Up)
     matriarch = p1.give("FIR_901")
     matriarch.play()
     dragons = [m for m in p1.field if m.id == "FIR_901t"]

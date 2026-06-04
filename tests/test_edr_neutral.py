@@ -94,17 +94,13 @@ def test_treacherous_tormentor():
     torm = p1.give("EDR_102")
     torm.play()
     _resolve_choices(p1)
-    assert len(p1.hand) == 1
-    got = p1.hand[0]
+    # The discovered minion is gifted then given; one gift ("Sweet Dreams")
+    # relocates it to the top of the deck, so look across hand AND deck.
+    got = [c for c in (list(p1.hand) + list(p1.deck))][0]
     assert got.rarity == Rarity.LEGENDARY
     assert got.type == CardType.MINION
-    # A Dark Gift (random keyword bonus effect) was applied.
-    BONUS = (
-        GameTag.TAUNT, GameTag.WINDFURY, GameTag.DIVINE_SHIELD,
-        GameTag.POISONOUS, GameTag.CANT_BE_TARGETED_BY_SPELLS,
-        GameTag.RUSH, GameTag.LIFESTEAL, GameTag.REBORN,
-    )
-    assert any(got.tags.get(t) for t in BONUS)
+    # Exactly one real Dark Gift was applied.
+    assert len(getattr(got, "_dark_gifts", [])) == 1
 
 
 # EDR_105 — Creature of Madness: Battlecry: Discover a 3-Cost minion with a
@@ -116,10 +112,10 @@ def test_creature_of_madness():
     cre = p1.give("EDR_105")
     cre.play()
     _resolve_choices(p1)
-    assert len(p1.hand) == 1
-    got = p1.hand[0]
-    assert got.cost == 3
+    got = [c for c in (list(p1.hand) + list(p1.deck))][0]
+    assert got.data.cost == 3  # base cost of the discovered minion is 3
     assert got.type == CardType.MINION
+    assert len(getattr(got, "_dark_gifts", [])) == 1
 
 
 # EDR_110 — Sporegnasher: Poisonous. Deathrattle: Deal 1 damage to a random
@@ -443,19 +439,23 @@ def test_shaladrassil_corrupted():
 
 
 # EDR_849 — Dreambound Raptor: After you play a minion, give it a random
-# Bonus Effect.
+# Bonus Effect (the eight-keyword Delve pool — not a Dark Gift).
 def test_dreambound_raptor():
     game = prepare_empty_game(CardClass.MAGE, CardClass.MAGE)
     p1 = game.player1
     p1.summon("EDR_849")
     played = p1.give("CS2_182")  # Chillwind Yeti, no keywords
     played.play()
+    # A Bonus Effect is keyword-only: exactly one of the eight keywords is now
+    # set on the played minion (which started with none).
     BONUS = (
         GameTag.TAUNT, GameTag.WINDFURY, GameTag.DIVINE_SHIELD,
         GameTag.POISONOUS, GameTag.CANT_BE_TARGETED_BY_SPELLS,
         GameTag.RUSH, GameTag.LIFESTEAL, GameTag.REBORN,
     )
     assert any(played.tags.get(t) for t in BONUS)
+    # No Dark Gift was recorded — this is a plain Bonus Effect, not a Dark Gift.
+    assert not getattr(played, "_dark_gifts", [])
 
 
 # EDR_852 — Bitterbloom Knight: Battlecry: Imbue your Hero Power.
@@ -480,17 +480,15 @@ def test_nightmare_lord_xavius():
     xav = p1.give("EDR_856")
     xav.play()
     _resolve_choices(p1)
-    # The only deck minion is the seeded Yeti; the discovered copy enters hand
-    # carrying a Dark Gift.
-    assert len(p1.hand) == 1
-    got = p1.hand[0]
+    # The only deck minion is the seeded Yeti; the discovered copy is gifted.
+    # The "Sweet Dreams" gift relocates the copy to the top of the deck, so the
+    # gifted card is whichever copy carries a `_dark_gifts` marker.
+    gifted = [c for c in (list(p1.hand) + list(p1.deck))
+              if getattr(c, "_dark_gifts", None)]
+    assert len(gifted) == 1
+    got = gifted[0]
     assert got.id == "CS2_182"
-    BONUS = (
-        GameTag.TAUNT, GameTag.WINDFURY, GameTag.DIVINE_SHIELD,
-        GameTag.POISONOUS, GameTag.CANT_BE_TARGETED_BY_SPELLS,
-        GameTag.RUSH, GameTag.LIFESTEAL, GameTag.REBORN,
-    )
-    assert any(got.tags.get(t) for t in BONUS)
+    assert len(got._dark_gifts) == 1
 
 
 # EDR_860 — Resplendent Dreamweaver: Lifesteal. Battlecry: If Imbued twice,

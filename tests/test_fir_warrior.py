@@ -84,23 +84,14 @@ def test_shadowflame_suffusion_deals_3_then_discovers_warrior_dark_gift():
         assert CardClass.WARRIOR in classes
     chosen = p1.choice.cards[0]
     chosen_id = chosen.id
-    base_tags = _cards.db[chosen_id].tags
     p1.choice.choose(chosen)
     assert p1.choice is None
-    # The discovered Warrior minion is in hand carrying exactly one NEW Dark Gift
-    # keyword from the eight-keyword Nightmare Bonus-Effect pool.
-    got = next(c for c in p1.hand if c.id == chosen_id)
-    assert got._dark_gifts  # marker recorded
-    bonus_keywords = (
-        GameTag.TAUNT, GameTag.WINDFURY, GameTag.DIVINE_SHIELD, GameTag.POISONOUS,
-        GameTag.CANT_BE_TARGETED_BY_SPELLS, GameTag.RUSH, GameTag.LIFESTEAL,
-        GameTag.REBORN,
-    )
-    added = [
-        kw for kw in bonus_keywords
-        if bool(got.tags.get(kw)) and not bool(base_tags.get(kw))
-    ]
-    assert len(added) == 1
+    # The discovered Warrior minion carries exactly one real Dark Gift. It
+    # usually lands in hand, but the "Sweet Dreams" gift relocates it to the top
+    # of the deck — find it by its `_dark_gifts` marker wherever it landed.
+    got = next(c for c in (list(p1.hand) + list(p1.deck))
+               if c.id == chosen_id and getattr(c, "_dark_gifts", None))
+    assert len(got._dark_gifts) == 1
 
 
 # FIR_956 — Dragon Turtle: Battlecry: If you're holding a minion with a Dark
@@ -109,9 +100,11 @@ def test_dragon_turtle_buffs_hero_when_holding_dark_gift_minion():
     game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1 = game.current_player
     _clear_hand(p1)
-    # Hold a minion carrying a Dark Gift (mark via the shared set-wide helper).
+    # Hold a minion carrying a Dark Gift. Stamp the marker directly so the
+    # minion stays in hand (the "Sweet Dreams" gift would otherwise relocate it
+    # to the deck, which is orthogonal to what this test exercises).
     gifted = p1.give(YETI)
-    game.queue_actions(p1.hero, [_GiveDarkGift(gifted)])
+    gifted._dark_gifts = ["EDR_100t13"]
     assert gifted._dark_gifts
     assert p1.hero.atk == 0
     assert p1.hero.armor == 0

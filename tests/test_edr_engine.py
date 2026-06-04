@@ -120,40 +120,63 @@ def test_imbue_counter_never_resets_across_turns():
 
 
 def test_imbued_golem_summons_scaling_plant():
-    """Druid's Blessing of the Golem summons a 2N/2N Plant Golem."""
+    """Druid's Blessing of the Golem summons an N/N Plant Golem — base 1/1
+    (level 1), growing +1/+1 per imbue (level 2 -> 2/2)."""
     game = prepare_game(CardClass.DRUID, CardClass.MAGE)
     p1 = game.player1
-    _imbue(p1)  # level 1 -> 2/2
+    _imbue(p1)  # level 1 -> 1/1
     p1.hero_power.activate(target=None, choose=None)
     golems = [m for m in p1.field if m.id == "EDR_847pt2"]
     assert len(golems) == 1
-    assert golems[0].atk == 2
-    assert golems[0].max_health == 2
+    assert (golems[0].atk, golems[0].max_health) == (1, 1)
+    # A second imbue bumps the level: now a 2/2.
+    _imbue(p1)  # level 2 -> 2/2
+    p1.hero_power.activate(target=None, choose=None)
+    golems = [m for m in p1.field if m.id == "EDR_847pt2"]
+    assert len(golems) == 2
+    fresh = [g for g in golems if (g.atk, g.max_health) == (2, 2)]
+    assert len(fresh) == 1
 
 
 def test_imbued_wisp_summons_and_damages():
-    """Mage's Blessing of the Wisp summons N+1 Wisps and deals N+1 damage."""
+    """Mage's Blessing of the Wisp summons N Wisps and deals N damage — base 1
+    (level 1), growing +1 per imbue (level 2 -> 2 Wisps, 2 damage)."""
     game = prepare_game(CardClass.MAGE, CardClass.MAGE)
     p1, p2 = game.player1, game.player2
     p2.hero.max_health = 80
     p2.hero.damage = 0
-    _imbue(p1)  # level 1 -> 2 wisps, 2 damage
+    _imbue(p1)  # level 1 -> 1 wisp, 1 damage
     pre_hp = p2.hero.health
     p1.hero_power.activate(target=None, choose=None)
     wisps = [m for m in p1.field if m.id == "EDR_851t"]
-    assert len(wisps) == 2
-    # 2 damage split among enemies; p2 has only its hero (board empty).
-    total_enemy_damage = (pre_hp - p2.hero.health)
-    assert total_enemy_damage == 2
+    assert len(wisps) == 1
+    # 1 damage split among enemies; p2 has only its hero (board empty).
+    assert (pre_hp - p2.hero.health) == 1
+    # A second imbue -> level 2: 2 Wisps, 2 damage.
+    _imbue(p1)
+    pre_hp = p2.hero.health
+    p1.hero_power.activate(target=None, choose=None)
+    wisps = [m for m in p1.field if m.id == "EDR_851t"]
+    assert len(wisps) == 1 + 2  # one from level 1, two from level 2
+    assert (pre_hp - p2.hero.health) == 2
 
 
 def test_imbued_dragon_shuffles_two_portals():
-    """Paladin's Blessing of the Dragon shuffles 2 Emerald Portals."""
+    """Paladin's Blessing of the Dragon shuffles 2 Emerald Portals whose Dragon
+    Cost scales with imbue level — base 1-Cost (level 1), +1 per imbue."""
     game = prepare_game(CardClass.PALADIN, CardClass.MAGE)
     p1 = game.player1
-    _imbue(p1)
+    _imbue(p1)  # level 1 -> 1-Cost Dragons
     pre_deck = len(p1.deck)
     p1.hero_power.activate(target=None, choose=None)
     portals = [c for c in p1.deck if c.id == "EDR_445pt3"]
     assert len(portals) == 2
     assert len(p1.deck) == pre_deck + 2
+    # Each portal summons a 1-Cost Dragon at level 1.
+    assert all(p._portal_dragon_cost == 1 for p in portals)
+    # A second imbue -> level 2: newly shuffled portals summon 2-Cost Dragons.
+    _imbue(p1)
+    p1.hero_power.activate(target=None, choose=None)
+    fresh = [c for c in p1.deck if c.id == "EDR_445pt3"
+             and c._portal_dragon_cost == 2]
+    assert len(fresh) == 2

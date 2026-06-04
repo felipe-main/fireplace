@@ -89,14 +89,14 @@ def test_wisprider_imbues_and_triggers_wisp_power():
     p1.give("EDR_519").play()
     while p1.choice:
         p1.choice.choose(p1.choice.cards[0])
-    # Imbue installs Blessing of the Wisp (level 1): summon 2 Wisps, deal 2
+    # Imbue installs Blessing of the Wisp (level 1): summon 1 Wisp, deal 1
     # damage split among all enemies. Triggering it once does exactly that.
     assert p1.imbues_this_game == 1
     assert p1.hero_power.id == "EDR_851p"
     wisps = [m for m in p1.field if m.id == WISP]
-    assert len(wisps) == 2
-    # 2 damage split; no enemy minions, so all 2 to face.
-    assert p2.hero.health == 28
+    assert len(wisps) == 1
+    # 1 damage split; no enemy minions, so all 1 to face.
+    assert p2.hero.health == 29
 
 
 # EDR_520 — Forbidden Shrine — Spend all your Mana. Cast a random spell that

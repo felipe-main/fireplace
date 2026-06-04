@@ -342,55 +342,33 @@ def test_jumpscare_discovers_expensive_demon_and_shuffles_rest():
         assert Race.DEMON in c.races
         assert c.cost >= 5
     chosen = cards[0]
+    others = [cards[1], cards[2]]
     p1.choice.choose(chosen)
-    # Chosen card is in hand.
-    held = next(h for h in p1.hand if h.id == chosen.id)
-    # The other two were shuffled into the deck (not discarded).
-    assert len(p1.deck) == pre_deck + 2
-    # The discovered demon must carry a Dark Gift: at least one keyword from the
-    # eight-keyword Nightmare pool that the base card did NOT already have is now
-    # set on it (before the fix nothing was attached, so the diff was empty).
-    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
-
-    base = p1.card(chosen.id)
-    bonus_tags = set()
-    for spec in BONUS_EFFECTS:
-        bonus_tags |= set(spec)
-    gained = {
-        t for t in bonus_tags
-        if held.tags.get(t) and not base.tags.get(t)
-    }
-    assert gained  # a Dark Gift keyword was granted that the base lacked
+    # The two non-chosen demons were shuffled into the deck (not discarded).
+    for o in others:
+        assert any(d.id == o.id for d in p1.deck)
+    # The discovered demon carries exactly one real Dark Gift. It usually sits
+    # in hand, but the "Sweet Dreams" gift relocates it to the top of the deck,
+    # so identify it by its `_dark_gifts` marker wherever it landed.
+    gifted = [c for c in (list(p1.hand) + list(p1.deck))
+              if getattr(c, "_dark_gifts", None)]
+    assert len(gifted) == 1
+    assert gifted[0].id == chosen.id
+    assert len(gifted[0]._dark_gifts) == 1
 
 
-# EDR_882 Dark Gift — deterministic: drive the discover pool + gift roll with a
-# seeded RNG and assert the exact gift keyword(s) landed on the discovered demon.
+# EDR_882 Dark Gift — a real Dark Gift is always attached to the discovered demon.
 def test_jumpscare_attaches_dark_gift_deterministic():
-    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
-
-    # Search seeds until the rolled Dark Gift adds a keyword the base demon
-    # lacks (avoids the rare collision where the gift duplicates an existing
-    # base keyword). Deterministic loop, bounded — once found, the assertion is
-    # exact.
-    for seed in range(50):
-        game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
-        p1 = game.player1
-        game.random.seed(seed)
-        for c in p1.hand[:]:
-            c.discard()
-        spell = p1.give("EDR_882")
-        spell.play()
-        chosen = p1.choice.cards[0]
-        p1.choice.choose(chosen)
-        held = next(h for h in p1.hand if h.id == chosen.id)
-        base = p1.card(chosen.id)
-        # Which single BONUS_EFFECTS spec is fully satisfied on held but was not
-        # already fully present on base?
-        for spec in BONUS_EFFECTS:
-            tags = set(spec)
-            on_held = all(held.tags.get(t) for t in tags)
-            on_base = all(base.tags.get(t) for t in tags)
-            if on_held and not on_base:
-                # Found: the gift applied exactly this spec's keyword(s).
-                return
-    raise AssertionError("Jumpscare never attached a fresh Dark Gift keyword")
+    game = prepare_empty_game(CardClass.DEMONHUNTER, CardClass.DEMONHUNTER)
+    p1 = game.player1
+    game.random.seed(0)
+    for c in p1.hand[:]:
+        c.discard()
+    spell = p1.give("EDR_882")
+    spell.play()
+    chosen = p1.choice.cards[0]
+    p1.choice.choose(chosen)
+    gifted = [c for c in (list(p1.hand) + list(p1.deck))
+              if getattr(c, "_dark_gifts", None)]
+    assert len(gifted) == 1
+    assert gifted[0].id == chosen.id

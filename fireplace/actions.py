@@ -96,6 +96,17 @@ def _summon_colossal_limbs(source, target, parent):
             source.game.cheat_action(limb_card, summoned_actions)
 
 
+def _summon_living_nightmare(source, player, card):
+    """Into the Emerald Dream — the "Living Nightmare" Dark Gift: when the
+    gifted minion is played, summon a 2/2 copy of it. The copy is a fresh
+    instance of the same card with its base Attack/Health overridden to 2."""
+    copy = player.card(card.id, source=source)
+    copy.controller = player
+    copy.tags[GameTag.ATK] = 2
+    copy.tags[GameTag.HEALTH] = 2
+    player.summon(copy)
+
+
 def _resolve_mini_id(card):
     """Whizbang's Workshop — resolve the 1-Cost 1/1 "Mini" token paired with
     a MINIATURIZE minion. The pairing lives in the data's
@@ -972,6 +983,11 @@ class Play(GameAction):
             and not card.data.tags.get(GameTag.COLOSSAL_LIMB, 0)
         ):
             _summon_colossal_limbs(card, player, card)
+
+        # Into the Emerald Dream — the "Living Nightmare" Dark Gift summons a
+        # 2/2 copy of the minion when it is played.
+        if card.type == CardType.MINION and getattr(card, "_living_nightmare", False):
+            _summon_living_nightmare(card, player, card)
 
         # TITANS — Aqua Archivist / Tram Operator: apply one-shot cost discounts
         # BEFORE the battlecry fires so the card cannot consume its own discount.
@@ -2008,6 +2024,10 @@ class Battlecry(TargetedAction):
             if player.minion_extra_combos and card.has_combo and player.combo:
                 return True
             if player.minion_extra_battlecries and card.has_battlecry:
+                return True
+            # Into the Emerald Dream — the "Rude Awakening" Dark Gift marks a
+            # single minion so its own Battlecries trigger twice.
+            if getattr(card, "_battlecries_twice", False) and card.has_battlecry:
                 return True
 
         return False

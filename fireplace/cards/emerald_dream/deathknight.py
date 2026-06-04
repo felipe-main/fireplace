@@ -3,7 +3,8 @@
 Mechanics in this file:
   * Leeches (EDR_810t Bloated Leech) — at end of your turn your hero "steals"
     N Health from the lowest-Health enemy = deal N damage to that enemy and
-    heal your hero for N. Base N = 2; Hideous Husk (EDR_810) auras +1 each.
+    heal your hero for N. Base N = 1 (the @ on the Leech token); Hideous Husk
+    (EDR_810) auras "+1 more" each.
   * Corpse-spending (EDR_811 / EDR_813 / EDR_815) — gate on `controller.corpses`
     and decrement via `SpendCorpses`.
   * Nythendra (EDR_818) split/reform Beetle (EDR_818t) mechanic.
@@ -30,14 +31,15 @@ def _hideous_husk_count(controller):
 
 class _LeechSteal(TargetedAction):
     """Bloated Leech end-of-turn: your hero steals N Health from the lowest
-    Health enemy. N = 2 + (number of friendly Hideous Husks). "Steal" = deal
-    N damage to the lowest-Health enemy character, then heal your hero N."""
+    Health enemy. N = 1 (the @ on the Leech token) + (number of friendly
+    Hideous Husks, each "steal 1 more"). "Steal" = deal N damage to the
+    lowest-Health enemy character, then heal your hero N."""
 
     TARGET = ActionArg()
 
     def do(self, source, target):
         controller = source.controller
-        amount = 2 + _hideous_husk_count(controller)
+        amount = 1 + _hideous_husk_count(controller)
         enemies = [
             c for c in (list(controller.opponent.field) + [controller.opponent.hero])
             if c.zone == Zone.PLAY and not c.dead

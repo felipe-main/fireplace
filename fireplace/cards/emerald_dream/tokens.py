@@ -21,10 +21,12 @@ class EDR_445p:
     """Blessing of the Dragon"""
 
     # Shuffle two Emerald Portals into your deck.
-    # (Your Portals summon @-Cost Dragons.)  @ scales 4 / 6 / 8 ...
+    # (Your Portals summon @-Cost Dragons.)
+    # Imbue scaling: the base printed @ is 1 (1-Cost Dragons) and every imbue
+    # beyond the first adds +1 to it, so @ == imbue level: L1=1, L2=2, L3=3 ...
     def activate(self):
         level = max(1, self.imbue_level)
-        dragon_cost = 2 + 2 * level  # L1=4, L2=6, L3=8 ...
+        dragon_cost = level  # L1=1, L2=2, L3=3 ... (base 1-Cost, +1 per imbue)
         for _ in range(2):
             portal = self.controller.card("EDR_445pt3", source=self)
             # Stash the summon cost so the portal's Casts-When-Drawn knows
@@ -112,10 +114,12 @@ class EDR_449pe:
 class EDR_847p:
     """Blessing of the Golem"""
 
-    # Summon a @/@ Plant Golem.  @ scales 2 / 4 / 6 ...
+    # Summon a @/@ Plant Golem.
+    # Imbue scaling: base printed @ is 1 (1/1 Golem); every imbue beyond the
+    # first adds +1, so @ == imbue level: L1=1/1, L2=2/2, L3=3/3 ...
     def activate(self):
         level = max(1, self.imbue_level)
-        stat = 2 * level
+        stat = level  # base 1/1, +1/+1 per imbue beyond the first
         golem = self.controller.card("EDR_847pt2", source=self)
         golem.atk = stat
         golem.max_health = stat
@@ -156,10 +160,11 @@ class EDR_851p:
     """Blessing of the Wisp"""
 
     # Summon @ Wisps. Deal @ damage randomly split among all enemies.
-    # @ scales 2 / 3 / 4 ...
+    # Imbue scaling: base printed @ is 1 (1 Wisp, 1 damage); every imbue beyond
+    # the first adds +1, so @ == imbue level: L1=1, L2=2, L3=3 ...
     def activate(self):
         level = max(1, self.imbue_level)
-        amount = level + 1  # L1=2, L2=3, L3=4 ...
+        amount = level  # base 1, +1 per imbue beyond the first
         yield Summon(CONTROLLER, "EDR_851t") * amount
         yield Hit(RANDOM(ENEMY_CHARACTERS), 1) * amount
 

@@ -132,9 +132,9 @@ def test_brood_keeper_no_sword_without_dragon():
 # EDR_456 — Darkrider: Battlecry: If you're holding a Dragon, Discover a Dragon
 # with a Dark Gift.
 #
-# Dark Gift now routes through the set-wide `_GiveDarkGift` helper (random
-# keyword Bonus Effect, always granted, strict upgrade) — same as every other
-# EDR Dark-Gift card — instead of a bespoke fixed +2/+2 enchant.
+# Dark Gift now routes through the set-wide `_GiveDarkGift` helper (one of the
+# ten real Nightmare bonuses, always granted, strict upgrade) — same as every
+# other EDR Dark-Gift card — instead of a bespoke fixed +2/+2 enchant.
 def test_darkrider_discovers_dragon_with_dark_gift_when_holding_dragon():
     game = prepare_empty_game(CardClass.WARRIOR, CardClass.WARRIOR)
     p1 = game.current_player
@@ -150,26 +150,11 @@ def test_darkrider_discovers_dragon_with_dark_gift_when_holding_dragon():
     chosen_id = chosen.id
     p1.choice.choose(chosen)
     assert p1.choice is None
-    # The discovered Dragon is in hand carrying exactly one NEW Dark Gift
-    # keyword from the eight-keyword Nightmare Bonus-Effect pool (relative to
-    # its printed base tags, so a natively-Taunt Dragon isn't double-counted).
-    got = next(c for c in p1.hand if c.id == chosen_id)
-    base_tags = _cards.db[chosen_id].tags
-    bonus_keywords = (
-        GameTag.TAUNT,
-        GameTag.WINDFURY,
-        GameTag.DIVINE_SHIELD,
-        GameTag.POISONOUS,
-        GameTag.CANT_BE_TARGETED_BY_SPELLS,
-        GameTag.RUSH,
-        GameTag.LIFESTEAL,
-        GameTag.REBORN,
-    )
-    added = [
-        kw for kw in bonus_keywords
-        if bool(got.tags.get(kw)) and not bool(base_tags.get(kw))
-    ]
-    assert len(added) == 1
+    # The discovered Dragon carries exactly one real Dark Gift. It usually lands
+    # in hand, but the "Sweet Dreams" gift relocates it to the top of the deck.
+    got = next(c for c in (list(p1.hand) + list(p1.deck))
+               if c.id == chosen_id and getattr(c, "_dark_gifts", None))
+    assert len(got._dark_gifts) == 1
 
 
 def test_darkrider_no_discover_without_dragon():

@@ -28,16 +28,33 @@ def test_hideous_husk_summons_two_leeches():
         assert (lc.atk, lc.max_health) == (0, 2)
 
 
+def test_bloated_leech_base_steal_is_one():
+    # A lone Leech with NO Hideous Husk steals exactly 1 (the @ on the token).
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1, p2 = game.player1, game.player2
+    p1.summon("EDR_810t")  # one Leech, no Husk
+    victim = p2.summon(TARGET_DUMMY)  # 0/4 Taunt
+    victim.max_health = 20  # strictly below the enemy hero's 30 -> it's the target
+    victim.damage = 0
+    p1.hero.max_health = 30
+    p1.hero.damage = 10
+    pre_hero_dmg = p1.hero.damage
+    game.end_turn()
+    assert victim.damage == 1
+    assert p1.hero.damage == pre_hero_dmg - 1
+
+
 def test_hideous_husk_leech_steals_extra_at_end_of_turn():
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1, p2 = game.player1, game.player2
-    # One Husk in play -> Leeches steal 2 + 1 = 3.
+    # Two Husks in play -> Leeches steal 1 (base) + 2 (one "+1 more" per Husk) = 3.
+    p1.summon("EDR_810")
     p1.summon("EDR_810")
     leech = p1.summon("EDR_810t")
     # Single enemy minion as the lowest-Health target; beef hero so the
     # lowest-Health character is the minion.
     victim = p2.summon(TARGET_DUMMY)  # 0/4 Taunt
-    victim.max_health = 30
+    victim.max_health = 20  # strictly below the enemy hero's 30 -> it's the target
     victim.damage = 0
     # Damage our own hero so the heal is observable (heal up to 3).
     p1.hero.max_health = 30
@@ -73,54 +90,31 @@ def test_rite_of_atrocity_discovers_undead_no_corpses():
 
 
 def test_rite_of_atrocity_spends_corpses_for_dark_gift():
-    # With 2+ Corpses, the discovered Undead is granted a Dark Gift via the
-    # shared set-wide helper (a random keyword Bonus Effect from the Nightmare
-    # pool), matching every other EDR Dark-Gift card — not a bespoke +2/+2.
-    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
-
-    bonus_tags = set()
-    for spec in BONUS_EFFECTS:
-        bonus_tags |= set(spec)
-
-    # Deterministic seed search: find a seed whose rolled gift adds a keyword
-    # the discovered Undead's base card lacked (avoids the rare collision where
-    # the gift duplicates an existing base keyword). Bounded loop.
-    for seed in range(50):
-        game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
-        p1 = game.player1
-        p1.discard_hand()
-        p1.corpses = 2
-        game.random.seed(seed)
-        spell = p1.give("EDR_811")
-        spell.play()
-        chosen = p1.choice.cards[0]
-        chosen_id = chosen.id
-        p1.choice.choose(chosen)
-        card = [c for c in p1.hand if c.id == chosen_id][0]
-        # 2 Corpses always spent regardless of which keyword rolled.
-        assert p1.corpses == 0
-        # No flat +2/+2 enchant is applied anymore.
-        assert all(b.id != "EDR_811e" for b in card.buffs)
-        base = p1.card(chosen_id)
-        gained = {
-            t for t in bonus_tags
-            if card.tags.get(t) and not base.tags.get(t)
-        }
-        if gained:
-            assert len(gained) >= 1  # exactly one gift rolled (count=1)
-            break
-    else:
-        raise AssertionError("no seed produced a fresh Dark Gift keyword")
+    # With 2+ Corpses, the discovered Undead is granted a real Dark Gift via the
+    # shared set-wide helper (one of the ten Nightmare bonuses), spending 2
+    # Corpses. The gift always applies, so its id is recorded on `_dark_gifts`.
+    # (One gift, "Sweet Dreams", relocates the card to the top of the deck, so
+    # look for the gifted card across hand AND deck.)
+    game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
+    p1 = game.player1
+    p1.discard_hand()
+    p1.corpses = 2
+    spell = p1.give("EDR_811")
+    spell.play()
+    chosen = p1.choice.cards[0]
+    chosen_id = chosen.id
+    p1.choice.choose(chosen)
+    card = [c for c in (list(p1.hand) + list(p1.deck)) if c.id == chosen_id][0]
+    # 2 Corpses always spent regardless of which gift rolled.
+    assert p1.corpses == 0
+    # No flat +2/+2 enchant is applied anymore.
+    assert all(b.id != "EDR_811e" for b in card.buffs)
+    # Exactly one Dark Gift was rolled and recorded.
+    assert len(getattr(card, "_dark_gifts", [])) == 1
 
 
 def test_rite_of_atrocity_no_corpses_no_dark_gift():
     # Without 2 Corpses, no gift is granted and no Corpses are spent.
-    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
-
-    bonus_tags = set()
-    for spec in BONUS_EFFECTS:
-        bonus_tags |= set(spec)
-
     game = prepare_empty_game(CardClass.DEATHKNIGHT, CardClass.DEATHKNIGHT)
     p1 = game.player1
     p1.discard_hand()
@@ -131,13 +125,8 @@ def test_rite_of_atrocity_no_corpses_no_dark_gift():
     chosen_id = chosen.id
     p1.choice.choose(chosen)
     card = [c for c in p1.hand if c.id == chosen_id][0]
-    base = p1.card(chosen_id)
     assert p1.corpses == 1  # nothing spent
-    gained = {
-        t for t in bonus_tags
-        if card.tags.get(t) and not base.tags.get(t)
-    }
-    assert not gained  # no Dark Gift granted
+    assert not getattr(card, "_dark_gifts", [])  # no Dark Gift granted
 
 
 # EDR_812 — Grotesque Runeblade: Battlecry: If the last card you played had an

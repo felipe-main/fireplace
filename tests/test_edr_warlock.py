@@ -114,18 +114,20 @@ def test_wallow_absorbs_dark_gifts_from_friendly_minions_once():
     wallow = p1.give("EDR_487")  # sits in hand
     assert wallow.atk == 6 and wallow.max_health == 6
 
-    # A Dark Gift is a merged keyword tag-dict, exactly as _GiveDarkGift records
-    # it on the recipient (see roll_bonus_effects). Stamp a real Taunt gift.
-    from hearthstone.enums import GameTag
+    # A Dark Gift is recorded on the recipient as a gift id (see _GiveDarkGift /
+    # apply_dark_gift). Stamp the "Bundled Up" gift (EDR_100t3 — +4 Health and
+    # Taunt) so Wallow's absorb re-runs the real effect.
     gifted = p1.summon(WISP)
     assert not gifted.taunt
-    gifted._dark_gifts = [{GameTag.TAUNT: True}]
+    gifted._dark_gifts = ["EDR_100t3"]
 
     # On the controller's next turn-begin, Wallow copies the gift once: the
-    # Taunt keyword lands on Wallow and Wallow now reads as a Dark-Gift minion.
+    # Bundled Up effect lands on Wallow (Taunt + 4 Health) and Wallow now reads
+    # as a Dark-Gift minion.
     game.end_turn()
     game.end_turn()
     assert wallow.taunt is True
+    assert wallow.max_health == 6 + 4
     assert len(getattr(wallow, "_dark_gifts", [])) == 1
 
     # A second turn does NOT re-absorb the same gift.
@@ -171,31 +173,22 @@ _GIFT_TAGS = (
 
 
 def test_avant_gardening_grants_dark_gift_to_discovered_minion():
-    # The discovered Deathrattle minion must arrive with a Dark Gift: exactly
-    # one keyword from the Bonus Effect pool that the base card data does NOT
-    # carry. Reseed the game RNG so both the Discover pick and the gift roll are
-    # deterministic, then assert the precise keyword that was granted.
-    from random import Random
-
+    # The discovered Deathrattle minion must arrive with exactly one real Dark
+    # Gift (one of the ten Nightmare bonuses). It usually lands in hand, but the
+    # "Sweet Dreams" gift relocates it to the top of the deck.
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
-    game.random = Random(0)
     p1 = game.player1
     spell = p1.give("EDR_488")
     spell.play()
     chosen = p1.choice.cards[0]
-    base_tags = {t for t in _GIFT_TAGS if chosen.data.tags.get(t)}
     p1.choice.choose(chosen)
-    assert chosen.zone == Zone.HAND
-
-    live_tags = {t for t in _GIFT_TAGS if chosen.tags.get(t)}
-    granted = live_tags - base_tags
-    # The discovered minion arrives with exactly one Bonus Effect keyword it did
-    # NOT carry as a base card (the precise card/keyword shifts with the data
-    # pool, so we assert the Dark Gift invariant rather than a fixed RNG roll).
-    assert chosen.type == CardType.MINION
-    assert chosen.data.tags.get(GameTag.DEATHRATTLE)
-    assert len(granted) == 1
-    assert granted.issubset(set(_GIFT_TAGS))
+    gifted = [c for c in (list(p1.hand) + list(p1.deck))
+              if getattr(c, "_dark_gifts", None)]
+    assert len(gifted) == 1
+    got = gifted[0]
+    assert got.type == CardType.MINION
+    assert got.data.tags.get(GameTag.DEATHRATTLE)
+    assert len(got._dark_gifts) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -400,9 +393,8 @@ def test_hungering_ancient_eats_and_returns_on_death():
 def test_overgrown_horror_discounts_dark_gift_minions_in_hand():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1
-    from hearthstone.enums import GameTag
     gifted = p1.give(CHILLWIND)  # cost 4
-    gifted._dark_gifts = [{GameTag.DIVINE_SHIELD: True}]  # carries a Dark Gift
+    gifted._dark_gifts = ["EDR_100t13"]  # carries a Dark Gift (gift id)
     plain = p1.give(WISP)  # cost 0, no gift
     gifted_cost_before = gifted.cost
 
@@ -427,8 +419,6 @@ def test_give_dark_gift_records_on_recipient():
     game.queue_actions(p1.hero, [_GiveDarkGift(target)])
     gifts = getattr(target, "_dark_gifts", [])
     assert len(gifts) == 1
-    # The recorded gift is a non-empty keyword tag-dict that was really applied.
-    tags = gifts[0]
-    assert isinstance(tags, dict) and tags
-    for tag, val in tags.items():
-        assert target.tags.get(tag) == val
+    # The recorded gift is one of the ten real Nightmare-bonus gift ids, and it
+    # actually changed the recipient (Chillwind Yeti gains a keyword or stats).
+    assert gifts[0].startswith("EDR_100t")

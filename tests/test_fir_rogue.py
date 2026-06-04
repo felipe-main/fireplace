@@ -76,10 +76,11 @@ def test_smoke_bomb_discovers_keyword_minion_with_dark_gift():
         )
     chosen = p1.choice.cards[0]
     p1.choice.choose(chosen)
-    # The discovered minion is in hand and carries exactly one Dark Gift.
-    held = next(c for c in p1.hand if c.id == chosen.id)
-    gifts = getattr(held, "_dark_gifts", [])
-    assert len(gifts) == 1
+    # The discovered minion carries exactly one Dark Gift. It usually lands in
+    # hand, but the "Sweet Dreams" gift relocates it to the top of the deck.
+    held = next(c for c in (list(p1.hand) + list(p1.deck))
+                if c.id == chosen.id and getattr(c, "_dark_gifts", None))
+    assert len(held._dark_gifts) == 1
 
 
 # FIR_922 — Cindersword | WEAPON 1/1/2:
@@ -90,7 +91,7 @@ def test_cindersword_gains_attack_when_holding_gifted_minion():
     p1.discard_hand()
     # Hold a minion that carries a Dark Gift (the set-wide _dark_gifts marker).
     gifted = p1.give("CS2_182")  # Chillwind Yeti
-    gifted._dark_gifts = [{GameTag.TAUNT: True}]
+    gifted._dark_gifts = ["EDR_100t3"]  # gift id marker
     sword = p1.give("FIR_922")
     sword.play()
     w = p1.weapon

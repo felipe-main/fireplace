@@ -3,6 +3,7 @@ from ..utils import *
 from hearthstone.enums import CardType, SpellSchool, Rarity, Race
 
 from ..delve_into_deepholm._bonus import roll_bonus_effects
+from ._dark_gift import apply_dark_gift, eligible_gifts
 
 
 ##
@@ -25,8 +26,29 @@ from ..delve_into_deepholm._bonus import roll_bonus_effects
 
 
 class _GiveDarkGift(TargetedAction):
-    """Give the target minion a random Dark Gift (modelled as a random
-    keyword Bonus Effect from the eight-keyword Nightmare pool)."""
+    """Give the target minion a random Dark Gift drawn from the real
+    ten-gift Nightmare-bonus pool (see `_dark_gift.py`). Each granted gift id
+    is recorded on the recipient's `_dark_gifts` list so cards that read a
+    minion's accumulated Dark Gifts (Wallow EDR_487, Overgrown Horror EDR_654,
+    etc.) can observe them."""
+
+    TARGET = ActionArg()
+
+    def do(self, source, target):
+        targets = target if isinstance(target, (list, tuple)) else [target]
+        for t in targets:
+            choices = eligible_gifts(t)
+            if not choices:
+                continue
+            gift = source.game.random.choice(choices)
+            apply_dark_gift(source, t, gift)
+
+
+class _GiveBonusEffect(TargetedAction):
+    """Give the target minion a single random "Bonus Effect" — the eight-keyword
+    Delve into Deepholm pool (Taunt / Windfury / Divine Shield / Poisonous /
+    Elusive / Rush / Lifesteal / Reborn). Distinct from a Dark Gift: a Bonus
+    Effect is keyword-only, never stats or a unique effect."""
 
     TARGET = ActionArg()
 
@@ -35,10 +57,6 @@ class _GiveDarkGift(TargetedAction):
         for t in targets:
             tags = roll_bonus_effects(source.game.random, 1)
             source.game.cheat_action(source, [SetTags(t, tags)])
-            # Record each granted gift on the recipient so cards that read a
-            # minion's accumulated Dark Gifts (Wallow EDR_487, Overgrown Horror
-            # EDR_654) can observe them. Stored as a list of the tag-dicts.
-            t._dark_gifts = getattr(t, "_dark_gifts", []) + [tags]
 
 
 ##
@@ -357,8 +375,9 @@ class EDR_846:
 class EDR_849:
     """Dreambound Raptor"""
 
-    # After you play a minion, give it a random Bonus Effect.
-    events = OWN_MINION_PLAY.on(_GiveDarkGift(Play.CARD))
+    # After you play a minion, give it a random Bonus Effect (the eight-keyword
+    # Delve pool — NOT a Dark Gift, which is the richer ten-gift Nightmare pool).
+    events = OWN_MINION_PLAY.on(_GiveBonusEffect(Play.CARD))
 
 
 class EDR_852:

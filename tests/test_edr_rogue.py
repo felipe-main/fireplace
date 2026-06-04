@@ -294,18 +294,14 @@ def test_nightmare_fuel_combo_grants_dark_gift():
     spell.play()
     assert p1.choice is not None
     p1.choice.choose(p1.choice.cards[0])
-    held = next(c for c in p1.hand if c.id == "CS2_182")
-    # Combo attaches a Dark Gift via the shared set-wide _GiveDarkGift helper
-    # (random keyword Bonus Effect, applied with SetTags), NOT the old one-off
-    # flat +1/+1. Stats are unchanged; exactly one Bonus Effect is granted.
-    assert held.atk == base_atk
-    assert held.health == base_health
-    from fireplace.cards.delve_into_deepholm._bonus import BONUS_EFFECTS
-
-    granted = [spec for spec in BONUS_EFFECTS
-               if all(held.tags.get(tag) for tag in spec)]
-    # roll_bonus_effects(rng, 1) merges exactly one of the eight specs.
-    assert len(granted) == 1
+    # Combo attaches a real Dark Gift via the shared set-wide _GiveDarkGift
+    # helper (one of the ten Nightmare bonuses), NOT the old flat +1/+1. The
+    # gifted copy carries exactly one gift id; the "Sweet Dreams" gift relocates
+    # it to the top of the deck, so identify it by its `_dark_gifts` marker.
+    gifted = [c for c in (list(p1.hand) + list(p1.deck))
+              if c.id == "CS2_182" and getattr(c, "_dark_gifts", None)]
+    assert len(gifted) == 1
+    assert len(gifted[0]._dark_gifts) == 1
 
 
 def test_nightmare_fuel_no_combo_no_dark_gift():
@@ -320,10 +316,10 @@ def test_nightmare_fuel_no_combo_no_dark_gift():
     assert p1.choice is not None
     p1.choice.choose(p1.choice.cards[0])
     held = next(c for c in p1.hand if c.id == "CS2_182")
-    # Plain copy: base stats, no keyword Dark Gift.
+    # Plain copy: base stats, no Dark Gift recorded.
     assert held.atk == base_atk
     assert held.health == base_health
-    assert not held.taunt and not held.divine_shield and not held.rush
+    assert not getattr(held, "_dark_gifts", [])
 
 
 # EDR_540 — Twisted Webweaver | MINION 1/1/3:

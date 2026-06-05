@@ -371,19 +371,6 @@ class CATA_478te:
 # CATA_479t3 (Sky Drake, 4/2 Dragon).
 
 
-class CATA_479:
-    """Flight Maneuvers"""
-
-    # SHATTER parent — never resolves directly; split into halves on draw.
-
-
-class CATA_479t:
-    """Flight Maneuvers"""
-
-    # Shattered: Summon two 4/2 Drakes.
-    play = Summon(CONTROLLER, "CATA_479t3") * 2
-
-
 class _FlightManeuversBuff(TargetedAction):
     """Give all friendly minions +1/+1 and Divine Shield."""
 
@@ -394,6 +381,25 @@ class _FlightManeuversBuff(TargetedAction):
             source.game.cheat_action(
                 source, [Buff(minion, "CATA_479e"), GiveDivineShield(minion)]
             )
+
+
+class CATA_479:
+    """Flight Maneuvers"""
+
+    # SHATTER parent — normally split into halves on draw. Resolves directly
+    # only when the halves RECOMBINE, performing BOTH effects: summon two 4/2
+    # Drakes AND give your minions +1/+1 and Divine Shield.
+    play = (
+        Summon(CONTROLLER, "CATA_479t3") * 2,
+        _FlightManeuversBuff(SELF),
+    )
+
+
+class CATA_479t:
+    """Flight Maneuvers"""
+
+    # Shattered: Summon two 4/2 Drakes.
+    play = Summon(CONTROLLER, "CATA_479t3") * 2
 
 
 class CATA_479t2:

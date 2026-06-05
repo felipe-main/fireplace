@@ -1494,6 +1494,15 @@ class Buff(TargetedAction):
     BUFF = CardArg()
 
     def do(self, source, target, buff):
+        # A5: if the target was a Shatter card that split mid-action (its
+        # `.then(Buff(...CARD))` resolves to the now-discarded original), forward
+        # the buff onto each live half with a fresh enchant instance.
+        forwarded = getattr(target, "_shattered_into", None)
+        if forwarded:
+            result = target
+            for half in forwarded:
+                result = self.do(source, half, source.controller.card(buff.id))
+            return result
         kwargs = self._kwargs.copy()
         for k, v in kwargs.items():
             if isinstance(v, LazyValue):
@@ -3780,6 +3789,31 @@ class Herald(TargetedAction):
         source.game.manager.targeted_action(self, source, player)
 
 
+# Shatter — preserve enchantments with their RESOLVED runtime values across the
+# split/recombine identity change (re-applying by id alone zeroes amounts passed
+# at buff time, e.g. Buff(half, "...e", cost=-1)). A data-baked COST/stat tag is
+# reloaded automatically by card(id); a value passed at buff time is captured
+# here. Direct `_cost` edits (not via an enchant) are reconciled by the caller.
+_SHATTER_SNAP_ATTRS = ("atk", "max_health", "_xatk", "_xhealth", "_xcost", "_cost")
+
+
+def _snapshot_buffs(card):
+    snap = []
+    for buff in list(card.buffs):
+        vals = {a: getattr(buff, a) for a in _SHATTER_SNAP_ATTRS if getattr(buff, a, 0)}
+        snap.append((buff.id, vals))
+    return snap
+
+
+def _reapply_buffs(target, snap):
+    for bid, vals in snap:
+        nb = target.controller.card(bid)
+        nb.source = target
+        for attr, v in vals.items():
+            setattr(nb, attr, v)
+        nb.apply(target)
+
+
 def _shatter_into_halves(card, player):
     """Cataclysm — Shatter: replace a SHATTER card with its two "Shattered"
     half-cards in the player's hand, and bump the per-game shatter counter. The
@@ -3800,6 +3834,10 @@ def _shatter_into_halves(card, player):
 
     game = player.game
     base = card.id
+    # A4: carry the full card's own enchantments onto the halves (the discard
+    # below would otherwise drop them). Empty in the common path (a card that
+    # shatters on draw/generate never sat in hand long enough to be buffed).
+    parent_snap = _snapshot_buffs(card)
     card.discard()
     game._shatter_active = True
     token = getattr(game, "_shatter_split_counter", 0) + 1
@@ -3821,6 +3859,8 @@ def _shatter_into_halves(card, player):
                 h._shatter_parent = base
                 h._shatter_sibling = token
                 h._shatter_separated = False
+                if parent_snap:
+                    _reapply_buffs(h, parent_snap)
                 given.append(h)
         # One half goes to the left-most position (wiki) so the pair is not
         # adjacent in a non-trivial hand; the other stays where it was given.
@@ -3834,9 +3874,16 @@ def _shatter_into_halves(card, player):
     finally:
         game._shattering = False
     player.shatters_this_game += 1
+    # A5: a chained `.then(Buff(Give.CARD/Draw.CARD, ...))` (Horn of Plenty,
+    # Blessing of the Moon, Ashamane, Sharp-Eyed Lookout, …) resolves `.CARD` to
+    # THIS now-discarded original. Record the live halves on it so Buff.do can
+    # forward the buff onto them (each half independently — accepted conservation
+    # ruling) instead of stranding it on the set-aside parent.
+    card._shattered_into = given
     # Fire the Shatter signal so "Whenever you Shatter a card" listeners
     # (Misplaced Pyromancer) trigger. The split is already complete.
     Shatter(player, card).broadcast(player, EventListener.ON, player, card)
+    return given
 
 
 # Lazily-built map: Shattered-half id -> (parent id, tuple of all half ids).
@@ -3929,12 +3976,18 @@ def process_shatter_recombine(player):
 
 def _do_shatter_recombine(player, index, a, b, parent_id):
     # Capture, before the halves leave play:
-    #  - the combined cost DISCOUNT each half carries below its own printed cost
-    #    (reading live .cost folds in both direct _cost edits and cost-reduction
-    #    enchants — every half prints at the parent's cost), and
-    #  - every enchantment id, to re-apply (Spell Damage +1, stat buffs, …).
-    total_discount = sum(max(0, (half.data.cost or 0) - half.cost) for half in (a, b))
-    buff_ids = [buff.id for half in (a, b) for buff in list(half.buffs)]
+    #  - A3: every enchantment WITH its resolved runtime values (re-applying by
+    #    id alone would zero a value passed at buff time). Cost-reduction
+    #    enchants carry their own cost (data tag reloaded by card(id), or a
+    #    runtime cost captured in the snapshot), so both halves' discounts are
+    #    conserved by re-applying the enchants — NOT double-counted against a
+    #    separate live-.cost total.
+    #  - only the DIRECT _cost reduction (a `_cost` edit not coming from an
+    #    enchant) needs a separate residual, since enchants own their own cost.
+    snap = _snapshot_buffs(a) + _snapshot_buffs(b)
+    direct_discount = sum(
+        max(0, (half.data.cost or 0) - half._cost) for half in (a, b)
+    )
     a.zone = Zone.REMOVEDFROMGAME
     b.zone = Zone.REMOVEDFROMGAME
     # Rebuild the full card where the halves met; it never Shatters again.
@@ -3943,15 +3996,11 @@ def _do_shatter_recombine(player, index, a, b, parent_id):
     parent._summon_index = index
     parent.zone = Zone.HAND
     parent._summon_index = None
-    # Combine enchantments first…
-    for bid in buff_ids:
-        try:
-            parent.buff(parent, bid)
-        except Exception:
-            pass
-    # …then set the recombined cost last so it wins over any cost-enchant's own
-    # _cost adjustment (that reduction is already folded into total_discount).
-    parent._cost = max(0, (parent.data.cost or 0) - total_discount)
+    # Combine enchantments first (preserving values)…
+    _reapply_buffs(parent, snap)
+    # …then apply the residual direct-cost reduction last.
+    if direct_discount:
+        parent._cost = max(0, (parent.data.cost or 0) - direct_discount)
 
 
 class MultipleChoice(TargetedAction):

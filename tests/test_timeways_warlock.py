@@ -376,6 +376,25 @@ def test_divergence_splits_minion_in_hand():
         assert h.cost == 4                   # 8 -> 4 (half)
 
 
+def test_divergence_halves_buffed_minion_from_current_stats():
+    # The halving is of the minion's CURRENT stats, not its printed base. A
+    # buffed minion must split relative to its buffed value (regression: a fresh
+    # base copy + a current->half delta came out far too small / zeroed).
+    game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
+    p1 = game.player1
+    _clear_hand(p1)
+    yeti = p1.give("CS2_182")  # 4/5 base
+    game.queue_actions(p1.hero, [Buff(yeti, "CATA_820e", atk=6, max_health=5)])
+    assert (yeti.atk, yeti.max_health) == (10, 10)
+    div = p1.give("TIME_030")
+    div.play()
+    halves = [c for c in p1.hand if c.id == "CS2_182"]
+    assert len(halves) == 2
+    for h in halves:
+        # (10+1)//2 == 5 — was 0/0 before the copy_buffs fix.
+        assert h.atk == 5 and h.max_health == 5
+
+
 def test_rafaam_ladder_draws_three_distinct_costs():
     game = prepare_game(CardClass.WARLOCK, CardClass.WARLOCK)
     p1 = game.player1

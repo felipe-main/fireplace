@@ -224,17 +224,6 @@ class CATA_303:
     play = Hit(TARGET, 5).then(Dead(TARGET) & Heal(ENEMY_HERO, 5))
 
 
-class CATA_306:
-    """Schism"""
-
-    # Shatter. Give a friendly minion +2/+3 and Elusive. Summon a copy of it.
-    # The parent never resolves: the engine splits a SHATTER card into its
-    # two "Shattered" half-cards when it is drawn. Schism uniquely names its
-    # halves CATA_306t1 / CATA_306t2 (every other SHATTER card uses <id>t /
-    # <id>t2); the splitter probes all three suffixes so both halves are given.
-    pass
-
-
 CATA_306e = buff(atk=2, health=3)
 
 
@@ -257,6 +246,26 @@ class _SchismElusive(TargetedAction):
                 )
             ],
         )
+
+
+class CATA_306:
+    """Schism"""
+
+    # Shatter. Give a friendly minion +2/+3 and Elusive. Summon a copy of it.
+    # Normally split into CATA_306t1 / CATA_306t2 when drawn (Schism uniquely
+    # uses the t1/t2 suffixes); resolves directly only when the halves
+    # RECOMBINE, performing BOTH effects on the same target — buff + Elusive
+    # first, then summon a copy of the now-buffed minion.
+    requirements = {
+        PlayReq.REQ_FRIENDLY_TARGET: 0,
+        PlayReq.REQ_MINION_TARGET: 0,
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+    }
+    play = (
+        Buff(TARGET, "CATA_306e"),
+        _SchismElusive(TARGET),
+        Summon(CONTROLLER, ExactCopy(TARGET)),
+    )
 
 
 class CATA_306t1:

@@ -270,14 +270,6 @@ class CATA_006e:
 # Spells
 
 
-class CATA_134:
-    """Wildwood Circle"""
-
-    # Shatter. Summon two 2/2 Treants. Give your minions "Deathrattle: Summon a
-    # 2/2 Treant." The engine splits this into CATA_134t / CATA_134t2 when
-    # drawn; the parent never resolves directly, so it only needs a docstring.
-
-
 class _WildwoodGiveDeathrattle(TargetedAction):
     """Give each friendly minion 'Deathrattle: Summon a 2/2 Treant.'"""
 
@@ -288,6 +280,19 @@ class _WildwoodGiveDeathrattle(TargetedAction):
         for minion in list(ctrl.field):
             minion.additional_deathrattles.append((Summon(ctrl, "CATA_134t3"),))
             minion.has_deathrattle = True
+
+
+class CATA_134:
+    """Wildwood Circle"""
+
+    # Shatter. Summon two 2/2 Treants. Give your minions "Deathrattle: Summon a
+    # 2/2 Treant." Normally split into CATA_134t / CATA_134t2 when drawn; the
+    # parent resolves directly only when the halves RECOMBINE, performing BOTH
+    # halves' effects.
+    play = (
+        Summon(CONTROLLER, "CATA_134t3") * 2,
+        _WildwoodGiveDeathrattle(CONTROLLER),
+    )
 
 
 class CATA_134t:

@@ -220,9 +220,12 @@ class _SummonDoubledCopy(TargetedAction):
         original = source.game.random.choice(minions)
         atk = original.atk
         health = original.max_health
-        # Build a fresh base copy and summon it, then apply the doubling buff
-        # (City's Strength = +atk/+health, doubling the base stats).
+        # Build a copy carrying the original's enchantments (so it starts at the
+        # original's CURRENT stats), then add a +current buff -> current + current
+        # = 2 x current. A fresh BASE copy buffed by +current came out at
+        # base + current, not double (wrong whenever the original was buffed).
         copy = ctrl.card(original.id, source=source)
+        copy_buffs(source, original, copy)
         source.game.cheat_action(source, [Summon(ctrl, copy)])
         source.game.cheat_action(
             source,

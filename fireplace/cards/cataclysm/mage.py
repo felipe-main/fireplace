@@ -202,8 +202,14 @@ class CATA_485:
 class CATA_489:
     """Arcane Flow"""
 
-    # SHATTER parent — never resolves directly; the engine splits it into its
-    # two halves (CATA_489t / CATA_489t2) when it is DRAWN.
+    # SHATTER parent — normally split into CATA_489t / CATA_489t2 when DRAWN.
+    # It only resolves directly when the two halves RECOMBINE in hand, in which
+    # case it performs BOTH halves' effects: deal 4 to a target AND 2 to all
+    # enemies.
+    requirements = {
+        PlayReq.REQ_TARGET_TO_PLAY: 0,
+    }
+    play = Hit(TARGET, 4), Hit(ENEMY_CHARACTERS, 2)
 
 
 class CATA_489t:

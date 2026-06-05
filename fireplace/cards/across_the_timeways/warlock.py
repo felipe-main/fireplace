@@ -252,6 +252,12 @@ class _DivergenceSplit(TargetedAction):
                 break
             copy = ctrl.card(original.id, source=source)
             copy.zone = Zone.HAND
+            # Carry the original's enchantments onto the copy so it starts at
+            # the original's CURRENT (buffed) stats; the delta buffs below are
+            # computed current->half, so they only land correctly on a copy that
+            # already reflects the buffs (a fresh base copy came out wrong, e.g.
+            # a buffed 8/9 split to 0/1 instead of ~4/5).
+            copy_buffs(source, original, copy)
             source.game.queue_actions(
                 source,
                 [

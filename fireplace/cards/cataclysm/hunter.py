@@ -278,8 +278,14 @@ class CATA_560:
 class CATA_820:
     """Supply Run"""
 
-    # Shatter. Draw 3 minions. Give minions in your hand +2/+2.
-    pass
+    # Shatter. Draw 3 minions. Give minions in your hand +2/+2. Normally split
+    # into CATA_820t / CATA_820t2 when drawn; resolves directly only when the
+    # halves RECOMBINE, performing BOTH effects (draw first so the drawn minions
+    # are in hand to receive the +2/+2).
+    play = (
+        Draw(CONTROLLER, RANDOM(FRIENDLY_DECK + MINION)) * 3,
+        Buff(FRIENDLY_HAND + MINION, "CATA_820e"),
+    )
 
 
 class CATA_820t:

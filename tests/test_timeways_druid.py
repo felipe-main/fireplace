@@ -371,6 +371,27 @@ def test_zin_azshari_empowered_summons_doubled_copy():
     assert copy.atk == 8 and copy.max_health == 10
 
 
+def test_zin_azshari_empowered_doubles_current_stats_when_buffed():
+    # "Doubled" means double the CURRENT stats, not base + current. A buffed
+    # original must produce a copy at 2x its buffed value (regression: a fresh
+    # base copy buffed by +current landed at base + current).
+    game = prepare_game(CardClass.DRUID, CardClass.DRUID)
+    p1 = game.player1
+    for m in list(p1.field):
+        m.destroy()
+    game.process_deaths()
+    orig = p1.summon("CS2_182")  # 4/5 base
+    game.queue_actions(p1.hero, [Buff(orig, "CATA_820e", atk=10, max_health=10)])
+    assert (orig.atk, orig.max_health) == (14, 15)
+    loc = p1.summon("TIME_211t2t")
+    game.end_turn()
+    game.end_turn()
+    loc.use()
+    copy = next(m for m in p1.field if m.id == "CS2_182" and m is not orig)
+    # 2 x current (14/15) — was 18/20 (base 4/5 + current) before the fix.
+    assert copy.atk == 28 and copy.max_health == 30
+
+
 # ---------------------------------------------------------------------------
 # END_009 Splintered Reality — Summon two 2/2 Treants. They gain +1/+1 for
 # each friendly Treant that died this game.
